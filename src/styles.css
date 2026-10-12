@@ -499,6 +499,45 @@ code {
   color: var(--surface);
 }
 
+/* ── Sun ─────────────────────────────────────────────────── */
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-row strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.field input[type='range'] {
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  accent-color: var(--accent);
+}
+
+.date-input {
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.btn-small {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.north-arrow {
+  display: inline-block;
+  font-size: 15px;
+  color: var(--accent);
+}
+
 @media (max-width: 600px) {
   .panel {
     left: 12px;

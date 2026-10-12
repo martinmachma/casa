@@ -11,7 +11,10 @@ import type { Floor, Point, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { FLOOR_SLAB } from './palette'
+import type { SunPosition } from '../sun/sun'
+import { Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
+import { NorthArrow } from './NorthArrow'
 import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
@@ -28,6 +31,9 @@ type HouseSceneProps = {
   data: HouseData
   selection: Selection | undefined
   snap: boolean
+  /** Sun position for sunlight, or undefined for even light. */
+  sun: SunPosition | undefined
+  north: number
   /** Points of the measurement in progress; undefined when not measuring. */
   measure: Point[] | undefined
   onMeasurePoint: (p: Point) => void
@@ -44,6 +50,8 @@ export const HouseScene = ({
   data,
   selection,
   snap,
+  sun,
+  north,
   measure,
   onMeasurePoint,
   nudge,
@@ -53,6 +61,9 @@ export const HouseScene = ({
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const regions = floorRegions(floor)
+  const { min, max } = floorBounds(floor)
+  const cx = (min[0] + max[0]) / 2
+  const cz = (min[1] + max[1]) / 2
   const items = data.furniture.filter((f) => f.floor === floor.id)
   const labels = useRef<(HTMLDivElement | null)[]>([])
   // While measuring, taps go to the floor plane only.
@@ -69,22 +80,16 @@ export const HouseScene = ({
   return (
     <>
       <Canvas shadows dpr={[1, 2]} onPointerMissed={() => onSelect(undefined)}>
-        <color attach="background" args={['#f4efe8']} />
         <CameraRig key={`${camera}-${floor.id}-${viewKey}`} mode={camera} floor={floor} />
         <CameraNudger nudge={nudge} />
-        <hemisphereLight args={['#fff8ee', '#b8a990', 1.5]} />
-        <directionalLight
-          position={[9, 24, 6]}
-          intensity={1.5}
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-camera-left={-12}
-          shadow-camera-right={12}
-          shadow-camera-top={12}
-          shadow-camera-bottom={-12}
-          shadow-bias={-0.0005}
-          shadow-intensity={0.45}
-        />
+        <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
+        {sun && (
+          <NorthArrow
+            north={north}
+            center={[cx, floor.elevation, cz]}
+            radius={Math.hypot(max[0] - min[0], max[1] - min[1]) / 2 + 0.8}
+          />
+        )}
 
         {/* Floors below the current one stay visible for context but can't be clicked. */}
         {floors.slice(0, floorIndex + 1).map((f) => (

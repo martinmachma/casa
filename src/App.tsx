@@ -14,7 +14,10 @@ import type { CameraMode, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type BoxSize } from './ui/FurniturePanel'
+import { sunNow, useNorth, type SunSettings } from './sun/useSun'
+import { sunPosition, zonedTime } from './sun/sun'
 import { MeasureBar } from './ui/MeasureBar'
+import { SunPanel } from './ui/SunPanel'
 import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallColorKey } from './data/types'
@@ -33,6 +36,12 @@ const House = ({ backend, account }: HouseProps) => {
   const nudge = useRef(createCameraNudge())
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Point[]>()
+  const [sun, setSun] = useState<SunSettings>()
+  const [north, setNorth] = useNorth()
+  const { site } = house
+  const sunAt = sun
+    ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
+    : undefined
 
   const floor = house.floors[floorIndex]
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
@@ -104,6 +113,8 @@ const House = ({ backend, account }: HouseProps) => {
         data={data}
         selection={selection}
         snap={snap}
+        sun={sunAt}
+        north={north}
         measure={measure}
         onMeasurePoint={addMeasurePoint}
         nudge={nudge}
@@ -147,6 +158,17 @@ const House = ({ backend, account }: HouseProps) => {
         <button className="btn" aria-pressed={Boolean(measure)} onClick={toggleMeasure}>
           Measure
         </button>
+        <button
+          className="btn"
+          aria-pressed={Boolean(sun)}
+          onClick={() => {
+            setSelection(undefined)
+            setFurnitureOpen(false)
+            setSun(sun ? undefined : sunNow())
+          }}
+        >
+          Sun
+        </button>
         <span className="spacer" />
         <div className="chip">
           <span>{account.label}</span>
@@ -186,6 +208,17 @@ const House = ({ backend, account }: HouseProps) => {
           onRotate={(deg) => rotateItem(selectedItem, deg)}
           onDelete={() => deleteItem(selectedItem)}
           onClose={() => setSelection(undefined)}
+        />
+      )}
+
+      {!selection && !furnitureOpen && sun && sunAt && (
+        <SunPanel
+          sun={sun}
+          position={sunAt}
+          north={north}
+          onSun={setSun}
+          onNorth={setNorth}
+          onClose={() => setSun(undefined)}
         />
       )}
 

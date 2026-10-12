@@ -141,6 +141,10 @@ the real plan is traced. The format is meant to be edited by hand:
 - **Measure**: tap two points on the floor for the distance between them. Taps near a wall face or corner land
   exactly on it, and a nearly straight line squares up, so wall-to-wall measurements are exact. A third tap starts
   a new one.
+- **Sun** lights the house as at a date and time (Europe/Prague clock) with real shadows; Winter/Spring/Summer
+  jump to the solstices and equinox. North isn't known yet: turn the North slider until the orange arrow on the
+  ground points north (remembered on that device). Once known, put it in `site.north` in `house.json` (degrees
+  clockwise from the plan's up), along with the exact `latitude`/`longitude` (Prague for now).
 - **Floor switcher** shows that floor plus the ones below it (for context; only the current floor is clickable).
 - **Top** is a plan view (drag to pan, scroll/pinch to zoom); **3D** orbits.
 - **Camera buttons** (bottom left, made for phones): hold the arrows to move, ⟲ ⟳ to rotate, ⤒ ⤓ to tilt, + − to
@@ -160,6 +164,7 @@ src/
   layout/      house.json · types · geometry (wall splitting, validation) · rooms (floor regions, areas); tested
   furniture/   snap.ts: wall snapping (pure; tested)
   measure/     measure.ts: snapping taps to wall faces, formatting (pure; tested)
+  sun/         sun.ts: sun position and direction, local clock time (pure; tested) · useSun
   data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess
   scene/       HouseScene (canvas, lights, cameras) · FloorWalls · RoomFloors + floorMaterials · FurnitureBox ·

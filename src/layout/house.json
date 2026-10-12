@@ -1,5 +1,11 @@
 {
   "name": "Our house (traced from the 2026 plans)",
+  "site": {
+    "latitude": 50.08,
+    "longitude": 14.43,
+    "timeZone": "Europe/Prague",
+    "north": 0
+  },
   "floors": [
     {
       "id": "ground",

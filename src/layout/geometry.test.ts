@@ -49,6 +49,7 @@ describe('wallPieces', () => {
 describe('validateLayout', () => {
   const layoutWith = (w: Wall): HouseLayout => ({
     name: 't',
+    site: house.site,
     floors: [{ id: 'f', name: 'F', elevation: 0, height: 2.5, wallThickness: 0.1, rooms: [], walls: [w] }],
   })
 

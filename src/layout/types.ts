@@ -39,8 +39,19 @@ export type Floor = {
   walls: Wall[]
 }
 
+/** Where the house stands, for sunlight. */
+export type Site = {
+  latitude: number
+  longitude: number
+  /** IANA zone the clock times in the sun panel are read in. */
+  timeZone: string
+  /** True north, degrees clockwise from the plan's up. The app lets you adjust it; this is the default. */
+  north: number
+}
+
 export type HouseLayout = {
   name: string
+  site: Site
   floors: Floor[]
 }
 
