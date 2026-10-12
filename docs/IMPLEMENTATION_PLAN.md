@@ -38,10 +38,22 @@ Last updated: 2026-10-12
 - [x] Trace the real floor plan into `src/layout/house.json` (from the electrical plan + architectural 1NP plan; upper-floor window heights and ceiling height guessed)
 - [ ] End-to-end check against the real Supabase project: sign-in, allow-list rejection, colours and furniture saving
 - [ ] Test on phones (touch drag, pinch zoom, PWA install on iOS/Android)
-- [ ] Live sync between two devices (Supabase Realtime on `house.walls` / `house.furniture_items`); today the other
-      device sees changes after a reload
+- [x] Live sync between two devices (Supabase Realtime on `house.walls`, `house.room_floors`,
+      `house.furniture_items`; needs the realtime migration applied); not yet tried against the real project
 - [ ] Colour schemes UI: create, rename, switch the active scheme (the table exists; the app only uses the active one)
 - [ ] Room names from `house.rooms` overriding the layout names (table exists, not wired yet)
+
+### 3D upgrades (branch `feat/3d-upgrades`, 2026-10-12, not pushed)
+
+- [x] Room labels with floor areas (flood fill between walls) and a measuring tool that snaps to wall faces
+- [x] Floor finishes per room (procedural wood, tiles, carpet, concrete), saved per colour scheme
+- [x] 48 Kenney furniture models (CC0) with a catalog, stretched to size, upholstery colour
+- [x] First-person walk mode with wall/door collisions
+- [x] Sunlight by date and time (Prague coordinates for now), adjustable north
+- [x] On-screen camera buttons for phones
+- [ ] Apply the three new migrations, then check live sync between two phones
+- [ ] Set the real `site.north` / latitude / longitude in `house.json` once the site plan is in
+- [ ] Phone top bar wraps to three rows; worth a compact menu
 
 ### Known limitations
 
