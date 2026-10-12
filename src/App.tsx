@@ -16,6 +16,7 @@ import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import { sunNow, useNorth, type SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
+import { wallText } from './measure/dimensions'
 import { MeasureBar } from './ui/MeasureBar'
 import { SunPanel } from './ui/SunPanel'
 import { RoomPanel } from './ui/RoomPanel'
@@ -37,6 +38,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Point[]>()
   const [sun, setSun] = useState<SunSettings>()
+  const [showSizes, setShowSizes] = useState(false)
   const [north, setNorth] = useNorth()
   const { site } = house
   const sunAt = sun
@@ -127,6 +129,7 @@ const House = ({ backend, account }: HouseProps) => {
         snap={snap}
         sun={sunAt}
         north={north}
+        showSizes={showSizes}
         measure={measure}
         onMeasurePoint={addMeasurePoint}
         nudge={nudge}
@@ -170,6 +173,9 @@ const House = ({ backend, account }: HouseProps) => {
         >
           Furniture
         </button>
+        <button className="btn" aria-pressed={showSizes} onClick={() => setShowSizes(!showSizes)}>
+          Sizes
+        </button>
         <button className="btn" aria-pressed={Boolean(measure)} onClick={toggleMeasure}>
           Measure
         </button>
@@ -199,6 +205,10 @@ const House = ({ backend, account }: HouseProps) => {
         <WallPanel
           wallId={selection.wallId}
           side={selection.side}
+          details={(() => {
+            const wall = floor.walls.find((w) => w.id === selection.wallId)
+            return wall ? wallText(wall, floor) : ''
+          })()}
           color={data.wallColors.get(wallColorKey(selection.wallId, selection.side))}
           onColor={(color) => data.setWallColor(selection.wallId, selection.side, color)}
           onFlip={() => setSelection({ ...selection, side: selection.side === 'a' ? 'b' : 'a' })}

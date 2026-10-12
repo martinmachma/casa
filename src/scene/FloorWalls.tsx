@@ -19,9 +19,11 @@ type FloorWallsProps = {
   selection: Selection | undefined
   interactive: boolean
   onPick: (wallId: string, side: WallSide) => void
+  /** The pointer is over this wall (at these screen coordinates), or left it. */
+  onHover?: (wall: Wall | undefined, clientX: number, clientY: number) => void
 }
 
-export const FloorWalls = ({ floor, colors, selection, interactive, onPick }: FloorWallsProps) => (
+export const FloorWalls = ({ floor, colors, selection, interactive, onPick, onHover }: FloorWallsProps) => (
   <group>
     {floor.walls.map((wall) => (
       <WallMesh
@@ -33,6 +35,7 @@ export const FloorWalls = ({ floor, colors, selection, interactive, onPick }: Fl
         selectedSide={selection?.kind === 'wall' && selection.wallId === wall.id ? selection.side : undefined}
         interactive={interactive}
         onPick={onPick}
+        onHover={onHover}
       />
     ))}
   </group>
@@ -46,11 +49,13 @@ type WallMeshProps = {
   selectedSide: WallSide | undefined
   interactive: boolean
   onPick: (wallId: string, side: WallSide) => void
+  /** The pointer is over this wall (at these screen coordinates), or left it. */
+  onHover?: (wall: Wall | undefined, clientX: number, clientY: number) => void
 }
 
 const noRaycast = () => null
 
-const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPick }: WallMeshProps) => {
+const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPick, onHover }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(
     () => wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET),
@@ -86,7 +91,21 @@ const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPi
           onPointerOver={
             interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined
           }
-          onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
+          onPointerMove={
+            interactive && onHover
+              ? (e) =>
+                  // Hover is a mouse thing; on touch it would pop up on every tap and stay.
+                  e.nativeEvent.pointerType === 'mouse' && onHover(wall, e.nativeEvent.clientX, e.nativeEvent.clientY)
+              : undefined
+          }
+          onPointerOut={
+            interactive
+              ? () => {
+                  document.body.style.cursor = ''
+                  onHover?.(undefined, 0, 0)
+                }
+              : undefined
+          }
         >
           <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
           <meshStandardMaterial attach="material-0" color={WALL_CAP} />

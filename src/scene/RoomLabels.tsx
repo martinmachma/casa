@@ -14,7 +14,16 @@ type RoomLabelsProps = { floor: Floor; labels: LabelRefs }
 const formatArea = (m2: number) => `${m2.toFixed(1)} m²`
 
 /** The DOM half: render next to the <Canvas>. */
-export const RoomLabels = ({ floor, labels, regions }: RoomLabelsProps & { regions: Map<string, RoomRegion> }) => (
+/** "3.62 × 5.10 m" for a rectangular room; L-shaped and other rooms have no single width and depth. */
+const roomSize = (region: RoomRegion) => {
+  const w = Math.max(...region.cells.map((c) => c.x1)) - Math.min(...region.cells.map((c) => c.x0))
+  const d = Math.max(...region.cells.map((c) => c.y1)) - Math.min(...region.cells.map((c) => c.y0))
+  return Math.abs(w * d - region.area) < 0.01 * region.area ? `${w.toFixed(2)} × ${d.toFixed(2)} m` : undefined
+}
+
+type RoomLabelsDomProps = RoomLabelsProps & { regions: Map<string, RoomRegion>; showSizes: boolean }
+
+export const RoomLabels = ({ floor, labels, regions, showSizes }: RoomLabelsDomProps) => (
   <div className="room-labels" aria-hidden>
     {floor.rooms.map((room, i) => (
       <div
@@ -26,6 +35,11 @@ export const RoomLabels = ({ floor, labels, regions }: RoomLabelsProps & { regio
       >
         <span className="room-name">{room.name}</span>
         {regions.has(room.id) && <span className="room-area">{formatArea(regions.get(room.id)!.area)}</span>}
+        {showSizes && regions.has(room.id) && (
+          <span className="room-area">
+            {[roomSize(regions.get(room.id)!), `${floor.height.toFixed(2)} m high`].filter(Boolean).join(' · ')}
+          </span>
+        )}
       </div>
     ))}
   </div>

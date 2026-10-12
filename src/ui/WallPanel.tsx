@@ -4,13 +4,15 @@ import { DEFAULT_WALL, PAINT_SWATCHES } from '../scene/palette'
 type WallPanelProps = {
   wallId: string
   side: WallSide
+  /** Its size, e.g. "6.03 m centre line · 34 cm thick · 2.68 m high". */
+  details: string
   color: string | undefined
   onColor: (color: string | undefined) => void
   onFlip: () => void
   onClose: () => void
 }
 
-export const WallPanel = ({ wallId, side, color, onColor, onFlip, onClose }: WallPanelProps) => {
+export const WallPanel = ({ wallId, side, details, color, onColor, onFlip, onClose }: WallPanelProps) => {
   const current = color ?? DEFAULT_WALL
   return (
     <section className="panel" aria-label="Wall colour">
@@ -22,6 +24,8 @@ export const WallPanel = ({ wallId, side, color, onColor, onFlip, onClose }: Wal
       </div>
       <p className="hint">
         {wallId} · side {side.toUpperCase()}
+        <br />
+        {details}
       </p>
       <div className="swatches">
         {PAINT_SWATCHES.map((c) => (

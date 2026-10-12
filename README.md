@@ -139,6 +139,10 @@ the real plan is traced. The format is meant to be edited by hand:
   it (two labels in one open space, like stairs and landing, split it halfway between them).
 - **Tap a room's floor** to pick its finish: wood, tiles, carpet or concrete (drawn in the app, no downloads). Saved
   per colour scheme like the walls.
+- **Sizes** labels every wall face with its length (inside a room that's its clear width, outside the overall size),
+  every door and window with its width × height (and sill), and each room with width × depth and height. With a
+  mouse, hovering a wall shows its length, thickness and height; the wall panel shows them too. While a piece of
+  furniture is selected or dragged, dashed lines show how far each side is from the nearest wall.
 - **Measure**: tap two points on the floor for the distance between them. Taps near a wall face or corner land
   exactly on it, and a nearly straight line squares up, so wall-to-wall measurements are exact. A third tap starts
   a new one.
@@ -170,7 +174,8 @@ the real plan is traced. The format is meant to be edited by hand:
 src/
   layout/      house.json · types · geometry (wall splitting, validation) · rooms (floor regions, areas); tested
   furniture/   catalog.ts: the models and default sizes · snap.ts: wall snapping (pure; tested)
-  measure/     measure.ts: snapping taps to wall faces, formatting (pure; tested)
+  measure/     measure.ts: snapping taps to wall faces · dimensions.ts: wall face runs, opening sizes ·
+               clearance.ts: furniture-to-wall gaps (pure; tested)
   walk/        collide.ts: what blocks walking, sliding along walls (pure; tested)
   sun/         sun.ts: sun position and direction, local clock time (pure; tested) · useSun
   data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)

@@ -7,7 +7,7 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point, WallSide } from '../layout/types'
+import type { Floor, Point, Wall, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
@@ -16,6 +16,13 @@ import { Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
 import { NorthArrow } from './NorthArrow'
 import { WalkCamera } from './WalkCamera'
+import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
+import { clearances } from '../measure/clearance'
+import { faceRuns, openingCenter, openingText, wallText } from '../measure/dimensions'
+import { formatLength } from '../measure/measure'
+import { floorWallRects } from '../layout/rooms'
+import { Line } from '@react-three/drei'
+import { SELECTED_OUTLINE } from './palette'
 import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
@@ -35,6 +42,8 @@ type HouseSceneProps = {
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
+  /** Dimension labels on every wall face and opening. */
+  showSizes: boolean
   /** Points of the measurement in progress; undefined when not measuring. */
   measure: Point[] | undefined
   onMeasurePoint: (p: Point) => void
@@ -53,6 +62,7 @@ export const HouseScene = ({
   snap,
   sun,
   north,
+  showSizes,
   measure,
   onMeasurePoint,
   nudge,
@@ -65,8 +75,61 @@ export const HouseScene = ({
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
+
   const items = data.furniture.filter((f) => f.floor === floor.id)
+  const top = floor.elevation + floor.height + 0.02
+  const sizeLabels = useMemo<Annotation[]>(
+    () =>
+      showSizes
+        ? [
+            ...faceRuns(floor).map((r): Annotation => ({
+              key: r.key,
+              at: [r.labelAt[0], top, r.labelAt[1]],
+              text: formatLength(r.length),
+              kind: 'face',
+              anchor: r.facing,
+            })),
+            ...floor.walls.flatMap((w) =>
+              (w.openings ?? []).map((o, i): Annotation => {
+                const [x, y] = openingCenter(w, o)
+                return { key: `${w.id}:o${i}`, at: [x, top, y], text: openingText(o), kind: 'opening' }
+              }),
+            ),
+          ]
+        : [],
+    [showSizes, floor, top],
+  )
+
+  // While a piece is selected (and while it's dragged), how far each side is from the walls.
+  const selectedItem =
+    selection?.kind === 'furniture' ? items.find((f) => f.id === selection.id && f.floor === floor.id) : undefined
+  const wallRects = useMemo(() => floorWallRects(floor), [floor])
+  const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
+  const gapY = floor.elevation + 0.05
+  const annotations = [
+    ...sizeLabels,
+    ...gaps.map((g, i): Annotation => ({
+      key: `gap${i}`,
+      at: [(g.from[0] + g.to[0]) / 2, gapY, (g.from[1] + g.to[1]) / 2],
+      text: formatLength(g.distance),
+      kind: 'gap',
+    })),
+  ]
+
+  const hoverWall = (wall: Wall | undefined, x: number, y: number) => {
+    const el = tooltip.current
+    if (!el) return
+    if (!wall) {
+      el.style.visibility = 'hidden'
+      return
+    }
+    el.textContent = wallText(wall, floor)
+    el.style.transform = `translate(${x + 14}px, ${y + 14}px)`
+    el.style.visibility = 'visible'
+  }
   const labels = useRef<(HTMLDivElement | null)[]>([])
+  const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
+  const tooltip = useRef<HTMLDivElement>(null)
   // While measuring, taps go to the floor plane only.
   const pickable = !measure
 
@@ -114,6 +177,7 @@ export const HouseScene = ({
               selection={selection}
               interactive={pickable && f.id === floor.id}
               onPick={pickWall}
+              onHover={hoverWall}
             />
           </group>
         ))}
@@ -124,6 +188,21 @@ export const HouseScene = ({
         {measure && <MeasureTool floor={floor} points={measure} onPoint={onMeasurePoint} />}
 
         {camera !== 'walk' && <RoomLabelProjector floor={floor} labels={labels} />}
+        <AnnotationProjector items={annotations} refs={annotationRefs} />
+        {gaps.map((g, i) => (
+          <Line
+            key={i}
+            points={[
+              [g.from[0], gapY, g.from[1]],
+              [g.to[0], gapY, g.to[1]],
+            ]}
+            color={SELECTED_OUTLINE}
+            lineWidth={2}
+            dashed
+            dashSize={0.08}
+            gapSize={0.05}
+          />
+        ))}
 
         {items.map((item) => (
           <FurnitureBox
@@ -139,7 +218,9 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {camera !== 'walk' && <RoomLabels floor={floor} labels={labels} regions={regions} />}
+      {camera !== 'walk' && <RoomLabels floor={floor} labels={labels} regions={regions} showSizes={showSizes} />}
+      <AnnotationLabels items={annotations} refs={annotationRefs} />
+      <div className="wall-tooltip" ref={tooltip} />
     </>
   )
 }
