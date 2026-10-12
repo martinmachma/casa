@@ -5,18 +5,15 @@ export type WallPiece = { u0: number; u1: number; y0: number; y1: number }
 
 export const DEFAULT_WINDOW_SILL = 0.9
 
-export const wallLength = (wall: Wall): number =>
-  Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
+export const wallLength = (wall: Wall): number => Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
 
 /** Plan angle of the wall direction, radians. */
-export const wallAngle = (wall: Wall): number =>
-  Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0])
+export const wallAngle = (wall: Wall): number => Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0])
 
 export const wallThickness = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): number =>
   wall.thickness ?? floor.wallThickness
 
-export const openingSill = (o: Opening): number =>
-  o.sill ?? (o.type === 'window' ? DEFAULT_WINDOW_SILL : 0)
+export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window' ? DEFAULT_WINDOW_SILL : 0)
 
 /**
  * Splits a wall into solid boxes around its openings. The two ends are pushed out by `endExtension`
