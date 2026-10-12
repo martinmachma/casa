@@ -27,6 +27,12 @@ describe('snapToWalls', () => {
     expect(p.y).toBeCloseTo(0.35)
   })
 
+  it('pulls out an item buried deeper than the threshold', () => {
+    // Turned so its 1 m width runs north–south, centre 0.4 m from the wall line: 0.2 m inside the face.
+    const p = snapToWalls({ ...box, x: 2, y: 0.4, rotation: Math.PI / 2 }, room)
+    expect(p.y).toBeCloseTo(0.1 + 0.5)
+  })
+
   it('squares a slightly turned item to the wall', () => {
     const p = snapToWalls({ ...box, x: 2, y: 0.45, rotation: 0.2 }, room)
     expect(Math.abs(Math.sin(p.rotation))).toBeCloseTo(0)

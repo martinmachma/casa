@@ -1,10 +1,14 @@
-import type { Point } from '../layout/types'
+import { wallThickness } from '../layout/geometry'
+import type { Floor, Point } from '../layout/types'
 
 export type Footprint = { x: number; y: number; width: number; depth: number; rotation: number }
 export type SnapWall = { from: Point; to: Point; thickness: number }
 export type Placement = Pick<Footprint, 'x' | 'y' | 'rotation'>
 
 const QUARTER = Math.PI / 2
+
+export const floorSnapWalls = (floor: Floor): SnapWall[] =>
+  floor.walls.map((w) => ({ from: w.from, to: w.to, thickness: wallThickness(w, floor) }))
 
 export const normalizeAngle = (a: number): number => {
   const r = a % (2 * Math.PI)
@@ -36,7 +40,10 @@ const frameOf = (w: SnapWall): Frame => {
   }
 }
 
-/** Signed distance from the footprint's edge to the wall face, and the position that closes it. */
+/**
+ * How far the footprint's edge is from the wall face (negative when it overlaps the wall), and the
+ * shift along the wall normal that makes it flush.
+ */
 const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
   const rx = f.x - w.from[0]
   const ry = f.y - w.from[1]
@@ -44,12 +51,12 @@ const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
   if (t < -alongMargin || t > w.length + alongMargin) return undefined
   const s = rx * w.n[0] + ry * w.n[1]
   const target = Math.sign(s || 1) * (w.thickness / 2 + extentAlong(f, w.n))
-  return { gap: Math.abs(s - target), shift: target - s }
+  return { gap: Math.abs(s) - Math.abs(target), shift: target - s }
 }
 
 /**
- * Pushes a footprint flush against the nearest wall face within `threshold` metres, turning it square
- * to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
+ * Pushes a footprint flush against the nearest wall face within `threshold` metres (or one it overlaps),
+ * turning it square to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
  */
 export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.25): Placement => {
   const frames = walls.map(frameOf)
@@ -60,10 +67,10 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.25): 
     const k = Math.round(normalizeAngle(f.rotation - frame.angle) / QUARTER)
     const squared = { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) }
     const hit = gapTo(squared, frame, 0)
-    if (!hit || hit.gap > threshold || (best && hit.gap >= best.gap)) continue
+    if (!hit || hit.gap > threshold || (best && Math.abs(hit.gap) >= best.gap)) continue
     best = {
       frame,
-      gap: hit.gap,
+      gap: Math.abs(hit.gap),
       placed: { ...squared, x: squared.x + frame.n[0] * hit.shift, y: squared.y + frame.n[1] * hit.shift },
     }
   }
@@ -75,8 +82,8 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.25): 
   for (const frame of frames) {
     if (frame === first || Math.abs(frame.d[0] * first.d[0] + frame.d[1] * first.d[1]) > 1e-3) continue
     const hit = gapTo(placed, frame, Math.max(placed.width, placed.depth))
-    if (!hit || hit.gap > threshold || hit.gap >= cornerGap) continue
-    cornerGap = hit.gap
+    if (!hit || hit.gap > threshold || Math.abs(hit.gap) >= cornerGap) continue
+    cornerGap = Math.abs(hit.gap)
     placed = { ...best.placed, x: best.placed.x + frame.n[0] * hit.shift, y: best.placed.y + frame.n[1] * hit.shift }
   }
   return { x: placed.x, y: placed.y, rotation: placed.rotation }
