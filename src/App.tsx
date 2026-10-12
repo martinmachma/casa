@@ -17,6 +17,7 @@ import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import { sunNow, useNorth, type SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { wallText } from './measure/dimensions'
+import type { MeasurePick, Measurement } from './measure/measure'
 import { MeasureBar } from './ui/MeasureBar'
 import { SunPanel } from './ui/SunPanel'
 import { RoomPanel } from './ui/RoomPanel'
@@ -36,9 +37,8 @@ const House = ({ backend, account }: HouseProps) => {
   const [snap, setSnap] = useState(true)
   const nudge = useRef(createCameraNudge())
   const [viewKey, setViewKey] = useState(0)
-  const [measure, setMeasure] = useState<Point[]>()
+  const [measure, setMeasure] = useState<Measurement>()
   const [sun, setSun] = useState<SunSettings>()
-  const [showSizes, setShowSizes] = useState(false)
   const [north, setNorth] = useNorth()
   const { site } = house
   const sunAt = sun
@@ -107,16 +107,17 @@ const House = ({ backend, account }: HouseProps) => {
   const switchFloor = (index: number) => {
     setFloorIndex(index)
     setSelection(undefined)
-    if (measure) setMeasure([])
+    if (measure) setMeasure({ ...measure, picks: [] })
   }
 
   const toggleMeasure = () => {
     setSelection(undefined)
     setFurnitureOpen(false)
-    setMeasure(measure ? undefined : [])
+    setMeasure(measure ? undefined : { mode: 'points', picks: [] })
   }
   // A third tap starts a new measurement.
-  const addMeasurePoint = (p: Point) => setMeasure((points = []) => (points.length === 1 ? [points[0], p] : [p]))
+  const addMeasurePick = (pick: MeasurePick) =>
+    setMeasure((m) => m && { ...m, picks: m.picks.length === 1 ? [m.picks[0], pick] : [pick] })
 
   return (
     <div className="app">
@@ -129,9 +130,8 @@ const House = ({ backend, account }: HouseProps) => {
         snap={snap}
         sun={sunAt}
         north={north}
-        showSizes={showSizes}
         measure={measure}
-        onMeasurePoint={addMeasurePoint}
+        onMeasurePick={addMeasurePick}
         nudge={nudge}
         viewKey={viewKey}
         onSelect={setSelection}
@@ -173,9 +173,6 @@ const House = ({ backend, account }: HouseProps) => {
         >
           Furniture
         </button>
-        <button className="btn" aria-pressed={showSizes} onClick={() => setShowSizes(!showSizes)}>
-          Sizes
-        </button>
         <button className="btn" aria-pressed={Boolean(measure)} onClick={toggleMeasure}>
           Measure
         </button>
@@ -199,7 +196,14 @@ const House = ({ backend, account }: HouseProps) => {
         </div>
       </header>
 
-      {measure && <MeasureBar points={measure} onClear={() => setMeasure([])} onDone={() => setMeasure(undefined)} />}
+      {measure && (
+        <MeasureBar
+          measure={measure}
+          onMode={(mode) => setMeasure({ mode, picks: [] })}
+          onClear={() => setMeasure({ ...measure, picks: [] })}
+          onDone={() => setMeasure(undefined)}
+        />
+      )}
 
       {selection?.kind === 'wall' && (
         <WallPanel

@@ -7,7 +7,7 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point, Wall, WallSide } from '../layout/types'
+import type { Floor, Wall, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
@@ -19,7 +19,7 @@ import { WalkCamera } from './WalkCamera'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
 import { clearances } from '../measure/clearance'
 import { faceRuns, openingCenter, openingText, wallText } from '../measure/dimensions'
-import { formatLength } from '../measure/measure'
+import { formatLength, type MeasurePick, type Measurement } from '../measure/measure'
 import { floorWallRects } from '../layout/rooms'
 import { Line } from '@react-three/drei'
 import { SELECTED_OUTLINE } from './palette'
@@ -42,11 +42,9 @@ type HouseSceneProps = {
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
-  /** Dimension labels on every wall face and opening. */
-  showSizes: boolean
-  /** Points of the measurement in progress; undefined when not measuring. */
-  measure: Point[] | undefined
-  onMeasurePoint: (p: Point) => void
+  /** The measurement in progress; undefined when not measuring. Sizes are labelled while measuring. */
+  measure: Measurement | undefined
+  onMeasurePick: (pick: MeasurePick) => void
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
@@ -62,14 +60,14 @@ export const HouseScene = ({
   snap,
   sun,
   north,
-  showSizes,
   measure,
-  onMeasurePoint,
+  onMeasurePick,
   nudge,
   viewKey,
   onSelect,
 }: HouseSceneProps) => {
   const floor = floors[floorIndex]
+  const showSizes = Boolean(measure)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const regions = floorRegions(floor)
   const { min, max } = floorBounds(floor)
@@ -185,7 +183,7 @@ export const HouseScene = ({
         {/* Walking needs a ceiling, so light comes in through the windows; the floor above's slab is one. */}
         {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
 
-        {measure && <MeasureTool floor={floor} points={measure} onPoint={onMeasurePoint} />}
+        {measure && <MeasureTool floor={floor} items={items} measure={measure} onPick={onMeasurePick} />}
 
         {camera !== 'walk' && <RoomLabelProjector floor={floor} labels={labels} />}
         <AnnotationProjector items={annotations} refs={annotationRefs} />

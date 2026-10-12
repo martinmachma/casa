@@ -139,13 +139,14 @@ the real plan is traced. The format is meant to be edited by hand:
   it (two labels in one open space, like stairs and landing, split it halfway between them).
 - **Tap a room's floor** to pick its finish: wood, tiles, carpet or concrete (drawn in the app, no downloads). Saved
   per colour scheme like the walls.
-- **Sizes** labels every wall face with its length (inside a room that's its clear width, outside the overall size),
+- **Measure** turns on the size labels: every wall face with its length (inside a room that's its clear width, outside the overall size),
   every door and window with its width × height (and sill), and each room with width × depth and height. With a
   mouse, hovering a wall shows its length, thickness and height; the wall panel shows them too. While a piece of
   furniture is selected or dragged, dashed lines show how far each side is from the nearest wall.
-- **Measure**: tap two points on the floor for the distance between them. Taps near a wall face or corner land
-  exactly on it, and a nearly straight line squares up, so wall-to-wall measurements are exact. A third tap starts
-  a new one.
+- **Measure** has two modes. **Points**: tap two points on the floor for the distance between them, diagonals
+  included. Taps near a wall face or corner land exactly on it, and a nearly straight line squares up. **Faces**: tap
+  a wall or the side of a piece, then another, for the square-on distance between them (the second tap prefers a
+  side parallel to the first). A third tap starts a new one. Works best from the Top view.
 - **Sun** lights the house as at a date and time (Europe/Prague clock) with real shadows; Winter/Spring/Summer
   jump to the solstices and equinox. North isn't known yet: turn the North slider until the orange arrow on the
   ground points north (remembered on that device). Once known, put it in `site.north` in `house.json` (degrees
