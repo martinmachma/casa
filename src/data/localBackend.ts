@@ -1,9 +1,10 @@
-import type { Backend, FurnitureItem, RemoteChange, WallColor } from './types'
+import type { Backend, FurnitureItem, RemoteChange, RoomFloor, WallColor } from './types'
 import { wallColorKey } from './types'
 
 // The demo keeps everything in this browser's localStorage.
 const WALLS_KEY = 'casa.demo.walls'
 const FURNITURE_KEY = 'casa.demo.furniture'
+const FLOORS_KEY = 'casa.demo.floors'
 
 const read = <T>(key: string, fallback: T): T => {
   try {
@@ -27,6 +28,7 @@ const channel = typeof BroadcastChannel === 'undefined' ? undefined : new Broadc
 const announce = (change: RemoteChange) => channel?.postMessage(change)
 
 const walls = () => read<WallColor[]>(WALLS_KEY, [])
+const roomFloors = () => read<RoomFloor[]>(FLOORS_KEY, [])
 const furniture = () => read<FurnitureItem[]>(FURNITURE_KEY, [])
 
 export const localBackend: Backend = {
@@ -46,6 +48,21 @@ export const localBackend: Backend = {
       walls().filter((w) => !(w.wallId === wallId && w.side === side)),
     )
     announce({ kind: 'wall', wallId, side, color: undefined })
+  },
+
+  loadRoomFloors: async () => roomFloors(),
+
+  saveRoomFloor: async (f) => {
+    write(FLOORS_KEY, [...roomFloors().filter((r) => r.roomId !== f.roomId), f])
+    announce({ kind: 'room-floor', ...f })
+  },
+
+  clearRoomFloor: async (roomId) => {
+    write(
+      FLOORS_KEY,
+      roomFloors().filter((r) => r.roomId !== roomId),
+    )
+    announce({ kind: 'room-floor', roomId, material: undefined })
   },
 
   loadFurniture: async () => furniture(),

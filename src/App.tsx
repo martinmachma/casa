@@ -4,12 +4,14 @@ import type { Backend, FurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
+import { floorRegions } from './layout/rooms'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
 import { FURNITURE_SWATCHES } from './scene/palette'
 import type { CameraMode, Selection } from './scene/selection'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type BoxSize } from './ui/FurniturePanel'
+import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallColorKey } from './data/types'
 
@@ -26,6 +28,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [snap, setSnap] = useState(true)
 
   const floor = house.floors[floorIndex]
+  const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
   const selectedItem = selection?.kind === 'furniture' ? data.furniture.find((f) => f.id === selection.id) : undefined
 
   const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>) => {
@@ -129,6 +132,16 @@ const House = ({ backend, account }: HouseProps) => {
           color={data.wallColors.get(wallColorKey(selection.wallId, selection.side))}
           onColor={(color) => data.setWallColor(selection.wallId, selection.side, color)}
           onFlip={() => setSelection({ ...selection, side: selection.side === 'a' ? 'b' : 'a' })}
+          onClose={() => setSelection(undefined)}
+        />
+      )}
+
+      {selectedRoom && (
+        <RoomPanel
+          room={selectedRoom}
+          region={floorRegions(floor).get(selectedRoom.id)}
+          material={data.roomFloors.get(selectedRoom.id)}
+          onMaterial={(material) => data.setRoomFloor(selectedRoom.id, material)}
           onClose={() => setSelection(undefined)}
         />
       )}

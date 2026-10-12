@@ -43,7 +43,7 @@ order (or, with the CLI linked to the project, `supabase db push`). The first,
 - `house.is_allowed()`, which every RLS policy uses, plus a private `house` storage bucket with the same rule.
 
 The later ones add to it: `…_house_realtime.sql` turns on live sync (walls and furniture stream to the other device
-without a reload).
+without a reload) and `…_house_room_floors.sql` adds `house.room_floors`, the floor finish of each room.
 
 Then add the two of you (lower-case emails):
 
@@ -136,6 +136,8 @@ the real plan is traced. The format is meant to be edited by hand:
 - **Room labels** show each room's floor area, measured to the wall faces with doors closed. Rooms come from the
   `rooms` label points in the layout: the floor is flood-filled from each label, so a room needs closed walls around
   it (two labels in one open space, like stairs and landing, split it halfway between them).
+- **Tap a room's floor** to pick its finish: wood, tiles, carpet or concrete (drawn in the app, no downloads). Saved
+  per colour scheme like the walls.
 - **Floor switcher** shows that floor plus the ones below it (for context; only the current floor is clickable).
 - **Top** is a plan view (drag to pan, scroll/pinch to zoom); **3D** orbits.
 - **Click a wall** (in 3D) to pick its colour; **Other side** switches to the opposite face. Colours save
@@ -154,7 +156,8 @@ src/
   furniture/   snap.ts: wall snapping (pure; tested)
   data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess
-  scene/       HouseScene (canvas, lights, cameras) · FloorWalls · FurnitureBox · RoomLabels
-  ui/          WallPanel · FurniturePanel · FurnitureEditor · NumberField
+  scene/       HouseScene (canvas, lights, cameras) · FloorWalls · RoomFloors + floorMaterials · FurnitureBox ·
+               RoomLabels
+  ui/          WallPanel · RoomPanel · FurniturePanel · FurnitureEditor · NumberField
 supabase/migrations/   the house schema
 ```

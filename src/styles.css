@@ -391,3 +391,43 @@ code {
     max-height: 48%;
   }
 }
+
+/* ── Floor materials ─────────────────────────────────────── */
+.material-group h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.materials {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.material {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.material img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgb(0 0 0 / 0.12);
+}
+
+.material[aria-pressed='true'] img {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}

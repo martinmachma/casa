@@ -16,6 +16,7 @@ type FurnitureRow = {
 }
 
 type WallRow = { scheme_id: string; wall_id: string; side: WallSide; color: string }
+type RoomFloorRow = { scheme_id: string; room_id: string; material: string }
 
 const FURNITURE_COLUMNS = 'id, floor, name, width, depth, height, x, y, rotation, color'
 
@@ -88,6 +89,26 @@ export const supabaseBackend: Backend = {
     check(await supabase.from('walls').delete().match({ scheme_id: schemeId, wall_id: wallId, side }))
   },
 
+  loadRoomFloors: async () => {
+    const schemeId = await activeSchemeId()
+    const rows = check(await supabase.from('room_floors').select('room_id, material').eq('scheme_id', schemeId))
+    return (rows ?? []).map((r) => ({ roomId: r.room_id, material: r.material }))
+  },
+
+  saveRoomFloor: async ({ roomId, material }) => {
+    const schemeId = await activeSchemeId()
+    check(
+      await supabase
+        .from('room_floors')
+        .upsert({ scheme_id: schemeId, room_id: roomId, material }, { onConflict: 'scheme_id,room_id' }),
+    )
+  },
+
+  clearRoomFloor: async (roomId) => {
+    const schemeId = await activeSchemeId()
+    check(await supabase.from('room_floors').delete().match({ scheme_id: schemeId, room_id: roomId }))
+  },
+
   loadFurniture: async () => {
     const rows = check(await supabase.from('furniture_items').select(FURNITURE_COLUMNS).order('created_at'))
     return ((rows ?? []) as FurnitureRow[]).map(fromRow)
@@ -106,7 +127,7 @@ export const supabaseBackend: Backend = {
     check(await supabase.from('furniture_items').delete().eq('id', id))
   },
 
-  // Needs both tables in the `supabase_realtime` publication (see the realtime migration).
+  // Needs the tables in the `supabase_realtime` publication (see the migrations).
   subscribe: (onChange, onResync) => {
     const channel = supabase
       .channel('casa-house')
@@ -115,6 +136,12 @@ export const supabaseBackend: Backend = {
         const row = (deleted ? payload.old : payload.new) as Partial<WallRow>
         if (!row.wall_id || !row.side || row.scheme_id !== (await activeSchemeId())) return
         onChange({ kind: 'wall', wallId: row.wall_id, side: row.side, color: deleted ? undefined : row.color })
+      })
+      .on('postgres_changes', { event: '*', schema: 'house', table: 'room_floors' }, async (payload) => {
+        const deleted = payload.eventType === 'DELETE'
+        const row = (deleted ? payload.old : payload.new) as Partial<RoomFloorRow>
+        if (!row.room_id || row.scheme_id !== (await activeSchemeId())) return
+        onChange({ kind: 'room-floor', roomId: row.room_id, material: deleted ? undefined : row.material })
       })
       .on('postgres_changes', { event: '*', schema: 'house', table: 'furniture_items' }, (payload) => {
         if (payload.eventType === 'DELETE') {

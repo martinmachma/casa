@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WallSide } from '../layout/types'
 import type { Backend, FurnitureItem, NewFurnitureItem, RemoteChange } from './types'
-import { wallColorKey } from './types'
+import { roomFloorKey, wallColorKey } from './types'
 
 // The colour picker fires continuously while dragged; save only once it settles.
 const WALL_SAVE_DELAY_MS = 400
@@ -26,9 +26,19 @@ class LocalEdits {
   }
 }
 
-/** Wall colours and furniture, updated optimistically, saved through the backend and kept in sync live. */
+/** A copy of the map with `key` set to `value`, or removed when undefined; the same map if nothing changes. */
+const withEntry = (map: Map<string, string>, key: string, value: string | undefined) => {
+  if (map.get(key) === value) return map
+  const next = new Map(map)
+  if (value) next.set(key, value)
+  else next.delete(key)
+  return next
+}
+
+/** Wall colours, floor materials and furniture, updated optimistically, saved through the backend and kept in sync live. */
 export const useHouseData = (backend: Backend) => {
   const [wallColors, setWallColors] = useState<Map<string, string>>(new Map())
+  const [roomFloors, setRoomFloors] = useState<Map<string, string>>(new Map())
   const [furniture, setFurniture] = useState<FurnitureItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
@@ -44,15 +54,15 @@ export const useHouseData = (backend: Backend) => {
 
     // Replaces everything with the saved state, except what is being edited here right now.
     const load = () =>
-      Promise.all([backend.loadWallColors(), backend.loadFurniture()])
-        .then(([colors, items]) => {
+      Promise.all([backend.loadWallColors(), backend.loadRoomFloors(), backend.loadFurniture()])
+        .then(([colors, floors, items]) => {
           if (cancelled) return
-          setWallColors((prev) => {
-            const next = new Map(colors.map((c) => [wallColorKey(c.wallId, c.side), c.color]))
-            for (const key of [...next.keys()]) if (edits.active(key) && !prev.has(key)) next.delete(key)
-            for (const [key, color] of prev) if (edits.active(key)) next.set(key, color)
-            return next
-          })
+          setWallColors((prev) =>
+            keepLocalEdits(prev, new Map(colors.map((c) => [wallColorKey(c.wallId, c.side), c.color])), (k) => k),
+          )
+          setRoomFloors((prev) =>
+            keepLocalEdits(prev, new Map(floors.map((f) => [f.roomId, f.material])), roomFloorKey),
+          )
           setFurniture((prev) => {
             const mine = new Map(prev.filter((f) => edits.active(f.id)).map((f) => [f.id, f]))
             return items.map((f) => mine.get(f.id) ?? f)
@@ -61,17 +71,19 @@ export const useHouseData = (backend: Backend) => {
         .catch(fail)
         .finally(() => !cancelled && setLoading(false))
 
+    const keepLocalEdits = (prev: Map<string, string>, next: Map<string, string>, key: (k: string) => string) => {
+      for (const k of [...next.keys()]) if (edits.active(key(k)) && !prev.has(k)) next.delete(k)
+      for (const [k, v] of prev) if (edits.active(key(k))) next.set(k, v)
+      return next
+    }
+
     const apply = (change: RemoteChange) => {
       if (change.kind === 'wall') {
         const key = wallColorKey(change.wallId, change.side)
-        if (edits.active(key)) return
-        setWallColors((prev) => {
-          if (prev.get(key) === change.color) return prev
-          const next = new Map(prev)
-          if (change.color) next.set(key, change.color)
-          else next.delete(key)
-          return next
-        })
+        if (!edits.active(key)) setWallColors((prev) => withEntry(prev, key, change.color))
+      } else if (change.kind === 'room-floor') {
+        if (!edits.active(roomFloorKey(change.roomId)))
+          setRoomFloors((prev) => withEntry(prev, change.roomId, change.material))
       } else if (change.kind === 'furniture') {
         const { item } = change
         if (edits.active(item.id)) return
@@ -93,12 +105,7 @@ export const useHouseData = (backend: Backend) => {
 
   const setWallColor = useCallback(
     (wallId: string, side: WallSide, color: string | undefined) => {
-      setWallColors((prev) => {
-        const next = new Map(prev)
-        if (color) next.set(wallColorKey(wallId, side), color)
-        else next.delete(wallColorKey(wallId, side))
-        return next
-      })
+      setWallColors((prev) => withEntry(prev, wallColorKey(wallId, side), color))
       const key = wallColorKey(wallId, side)
       edits.begin(key)
       const timers = wallSaveTimers.current
@@ -111,6 +118,17 @@ export const useHouseData = (backend: Backend) => {
           saved.catch(fail).finally(() => !timers.has(key) && edits.settle(key))
         }, WALL_SAVE_DELAY_MS),
       )
+    },
+    [backend, fail, edits],
+  )
+
+  const setRoomFloor = useCallback(
+    (roomId: string, material: string | undefined) => {
+      setRoomFloors((prev) => withEntry(prev, roomId, material))
+      const key = roomFloorKey(roomId)
+      edits.begin(key)
+      const saved = material ? backend.saveRoomFloor({ roomId, material }) : backend.clearRoomFloor(roomId)
+      saved.catch(fail).finally(() => edits.settle(key))
     },
     [backend, fail, edits],
   )
@@ -171,6 +189,8 @@ export const useHouseData = (backend: Backend) => {
     clearError: () => setError(undefined),
     wallColors,
     setWallColor,
+    roomFloors,
+    setRoomFloor,
     furniture,
     addFurniture,
     patchFurniture,

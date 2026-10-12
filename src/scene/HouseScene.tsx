@@ -6,11 +6,12 @@ import type { FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
-import { roomRegions } from '../layout/rooms'
+import { floorRegions } from '../layout/rooms'
 import type { Floor, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { FLOOR_SLAB } from './palette'
+import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraMode, Selection } from './selection'
 
@@ -30,7 +31,7 @@ type HouseSceneProps = {
 export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, onSelect }: HouseSceneProps) => {
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
-  const regions = useMemo(() => roomRegions(floor), [floor])
+  const regions = floorRegions(floor)
   const items = data.furniture.filter((f) => f.floor === floor.id)
   const labels = useRef<(HTMLDivElement | null)[]>([])
 
@@ -65,6 +66,14 @@ export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, 
         {floors.slice(0, floorIndex + 1).map((f) => (
           <group key={f.id}>
             <Slab floor={f} />
+            <RoomFloors
+              floor={f}
+              regions={floorRegions(f)}
+              materials={data.roomFloors}
+              selectedRoom={selection?.kind === 'room' ? selection.roomId : undefined}
+              interactive={f.id === floor.id}
+              onPick={(roomId) => onSelect({ kind: 'room', roomId })}
+            />
             <FloorWalls
               floor={f}
               colors={data.wallColors}

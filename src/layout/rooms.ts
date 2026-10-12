@@ -118,6 +118,15 @@ export const roomRegions = (floor: Floor): Map<string, RoomRegion> => {
   return regions
 }
 
+const cache = new WeakMap<Floor, Map<string, RoomRegion>>()
+
+/** `roomRegions`, computed once per floor object. */
+export const floorRegions = (floor: Floor): Map<string, RoomRegion> => {
+  let regions = cache.get(floor)
+  if (!regions) cache.set(floor, (regions = roomRegions(floor)))
+  return regions
+}
+
 /** Which room's floor contains the plan point, if any. */
 export const roomAt = (regions: Map<string, RoomRegion>, x: number, y: number): string | undefined => {
   for (const region of regions.values())
