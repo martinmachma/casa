@@ -53,7 +53,7 @@ create unique index color_schemes_one_active on house.color_schemes (is_active) 
 create table house.walls (
   scheme_id uuid not null references house.color_schemes (id) on delete cascade,
   wall_id text not null,               -- layout wall id, e.g. 'g-north'
-  side text not null check (side in ('a', 'b')),  -- 'a' = left of from→to, 'b' = right
+  side text not null check (side in ('a', 'b')),  -- walking from→to in the plan (north up): 'a' = right face, 'b' = left
   color text not null check (color ~ '^#[0-9a-fA-F]{6}$'),
   updated_by uuid default auth.uid() references auth.users (id) on delete set null,
   updated_at timestamptz not null default now(),
