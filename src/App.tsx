@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
 import type { Backend, FurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
@@ -8,7 +8,9 @@ import { floorRegions } from './layout/rooms'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
 import { FURNITURE_SWATCHES } from './scene/palette'
+import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Selection } from './scene/selection'
+import { CameraPad } from './ui/CameraPad'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type BoxSize } from './ui/FurniturePanel'
 import { RoomPanel } from './ui/RoomPanel'
@@ -26,6 +28,8 @@ const House = ({ backend, account }: HouseProps) => {
   const [selection, setSelection] = useState<Selection>()
   const [furnitureOpen, setFurnitureOpen] = useState(false)
   const [snap, setSnap] = useState(true)
+  const nudge = useRef(createCameraNudge())
+  const [viewKey, setViewKey] = useState(0)
 
   const floor = house.floors[floorIndex]
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
@@ -88,7 +92,16 @@ const House = ({ backend, account }: HouseProps) => {
         data={data}
         selection={selection}
         snap={snap}
+        nudge={nudge}
+        viewKey={viewKey}
         onSelect={setSelection}
+      />
+
+      <CameraPad
+        mode={camera}
+        onHold={(axis, value) => (nudge.current[axis] = value)}
+        onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}
+        onReset={() => setViewKey((k) => k + 1)}
       />
 
       <header className="topbar">

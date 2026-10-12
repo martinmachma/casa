@@ -140,6 +140,8 @@ the real plan is traced. The format is meant to be edited by hand:
   per colour scheme like the walls.
 - **Floor switcher** shows that floor plus the ones below it (for context; only the current floor is clickable).
 - **Top** is a plan view (drag to pan, scroll/pinch to zoom); **3D** orbits.
+- **Camera buttons** (bottom left, made for phones): hold the arrows to move, ⟲ ⟳ to rotate, ⤒ ⤓ to tilt, + − to
+  zoom, ⌂ to reset. ✕ tucks them away (remembered on that device).
 - **Click a wall** (in 3D) to pick its colour; **Other side** switches to the opposite face. Colours save
   automatically.
 - Changes show up on the other signed-in device straight away (Supabase Realtime); in the demo, other tabs of the

@@ -1,6 +1,6 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, type RefObject } from 'react'
 import { MOUSE, TOUCH } from 'three'
 import type { FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
@@ -13,6 +13,8 @@ import { FurnitureBox } from './FurnitureBox'
 import { FLOOR_SLAB } from './palette'
 import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
+import type { CameraNudge } from './cameraNudge'
+import { CameraNudger } from './CameraNudger'
 import type { CameraMode, Selection } from './selection'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
@@ -25,10 +27,23 @@ type HouseSceneProps = {
   data: HouseData
   selection: Selection | undefined
   snap: boolean
+  nudge: RefObject<CameraNudge>
+  /** Changing it puts the camera back to its starting view. */
+  viewKey: number
   onSelect: (selection: Selection | undefined) => void
 }
 
-export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, onSelect }: HouseSceneProps) => {
+export const HouseScene = ({
+  floors,
+  floorIndex,
+  camera,
+  data,
+  selection,
+  snap,
+  nudge,
+  viewKey,
+  onSelect,
+}: HouseSceneProps) => {
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const regions = floorRegions(floor)
@@ -47,7 +62,8 @@ export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, 
     <>
       <Canvas shadows dpr={[1, 2]} onPointerMissed={() => onSelect(undefined)}>
         <color attach="background" args={['#f4efe8']} />
-        <CameraRig key={`${camera}-${floor.id}`} mode={camera} floor={floor} />
+        <CameraRig key={`${camera}-${floor.id}-${viewKey}`} mode={camera} floor={floor} />
+        <CameraNudger nudge={nudge} />
         <hemisphereLight args={['#fff8ee', '#b8a990', 1.5]} />
         <directionalLight
           position={[9, 24, 6]}
@@ -144,11 +160,13 @@ const CameraRig = ({ mode, floor }: { mode: CameraMode; floor: Floor }) => {
     )
   }
 
+  // A portrait phone sees less sideways; step back so the whole house fits.
+  const back = span * Math.max(1, 0.75 / (size.width / size.height))
   return (
     <>
       <PerspectiveCamera
         makeDefault
-        position={[cx + span * 0.8, floor.elevation + span * 1.1, cz + span * 1.25]}
+        position={[cx + back * 0.8, floor.elevation + back * 1.1, cz + back * 1.25]}
         fov={45}
         near={0.1}
         far={200}
