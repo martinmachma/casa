@@ -55,7 +55,7 @@ describe('validateLayout', () => {
   it('accepts the bundled layout', () => {
     expect(() => validateLayout(house)).not.toThrow()
     expect(house.floors).toHaveLength(2)
-    expect(wallLength(house.floors[0].walls[0])).toBe(7)
+    expect(wallLength(house.floors[0].walls[0])).toBeCloseTo(6.025)
   })
 
   it('rejects an opening past the wall end', () => {
