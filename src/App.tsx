@@ -144,6 +144,9 @@ const House = ({ backend, account }: HouseProps) => {
           <button aria-pressed={camera === 'orbit'} onClick={() => setCamera('orbit')}>
             3D
           </button>
+          <button aria-pressed={camera === 'walk'} onClick={() => setCamera('walk')}>
+            Walk
+          </button>
         </div>
         <button
           className="btn"

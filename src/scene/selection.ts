@@ -5,4 +5,4 @@ export type Selection =
   | { kind: 'furniture'; id: string }
   | { kind: 'room'; roomId: string }
 
-export type CameraMode = 'top' | 'orbit'
+export type CameraMode = 'top' | 'orbit' | 'walk'

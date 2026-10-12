@@ -147,6 +147,9 @@ the real plan is traced. The format is meant to be edited by hand:
   clockwise from the plan's up), along with the exact `latitude`/`longitude` (Prague for now).
 - **Floor switcher** shows that floor plus the ones below it (for context; only the current floor is clickable).
 - **Top** is a plan view (drag to pan, scroll/pinch to zoom); **3D** orbits.
+- **Walk** puts you in the biggest room at eye height (1.6 m). Drag to look around; walk with W A S D or the
+  arrow keys (Q/E or ←/→ turn), or the on-screen buttons. Walls stop you except at doors, and so does furniture;
+  ⌂ takes you back to the start. The floor above is drawn as a ceiling so sunlight comes in through the windows.
 - **Camera buttons** (bottom left, made for phones): hold the arrows to move, ⟲ ⟳ to rotate, ⤒ ⤓ to tilt, + − to
   zoom, ⌂ to reset. ✕ tucks them away (remembered on that device).
 - **Click a wall** (in 3D) to pick its colour; **Other side** switches to the opposite face. Colours save
@@ -164,6 +167,7 @@ src/
   layout/      house.json · types · geometry (wall splitting, validation) · rooms (floor regions, areas); tested
   furniture/   snap.ts: wall snapping (pure; tested)
   measure/     measure.ts: snapping taps to wall faces, formatting (pure; tested)
+  walk/        collide.ts: what blocks walking, sliding along walls (pure; tested)
   sun/         sun.ts: sun position and direction, local clock time (pure; tested) · useSun
   data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess

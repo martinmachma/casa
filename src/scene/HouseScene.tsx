@@ -10,11 +10,12 @@ import { floorRegions } from '../layout/rooms'
 import type { Floor, Point, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
-import { FLOOR_SLAB } from './palette'
+import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
 import { Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
 import { NorthArrow } from './NorthArrow'
+import { WalkCamera } from './WalkCamera'
 import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
@@ -80,7 +81,11 @@ export const HouseScene = ({
   return (
     <>
       <Canvas shadows dpr={[1, 2]} onPointerMissed={() => onSelect(undefined)}>
-        <CameraRig key={`${camera}-${floor.id}-${viewKey}`} mode={camera} floor={floor} />
+        {camera === 'walk' ? (
+          <WalkCamera key={`${floor.id}-${viewKey}`} floor={floor} furniture={data.furniture} nudge={nudge} />
+        ) : (
+          <CameraRig key={`${camera}-${floor.id}-${viewKey}`} mode={camera} floor={floor} />
+        )}
         <CameraNudger nudge={nudge} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
         {sun && (
@@ -113,9 +118,12 @@ export const HouseScene = ({
           </group>
         ))}
 
+        {/* Walking needs a ceiling, so light comes in through the windows; the floor above's slab is one. */}
+        {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
+
         {measure && <MeasureTool floor={floor} points={measure} onPoint={onMeasurePoint} />}
 
-        <RoomLabelProjector floor={floor} labels={labels} />
+        {camera !== 'walk' && <RoomLabelProjector floor={floor} labels={labels} />}
 
         {items.map((item) => (
           <FurnitureBox
@@ -131,22 +139,26 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      <RoomLabels floor={floor} labels={labels} regions={regions} />
+      {camera !== 'walk' && <RoomLabels floor={floor} labels={labels} regions={regions} />}
     </>
   )
 }
 
-const Slab = ({ floor }: { floor: Floor }) => {
+const Slab = ({ floor, color = FLOOR_SLAB }: { floor: Floor; color?: string }) => {
   const { min, max } = floorBounds(floor)
   return (
-    <mesh position={[(min[0] + max[0]) / 2, floor.elevation - SLAB / 2, (min[1] + max[1]) / 2]} receiveShadow>
+    <mesh
+      position={[(min[0] + max[0]) / 2, floor.elevation - SLAB / 2, (min[1] + max[1]) / 2]}
+      castShadow
+      receiveShadow
+    >
       <boxGeometry args={[max[0] - min[0], SLAB, max[1] - min[1]]} />
-      <meshStandardMaterial color={FLOOR_SLAB} roughness={0.9} />
+      <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>
   )
 }
 
-const CameraRig = ({ mode, floor }: { mode: CameraMode; floor: Floor }) => {
+const CameraRig = ({ mode, floor }: { mode: Exclude<CameraMode, 'walk'>; floor: Floor }) => {
   const size = useThree((s) => s.size)
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2

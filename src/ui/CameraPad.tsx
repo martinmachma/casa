@@ -10,7 +10,7 @@ type Hold = {
 
 type CameraPadProps = Hold & {
   /** Which buttons make sense for the current camera. */
-  mode: 'top' | 'orbit'
+  mode: 'top' | 'orbit' | 'walk'
   onReset: () => void
 }
 
@@ -52,6 +52,39 @@ export const CameraPad = ({ onHold, onRelease, mode, onReset }: CameraPadProps) 
     </HoldButton>
   )
 
+  const reset = (
+    <button className="pad-btn" onClick={onReset} aria-label={mode === 'walk' ? 'Back to the start' : 'Reset view'}>
+      ⌂
+    </button>
+  )
+  const hide = (
+    <button className="pad-btn pad-btn-small" onClick={toggle} aria-label="Hide camera buttons">
+      ✕
+    </button>
+  )
+
+  if (mode === 'walk')
+    return (
+      <div className="camera-pad" aria-label="Walking">
+        <div className="pad-grid">
+          {hold('right', -1, 'Step left', '⇠')}
+          {hold('forward', 1, 'Walk forward', '▲')}
+          {hold('right', 1, 'Step right', '⇢')}
+          {hold('turn', -1, 'Turn left', '◀')}
+          {reset}
+          {hold('turn', 1, 'Turn right', '▶')}
+          <span />
+          {hold('forward', -1, 'Walk back', '▼')}
+          <span />
+        </div>
+        <div className="pad-column">
+          {hold('tilt', 1, 'Look up', '⤒')}
+          {hold('tilt', -1, 'Look down', '⤓')}
+          {hide}
+        </div>
+      </div>
+    )
+
   return (
     <div className="camera-pad" aria-label="Camera">
       <div className="pad-grid">
@@ -59,9 +92,7 @@ export const CameraPad = ({ onHold, onRelease, mode, onReset }: CameraPadProps) 
         {hold('forward', 1, 'Move up', '▲')}
         {mode === 'orbit' ? hold('turn', 1, 'Rotate right', '⟳') : <span />}
         {hold('right', -1, 'Move left', '◀')}
-        <button className="pad-btn" onClick={onReset} aria-label="Reset view">
-          ⌂
-        </button>
+        {reset}
         {hold('right', 1, 'Move right', '▶')}
         {mode === 'orbit' ? hold('tilt', 1, 'Tilt up', '⤒') : <span />}
         {hold('forward', -1, 'Move down', '▼')}
@@ -70,9 +101,7 @@ export const CameraPad = ({ onHold, onRelease, mode, onReset }: CameraPadProps) 
       <div className="pad-column">
         {hold('zoom', 1, 'Zoom in', '+')}
         {hold('zoom', -1, 'Zoom out', '−')}
-        <button className="pad-btn pad-btn-small" onClick={toggle} aria-label="Hide camera buttons">
-          ✕
-        </button>
+        {hide}
       </div>
     </div>
   )
