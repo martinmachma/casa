@@ -31,9 +31,9 @@ bucket; it never touches Haru's tables.
 
 ### 1. Database
 
-Open the Supabase dashboard → **SQL Editor**, paste
-[`supabase/migrations/20261012000000_house_schema.sql`](supabase/migrations/20261012000000_house_schema.sql) and run
-it. (Or with the CLI linked to the project: `supabase db push`.) It creates:
+Open the Supabase dashboard → **SQL Editor** and run each file in [`supabase/migrations`](supabase/migrations) in
+order (or, with the CLI linked to the project, `supabase db push`). The first,
+[`20261012000000_house_schema.sql`](supabase/migrations/20261012000000_house_schema.sql), creates:
 
 - `house.allowed_emails`: the guest list. Only emails here can read or write anything.
 - `house.rooms`: optional names/notes for the rooms in the layout.
@@ -41,6 +41,9 @@ it. (Or with the CLI linked to the project: `supabase db push`.) It creates:
 - `house.walls`: the colour of each side of each layout wall, per scheme.
 - `house.furniture_items`: the boxes: floor, size, position, rotation, colour.
 - `house.is_allowed()`, which every RLS policy uses, plus a private `house` storage bucket with the same rule.
+
+The later ones add to it: `…_house_realtime.sql` turns on live sync (walls and furniture stream to the other device
+without a reload).
 
 Then add the two of you (lower-case emails):
 
@@ -134,6 +137,8 @@ the real plan is traced. The format is meant to be edited by hand:
 - **Top** is a plan view (drag to pan, scroll/pinch to zoom); **3D** orbits.
 - **Click a wall** (in 3D) to pick its colour; **Other side** switches to the opposite face. Colours save
   automatically.
+- Changes show up on the other signed-in device straight away (Supabase Realtime); in the demo, other tabs of the
+  same browser follow along.
 - **Furniture → Add box** with a size in centimetres. Drag a box across the floor; with snapping on, it squares up
   and sits flush against a wall (or into a corner) when it gets within 25 cm. Rotate in 15° or 90° steps (or R /
   Shift+R), Delete removes.
@@ -144,7 +149,7 @@ the real plan is traced. The format is meant to be edited by hand:
 src/
   layout/      house.json · types · geometry (wall splitting, validation; tested)
   furniture/   snap.ts: wall snapping (pure; tested)
-  data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData
+  data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess
   scene/       HouseScene (canvas, lights, cameras) · FloorWalls · FurnitureBox · RoomLabels
   ui/          WallPanel · FurniturePanel · FurnitureEditor · NumberField

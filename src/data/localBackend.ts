@@ -1,4 +1,4 @@
-import type { Backend, FurnitureItem, WallColor } from './types'
+import type { Backend, FurnitureItem, RemoteChange, WallColor } from './types'
 import { wallColorKey } from './types'
 
 // The demo keeps everything in this browser's localStorage.
@@ -22,6 +22,10 @@ const write = (key: string, value: unknown) => {
   }
 }
 
+// Other tabs of the demo hear about changes through a BroadcastChannel (it never echoes to the sender).
+const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('casa.demo')
+const announce = (change: RemoteChange) => channel?.postMessage(change)
+
 const walls = () => read<WallColor[]>(WALLS_KEY, [])
 const furniture = () => read<FurnitureItem[]>(FURNITURE_KEY, [])
 
@@ -33,6 +37,7 @@ export const localBackend: Backend = {
   saveWallColor: async (c) => {
     const key = wallColorKey(c.wallId, c.side)
     write(WALLS_KEY, [...walls().filter((w) => wallColorKey(w.wallId, w.side) !== key), c])
+    announce({ kind: 'wall', ...c })
   },
 
   clearWallColor: async (wallId, side) => {
@@ -40,6 +45,7 @@ export const localBackend: Backend = {
       WALLS_KEY,
       walls().filter((w) => !(w.wallId === wallId && w.side === side)),
     )
+    announce({ kind: 'wall', wallId, side, color: undefined })
   },
 
   loadFurniture: async () => furniture(),
@@ -47,6 +53,7 @@ export const localBackend: Backend = {
   insertFurniture: async (item) => {
     const created = { ...item, id: crypto.randomUUID() }
     write(FURNITURE_KEY, [...furniture(), created])
+    announce({ kind: 'furniture', item: created })
     return created
   },
 
@@ -55,6 +62,7 @@ export const localBackend: Backend = {
       FURNITURE_KEY,
       furniture().map((f) => (f.id === item.id ? item : f)),
     )
+    announce({ kind: 'furniture', item })
   },
 
   deleteFurniture: async (id) => {
@@ -62,5 +70,13 @@ export const localBackend: Backend = {
       FURNITURE_KEY,
       furniture().filter((f) => f.id !== id),
     )
+    announce({ kind: 'furniture-deleted', id })
+  },
+
+  subscribe: (onChange) => {
+    if (!channel) return () => {}
+    const listener = (e: MessageEvent<RemoteChange>) => onChange(e.data)
+    channel.addEventListener('message', listener)
+    return () => channel.removeEventListener('message', listener)
   },
 }

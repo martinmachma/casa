@@ -21,6 +21,12 @@ export type FurnitureItem = {
 
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
+/** A change made on another device (or another tab in the demo). */
+export type RemoteChange =
+  | { kind: 'wall'; wallId: string; side: WallSide; color: string | undefined }
+  | { kind: 'furniture'; item: FurnitureItem }
+  | { kind: 'furniture-deleted'; id: string }
+
 /** Where the house state is saved: Supabase for real use, the browser for the demo. */
 export type Backend = {
   kind: 'supabase' | 'local'
@@ -31,6 +37,11 @@ export type Backend = {
   insertFurniture: (item: NewFurnitureItem) => Promise<FurnitureItem>
   updateFurniture: (item: FurnitureItem) => Promise<void>
   deleteFurniture: (id: string) => Promise<void>
+  /**
+   * Calls `onChange` for every change saved elsewhere, and `onResync` when the connection was (re)established and
+   * changes may have been missed. Returns the unsubscribe function.
+   */
+  subscribe: (onChange: (change: RemoteChange) => void, onResync: () => void) => () => void
 }
 
 export const wallColorKey = (wallId: string, side: WallSide) => `${wallId}:${side}`

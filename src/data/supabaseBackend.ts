@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { WallSide } from '../layout/types'
 import type { Backend, FurnitureItem, NewFurnitureItem } from './types'
 
 type FurnitureRow = {
@@ -13,6 +14,8 @@ type FurnitureRow = {
   rotation: number | string
   color: string
 }
+
+type WallRow = { scheme_id: string; wall_id: string; side: WallSide; color: string }
 
 const FURNITURE_COLUMNS = 'id, floor, name, width, depth, height, x, y, rotation, color'
 
@@ -101,5 +104,30 @@ export const supabaseBackend: Backend = {
 
   deleteFurniture: async (id) => {
     check(await supabase.from('furniture_items').delete().eq('id', id))
+  },
+
+  // Needs both tables in the `supabase_realtime` publication (see the realtime migration).
+  subscribe: (onChange, onResync) => {
+    const channel = supabase
+      .channel('casa-house')
+      .on('postgres_changes', { event: '*', schema: 'house', table: 'walls' }, async (payload) => {
+        const deleted = payload.eventType === 'DELETE'
+        const row = (deleted ? payload.old : payload.new) as Partial<WallRow>
+        if (!row.wall_id || !row.side || row.scheme_id !== (await activeSchemeId())) return
+        onChange({ kind: 'wall', wallId: row.wall_id, side: row.side, color: deleted ? undefined : row.color })
+      })
+      .on('postgres_changes', { event: '*', schema: 'house', table: 'furniture_items' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as { id?: string }).id
+          if (id) onChange({ kind: 'furniture-deleted', id })
+        } else onChange({ kind: 'furniture', item: fromRow(payload.new as FurnitureRow) })
+      })
+      .subscribe((status) => {
+        // Also fires after a dropped connection comes back (phone asleep, network switch): catch up then.
+        if (status === 'SUBSCRIBED') onResync()
+      })
+    return () => {
+      supabase.removeChannel(channel)
+    }
   },
 }
