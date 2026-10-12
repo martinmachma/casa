@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, type RefObject } from 'react'
 import { Vector3 } from 'three'
+import type { RoomRegion } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 
 // Room names are plain DOM over the canvas, moved every frame to follow their spot on the floor.
@@ -10,8 +11,10 @@ type LabelRefs = RefObject<(HTMLDivElement | null)[]>
 
 type RoomLabelsProps = { floor: Floor; labels: LabelRefs }
 
+const formatArea = (m2: number) => `${m2.toFixed(1)} m²`
+
 /** The DOM half: render next to the <Canvas>. */
-export const RoomLabels = ({ floor, labels }: RoomLabelsProps) => (
+export const RoomLabels = ({ floor, labels, regions }: RoomLabelsProps & { regions: Map<string, RoomRegion> }) => (
   <div className="room-labels" aria-hidden>
     {floor.rooms.map((room, i) => (
       <div
@@ -21,7 +24,8 @@ export const RoomLabels = ({ floor, labels }: RoomLabelsProps) => (
           labels.current[i] = el
         }}
       >
-        {room.name}
+        <span className="room-name">{room.name}</span>
+        {regions.has(room.id) && <span className="room-area">{formatArea(regions.get(room.id)!.area)}</span>}
       </div>
     ))}
   </div>

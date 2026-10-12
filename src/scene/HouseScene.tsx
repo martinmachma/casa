@@ -6,6 +6,7 @@ import type { FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
+import { roomRegions } from '../layout/rooms'
 import type { Floor, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
@@ -29,6 +30,7 @@ type HouseSceneProps = {
 export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, onSelect }: HouseSceneProps) => {
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
+  const regions = useMemo(() => roomRegions(floor), [floor])
   const items = data.furniture.filter((f) => f.floor === floor.id)
   const labels = useRef<(HTMLDivElement | null)[]>([])
 
@@ -73,7 +75,7 @@ export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, 
           </group>
         ))}
 
-        {camera === 'top' && <RoomLabelProjector floor={floor} labels={labels} />}
+        <RoomLabelProjector floor={floor} labels={labels} />
 
         {items.map((item) => (
           <FurnitureBox
@@ -88,7 +90,7 @@ export const HouseScene = ({ floors, floorIndex, camera, data, selection, snap, 
           />
         ))}
       </Canvas>
-      {camera === 'top' && <RoomLabels floor={floor} labels={labels} />}
+      <RoomLabels floor={floor} labels={labels} regions={regions} />
     </>
   )
 }
