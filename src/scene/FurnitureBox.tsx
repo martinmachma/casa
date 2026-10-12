@@ -10,6 +10,8 @@ type FurnitureBoxProps = {
   item: FurnitureItem
   elevation: number
   selected: boolean
+  /** False while another tool (measuring) owns the pointer. */
+  interactive: boolean
   snapWalls: SnapWall[] | undefined
   onSelect: (id: string) => void
   onMove: (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
@@ -23,6 +25,7 @@ export const FurnitureBox = ({
   item,
   elevation,
   selected,
+  interactive,
   snapWalls,
   onSelect,
   onMove,
@@ -65,6 +68,20 @@ export const FurnitureBox = ({
     setControlsEnabled(true)
     if (d.moved) onMoveEnd(item.id)
   }
+
+  if (!interactive)
+    return (
+      <mesh
+        position={[item.x, elevation + item.height / 2, item.y]}
+        rotation={[0, -item.rotation, 0]}
+        castShadow
+        receiveShadow
+        raycast={() => null}
+      >
+        <boxGeometry args={[item.width, item.height, item.depth]} />
+        <meshStandardMaterial color={item.color} roughness={0.8} />
+      </mesh>
+    )
 
   return (
     <mesh

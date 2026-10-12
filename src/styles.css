@@ -475,6 +475,30 @@ code {
   color: var(--muted);
 }
 
+/* ── Measuring ───────────────────────────────────────────── */
+.measure-bar {
+  position: absolute;
+  left: 50%;
+  top: calc(max(12px, env(safe-area-inset-top)) + 56px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 6px 6px 6px 14px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.btn[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
 @media (max-width: 600px) {
   .panel {
     left: 12px;
@@ -484,6 +508,11 @@ code {
   }
 
   /* The panel takes the bottom of a phone screen; the camera buttons sit just above it. */
+  .measure-bar {
+    top: auto;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 150px);
+  }
+
   .app:has(.panel) .camera-pad {
     bottom: calc(48% + 24px);
   }

@@ -7,10 +7,11 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, WallSide } from '../layout/types'
+import type { Floor, Point, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { FLOOR_SLAB } from './palette'
+import { MeasureTool } from './MeasureTool'
 import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
@@ -27,6 +28,9 @@ type HouseSceneProps = {
   data: HouseData
   selection: Selection | undefined
   snap: boolean
+  /** Points of the measurement in progress; undefined when not measuring. */
+  measure: Point[] | undefined
+  onMeasurePoint: (p: Point) => void
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
@@ -40,6 +44,8 @@ export const HouseScene = ({
   data,
   selection,
   snap,
+  measure,
+  onMeasurePoint,
   nudge,
   viewKey,
   onSelect,
@@ -49,6 +55,8 @@ export const HouseScene = ({
   const regions = floorRegions(floor)
   const items = data.furniture.filter((f) => f.floor === floor.id)
   const labels = useRef<(HTMLDivElement | null)[]>([])
+  // While measuring, taps go to the floor plane only.
+  const pickable = !measure
 
   const pickWall = (wallId: string, side: WallSide) => onSelect({ kind: 'wall', wallId, side })
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
@@ -87,18 +95,20 @@ export const HouseScene = ({
               regions={floorRegions(f)}
               materials={data.roomFloors}
               selectedRoom={selection?.kind === 'room' ? selection.roomId : undefined}
-              interactive={f.id === floor.id}
+              interactive={pickable && f.id === floor.id}
               onPick={(roomId) => onSelect({ kind: 'room', roomId })}
             />
             <FloorWalls
               floor={f}
               colors={data.wallColors}
               selection={selection}
-              interactive={f.id === floor.id}
+              interactive={pickable && f.id === floor.id}
               onPick={pickWall}
             />
           </group>
         ))}
+
+        {measure && <MeasureTool floor={floor} points={measure} onPoint={onMeasurePoint} />}
 
         <RoomLabelProjector floor={floor} labels={labels} />
 
@@ -108,6 +118,7 @@ export const HouseScene = ({
             item={item}
             elevation={floor.elevation}
             selected={selection?.kind === 'furniture' && selection.id === item.id}
+            interactive={pickable}
             snapWalls={snap ? snapWalls : undefined}
             onSelect={(id) => onSelect({ kind: 'furniture', id })}
             onMove={moveItem}

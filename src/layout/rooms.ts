@@ -13,7 +13,7 @@ const EPS = 1e-6
  * The wall's footprint, openings closed, with the ends pushed out like the 3D walls so corners close.
  * A diagonal wall would get its bounding box (the layout has none).
  */
-const wallRect = (from: Point, to: Point, thickness: number): Rect => {
+export const wallRect = (from: Point, to: Point, thickness: number): Rect => {
   const half = thickness / 2
   return {
     x0: Math.min(from[0], to[0]) - half,
@@ -22,6 +22,10 @@ const wallRect = (from: Point, to: Point, thickness: number): Rect => {
     y1: Math.max(from[1], to[1]) + half,
   }
 }
+
+/** Every wall's footprint on the floor. */
+export const floorWallRects = (floor: Floor): Rect[] =>
+  floor.walls.map((w) => wallRect(w.from, w.to, wallThickness(w, floor)))
 
 const sortedUnique = (values: number[]): number[] => {
   const sorted = [...values].sort((a, b) => a - b)
@@ -35,7 +39,7 @@ const sortedUnique = (values: number[]): number[] => {
  * one open space split it halfway between their labels.
  */
 export const roomRegions = (floor: Floor): Map<string, RoomRegion> => {
-  const walls = floor.walls.map((w) => wallRect(w.from, w.to, wallThickness(w, floor)))
+  const walls = floorWallRects(floor)
   const { min, max } = floorBounds(floor)
   const xs = sortedUnique([min[0], max[0], ...walls.flatMap((r) => [r.x0, r.x1])])
   const ys = sortedUnique([min[1], max[1], ...walls.flatMap((r) => [r.y0, r.y1])])

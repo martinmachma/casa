@@ -5,6 +5,7 @@ import { useHouseData } from './data/useHouseData'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
 import { floorRegions } from './layout/rooms'
+import type { Point } from './layout/types'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
 import { FURNITURE_SWATCHES } from './scene/palette'
@@ -13,6 +14,7 @@ import type { CameraMode, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type BoxSize } from './ui/FurniturePanel'
+import { MeasureBar } from './ui/MeasureBar'
 import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallColorKey } from './data/types'
@@ -30,6 +32,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [snap, setSnap] = useState(true)
   const nudge = useRef(createCameraNudge())
   const [viewKey, setViewKey] = useState(0)
+  const [measure, setMeasure] = useState<Point[]>()
 
   const floor = house.floors[floorIndex]
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
@@ -81,7 +84,16 @@ const House = ({ backend, account }: HouseProps) => {
   const switchFloor = (index: number) => {
     setFloorIndex(index)
     setSelection(undefined)
+    if (measure) setMeasure([])
   }
+
+  const toggleMeasure = () => {
+    setSelection(undefined)
+    setFurnitureOpen(false)
+    setMeasure(measure ? undefined : [])
+  }
+  // A third tap starts a new measurement.
+  const addMeasurePoint = (p: Point) => setMeasure((points = []) => (points.length === 1 ? [points[0], p] : [p]))
 
   return (
     <div className="app">
@@ -92,6 +104,8 @@ const House = ({ backend, account }: HouseProps) => {
         data={data}
         selection={selection}
         snap={snap}
+        measure={measure}
+        onMeasurePoint={addMeasurePoint}
         nudge={nudge}
         viewKey={viewKey}
         onSelect={setSelection}
@@ -124,10 +138,14 @@ const House = ({ backend, account }: HouseProps) => {
           className="btn"
           onClick={() => {
             setSelection(undefined)
+            setMeasure(undefined)
             setFurnitureOpen((open) => !open)
           }}
         >
           Furniture
+        </button>
+        <button className="btn" aria-pressed={Boolean(measure)} onClick={toggleMeasure}>
+          Measure
         </button>
         <span className="spacer" />
         <div className="chip">
@@ -137,6 +155,8 @@ const House = ({ backend, account }: HouseProps) => {
           </button>
         </div>
       </header>
+
+      {measure && <MeasureBar points={measure} onClear={() => setMeasure([])} onDone={() => setMeasure(undefined)} />}
 
       {selection?.kind === 'wall' && (
         <WallPanel
