@@ -35,7 +35,7 @@ Last updated: 2026-10-12
 
 ### Remaining in Phase 1
 
-- [ ] Trace the real floor plan into `src/layout/house.json` (needs the plan from Martin)
+- [x] Trace the real floor plan into `src/layout/house.json` (from the electrical plan + architectural 1NP plan; upper-floor window heights and ceiling height guessed)
 - [ ] End-to-end check against the real Supabase project: sign-in, allow-list rejection, colours and furniture saving
 - [ ] Test on phones (touch drag, pinch zoom, PWA install on iOS/Android)
 - [ ] Live sync between two devices (Supabase Realtime on `house.walls` / `house.furniture_items`); today the other
