@@ -56,6 +56,7 @@ export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onClose }:
       <span className="muted">{degrees(item.rotation)}°</span>
     </div>
 
+    {item.model && <p className="hint">Colour changes the upholstery, where there is some.</p>}
     <div className="swatches">
       {FURNITURE_SWATCHES.map((c) => (
         <button

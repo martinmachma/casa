@@ -13,12 +13,13 @@ type FurnitureRow = {
   y: number | string
   rotation: number | string
   color: string
+  model: string | null
 }
 
 type WallRow = { scheme_id: string; wall_id: string; side: WallSide; color: string }
 type RoomFloorRow = { scheme_id: string; room_id: string; material: string }
 
-const FURNITURE_COLUMNS = 'id, floor, name, width, depth, height, x, y, rotation, color'
+const FURNITURE_COLUMNS = 'id, floor, name, width, depth, height, x, y, rotation, color, model'
 
 const fromRow = (r: FurnitureRow): FurnitureItem => ({
   id: r.id,
@@ -31,6 +32,7 @@ const fromRow = (r: FurnitureRow): FurnitureItem => ({
   y: Number(r.y),
   rotation: Number(r.rotation),
   color: r.color,
+  ...(r.model ? { model: r.model } : {}),
 })
 
 const toRow = (item: NewFurnitureItem) => ({
@@ -43,6 +45,7 @@ const toRow = (item: NewFurnitureItem) => ({
   y: item.y,
   rotation: item.rotation,
   color: item.color,
+  model: item.model ?? null,
 })
 
 const check = <T>({ data, error }: { data: T; error: { message: string } | null }): T => {

@@ -19,7 +19,10 @@ export type FurnitureItem = {
   y: number
   /** Plan angle, radians. */
   rotation: number
+  /** Box colour, or the fabric colour of a model. */
   color: string
+  /** Catalog model (furniture/catalog.ts); a plain box when absent. */
+  model?: string
 }
 
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>

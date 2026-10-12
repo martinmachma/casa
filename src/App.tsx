@@ -13,7 +13,7 @@ import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { FurnitureEditor } from './ui/FurnitureEditor'
-import { FurniturePanel, type BoxSize } from './ui/FurniturePanel'
+import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import { sunNow, useNorth, type SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { MeasureBar } from './ui/MeasureBar'
@@ -64,15 +64,27 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
   }
 
-  const addBox = async (size: BoxSize) => {
+  /** Where new pieces appear: the middle of the biggest room's largest open area, else the floor's middle. */
+  const dropPoint = (): Point => {
+    const biggest = [...floorRegions(floor).values()].sort((a, b) => b.area - a.area)[0]
+    const cell = biggest?.cells.reduce((p, c) =>
+      (c.x1 - c.x0) * (c.y1 - c.y0) > (p.x1 - p.x0) * (p.y1 - p.y0) ? c : p,
+    )
+    if (cell) return [(cell.x0 + cell.x1) / 2, (cell.y0 + cell.y1) / 2]
     const { min, max } = floorBounds(floor)
+    return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
+  }
+
+  const addPiece = async (piece: NewPiece) => {
+    const [x, y] = dropPoint()
     const created = await data.addFurniture({
-      ...size,
+      ...piece,
       floor: floor.id,
-      x: (min[0] + max[0]) / 2,
-      y: (min[1] + max[1]) / 2,
+      x,
+      y,
       rotation: 0,
-      color: FURNITURE_SWATCHES[1],
+      // A box gets a wood tone; a model's colour is its fabric (blue-grey, as in the thumbnails).
+      color: piece.model ? FURNITURE_SWATCHES[4] : FURNITURE_SWATCHES[1],
     })
     if (created) setSelection({ kind: 'furniture', id: created.id })
   }
@@ -231,7 +243,7 @@ const House = ({ backend, account }: HouseProps) => {
           items={data.furniture.filter((f) => f.floor === floor.id)}
           snap={snap}
           onSnap={setSnap}
-          onAdd={addBox}
+          onAdd={addPiece}
           onSelect={(id) => setSelection({ kind: 'furniture', id })}
           onClose={() => setFurnitureOpen(false)}
         />

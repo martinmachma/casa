@@ -27,6 +27,14 @@ export default defineConfig({
         // The three.js bundle is large; let the service worker cache it.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/auth/],
+        // Furniture models and thumbnails load on demand; keep them once seen so the app works offline.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/models/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'casa-models', expiration: { maxEntries: 300 } },
+          },
+        ],
       },
     }),
   ],

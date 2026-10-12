@@ -43,7 +43,8 @@ order (or, with the CLI linked to the project, `supabase db push`). The first,
 - `house.is_allowed()`, which every RLS policy uses, plus a private `house` storage bucket with the same rule.
 
 The later ones add to it: `…_house_realtime.sql` turns on live sync (walls and furniture stream to the other device
-without a reload) and `…_house_room_floors.sql` adds `house.room_floors`, the floor finish of each room.
+without a reload), `…_house_room_floors.sql` adds `house.room_floors`, the floor finish of each room, and
+`…_house_furniture_models.sql` adds `furniture_items.model`.
 
 Then add the two of you (lower-case emails):
 
@@ -156,7 +157,10 @@ the real plan is traced. The format is meant to be edited by hand:
   automatically.
 - Changes show up on the other signed-in device straight away (Supabase Realtime); in the demo, other tabs of the
   same browser follow along.
-- **Furniture → Add box** with a size in centimetres. Drag a box across the floor; with snapping on, it squares up
+- **Furniture** lists what's on the floor and adds more: pick a piece from the catalog (sofas, tables, beds,
+  kitchen units, bathroom fittings… 48 low-poly models from Kenney's [Furniture Kit](https://kenney.nl/assets/furniture-kit),
+  CC0) or a plain **Box** with a size in centimetres. Models are stretched to the size you set, face south at 0°, and
+  the colour swatches change their upholstery. Drag a piece across the floor; with snapping on, it squares up
   and sits flush against a wall (or into a corner) when it gets within 25 cm. Rotate in 15° or 90° steps (or R /
   Shift+R), Delete removes.
 
@@ -165,14 +169,16 @@ the real plan is traced. The format is meant to be edited by hand:
 ```
 src/
   layout/      house.json · types · geometry (wall splitting, validation) · rooms (floor regions, areas); tested
-  furniture/   snap.ts: wall snapping (pure; tested)
+  furniture/   catalog.ts: the models and default sizes · snap.ts: wall snapping (pure; tested)
   measure/     measure.ts: snapping taps to wall faces, formatting (pure; tested)
   walk/        collide.ts: what blocks walking, sliding along walls (pure; tested)
   sun/         sun.ts: sun position and direction, local clock time (pure; tested) · useSun
   data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess
-  scene/       HouseScene (canvas, lights, cameras) · FloorWalls · RoomFloors + floorMaterials · FurnitureBox ·
+  scene/       HouseScene (canvas, cameras) · Lights · FloorWalls · RoomFloors + floorMaterials · FurnitureBox +
+               FurnitureModel · WalkCamera · MeasureTool ·
                RoomLabels
   ui/          WallPanel · RoomPanel · FurniturePanel · FurnitureEditor · NumberField
+public/models/furniture/   catalog models (.glb) and their thumbnails (rendered once from the models)
 supabase/migrations/   the house schema
 ```
