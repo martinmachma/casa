@@ -1,3 +1,4 @@
+import { Lightbulb } from 'lucide-react'
 import { floorRegions, type RoomRegion } from '../layout/rooms'
 import { roomLabel } from '../layout/roomName'
 import type { Floor } from '../layout/types'
@@ -8,6 +9,8 @@ type RoomLegendProps = {
   regions: Map<string, RoomRegion>
   /** Names we gave rooms, replacing the plan's. */
   names: Map<string, string>
+  /** How many smart-home devices each room has. */
+  devices: Map<string, number>
   /** The room under the pointer, here or on its number in the 3D view. */
   hovered: string | undefined
   selected: string | undefined
@@ -20,7 +23,17 @@ type RoomLegendProps = {
 const area = (m2: number) => `${m2.toFixed(1)} m²`
 
 /** The left panel: the floor's rooms, keyed by the numbers shown in the 3D view. */
-export const RoomLegend = ({ floor, regions, names, hovered, selected, onHover, onPick, onClose }: RoomLegendProps) => {
+export const RoomLegend = ({
+  floor,
+  regions,
+  names,
+  devices,
+  hovered,
+  selected,
+  onHover,
+  onPick,
+  onClose,
+}: RoomLegendProps) => {
   return (
     <>
       <PanelHead title="Rooms" onClose={onClose} closeLabel="Hide rooms" />
@@ -41,6 +54,12 @@ export const RoomLegend = ({ floor, regions, names, hovered, selected, onHover, 
               >
                 <span className="badge">{number ?? '–'}</span>
                 <span className="legend-name">{name}</span>
+                {devices.get(room.id) && (
+                  <span className="legend-devices" title={`${devices.get(room.id)} devices`}>
+                    <Lightbulb size={12} />
+                    {devices.get(room.id)}
+                  </span>
+                )}
                 {region && <span className="legend-area">{area(region.area)}</span>}
               </button>
             </li>

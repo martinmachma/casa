@@ -30,6 +30,28 @@ export type RoomName = { roomId: string; name: string }
 
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
+export type DeviceKind = 'light' | 'switch' | 'socket' | 'sensor' | 'thermostat' | 'blind' | 'other'
+
+/** A smart-home device placed in the house. */
+export type Device = {
+  id: string
+  /** Layout floor id. */
+  floor: string
+  kind: DeviceKind
+  name: string
+  /** Plan position, metres; on the wall face for wall-mounted devices. */
+  x: number
+  y: number
+  /** Height above the floor, metres (a socket 0.3, a switch 1.1, a ceiling light the floor's wall height). */
+  z: number
+  /** Set for wall-mounted devices: which wall and face it sits on. Ceiling devices leave it out. */
+  wall?: { wallId: string; side: WallSide }
+  /** Home Assistant entity id, e.g. light.living_ceiling. */
+  entity?: string
+}
+
+export type NewDevice = Omit<Device, 'id'>
+
 /** Everything placed in the house: what a version records. */
 export type HouseState = {
   walls: WallColor[]
@@ -37,9 +59,11 @@ export type HouseState = {
   furniture: FurnitureItem[]
   /** Absent in versions saved before rooms could be renamed. */
   rooms?: RoomName[]
+  /** Absent in versions saved before devices could be placed. */
+  devices?: Device[]
 }
 
-export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [], rooms: [] }
+export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [], rooms: [], devices: [] }
 
 /** A saved snapshot of the house; versions never change once saved. */
 export type Version = {

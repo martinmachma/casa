@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { WallSide } from '../layout/types'
-import type { Backend, FurnitureItem, HouseState, NewFurnitureItem, Version } from './types'
+import type { Backend, Device, FurnitureItem, HouseState, NewDevice, NewFurnitureItem, Version } from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
 
 /** What is being looked at: whichever version is live, the bare house, or one version by id. */
@@ -18,6 +18,8 @@ type Draft = { basedOn: string | undefined; state: HouseState }
 type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: (Draft | undefined)[]; key?: string }
 
 const HISTORY_LIMIT = 100
+
+const NO_DEVICES: Device[] = []
 
 const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
 
@@ -156,6 +158,18 @@ export const useHouseData = (backend: Backend) => {
 
   const removeFurniture = (id: string) => edit((s) => ({ ...s, furniture: s.furniture.filter((f) => f.id !== id) }))
 
+  const addDevice = (device: NewDevice): Device => {
+    const created = { ...device, id: crypto.randomUUID() }
+    edit((s) => ({ ...s, devices: [...(s.devices ?? []), created] }))
+    return created
+  }
+
+  /** Changes a device; changes with the same `key` (one drag) undo as one step. */
+  const patchDevice = (id: string, patch: Partial<Device>, key?: string) =>
+    edit((s) => ({ ...s, devices: (s.devices ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)) }), key)
+
+  const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
+
   /** Saves the draft as a new version and shows it; optionally makes it live straight away. */
   const saveDraft = async (name: string, makeLive: boolean) => {
     if (!draft) return
@@ -209,6 +223,11 @@ export const useHouseData = (backend: Backend) => {
     addFurniture,
     patchFurniture,
     removeFurniture,
+    // Versions and drafts from before devices have none.
+    devices: state.devices ?? NO_DEVICES,
+    addDevice,
+    patchDevice,
+    removeDevice,
   }
 }
 
