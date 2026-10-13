@@ -758,6 +758,18 @@ p {
   z-index: 5;
 }
 
+.modebar .history {
+  display: inline-flex;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 10px;
+}
+
+.modebar .history .icon-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .modebar .segmented {
   padding: 3px;
 }

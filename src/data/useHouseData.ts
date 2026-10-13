@@ -11,6 +11,14 @@ export const BARE = 'bare'
 /** Edits not yet saved as a version, on top of the version they started from (none: the bare house). */
 type Draft = { basedOn: string | undefined; state: HouseState }
 
+/**
+ * Undo history: drafts before (`past`) and after (`future`) the current one; `undefined` is "no edits". Consecutive
+ * edits with the same key (one drag, one colour being picked) collapse into one step.
+ */
+type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: (Draft | undefined)[]; key?: string }
+
+const HISTORY_LIMIT = 100
+
 const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
 
 // Unsaved edits survive a reload, on this device only.
@@ -42,7 +50,8 @@ export const useHouseData = (backend: Backend) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
   const [viewing, setViewing] = useState<Viewing>(LIVE)
-  const [draft, setDraft] = useState<Draft | undefined>(() => readDraft(backend))
+  const [history, setHistory] = useState<History>(() => ({ draft: readDraft(backend), past: [], future: [] }))
+  const { draft } = history
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? e.message : String(e)), [])
 
@@ -77,20 +86,47 @@ export const useHouseData = (backend: Backend) => {
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side), w.color])),
     [state.walls],
   )
+  const roomNames = useMemo(() => new Map((state.rooms ?? []).map((r) => [r.roomId, r.name])), [state.rooms])
   const roomFloors = useMemo(() => new Map(state.floors.map((f) => [f.roomId, f.material])), [state.floors])
 
   /** Applies an edit, starting a draft from what's on screen if there isn't one. */
-  const edit = (change: (s: HouseState) => HouseState) =>
-    setDraft((d) => ({ basedOn: d ? d.basedOn : viewedId, state: change(d?.state ?? state) }))
+  const edit = (change: (s: HouseState) => HouseState, key?: string) =>
+    setHistory((h) => {
+      const d = h.draft
+      const next = { basedOn: d ? d.basedOn : viewedId, state: change(d?.state ?? state) }
+      const merge = key !== undefined && key === h.key
+      return { draft: next, past: merge ? h.past : [...h.past, d].slice(-HISTORY_LIMIT), future: [], key }
+    })
+
+  /** Starts over with no edits and no history. */
+  const clearDraft = () => setHistory({ draft: undefined, past: [], future: [] })
+
+  /** Ends a run of keyed edits, so the next one (say, another drag of the same item) is its own undo step. */
+  const endEdit = () => setHistory((h) => (h.key === undefined ? h : { ...h, key: undefined }))
+
+  const undo = () =>
+    setHistory((h) =>
+      h.past.length
+        ? { draft: h.past[h.past.length - 1], past: h.past.slice(0, -1), future: [h.draft, ...h.future] }
+        : h,
+    )
+
+  const redo = () =>
+    setHistory((h) =>
+      h.future.length ? { draft: h.future[0], past: [...h.past, h.draft], future: h.future.slice(1) } : h,
+    )
 
   const setWallColor = (wallId: string, side: WallSide, color: string | undefined) =>
-    edit((s) => ({
-      ...s,
-      walls: [
-        ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side)),
-        ...(color ? [{ wallId, side, color }] : []),
-      ],
-    }))
+    edit(
+      (s) => ({
+        ...s,
+        walls: [
+          ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side)),
+          ...(color ? [{ wallId, side, color }] : []),
+        ],
+      }),
+      `wall:${wallId}:${side}`,
+    )
 
   const setRoomFloor = (roomId: string, material: string | undefined) =>
     edit((s) => ({
@@ -98,16 +134,25 @@ export const useHouseData = (backend: Backend) => {
       floors: [...s.floors.filter((f) => f.roomId !== roomId), ...(material ? [{ roomId, material }] : [])],
     }))
 
+  /** Renames a room; an empty name goes back to the plan's. */
+  const setRoomName = (roomId: string, name: string) =>
+    edit(
+      (s) => ({
+        ...s,
+        rooms: [...(s.rooms ?? []).filter((r) => r.roomId !== roomId), ...(name.trim() ? [{ roomId, name }] : [])],
+      }),
+      `room:${roomId}`,
+    )
+
   const addFurniture = (item: NewFurnitureItem): FurnitureItem => {
     const created = { ...item, id: crypto.randomUUID() }
     edit((s) => ({ ...s, furniture: [...s.furniture, created] }))
     return created
   }
 
-  const patchFurniture = (id: string, patch: Partial<FurnitureItem>) =>
-    edit((s) => ({ ...s, furniture: s.furniture.map((f) => (f.id === id ? { ...f, ...patch } : f)) }))
-
-  const saveFurniture = (item: FurnitureItem) => patchFurniture(item.id, item)
+  /** Changes an item; changes with the same `key` (one drag, one colour being picked) undo as one step. */
+  const patchFurniture = (id: string, patch: Partial<FurnitureItem>, key?: string) =>
+    edit((s) => ({ ...s, furniture: s.furniture.map((f) => (f.id === id ? { ...f, ...patch } : f)) }), key)
 
   const removeFurniture = (id: string) => edit((s) => ({ ...s, furniture: s.furniture.filter((f) => f.id !== id) }))
 
@@ -117,7 +162,7 @@ export const useHouseData = (backend: Backend) => {
     try {
       const created = await backend.saveVersion(name, draft.state, draft.basedOn)
       if (makeLive) await backend.setLive(created.id)
-      setDraft(undefined)
+      clearDraft()
       writeDraft(backend, undefined)
       setViewing(makeLive ? LIVE : created.id)
       await reload()
@@ -127,7 +172,7 @@ export const useHouseData = (backend: Backend) => {
   }
 
   const discardDraft = () => {
-    setDraft(undefined)
+    clearDraft()
     writeDraft(backend, undefined)
   }
 
@@ -147,16 +192,22 @@ export const useHouseData = (backend: Backend) => {
     dirty: draft !== undefined,
     saveDraft,
     discardDraft,
+    endEdit,
+    undo,
+    redo,
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
     makeLive: (id: string | undefined) => run(backend.setLive(id)),
     deleteVersion: (id: string) => run(backend.deleteVersion(id)),
     wallColors,
     setWallColor,
     roomFloors,
     setRoomFloor,
+    roomNames,
+    setRoomName,
     furniture: state.furniture,
     addFurniture,
     patchFurniture,
-    saveFurniture,
     removeFurniture,
   }
 }

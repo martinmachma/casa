@@ -41,7 +41,7 @@ Last updated: 2026-10-12
 - [x] Live sync between two devices (Supabase Realtime on `house.walls`, `house.room_floors`,
       `house.furniture_items`; needs the realtime migration applied); not yet tried against the real project
 - [ ] Colour schemes UI: create, rename, switch the active scheme (the table exists; the app only uses the active one)
-- [ ] Room names from `house.rooms` overriding the layout names (table exists, not wired yet)
+- [x] Room names: renamed per version (stored in the version data; `house.rooms` stays unused)
 
 ### 3D upgrades (branch `feat/3d-upgrades`, 2026-10-12, not pushed)
 
@@ -53,10 +53,10 @@ Last updated: 2026-10-12
 - [x] On-screen camera buttons for phones
 - [ ] Apply the three new migrations, then check live sync between two phones
 - [ ] Set the real `site.north` / latitude / longitude in `house.json` once the site plan is in
-- [ ] Phone top bar wraps to three rows; worth a compact menu
+- [x] Phone top bar fits one row (icon mode bar)
 
 ### Known limitations
 
 - Wall colours are picked in the 3D view; in top-down view wall faces aren't clickable.
 - Rotating in 15° steps doesn't re-snap (snapping would undo the turn); 90° turns re-seat the item against the wall.
-- No undo yet.
+- Undo/redo covers unsaved edits on this device; it resets on save, discard or reload.
