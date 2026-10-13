@@ -11,7 +11,8 @@ export const IconButton = ({ label, small, className = '', children, ...rest }: 
   </button>
 )
 
-type Option<T> = { value: T; label: string; icon?: ReactNode }
+/** `iconOnly` keeps the label for the tooltip and screen readers. */
+type Option<T> = { value: T; label: string; icon?: ReactNode; iconOnly?: boolean }
 
 type SegmentedProps<T> = {
   label: string
@@ -32,9 +33,15 @@ export const Segmented = <T extends string>({
 }: SegmentedProps<T>) => (
   <div className={`segmented ${block ? 'segmented-block' : ''} ${className}`} role="group" aria-label={label}>
     {options.map((o) => (
-      <button key={o.value} aria-pressed={o.value === value} onClick={() => onChange(o.value)} title={o.label}>
+      <button
+        key={o.value}
+        aria-pressed={o.value === value}
+        onClick={() => onChange(o.value)}
+        title={o.label}
+        aria-label={o.iconOnly ? o.label : undefined}
+      >
         {o.icon}
-        <span>{o.label}</span>
+        {!o.iconOnly && <span>{o.label}</span>}
       </button>
     ))}
   </div>
@@ -64,12 +71,12 @@ export const Section = ({ title, aside, children }: SectionProps) => (
   </section>
 )
 
-type PanelHeadProps = { eyebrow: string; title: ReactNode; sub?: ReactNode; onClose?: () => void; closeLabel?: string }
+type PanelHeadProps = { eyebrow?: string; title: ReactNode; sub?: ReactNode; onClose?: () => void; closeLabel?: string }
 
 export const PanelHead = ({ eyebrow, title, sub, onClose, closeLabel = 'Close' }: PanelHeadProps) => (
   <header className="panel-head">
     <div className="panel-head-text">
-      <div className="eyebrow">{eyebrow}</div>
+      {eyebrow && <div className="eyebrow">{eyebrow}</div>}
       <h2 className="panel-title">{title}</h2>
       {sub && <div className="panel-sub">{sub}</div>}
     </div>

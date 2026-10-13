@@ -1,5 +1,5 @@
-import { Box, Footprints, LogOut, Map as PlanIcon, PanelLeft, PanelRight } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Box, Footprints, House, LogOut, Map as PlanIcon, PanelLeft, PanelRight } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
 import type { CameraMode } from '../scene/selection'
@@ -9,6 +9,9 @@ type TopBarProps = {
   floors: Floor[]
   floorIndex: number
   onFloor: (index: number) => void
+  /** Looking at the whole house from outside instead of one floor. */
+  outside: boolean
+  onOutside: () => void
   camera: CameraMode
   onCamera: (camera: CameraMode) => void
   leftOpen: boolean
@@ -16,12 +19,20 @@ type TopBarProps = {
   onToggleLeft: () => void
   onToggleRight: () => void
   account: Account
+  /** The version picker. */
+  versions: ReactNode
 }
+
+const OUTSIDE = 'outside'
+
+const ordinal = (n: number) => `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
 
 export const TopBar = ({
   floors,
   floorIndex,
   onFloor,
+  outside,
+  onOutside,
   camera,
   onCamera,
   leftOpen,
@@ -29,6 +40,7 @@ export const TopBar = ({
   onToggleLeft,
   onToggleRight,
   account,
+  versions,
 }: TopBarProps) => (
   <header className="topbar">
     <div className="brand">
@@ -41,11 +53,15 @@ export const TopBar = ({
     <span className="topbar-divider hide-narrow" />
     <Segmented
       label="Floor"
-      value={floors[floorIndex].id}
-      onChange={(id) => onFloor(floors.findIndex((f) => f.id === id))}
-      options={floors.map((f, i) => ({ value: f.id, label: f.name, icon: <span className="num">{i + 1}</span> }))}
+      value={outside ? OUTSIDE : floors[floorIndex].id}
+      onChange={(id) => (id === OUTSIDE ? onOutside() : onFloor(floors.findIndex((f) => f.id === id)))}
+      options={[
+        { value: OUTSIDE, label: 'Outside', icon: <House size={15} />, iconOnly: true },
+        ...floors.map((f, i) => ({ value: f.id, label: ordinal(i + 1) })),
+      ]}
       className="floors"
     />
+    {versions}
     <span className="spacer" />
     <Segmented
       label="View"
@@ -54,7 +70,8 @@ export const TopBar = ({
       options={[
         { value: 'top', label: 'Plan', icon: <PlanIcon size={15} /> },
         { value: 'orbit', label: '3D', icon: <Box size={15} /> },
-        { value: 'walk', label: 'Walk', icon: <Footprints size={15} /> },
+        // Walking is for inside a floor.
+        ...(outside ? [] : [{ value: 'walk' as const, label: 'Walk', icon: <Footprints size={15} /> }]),
       ]}
       className="views"
     />

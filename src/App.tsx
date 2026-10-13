@@ -14,7 +14,7 @@ import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
-import { useNorth, type SunSettings } from './sun/useSun'
+import type { SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { wallText } from './measure/dimensions'
 import type { MeasurePick, Measurement } from './measure/measure'
@@ -24,10 +24,10 @@ import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallColorKey } from './data/types'
 import { ModeBar } from './ui/ModeBar'
-import { RoomLegend } from './ui/RoomLegend'
+import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
-import { PanelHead, Section } from './ui/kit'
-import { PenLine } from 'lucide-react'
+import { SaveBar } from './ui/SaveBar'
+import { VersionMenu } from './ui/VersionMenu'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -40,6 +40,7 @@ const isNarrow = () => window.matchMedia(NARROW).matches
 const House = ({ backend, account }: HouseProps) => {
   const data = useHouseData(backend)
   const [floorIndex, setFloorIndex] = useState(0)
+  const [outside, setOutside] = useState(false)
   const [camera, setCamera] = useState<CameraMode>('orbit')
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
@@ -51,7 +52,6 @@ const House = ({ backend, account }: HouseProps) => {
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
   const [sun, setSun] = useState<SunSettings>()
-  const [north, setNorth] = useNorth()
   const { site } = house
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
@@ -95,9 +95,9 @@ const House = ({ backend, account }: HouseProps) => {
     return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
   }
 
-  const addPiece = async (piece: NewPiece) => {
+  const addPiece = (piece: NewPiece) => {
     const [x, y] = dropPoint()
-    const created = await data.addFurniture({
+    const created = data.addFurniture({
       ...piece,
       floor: floor.id,
       x,
@@ -106,14 +106,23 @@ const House = ({ backend, account }: HouseProps) => {
       // A box gets a wood tone; a model's colour is its fabric (blue-grey, as in the thumbnails).
       color: piece.model ? FURNITURE_SWATCHES[4] : FURNITURE_SWATCHES[1],
     })
-    if (created) select({ kind: 'furniture', id: created.id })
+    select({ kind: 'furniture', id: created.id })
   }
 
   const switchFloor = (index: number) => {
     setFloorIndex(index)
+    setOutside(false)
     setSelection(undefined)
     setHoveredRoom(undefined)
     if (measure) setMeasure({ ...measure, picks: [] })
+  }
+
+  /** The outside view is for looking only: no editing, and no walking. */
+  const goOutside = () => {
+    setOutside(true)
+    setHoveredRoom(undefined)
+    changeInteraction('view')
+    if (camera === 'walk') setCamera('orbit')
   }
 
   /** Measuring is part of editing: leaving edit mode stops it, and nothing stays selected across modes. */
@@ -132,7 +141,7 @@ const House = ({ backend, account }: HouseProps) => {
   // E toggles editing, M measuring; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey || outside) return
       const key = e.key.toLowerCase()
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') changeInteraction(interaction === 'measure' ? 'edit' : 'measure')
@@ -196,7 +205,6 @@ const House = ({ backend, account }: HouseProps) => {
     if (editing)
       return (
         <FurniturePanel
-          floorName={floor.name}
           items={data.furniture.filter((f) => f.floor === floor.id)}
           snap={snap}
           onSnap={setSnap}
@@ -204,22 +212,7 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={(id) => select({ kind: 'furniture', id })}
         />
       )
-    return (
-      <>
-        <PanelHead eyebrow="Our house" title={floor.name} onClose={closeRight} closeLabel="Hide panel" />
-        <SunPanel sun={sun} position={sunAt} north={north} onSun={setSun} onNorth={setNorth} />
-        <Section title="Make changes">
-          <p className="hint">
-            Edit mode lets you paint walls, pick floor finishes, arrange furniture and measure. Looking around never
-            changes anything.
-          </p>
-          <button className="btn btn-primary btn-block" onClick={() => changeInteraction('edit')}>
-            <PenLine size={16} />
-            Start editing
-          </button>
-        </Section>
-      </>
-    )
+    return <SunPanel sun={sun} position={sunAt} onSun={setSun} />
   })()
 
   return (
@@ -228,6 +221,8 @@ const House = ({ backend, account }: HouseProps) => {
         floors={house.floors}
         floorIndex={floorIndex}
         onFloor={switchFloor}
+        outside={outside}
+        onOutside={goOutside}
         camera={camera}
         onCamera={setCamera}
         leftOpen={leftOpen}
@@ -235,26 +230,32 @@ const House = ({ backend, account }: HouseProps) => {
         onToggleLeft={() => setLeftOpen(!leftOpen)}
         onToggleRight={() => setRightOpen(!rightOpen)}
         account={account}
+        versions={<VersionMenu data={data} />}
       />
 
       <aside className="sidebar sidebar-left" aria-label="Rooms" inert={!leftOpen}>
         <div className="sidebar-inner">
-          <RoomLegend
-            floor={floor}
-            regions={regions}
-            hovered={hoveredRoom}
-            selected={selection?.kind === 'room' ? selection.roomId : undefined}
-            onHover={setHoveredRoom}
-            onPick={editing && !measure ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-            onClose={() => setLeftOpen(false)}
-          />
+          {outside ? (
+            <FloorList floors={house.floors} onPick={switchFloor} onClose={() => setLeftOpen(false)} />
+          ) : (
+            <RoomLegend
+              floor={floor}
+              regions={regions}
+              hovered={hoveredRoom}
+              selected={selection?.kind === 'room' ? selection.roomId : undefined}
+              onHover={setHoveredRoom}
+              onPick={editing && !measure ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+              onClose={() => setLeftOpen(false)}
+            />
+          )}
         </div>
       </aside>
 
       <main className="viewport">
         <HouseScene
           floors={house.floors}
-          floorIndex={floorIndex}
+          floorIndex={outside ? house.floors.length - 1 : floorIndex}
+          outside={outside}
           camera={camera}
           data={data}
           interaction={interaction}
@@ -263,7 +264,7 @@ const House = ({ backend, account }: HouseProps) => {
           onHoverRoom={setHoveredRoom}
           snap={snap}
           sun={sunAt}
-          north={north}
+          north={site.north}
           measure={measure}
           onMeasurePick={addMeasurePick}
           nudge={nudge}
@@ -271,7 +272,7 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={select}
         />
 
-        <ModeBar interaction={interaction} onChange={changeInteraction} />
+        {!outside && <ModeBar interaction={interaction} onChange={changeInteraction} />}
 
         <CameraPad
           mode={camera}
@@ -279,6 +280,8 @@ const House = ({ backend, account }: HouseProps) => {
           onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}
           onReset={() => setViewKey((k) => k + 1)}
         />
+
+        {data.dirty && <SaveBar data={data} />}
 
         {data.loading && <div className="toast">Loading the house…</div>}
         {data.error && (

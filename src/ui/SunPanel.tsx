@@ -1,4 +1,3 @@
-import { ArrowUp } from 'lucide-react'
 import type { SunPosition } from '../sun/sun'
 import { sunNow, type SunSettings } from '../sun/useSun'
 import { Section, Switch } from './kit'
@@ -7,9 +6,7 @@ type SunPanelProps = {
   /** Undefined while sunlight is off (even light). */
   sun: SunSettings | undefined
   position: SunPosition | undefined
-  north: number
   onSun: (sun: SunSettings | undefined) => void
-  onNorth: (degrees: number) => void
 }
 
 const clock = (minutes: number) =>
@@ -27,7 +24,7 @@ const SEASONS = [
   { label: 'Summer', monthDay: '06-21' },
 ]
 
-export const SunPanel = ({ sun, position, north, onSun, onNorth }: SunPanelProps) => {
+export const SunPanel = ({ sun, position, onSun }: SunPanelProps) => {
   const year = sun?.date.slice(0, 4)
   return (
     <Section title="Sunlight">
@@ -76,20 +73,6 @@ export const SunPanel = ({ sun, position, north, onSun, onNorth }: SunPanelProps
               Now
             </button>
           </div>
-
-          <label className="field">
-            <span className="field-row">
-              <span>North</span>
-              <span className="row">
-                <span className="north-arrow" style={{ transform: `rotate(${north}deg)` }} aria-hidden>
-                  <ArrowUp size={14} />
-                </span>
-                <strong>{north}°</strong>
-              </span>
-            </span>
-            <input type="range" min={0} max={359} value={north} onChange={(e) => onNorth(Number(e.target.value))} />
-          </label>
-          <p className="hint">North is a guess until the site plan says; turn it to match the arrow on the floor.</p>
         </>
       )}
     </Section>

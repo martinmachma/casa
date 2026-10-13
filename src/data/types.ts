@@ -27,34 +27,33 @@ export type FurnitureItem = {
 
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
-/** A change made on another device (or another tab in the demo). */
-export type RemoteChange =
-  | { kind: 'wall'; wallId: string; side: WallSide; color: string | undefined }
-  | { kind: 'furniture'; item: FurnitureItem }
-  | { kind: 'furniture-deleted'; id: string }
-  | { kind: 'room-floor'; roomId: string; material: string | undefined }
+/** Everything placed in the house: what a version records. */
+export type HouseState = { walls: WallColor[]; floors: RoomFloor[]; furniture: FurnitureItem[] }
 
-/** Where the house state is saved: Supabase for real use, the browser for the demo. */
-export type Backend = {
-  kind: 'supabase' | 'local'
-  loadWallColors: () => Promise<WallColor[]>
-  saveWallColor: (c: WallColor) => Promise<void>
-  clearWallColor: (wallId: string, side: WallSide) => Promise<void>
-  loadRoomFloors: () => Promise<RoomFloor[]>
-  saveRoomFloor: (f: RoomFloor) => Promise<void>
-  clearRoomFloor: (roomId: string) => Promise<void>
-  loadFurniture: () => Promise<FurnitureItem[]>
-  insertFurniture: (item: NewFurnitureItem) => Promise<FurnitureItem>
-  updateFurniture: (item: FurnitureItem) => Promise<void>
-  deleteFurniture: (id: string) => Promise<void>
-  /**
-   * Calls `onChange` for every change saved elsewhere, and `onResync` when the connection was (re)established and
-   * changes may have been missed. Returns the unsubscribe function.
-   */
-  subscribe: (onChange: (change: RemoteChange) => void, onResync: () => void) => () => void
+export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [] }
+
+/** A saved snapshot of the house; versions never change once saved. */
+export type Version = {
+  id: string
+  name: string
+  /** Email of whoever saved it. */
+  author?: string
+  createdAt: string
+  /** The version it was edited from; absent when started from the bare house. */
+  basedOn?: string
+  data: HouseState
 }
 
-/** Keys in the data hook's map of local edits; furniture uses its id. */
-export const roomFloorKey = (roomId: string) => `floor:${roomId}`
+/** Where versions are saved: Supabase for real use, the browser for the demo. */
+export type Backend = {
+  kind: 'supabase' | 'local'
+  /** Newest first, with the live version's id (none: the bare house is live). */
+  loadVersions: () => Promise<{ versions: Version[]; liveId: string | undefined }>
+  saveVersion: (name: string, data: HouseState, basedOn: string | undefined) => Promise<Version>
+  deleteVersion: (id: string) => Promise<void>
+  setLive: (id: string | undefined) => Promise<void>
+  /** Calls `onChange` whenever versions or the live one may have changed elsewhere. Returns the unsubscribe. */
+  subscribe: (onChange: () => void) => () => void
+}
 
 export const wallColorKey = (wallId: string, side: WallSide) => `${wallId}:${side}`

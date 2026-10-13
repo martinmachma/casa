@@ -46,6 +46,13 @@ The later ones add to it: `…_house_realtime.sql` turns on live sync (walls and
 without a reload), `…_house_room_floors.sql` adds `house.room_floors`, the floor finish of each room, and
 `…_house_furniture_models.sql` adds `furniture_items.model`.
 
+`…_house_versions.sql` adds versions, which replace those per-item tables: `house.versions` holds each saved
+snapshot (paint, floors and furniture as one JSON document; never changed after saving) and `house.live_version` points
+at the one that is the house as it is now (null = the bare house). Edits in the app stay on the device as unsaved
+changes until saved as a new version; both tables stream live, so a save or a new live version shows up on the other
+device straight away. The old `walls`, `room_floors` and `furniture_items` tables are no longer read and can be dropped
+once `main` runs this code.
+
 Then add the two of you (lower-case emails):
 
 ```sql
@@ -186,7 +193,7 @@ src/
                clearance.ts: furniture-to-wall gaps (pure; tested)
   walk/        collide.ts: what blocks walking, sliding along walls (pure; tested)
   sun/         sun.ts: sun position and direction, local clock time (pure; tested) · useSun
-  data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
+  data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (versions, unsaved draft, live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess
   scene/       HouseScene (canvas, cameras) · Lights · FloorWalls · RoomFloors + floorMaterials · FurnitureBox +
                FurnitureModel · WalkCamera · MeasureTool (wall highlights) · RoomLabels (numbers over the plan)

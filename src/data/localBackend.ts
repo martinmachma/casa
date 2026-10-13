@@ -1,10 +1,8 @@
-import type { Backend, FurnitureItem, RemoteChange, RoomFloor, WallColor } from './types'
-import { wallColorKey } from './types'
+import type { Backend, Version } from './types'
 
 // The demo keeps everything in this browser's localStorage.
-const WALLS_KEY = 'casa.demo.walls'
-const FURNITURE_KEY = 'casa.demo.furniture'
-const FLOORS_KEY = 'casa.demo.floors'
+const VERSIONS_KEY = 'casa.demo.versions'
+const LIVE_KEY = 'casa.demo.live'
 
 const read = <T>(key: string, fallback: T): T => {
   try {
@@ -17,7 +15,8 @@ const read = <T>(key: string, fallback: T): T => {
 
 const write = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(key, JSON.stringify(value))
+    if (value === undefined) localStorage.removeItem(key)
+    else localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // Private mode or full storage: the demo just forgets on reload.
   }
@@ -25,75 +24,50 @@ const write = (key: string, value: unknown) => {
 
 // Other tabs of the demo hear about changes through a BroadcastChannel (it never echoes to the sender).
 const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('casa.demo')
-const announce = (change: RemoteChange) => channel?.postMessage(change)
+const announce = () => channel?.postMessage('changed')
 
-const walls = () => read<WallColor[]>(WALLS_KEY, [])
-const roomFloors = () => read<RoomFloor[]>(FLOORS_KEY, [])
-const furniture = () => read<FurnitureItem[]>(FURNITURE_KEY, [])
+const versions = () => read<Version[]>(VERSIONS_KEY, [])
 
 export const localBackend: Backend = {
   kind: 'local',
 
-  loadWallColors: async () => walls(),
-
-  saveWallColor: async (c) => {
-    const key = wallColorKey(c.wallId, c.side)
-    write(WALLS_KEY, [...walls().filter((w) => wallColorKey(w.wallId, w.side) !== key), c])
-    announce({ kind: 'wall', ...c })
+  loadVersions: async () => {
+    const all = versions()
+    const live = read<string | undefined>(LIVE_KEY, undefined)
+    return { versions: all, liveId: all.some((v) => v.id === live) ? live : undefined }
   },
 
-  clearWallColor: async (wallId, side) => {
-    write(
-      WALLS_KEY,
-      walls().filter((w) => !(w.wallId === wallId && w.side === side)),
-    )
-    announce({ kind: 'wall', wallId, side, color: undefined })
-  },
-
-  loadRoomFloors: async () => roomFloors(),
-
-  saveRoomFloor: async (f) => {
-    write(FLOORS_KEY, [...roomFloors().filter((r) => r.roomId !== f.roomId), f])
-    announce({ kind: 'room-floor', ...f })
-  },
-
-  clearRoomFloor: async (roomId) => {
-    write(
-      FLOORS_KEY,
-      roomFloors().filter((r) => r.roomId !== roomId),
-    )
-    announce({ kind: 'room-floor', roomId, material: undefined })
-  },
-
-  loadFurniture: async () => furniture(),
-
-  insertFurniture: async (item) => {
-    const created = { ...item, id: crypto.randomUUID() }
-    write(FURNITURE_KEY, [...furniture(), created])
-    announce({ kind: 'furniture', item: created })
+  saveVersion: async (name, data, basedOn) => {
+    const created: Version = {
+      id: crypto.randomUUID(),
+      name,
+      author: 'demo',
+      createdAt: new Date().toISOString(),
+      ...(basedOn ? { basedOn } : {}),
+      data,
+    }
+    write(VERSIONS_KEY, [created, ...versions()])
+    announce()
     return created
   },
 
-  updateFurniture: async (item) => {
+  deleteVersion: async (id) => {
     write(
-      FURNITURE_KEY,
-      furniture().map((f) => (f.id === item.id ? item : f)),
+      VERSIONS_KEY,
+      versions().filter((v) => v.id !== id),
     )
-    announce({ kind: 'furniture', item })
+    if (read<string | undefined>(LIVE_KEY, undefined) === id) write(LIVE_KEY, undefined)
+    announce()
   },
 
-  deleteFurniture: async (id) => {
-    write(
-      FURNITURE_KEY,
-      furniture().filter((f) => f.id !== id),
-    )
-    announce({ kind: 'furniture-deleted', id })
+  setLive: async (id) => {
+    write(LIVE_KEY, id)
+    announce()
   },
 
   subscribe: (onChange) => {
     if (!channel) return () => {}
-    const listener = (e: MessageEvent<RemoteChange>) => onChange(e.data)
-    channel.addEventListener('message', listener)
-    return () => channel.removeEventListener('message', listener)
+    channel.addEventListener('message', onChange)
+    return () => channel.removeEventListener('message', onChange)
   },
 }
