@@ -10,13 +10,23 @@ const RAIL_BAR = 0.04
 
 const noRaycast = () => null
 
+type StairsProps = {
+  floor: Floor
+  next: Floor
+  /** Leaves out the steps rising above this height over the floor (into the floor above, when it isn't shown). */
+  cut?: number
+}
+
 /** The floor's stairs, rising evenly from its surface to the next floor's. */
-export const Stairs = ({ floor, next }: { floor: Floor; next: Floor }) => {
+export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
   const steps = floor.stairs?.steps
   const rise = steps ? (next.elevation - floor.elevation) / steps.length : 0
   const geometries = useMemo(
-    () => (steps ?? []).map((s, i) => prismGeometry(s, Math.min(STEP_DEPTH, (i + 1) * rise))),
-    [steps, rise],
+    () =>
+      (steps ?? [])
+        .filter((_, i) => (i + 1) * rise <= cut + 1e-6)
+        .map((s, i) => prismGeometry(s, Math.min(STEP_DEPTH, (i + 1) * rise))),
+    [steps, rise, cut],
   )
   return (
     <group>

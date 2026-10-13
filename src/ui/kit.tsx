@@ -71,12 +71,12 @@ export const Section = ({ title, aside, children }: SectionProps) => (
   </section>
 )
 
-type PanelHeadProps = { eyebrow: string; title: ReactNode; sub?: ReactNode; onClose?: () => void; closeLabel?: string }
+type PanelHeadProps = { eyebrow?: string; title: ReactNode; sub?: ReactNode; onClose?: () => void; closeLabel?: string }
 
 export const PanelHead = ({ eyebrow, title, sub, onClose, closeLabel = 'Close' }: PanelHeadProps) => (
   <header className="panel-head">
     <div className="panel-head-text">
-      <div className="eyebrow">{eyebrow}</div>
+      {eyebrow && <div className="eyebrow">{eyebrow}</div>}
       <h2 className="panel-title">{title}</h2>
       {sub && <div className="panel-sub">{sub}</div>}
     </div>

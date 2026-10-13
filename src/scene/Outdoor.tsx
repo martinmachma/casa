@@ -1,24 +1,40 @@
 import { useMemo } from 'react'
 import type { Outdoor as OutdoorLayout, Shed } from '../layout/types'
-import { EXTERIOR_FRAME, LAWN, PAVING, SHED_ROOF, SHED_WOOD } from './palette'
+import { EXTERIOR_FRAME, GROUND, LAWN, PAVING, SHED_ROOF, SHED_WOOD } from './palette'
 import { prismGeometry } from './prism'
 
 const LAWN_DEPTH = 0.05
 const ROOF = 0.08
 const EAVE = 0.1
 const DOOR_HEIGHT = 1.9
+// The land around the plot, a little below the lawn so the two never flicker.
+const GROUND_SIZE = 120
+const GROUND_DROP = 0.01
 
 const noRaycast = () => null
 
-/** The garden behind the house: lawn, the paved terrace and the shed. */
+/** The garden behind the house: lawn, the paved terrace and the shed, on open ground all around. */
 export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
   const lawn = useMemo(() => prismGeometry(outdoor.garden, LAWN_DEPTH), [outdoor.garden])
   const terrace = useMemo(
     () => prismGeometry(outdoor.terrace.outline, outdoor.terrace.level - outdoor.level),
     [outdoor.terrace, outdoor.level],
   )
+  const xs = outdoor.garden.map((p) => p[0])
+  const ys = outdoor.garden.map((p) => p[1])
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2
+  const cz = (Math.min(...ys) + Math.max(...ys)) / 2
   return (
     <group>
+      <mesh
+        position={[cx, outdoor.level - GROUND_DROP, cz]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+        raycast={noRaycast}
+      >
+        <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
+        <meshStandardMaterial color={GROUND} roughness={1} />
+      </mesh>
       <mesh geometry={lawn} position={[0, outdoor.level, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={LAWN} roughness={1} />
       </mesh>

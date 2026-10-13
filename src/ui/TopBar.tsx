@@ -1,5 +1,5 @@
 import { Box, Footprints, House, LogOut, Map as PlanIcon, PanelLeft, PanelRight } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
 import type { CameraMode } from '../scene/selection'
@@ -19,6 +19,8 @@ type TopBarProps = {
   onToggleLeft: () => void
   onToggleRight: () => void
   account: Account
+  /** The version picker. */
+  versions: ReactNode
 }
 
 const OUTSIDE = 'outside'
@@ -38,6 +40,7 @@ export const TopBar = ({
   onToggleLeft,
   onToggleRight,
   account,
+  versions,
 }: TopBarProps) => (
   <header className="topbar">
     <div className="brand">
@@ -58,6 +61,7 @@ export const TopBar = ({
       ]}
       className="floors"
     />
+    {versions}
     <span className="spacer" />
     <Segmented
       label="View"

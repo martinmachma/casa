@@ -369,6 +369,8 @@ p {
 
 .topbar {
   grid-area: top;
+  position: relative;
+  z-index: 25;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1297,6 +1299,171 @@ input[type='range'] {
 }
 
 /* ── Phones ──────────────────────────────────────────────── */
+/* ── Versions ────────────────────────────────────────────── */
+.version-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 220px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.version-button:hover {
+  background: var(--surface-2);
+}
+
+.version-button svg {
+  flex: none;
+}
+
+.version-button-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: #3f9a5b;
+}
+
+.version-menu {
+  left: 0;
+  right: auto;
+  width: min(380px, calc(100vw - 24px));
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.version-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.version-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.version-row[aria-current='true'] {
+  background: var(--surface-2);
+}
+
+.menu .version-pick {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.version-check {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  flex: none;
+  color: var(--accent);
+}
+
+.version-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.version-name,
+.version-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-name {
+  font-weight: 500;
+}
+
+.version-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.live-badge {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e3f2e7;
+  color: #2d7444;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.menu .version-action {
+  width: auto;
+  flex: none;
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.menu .version-delete {
+  color: var(--danger);
+}
+
+.menu .version-delete:hover {
+  background: var(--danger-soft);
+}
+
+.savebar {
+  position: absolute;
+  top: 64px;
+  right: 14px;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 90px);
+  padding: 6px 6px 6px 12px;
+}
+
+.savebar-title {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.savebar-name {
+  width: 150px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+}
+
+.savebar-name:focus {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
 @media (max-width: 820px) {
   .views button > span {
     display: none;
@@ -1309,19 +1476,19 @@ input[type='range'] {
       'view';
   }
 
-  .brand-name,
+  .brand,
   .hide-narrow {
     display: none;
   }
 
   .topbar {
-    gap: 6px;
-    padding-left: 8px;
-    padding-right: 8px;
+    gap: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
   }
 
   .segmented button {
-    padding: 0 9px;
+    padding: 0 6px;
   }
 
   /* The panels slide over the 3D view: rooms from the left, the inspector up from the bottom. */
@@ -1396,6 +1563,39 @@ input[type='range'] {
   .compass {
     top: 10px;
     left: 10px;
+  }
+
+  .version-button {
+    gap: 4px;
+    padding: 0 6px;
+  }
+
+  .version-button-name,
+  .version-button > svg:last-child {
+    display: none;
+  }
+
+  .version-menu {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: calc(var(--topbar) + env(safe-area-inset-top) + 4px);
+    width: auto;
+  }
+
+  .savebar {
+    top: 58px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
+
+  .savebar-name {
+    flex: 1;
+  }
+
+  .savebar-title {
+    width: 100%;
   }
 
   .pad-grid {

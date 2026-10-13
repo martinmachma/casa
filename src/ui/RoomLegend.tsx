@@ -19,16 +19,9 @@ const area = (m2: number) => `${m2.toFixed(1)} m²`
 
 /** The left panel: the floor's rooms, keyed by the numbers shown in the 3D view. */
 export const RoomLegend = ({ floor, regions, hovered, selected, onHover, onPick, onClose }: RoomLegendProps) => {
-  const total = [...regions.values()].reduce((sum, r) => sum + r.area, 0)
   return (
     <>
-      <PanelHead
-        eyebrow="Rooms"
-        title={floor.name}
-        sub={`${floor.rooms.length} rooms · ${area(total)}`}
-        onClose={onClose}
-        closeLabel="Hide rooms"
-      />
+      <PanelHead title="Rooms" onClose={onClose} closeLabel="Hide rooms" />
       <ul className="legend" data-clickable={onPick ? '' : undefined} onMouseLeave={() => onHover(undefined)}>
         {floor.rooms.map((room) => {
           const { number, name } = roomParts(room)

@@ -155,8 +155,14 @@ export const HouseScene = ({
         {/* Floors below the current one stay visible for context but can't be clicked. */}
         {floors.slice(0, floorIndex + 1).map((f, i) => (
           <group key={f.id}>
-            <Slab floor={f} />
-            {floors[i + 1] && <Stairs floor={f} next={floors[i + 1]} />}
+            {/* The ground floor's slab reaches down into the garden, so the house stands on the ground. */}
+            <Slab
+              floor={f}
+              depth={i === 0 && house.outdoor ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1) : SLAB}
+            />
+            {floors[i + 1] && (
+              <Stairs floor={f} next={floors[i + 1]} cut={i === floorIndex && !outside ? f.height : undefined} />
+            )}
             <Railings floor={f} />
             <RoomFloors
               floor={f}
@@ -226,7 +232,7 @@ export const HouseScene = ({
 }
 
 /** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */
-const slabGeometry = (floor: Floor) => {
+const slabGeometry = (floor: Floor, depth: number) => {
   const { min, max } = floorBounds(floor)
   const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
   const holes = (floor.voids ?? []).map((v): Point[] => [
@@ -235,11 +241,11 @@ const slabGeometry = (floor: Floor) => {
     [v.x1, v.y1],
     [v.x0, v.y1],
   ])
-  return prismGeometry(outline, SLAB, holes)
+  return prismGeometry(outline, depth, holes)
 }
 
-const Slab = ({ floor, color = FLOOR_SLAB }: { floor: Floor; color?: string }) => {
-  const geometry = useMemo(() => slabGeometry(floor), [floor])
+const Slab = ({ floor, color = FLOOR_SLAB, depth = SLAB }: { floor: Floor; color?: string; depth?: number }) => {
+  const geometry = useMemo(() => slabGeometry(floor, depth), [floor, depth])
   return (
     <mesh geometry={geometry} position={[0, floor.elevation, 0]} castShadow receiveShadow>
       <meshStandardMaterial color={color} roughness={0.9} />

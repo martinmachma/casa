@@ -26,6 +26,8 @@ import { wallColorKey } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
+import { SaveBar } from './ui/SaveBar'
+import { VersionMenu } from './ui/VersionMenu'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -93,9 +95,9 @@ const House = ({ backend, account }: HouseProps) => {
     return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
   }
 
-  const addPiece = async (piece: NewPiece) => {
+  const addPiece = (piece: NewPiece) => {
     const [x, y] = dropPoint()
-    const created = await data.addFurniture({
+    const created = data.addFurniture({
       ...piece,
       floor: floor.id,
       x,
@@ -104,7 +106,7 @@ const House = ({ backend, account }: HouseProps) => {
       // A box gets a wood tone; a model's colour is its fabric (blue-grey, as in the thumbnails).
       color: piece.model ? FURNITURE_SWATCHES[4] : FURNITURE_SWATCHES[1],
     })
-    if (created) select({ kind: 'furniture', id: created.id })
+    select({ kind: 'furniture', id: created.id })
   }
 
   const switchFloor = (index: number) => {
@@ -228,6 +230,7 @@ const House = ({ backend, account }: HouseProps) => {
         onToggleLeft={() => setLeftOpen(!leftOpen)}
         onToggleRight={() => setRightOpen(!rightOpen)}
         account={account}
+        versions={<VersionMenu data={data} />}
       />
 
       <aside className="sidebar sidebar-left" aria-label="Rooms" inert={!leftOpen}>
@@ -277,6 +280,8 @@ const House = ({ backend, account }: HouseProps) => {
           onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}
           onReset={() => setViewKey((k) => k + 1)}
         />
+
+        {data.dirty && <SaveBar data={data} />}
 
         {data.loading && <div className="toast">Loading the house…</div>}
         {data.error && (
