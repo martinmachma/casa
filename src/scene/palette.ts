@@ -13,6 +13,7 @@ export const LAWN = '#9fb47f'
 export const PAVING = '#c9c4ba'
 export const SHED_WOOD = '#8f6a4a'
 export const SHED_ROOF = '#4a4440'
+export const ROOF_TILE = '#8a4f3d'
 
 /** A starter set of paint-like colours; any colour can still be picked. */
 export const PAINT_SWATCHES = [

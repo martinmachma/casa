@@ -1287,18 +1287,8 @@ input[type='range'] {
   color: var(--accent-hover);
 }
 
-/* Floor numbers stand in for the names on phones. */
-.floors .num {
-  display: none;
-}
-
 /* ── Phones ──────────────────────────────────────────────── */
 @media (max-width: 820px) {
-  .floors .num {
-    display: inline;
-  }
-
-  .floors button > span:not(.num),
   .views button > span {
     display: none;
   }

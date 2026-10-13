@@ -476,6 +476,16 @@
       ]
     }
   ],
+  "roof": {
+    "pitch": 35,
+    "overhang": 0.4,
+    "chimney": {
+      "x0": 5.6,
+      "x1": 6.1,
+      "y0": 2.62,
+      "y1": 2.87
+    }
+  },
   "outdoor": {
     "level": -0.35,
     "garden": [

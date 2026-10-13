@@ -13,6 +13,7 @@ import { FurnitureBox } from './FurnitureBox'
 import { Outdoor } from './Outdoor'
 import { prismGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
+import { Roof } from './Roof'
 import { house } from '../layout/layout'
 import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
@@ -38,6 +39,8 @@ const SLAB = 0.3
 type HouseSceneProps = {
   floors: Floor[]
   floorIndex: number
+  /** The whole house from outside, roof and all; nothing inside is shown or pickable. */
+  outside: boolean
   camera: CameraMode
   data: HouseData
   /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
@@ -61,6 +64,7 @@ type HouseSceneProps = {
 export const HouseScene = ({
   floors,
   floorIndex,
+  outside,
   camera,
   data,
   interaction,
@@ -82,7 +86,7 @@ export const HouseScene = ({
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
 
-  const items = data.furniture.filter((f) => f.floor === floor.id)
+  const items = outside ? [] : data.furniture.filter((f) => f.floor === floor.id)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedItem =
@@ -134,7 +138,12 @@ export const HouseScene = ({
         {camera === 'walk' ? (
           <WalkCamera key={`${floor.id}-${viewKey}`} floor={floor} furniture={data.furniture} nudge={nudge} />
         ) : (
-          <CameraRig key={`${camera}-${floor.id}-${viewKey}`} mode={camera} floor={floor} />
+          <CameraRig
+            key={`${camera}-${outside ? 'outside' : floor.id}-${viewKey}`}
+            mode={camera}
+            floor={outside ? floors[0] : floor}
+            houseHeight={outside ? roofTop(floors) : undefined}
+          />
         )}
         <CameraNudger nudge={nudge} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
@@ -173,12 +182,14 @@ export const HouseScene = ({
           </group>
         ))}
 
+        {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
+
         {/* Walking needs a ceiling, so light comes in through the windows; the floor above's slab is one. */}
         {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
 
         {measure && <MeasureTool floor={floor} items={items} measure={measure} onPick={onMeasurePick} />}
 
-        {camera !== 'walk' && <RoomLabelProjector floor={floor} labels={labels} />}
+        {camera !== 'walk' && !outside && <RoomLabelProjector floor={floor} labels={labels} />}
         <AnnotationProjector items={annotations} refs={annotationRefs} />
         {gaps.map((g, i) => (
           <Line
@@ -209,7 +220,7 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {camera !== 'walk' && (
+      {camera !== 'walk' && !outside && (
         <RoomLabels floor={floor} labels={labels} hovered={hoveredRoom} onHover={onHoverRoom} onPick={pickRoom} />
       )}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
@@ -239,7 +250,21 @@ const Slab = ({ floor, color = FLOOR_SLAB }: { floor: Floor; color?: string }) =
   )
 }
 
-const CameraRig = ({ mode, floor }: { mode: Exclude<CameraMode, 'walk'>; floor: Floor }) => {
+/** Roughly how high the house stands: the top floor's walls plus a roof rising half the width. */
+const roofTop = (floors: Floor[]) => {
+  const top = floors[floors.length - 1]
+  const { min, max } = floorBounds(top)
+  return top.elevation + top.height + Math.min(max[0] - min[0], max[1] - min[1]) / 2
+}
+
+type CameraRigProps = {
+  mode: Exclude<CameraMode, 'walk'>
+  floor: Floor
+  /** Set from outside: the whole house this tall has to fit, seen from lower down. */
+  houseHeight?: number
+}
+
+const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
   const size = useThree((s) => s.size)
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
@@ -271,16 +296,14 @@ const CameraRig = ({ mode, floor }: { mode: Exclude<CameraMode, 'walk'>; floor: 
 
   // A portrait phone sees less sideways; step back so the whole house fits.
   const back = span * Math.max(1, 0.75 / (size.width / size.height))
+  // From outside, the whole house: look at its middle from further away and lower down.
+  const look = floor.elevation + (houseHeight ? houseHeight / 2 : 0.8)
+  const away = houseHeight ? Math.max(back, houseHeight) * 1.3 : back
+  const up = houseHeight ? look + away * 0.55 : floor.elevation + back * 1.1
   return (
     <>
-      <PerspectiveCamera
-        makeDefault
-        position={[cx + back * 0.8, floor.elevation + back * 1.1, cz + back * 1.25]}
-        fov={45}
-        near={0.1}
-        far={200}
-      />
-      <OrbitControls makeDefault target={[cx, floor.elevation + 0.8, cz]} maxPolarAngle={Math.PI / 2.05} />
+      <PerspectiveCamera makeDefault position={[cx + away * 0.8, up, cz + away * 1.25]} fov={45} near={0.1} far={200} />
+      <OrbitControls makeDefault target={[cx, look, cz]} maxPolarAngle={Math.PI / 2.05} />
     </>
   )
 }

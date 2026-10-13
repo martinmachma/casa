@@ -74,6 +74,16 @@ export type Outdoor = {
   sheds: Shed[]
 }
 
+/** A gable roof on the top floor, its ridge along the longer side. */
+export type Roof = {
+  /** Degrees from horizontal. */
+  pitch: number
+  /** How far the eaves and verges reach past the walls. */
+  overhang: number
+  /** The stack's plan footprint; it rises from the top floor through the roof. */
+  chimney?: Rect
+}
+
 /** Where the house stands, for sunlight. */
 export type Site = {
   latitude: number
@@ -88,6 +98,7 @@ export type HouseLayout = {
   name: string
   site: Site
   floors: Floor[]
+  roof?: Roof
   outdoor?: Outdoor
 }
 

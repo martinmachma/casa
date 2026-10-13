@@ -1,4 +1,4 @@
-import type { RoomRegion } from '../layout/rooms'
+import { floorRegions, type RoomRegion } from '../layout/rooms'
 import { roomParts } from '../layout/roomName'
 import type { Floor } from '../layout/types'
 import { PanelHead } from './kit'
@@ -51,6 +51,36 @@ export const RoomLegend = ({ floor, regions, hovered, selected, onHover, onPick,
             </li>
           )
         })}
+      </ul>
+    </>
+  )
+}
+
+type FloorListProps = { floors: Floor[]; onPick: (index: number) => void; onClose: () => void }
+
+/** The left panel from outside: the floors, each a way back in. */
+export const FloorList = ({ floors, onPick, onClose }: FloorListProps) => {
+  const areas = floors.map((f) => [...floorRegions(f).values()].reduce((sum, r) => sum + r.area, 0))
+  const rooms = floors.reduce((sum, f) => sum + f.rooms.length, 0)
+  return (
+    <>
+      <PanelHead
+        eyebrow="Outside"
+        title="Floors"
+        sub={`${rooms} rooms · ${area(areas.reduce((a, b) => a + b, 0))}`}
+        onClose={onClose}
+        closeLabel="Hide floors"
+      />
+      <ul className="legend" data-clickable="">
+        {floors.map((f, i) => (
+          <li key={f.id}>
+            <button className="legend-item" onClick={() => onPick(i)}>
+              <span className="badge">{i + 1}</span>
+              <span className="legend-name">{f.name}</span>
+              <span className="legend-area">{area(areas[i])}</span>
+            </button>
+          </li>
+        ))}
       </ul>
     </>
   )

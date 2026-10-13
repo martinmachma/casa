@@ -24,7 +24,7 @@ import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallColorKey } from './data/types'
 import { ModeBar } from './ui/ModeBar'
-import { RoomLegend } from './ui/RoomLegend'
+import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
 import { PanelHead, Section } from './ui/kit'
 import { PenLine } from 'lucide-react'
@@ -40,6 +40,7 @@ const isNarrow = () => window.matchMedia(NARROW).matches
 const House = ({ backend, account }: HouseProps) => {
   const data = useHouseData(backend)
   const [floorIndex, setFloorIndex] = useState(0)
+  const [outside, setOutside] = useState(false)
   const [camera, setCamera] = useState<CameraMode>('orbit')
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
@@ -111,9 +112,18 @@ const House = ({ backend, account }: HouseProps) => {
 
   const switchFloor = (index: number) => {
     setFloorIndex(index)
+    setOutside(false)
     setSelection(undefined)
     setHoveredRoom(undefined)
     if (measure) setMeasure({ ...measure, picks: [] })
+  }
+
+  /** The outside view is for looking only: no editing, and no walking. */
+  const goOutside = () => {
+    setOutside(true)
+    setHoveredRoom(undefined)
+    changeInteraction('view')
+    if (camera === 'walk') setCamera('orbit')
   }
 
   /** Measuring is part of editing: leaving edit mode stops it, and nothing stays selected across modes. */
@@ -132,7 +142,7 @@ const House = ({ backend, account }: HouseProps) => {
   // E toggles editing, M measuring; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey || outside) return
       const key = e.key.toLowerCase()
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') changeInteraction(interaction === 'measure' ? 'edit' : 'measure')
@@ -206,18 +216,25 @@ const House = ({ backend, account }: HouseProps) => {
       )
     return (
       <>
-        <PanelHead eyebrow="Our house" title={floor.name} onClose={closeRight} closeLabel="Hide panel" />
+        <PanelHead
+          eyebrow="Our house"
+          title={outside ? 'Outside' : floor.name}
+          onClose={closeRight}
+          closeLabel="Hide panel"
+        />
         <SunPanel sun={sun} position={sunAt} north={north} onSun={setSun} onNorth={setNorth} />
-        <Section title="Make changes">
-          <p className="hint">
-            Edit mode lets you paint walls, pick floor finishes, arrange furniture and measure. Looking around never
-            changes anything.
-          </p>
-          <button className="btn btn-primary btn-block" onClick={() => changeInteraction('edit')}>
-            <PenLine size={16} />
-            Start editing
-          </button>
-        </Section>
+        {!outside && (
+          <Section title="Make changes">
+            <p className="hint">
+              Edit mode lets you paint walls, pick floor finishes, arrange furniture and measure. Looking around never
+              changes anything.
+            </p>
+            <button className="btn btn-primary btn-block" onClick={() => changeInteraction('edit')}>
+              <PenLine size={16} />
+              Start editing
+            </button>
+          </Section>
+        )}
       </>
     )
   })()
@@ -228,6 +245,8 @@ const House = ({ backend, account }: HouseProps) => {
         floors={house.floors}
         floorIndex={floorIndex}
         onFloor={switchFloor}
+        outside={outside}
+        onOutside={goOutside}
         camera={camera}
         onCamera={setCamera}
         leftOpen={leftOpen}
@@ -239,22 +258,27 @@ const House = ({ backend, account }: HouseProps) => {
 
       <aside className="sidebar sidebar-left" aria-label="Rooms" inert={!leftOpen}>
         <div className="sidebar-inner">
-          <RoomLegend
-            floor={floor}
-            regions={regions}
-            hovered={hoveredRoom}
-            selected={selection?.kind === 'room' ? selection.roomId : undefined}
-            onHover={setHoveredRoom}
-            onPick={editing && !measure ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-            onClose={() => setLeftOpen(false)}
-          />
+          {outside ? (
+            <FloorList floors={house.floors} onPick={switchFloor} onClose={() => setLeftOpen(false)} />
+          ) : (
+            <RoomLegend
+              floor={floor}
+              regions={regions}
+              hovered={hoveredRoom}
+              selected={selection?.kind === 'room' ? selection.roomId : undefined}
+              onHover={setHoveredRoom}
+              onPick={editing && !measure ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+              onClose={() => setLeftOpen(false)}
+            />
+          )}
         </div>
       </aside>
 
       <main className="viewport">
         <HouseScene
           floors={house.floors}
-          floorIndex={floorIndex}
+          floorIndex={outside ? house.floors.length - 1 : floorIndex}
+          outside={outside}
           camera={camera}
           data={data}
           interaction={interaction}
@@ -271,7 +295,7 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={select}
         />
 
-        <ModeBar interaction={interaction} onChange={changeInteraction} />
+        {!outside && <ModeBar interaction={interaction} onChange={changeInteraction} />}
 
         <CameraPad
           mode={camera}
