@@ -53,8 +53,8 @@ export const TopBar = ({
       value={outside ? OUTSIDE : floors[floorIndex].id}
       onChange={(id) => (id === OUTSIDE ? onOutside() : onFloor(floors.findIndex((f) => f.id === id)))}
       options={[
-        ...floors.map((f, i) => ({ value: f.id, label: ordinal(i + 1) })),
         { value: OUTSIDE, label: 'Outside', icon: <House size={15} />, iconOnly: true },
+        ...floors.map((f, i) => ({ value: f.id, label: ordinal(i + 1) })),
       ]}
       className="floors"
     />

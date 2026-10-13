@@ -5,8 +5,11 @@ export type Point = [x: number, y: number]
 export type Rect = { x0: number; x1: number; y0: number; y1: number }
 
 export type Opening = {
-  /** A passage is a gap with nothing filling it (like the way onto the stairs). */
-  type: 'door' | 'window' | 'passage'
+  /**
+   * A passage is a gap with nothing filling it (like the way onto the stairs). A sliding door is a glazed panel that
+   * slides along the wall towards its `to` end; a door swings into side 'a', hinged at the `from` end.
+   */
+  type: 'door' | 'sliding' | 'window' | 'passage'
   /** Distance from the wall's `from` point to the opening's near edge. */
   offset: number
   width: number
@@ -74,12 +77,10 @@ export type Outdoor = {
   sheds: Shed[]
 }
 
-/** A gable roof on the top floor, its ridge along the longer side. */
+/** A flat roof on the top floor, edged by a parapet. */
 export type Roof = {
-  /** Degrees from horizontal. */
-  pitch: number
-  /** How far the eaves and verges reach past the walls. */
-  overhang: number
+  /** How high the parapet stands above the roof slab. */
+  parapet: number
   /** The stack's plan footprint; it rises from the top floor through the roof. */
   chimney?: Rect
 }
@@ -90,7 +91,7 @@ export type Site = {
   longitude: number
   /** IANA zone the clock times in the sun panel are read in. */
   timeZone: string
-  /** True north, degrees clockwise from the plan's up. The app lets you adjust it; this is the default. */
+  /** True north, degrees clockwise from the plan's up (from the site plan). */
   north: number
 }
 

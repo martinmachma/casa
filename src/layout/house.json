@@ -4,7 +4,7 @@
     "latitude": 50.08,
     "longitude": 14.43,
     "timeZone": "Europe/Prague",
-    "north": 0
+    "north": 27
   },
   "floors": [
     {
@@ -43,7 +43,7 @@
           "thickness": 0.335,
           "openings": [
             {
-              "type": "door",
+              "type": "sliding",
               "offset": 2.358,
               "width": 1,
               "height": 2.25
@@ -477,8 +477,7 @@
     }
   ],
   "roof": {
-    "pitch": 35,
-    "overhang": 0.4,
+    "parapet": 0.5,
     "chimney": {
       "x0": 5.6,
       "x1": 6.1,

@@ -1,3 +1,6 @@
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useRef, useState } from 'react'
+import { Group, MathUtils, Mesh } from 'three'
 import { openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME } from './palette'
@@ -7,6 +10,12 @@ const FRAME_DEPTH = 0.08
 const LEAF = 0.04
 // Outer walls are the thick ones; their doors and windows get dark aluminium frames.
 const EXTERIOR_WALL = 0.2
+/** How far a door swings open. */
+const SWING = (Math.PI / 180) * 95
+/** How quickly doors move, per second (exponential easing). */
+const SPEED = 6
+// A pointer that moved further than this between down and up was an orbit/pan, not a click.
+const CLICK_SLOP_PX = 5
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
@@ -25,8 +34,25 @@ const frame = (u0: number, u1: number, y0: number, y1: number, color: string, bo
   return boxes
 }
 
+const Boxes = ({ boxes }: { boxes: Box[] }) =>
+  boxes.map((b, k) => (
+    <mesh key={k} position={b.at} castShadow raycast={noRaycast}>
+      <boxGeometry args={b.size} />
+      <meshStandardMaterial color={b.color} roughness={0.6} />
+    </mesh>
+  ))
+
 /** Closed doors and glazed windows sitting in a wall's openings, in the wall's own frame (u along it, y up). */
-export const OpeningFills = ({ openings, thickness }: { openings: Opening[]; thickness: number }) => {
+export const OpeningFills = ({
+  openings,
+  thickness,
+  clickable,
+}: {
+  openings: Opening[]
+  thickness: number
+  /** Whether a tap on a door opens or closes it. */
+  clickable: boolean
+}) => {
   const exterior = thickness >= EXTERIOR_WALL
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME
   return (
@@ -37,40 +63,106 @@ export const OpeningFills = ({ openings, thickness }: { openings: Opening[]; thi
         const u1 = o.offset + o.width
         const y0 = openingSill(o)
         const y1 = y0 + o.height
-        const boxes = frame(u0, u1, y0, y1, frameColor, o.type === 'window')
-        const inner = { u0: u0 + FRAME, u1: u1 - FRAME, y0: o.type === 'window' ? y0 + FRAME : y0, y1: y1 - FRAME }
-        const w = inner.u1 - inner.u0
-        const h = inner.y1 - inner.y0
-        const mid: [number, number, number] = [(inner.u0 + inner.u1) / 2, (inner.y0 + inner.y1) / 2, 0]
+        const window = o.type === 'window'
+        const inner = { u0: u0 + FRAME, u1: u1 - FRAME, y0: window ? y0 + FRAME : y0, y1: y1 - FRAME }
         return (
           <group key={i}>
-            {boxes.map((b, k) => (
-              <mesh key={k} position={b.at} castShadow raycast={noRaycast}>
-                <boxGeometry args={b.size} />
-                <meshStandardMaterial color={b.color} roughness={0.6} />
-              </mesh>
-            ))}
-            {o.type === 'window' ? (
-              <mesh position={mid} raycast={noRaycast}>
-                <boxGeometry args={[w, h, 0.012]} />
-                <meshStandardMaterial color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
-              </mesh>
-            ) : (
-              <>
-                <mesh position={mid} castShadow receiveShadow raycast={noRaycast}>
-                  <boxGeometry args={[w, h, LEAF]} />
-                  <meshStandardMaterial color={exterior ? EXTERIOR_FRAME : DOOR_LEAF} roughness={0.7} />
-                </mesh>
-                {/* A handle on each face, near the edge away from the hinge. */}
-                <mesh position={[inner.u1 - 0.08, inner.y0 + 1.05, 0]} raycast={noRaycast}>
-                  <boxGeometry args={[0.12, 0.02, LEAF + 0.08]} />
-                  <meshStandardMaterial color={HANDLE} metalness={0.6} roughness={0.3} />
-                </mesh>
-              </>
+            <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} />
+            {o.type === 'window' && <Glass inner={inner} />}
+            {o.type === 'door' && (
+              <Door inner={inner} color={exterior ? EXTERIOR_FRAME : DOOR_LEAF} clickable={clickable} />
             )}
+            {o.type === 'sliding' && <SlidingDoor inner={inner} clickable={clickable} />}
           </group>
         )
       })}
+    </group>
+  )
+}
+
+type Inner = { u0: number; u1: number; y0: number; y1: number }
+
+const Glass = ({ inner, z = 0 }: { inner: Inner; z?: number }) => (
+  <mesh position={[(inner.u0 + inner.u1) / 2, (inner.y0 + inner.y1) / 2, z]} raycast={noRaycast}>
+    <boxGeometry args={[inner.u1 - inner.u0, inner.y1 - inner.y0, 0.012]} />
+    <meshStandardMaterial color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
+  </mesh>
+)
+
+/** Open or closed on a tap, and how far it has got (0 closed to 1 open), eased each frame. */
+const useToggle = (clickable: boolean, apply: (group: Group, amount: number) => void) => {
+  const [open, setOpen] = useState(false)
+  const group = useRef<Group>(null)
+  const amount = useRef(0)
+  useFrame((_, dt) => {
+    const target = open ? 1 : 0
+    if (!group.current || amount.current === target) return
+    amount.current = MathUtils.damp(amount.current, target, SPEED, dt)
+    if (Math.abs(amount.current - target) < 0.001) amount.current = target
+    apply(group.current, amount.current)
+  })
+  const handlers = clickable
+    ? {
+        raycast: Mesh.prototype.raycast,
+        onClick: (e: ThreeEvent<MouseEvent>) => {
+          if (e.delta > CLICK_SLOP_PX) return
+          e.stopPropagation()
+          setOpen(!open)
+        },
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')),
+        onPointerOut: () => (document.body.style.cursor = ''),
+      }
+    : { raycast: noRaycast }
+  return { group, handlers }
+}
+
+/** A leaf hinged at the opening's start, swinging into side 'a' (+z). */
+const Door = ({ inner, color, clickable }: { inner: Inner; color: string; clickable: boolean }) => {
+  const { group, handlers } = useToggle(clickable, (g, t) => (g.rotation.y = -t * SWING))
+  const w = inner.u1 - inner.u0
+  const h = inner.y1 - inner.y0
+  return (
+    <group ref={group} position={[inner.u0, 0, 0]}>
+      <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow {...handlers}>
+        <boxGeometry args={[w, h, LEAF]} />
+        <meshStandardMaterial color={color} roughness={0.7} />
+      </mesh>
+      {/* A handle on each face, near the edge away from the hinge. */}
+      <mesh position={[w - 0.08, inner.y0 + 1.05, 0]} {...handlers}>
+        <boxGeometry args={[0.12, 0.02, LEAF + 0.08]} />
+        <meshStandardMaterial color={HANDLE} metalness={0.6} roughness={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
+/** A glazed panel just inside the frame, sliding along the wall towards its end (+u), over whatever is next to it. */
+const SlidingDoor = ({ inner, clickable }: { inner: Inner; clickable: boolean }) => {
+  const w = inner.u1 - inner.u0
+  const z = FRAME_DEPTH / 2 + LEAF / 2 + 0.005
+  const { group, handlers } = useToggle(clickable, (g, t) => (g.position.x = inner.u0 + t * (w - FRAME)))
+  const panel: Inner = { u0: FRAME, u1: w - FRAME, y0: inner.y0 + FRAME, y1: inner.y1 - FRAME }
+  const boxes = frame(0, w, inner.y0, inner.y1, EXTERIOR_FRAME, true).map((b) => ({
+    ...b,
+    size: [b.size[0], b.size[1], LEAF] as Box['size'],
+  }))
+  return (
+    <group ref={group} position={[inner.u0, 0, z]}>
+      {boxes.map((b, k) => (
+        <mesh key={k} position={b.at} castShadow {...handlers}>
+          <boxGeometry args={b.size} />
+          <meshStandardMaterial color={b.color} roughness={0.6} />
+        </mesh>
+      ))}
+      {/* The glass takes taps too, so the whole panel opens it. */}
+      <mesh position={[w / 2, (panel.y0 + panel.y1) / 2, 0]} {...handlers}>
+        <boxGeometry args={[panel.u1 - panel.u0, panel.y1 - panel.y0, 0.012]} />
+        <meshStandardMaterial color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
+      </mesh>
+      <mesh position={[0.03, inner.y0 + 1.05, LEAF / 2 + 0.01]} {...handlers}>
+        <boxGeometry args={[0.02, 0.3, 0.02]} />
+        <meshStandardMaterial color={HANDLE} metalness={0.6} roughness={0.3} />
+      </mesh>
     </group>
   )
 }

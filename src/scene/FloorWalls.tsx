@@ -20,10 +20,12 @@ type FloorWallsProps = {
   colors: Map<string, string>
   selection: Selection | undefined
   interactive: boolean
+  /** Whether taps open and close doors. */
+  doors: boolean
   onPick: (wallId: string, side: WallSide) => void
 }
 
-export const FloorWalls = ({ floor, colors, selection, interactive, onPick }: FloorWallsProps) => (
+export const FloorWalls = ({ floor, colors, selection, interactive, doors, onPick }: FloorWallsProps) => (
   <group>
     {floor.walls.map((wall) => (
       <WallMesh
@@ -34,6 +36,7 @@ export const FloorWalls = ({ floor, colors, selection, interactive, onPick }: Fl
         colorB={colors.get(wallColorKey(wall.id, 'b')) ?? DEFAULT_WALL}
         selectedSide={selection?.kind === 'wall' && selection.wallId === wall.id ? selection.side : undefined}
         interactive={interactive}
+        doors={doors}
         onPick={onPick}
       />
     ))}
@@ -47,13 +50,14 @@ type WallMeshProps = {
   colorB: string
   selectedSide: WallSide | undefined
   interactive: boolean
+  doors: boolean
   onPick: (wallId: string, side: WallSide) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPick }: WallMeshProps) => {
+const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, doors, onPick }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(
     () => wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET),
@@ -102,7 +106,7 @@ const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPi
           {selectedSide && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
         </mesh>
       ))}
-      {wall.openings && <OpeningFills openings={wall.openings} thickness={thickness} />}
+      {wall.openings && <OpeningFills openings={wall.openings} thickness={thickness} clickable={doors} />}
     </group>
   )
 }

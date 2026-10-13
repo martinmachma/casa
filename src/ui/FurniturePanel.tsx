@@ -3,13 +3,12 @@ import { useState } from 'react'
 import type { FurnitureItem } from '../data/types'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
 import { NumberField } from './NumberField'
-import { PanelHead, Section, Switch } from './kit'
+import { Section, Switch } from './kit'
 
 /** What to add: a catalog model or a plain box, sizes in metres. */
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
 type FurniturePanelProps = {
-  floorName: string
   items: FurnitureItem[]
   snap: boolean
   onSnap: (snap: boolean) => void
@@ -20,18 +19,16 @@ type FurniturePanelProps = {
 const cm = (m: number) => Math.round(m * 100)
 
 /** What the right panel shows while editing with nothing selected: what's on the floor, and what can be added. */
-export const FurniturePanel = ({ floorName, items, snap, onSnap, onAdd, onSelect }: FurniturePanelProps) => {
+export const FurniturePanel = ({ items, snap, onSnap, onAdd, onSelect }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
   const [group, setGroup] = useState<CatalogGroup | 'Box'>('Living')
 
   return (
     <>
-      <PanelHead
-        eyebrow="Editing"
-        title={floorName}
-        sub="Tap a wall to paint it, a floor to change its finish, or add furniture below."
-      />
+      <Section>
+        <p className="hint">Tap a wall to paint it, a floor to change its finish, or add furniture below.</p>
+      </Section>
 
       <Section title="On this floor" aside={<span className="muted num">{items.length}</span>}>
         {items.length > 0 ? (

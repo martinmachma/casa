@@ -19,7 +19,7 @@ import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
 import { Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
-import { NorthArrow } from './NorthArrow'
+import { Compass, CompassTracker } from './Compass'
 import { WalkCamera } from './WalkCamera'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
 import { clearances } from '../measure/clearance'
@@ -119,6 +119,7 @@ export const HouseScene = ({
   ]
 
   const labels = useRef<(HTMLDivElement | null)[]>([])
+  const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
   // Only editing makes walls, floors and furniture respond; while measuring, taps go to the floor plane only.
   const pickable = interaction === 'edit'
@@ -147,13 +148,7 @@ export const HouseScene = ({
         )}
         <CameraNudger nudge={nudge} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
-        {sun && (
-          <NorthArrow
-            north={north}
-            center={[cx, floor.elevation, cz]}
-            radius={Math.hypot(max[0] - min[0], max[1] - min[1]) / 2 + 0.8}
-          />
-        )}
+        <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
 
@@ -177,6 +172,7 @@ export const HouseScene = ({
               colors={data.wallColors}
               selection={selection}
               interactive={pickable && f.id === floor.id}
+              doors={!measure && (outside || f.id === floor.id)}
               onPick={pickWall}
             />
           </group>
@@ -224,6 +220,7 @@ export const HouseScene = ({
         <RoomLabels floor={floor} labels={labels} hovered={hoveredRoom} onHover={onHoverRoom} onPick={pickRoom} />
       )}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
+      <Compass needle={needle} />
     </>
   )
 }
@@ -250,11 +247,10 @@ const Slab = ({ floor, color = FLOOR_SLAB }: { floor: Floor; color?: string }) =
   )
 }
 
-/** Roughly how high the house stands: the top floor's walls plus a roof rising half the width. */
+/** How high the house stands: the top floor's walls plus the flat roof and its parapet. */
 const roofTop = (floors: Floor[]) => {
   const top = floors[floors.length - 1]
-  const { min, max } = floorBounds(top)
-  return top.elevation + top.height + Math.min(max[0] - min[0], max[1] - min[1]) / 2
+  return top.elevation + top.height + SLAB + (house.roof?.parapet ?? 0)
 }
 
 type CameraRigProps = {

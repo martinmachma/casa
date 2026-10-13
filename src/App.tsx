@@ -14,7 +14,7 @@ import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
-import { useNorth, type SunSettings } from './sun/useSun'
+import type { SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { wallText } from './measure/dimensions'
 import type { MeasurePick, Measurement } from './measure/measure'
@@ -26,8 +26,6 @@ import { wallColorKey } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
-import { PanelHead, Section } from './ui/kit'
-import { PenLine } from 'lucide-react'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -52,7 +50,6 @@ const House = ({ backend, account }: HouseProps) => {
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
   const [sun, setSun] = useState<SunSettings>()
-  const [north, setNorth] = useNorth()
   const { site } = house
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
@@ -206,7 +203,6 @@ const House = ({ backend, account }: HouseProps) => {
     if (editing)
       return (
         <FurniturePanel
-          floorName={floor.name}
           items={data.furniture.filter((f) => f.floor === floor.id)}
           snap={snap}
           onSnap={setSnap}
@@ -214,29 +210,7 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={(id) => select({ kind: 'furniture', id })}
         />
       )
-    return (
-      <>
-        <PanelHead
-          eyebrow="Our house"
-          title={outside ? 'Outside' : floor.name}
-          onClose={closeRight}
-          closeLabel="Hide panel"
-        />
-        <SunPanel sun={sun} position={sunAt} north={north} onSun={setSun} onNorth={setNorth} />
-        {!outside && (
-          <Section title="Make changes">
-            <p className="hint">
-              Edit mode lets you paint walls, pick floor finishes, arrange furniture and measure. Looking around never
-              changes anything.
-            </p>
-            <button className="btn btn-primary btn-block" onClick={() => changeInteraction('edit')}>
-              <PenLine size={16} />
-              Start editing
-            </button>
-          </Section>
-        )}
-      </>
-    )
+    return <SunPanel sun={sun} position={sunAt} onSun={setSun} />
   })()
 
   return (
@@ -287,7 +261,7 @@ const House = ({ backend, account }: HouseProps) => {
           onHoverRoom={setHoveredRoom}
           snap={snap}
           sun={sunAt}
-          north={north}
+          north={site.north}
           measure={measure}
           onMeasurePick={addMeasurePick}
           nudge={nudge}
