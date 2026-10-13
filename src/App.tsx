@@ -62,10 +62,9 @@ const House = ({ backend, account }: HouseProps) => {
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
   const selectedItem = selection?.kind === 'furniture' ? data.furniture.find((f) => f.id === selection.id) : undefined
 
-  const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>) => {
-    data.patchFurniture(item.id, patch)
-    data.saveFurniture({ ...item, ...patch })
-  }
+  // Typing a size or dragging the colour picker undoes as one step per field.
+  const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>, key?: string) =>
+    data.patchFurniture(item.id, patch, key)
   const rotateItem = (item: FurnitureItem, degrees: number) => {
     const rotation = normalizeAngle(item.rotation + (degrees * Math.PI) / 180)
     // Turning an item that sits against a wall would swing it into the wall; re-seat it, unless
@@ -76,6 +75,7 @@ const House = ({ backend, account }: HouseProps) => {
   }
   /** Picking something shows it in the right panel, opening the panel if it was tucked away. */
   const select = (next: Selection | undefined) => {
+    data.endEdit()
     setSelection(next)
     if (next) setRightOpen(true)
   }
@@ -141,8 +141,16 @@ const House = ({ backend, account }: HouseProps) => {
   // E toggles editing, M measuring; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey || outside) return
+      // Text fields keep their own undo.
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
       const key = e.key.toLowerCase()
+      if (!typing && !outside && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
+        e.preventDefault()
+        if (key === 'y' || e.shiftKey) redo()
+        else undo()
+        return
+      }
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') changeInteraction(interaction === 'measure' ? 'edit' : 'measure')
       else if (selectedItem && key === 'r') rotateItem(selectedItem, e.shiftKey ? -15 : 15)
@@ -157,6 +165,15 @@ const House = ({ backend, account }: HouseProps) => {
   })
 
   const editing = interaction !== 'view'
+  // A stepped-back item may no longer exist, so nothing stays selected.
+  const undo = () => {
+    setSelection(undefined)
+    data.undo()
+  }
+  const redo = () => {
+    setSelection(undefined)
+    data.redo()
+  }
   const closeRight = () => setRightOpen(false)
 
   const inspector = (() => {
@@ -187,6 +204,8 @@ const House = ({ backend, account }: HouseProps) => {
         <RoomPanel
           room={selectedRoom}
           region={regions.get(selectedRoom.id)}
+          names={data.roomNames}
+          onName={(name) => data.setRoomName(selectedRoom.id, name)}
           material={data.roomFloors.get(selectedRoom.id)}
           onMaterial={(material) => data.setRoomFloor(selectedRoom.id, material)}
           onClose={() => setSelection(undefined)}
@@ -196,7 +215,7 @@ const House = ({ backend, account }: HouseProps) => {
       return (
         <FurnitureEditor
           item={selectedItem}
-          onChange={(patch) => changeItem(selectedItem, patch)}
+          onChange={(patch) => changeItem(selectedItem, patch, `${selectedItem.id}:${Object.keys(patch).join()}`)}
           onRotate={(deg) => rotateItem(selectedItem, deg)}
           onDelete={() => deleteItem(selectedItem)}
           onClose={() => setSelection(undefined)}
@@ -241,6 +260,7 @@ const House = ({ backend, account }: HouseProps) => {
             <RoomLegend
               floor={floor}
               regions={regions}
+              names={data.roomNames}
               hovered={hoveredRoom}
               selected={selection?.kind === 'room' ? selection.roomId : undefined}
               onHover={setHoveredRoom}
@@ -272,7 +292,14 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={select}
         />
 
-        {!outside && <ModeBar interaction={interaction} onChange={changeInteraction} />}
+        {!outside && (
+          <ModeBar
+            interaction={interaction}
+            onChange={changeInteraction}
+            onUndo={data.canUndo ? undo : undefined}
+            onRedo={data.canRedo ? redo : undefined}
+          />
+        )}
 
         <CameraPad
           mode={camera}

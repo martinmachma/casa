@@ -25,12 +25,21 @@ export type FurnitureItem = {
   model?: string
 }
 
+/** A name given to a room, replacing the plan's; the plan number stays. */
+export type RoomName = { roomId: string; name: string }
+
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
 /** Everything placed in the house: what a version records. */
-export type HouseState = { walls: WallColor[]; floors: RoomFloor[]; furniture: FurnitureItem[] }
+export type HouseState = {
+  walls: WallColor[]
+  floors: RoomFloor[]
+  furniture: FurnitureItem[]
+  /** Absent in versions saved before rooms could be renamed. */
+  rooms?: RoomName[]
+}
 
-export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [] }
+export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [], rooms: [] }
 
 /** A saved snapshot of the house; versions never change once saved. */
 export type Version = {

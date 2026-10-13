@@ -127,11 +127,8 @@ export const HouseScene = ({
 
   const pickWall = (wallId: string, side: WallSide) => onSelect({ kind: 'wall', wallId, side })
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
-    data.patchFurniture(id, placement)
-  const saveItem = (id: string) => {
-    const item = data.furniture.find((f) => f.id === id)
-    if (item) data.saveFurniture(item)
-  }
+    data.patchFurniture(id, placement, `move:${id}`)
+  const saveItem = () => data.endEdit()
 
   return (
     <>
@@ -223,7 +220,14 @@ export const HouseScene = ({
         ))}
       </Canvas>
       {camera !== 'walk' && !outside && (
-        <RoomLabels floor={floor} labels={labels} hovered={hoveredRoom} onHover={onHoverRoom} onPick={pickRoom} />
+        <RoomLabels
+          floor={floor}
+          labels={labels}
+          names={data.roomNames}
+          hovered={hoveredRoom}
+          onHover={onHoverRoom}
+          onPick={pickRoom}
+        />
       )}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       <Compass needle={needle} />

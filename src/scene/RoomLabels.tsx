@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, type RefObject } from 'react'
 import { Vector3 } from 'three'
-import { roomParts } from '../layout/roomName'
+import { roomLabel } from '../layout/roomName'
 import type { Floor } from '../layout/types'
 
 // Room numbers are plain DOM over the canvas, moved every frame to follow their spot on the floor.
@@ -13,6 +13,8 @@ type LabelRefs = RefObject<(HTMLDivElement | null)[]>
 type RoomLabelsProps = { floor: Floor; labels: LabelRefs }
 
 type RoomLabelsDomProps = RoomLabelsProps & {
+  /** Names we gave rooms, replacing the plan's. */
+  names: Map<string, string>
   hovered: string | undefined
   onHover: (roomId: string | undefined) => void
   /** Only while editing. */
@@ -20,24 +22,27 @@ type RoomLabelsDomProps = RoomLabelsProps & {
 }
 
 /** The DOM half: render next to the <Canvas>. */
-export const RoomLabels = ({ floor, labels, hovered, onHover, onPick }: RoomLabelsDomProps) => (
+export const RoomLabels = ({ floor, labels, names, hovered, onHover, onPick }: RoomLabelsDomProps) => (
   <div className="overlay room-labels" data-clickable={onPick ? '' : undefined}>
-    {floor.rooms.map((room, i) => (
-      <div
-        key={room.id}
-        className="room-label"
-        data-active={hovered === room.id ? '' : undefined}
-        title={room.name}
-        ref={(el) => {
-          labels.current[i] = el
-        }}
-        onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(room.id)}
-        onPointerLeave={() => onHover(undefined)}
-        onClick={() => onPick?.(room.id)}
-      >
-        {roomParts(room).number ?? roomParts(room).name}
-      </div>
-    ))}
+    {floor.rooms.map((room, i) => {
+      const { number, name } = roomLabel(room, names)
+      return (
+        <div
+          key={room.id}
+          className="room-label"
+          data-active={hovered === room.id ? '' : undefined}
+          title={name}
+          ref={(el) => {
+            labels.current[i] = el
+          }}
+          onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(room.id)}
+          onPointerLeave={() => onHover(undefined)}
+          onClick={() => onPick?.(room.id)}
+        >
+          {number ?? name}
+        </div>
+      )
+    })}
   </div>
 )
 

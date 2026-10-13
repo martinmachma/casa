@@ -18,7 +18,12 @@ const fromRow = (r: VersionRow): Version => ({
   ...(r.author ? { author: r.author } : {}),
   createdAt: r.created_at,
   ...(r.based_on ? { basedOn: r.based_on } : {}),
-  data: { walls: r.data?.walls ?? [], floors: r.data?.floors ?? [], furniture: r.data?.furniture ?? [] },
+  data: {
+    walls: r.data?.walls ?? [],
+    floors: r.data?.floors ?? [],
+    furniture: r.data?.furniture ?? [],
+    rooms: r.data?.rooms ?? [],
+  },
 })
 
 const check = <T>({ data, error }: { data: T; error: { message: string } | null }): T => {

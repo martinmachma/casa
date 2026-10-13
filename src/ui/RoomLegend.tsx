@@ -1,11 +1,13 @@
 import { floorRegions, type RoomRegion } from '../layout/rooms'
-import { roomParts } from '../layout/roomName'
+import { roomLabel } from '../layout/roomName'
 import type { Floor } from '../layout/types'
 import { PanelHead } from './kit'
 
 type RoomLegendProps = {
   floor: Floor
   regions: Map<string, RoomRegion>
+  /** Names we gave rooms, replacing the plan's. */
+  names: Map<string, string>
   /** The room under the pointer, here or on its number in the 3D view. */
   hovered: string | undefined
   selected: string | undefined
@@ -18,13 +20,13 @@ type RoomLegendProps = {
 const area = (m2: number) => `${m2.toFixed(1)} m²`
 
 /** The left panel: the floor's rooms, keyed by the numbers shown in the 3D view. */
-export const RoomLegend = ({ floor, regions, hovered, selected, onHover, onPick, onClose }: RoomLegendProps) => {
+export const RoomLegend = ({ floor, regions, names, hovered, selected, onHover, onPick, onClose }: RoomLegendProps) => {
   return (
     <>
       <PanelHead title="Rooms" onClose={onClose} closeLabel="Hide rooms" />
       <ul className="legend" data-clickable={onPick ? '' : undefined} onMouseLeave={() => onHover(undefined)}>
         {floor.rooms.map((room) => {
-          const { number, name } = roomParts(room)
+          const { number, name } = roomLabel(room, names)
           const region = regions.get(room.id)
           return (
             <li key={room.id}>
