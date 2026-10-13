@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateLayout, wallLength, wallPieces } from './geometry'
+import { floorBounds, validateLayout, wallPieces } from './geometry'
 import { house } from './layout'
 import type { HouseLayout, Wall } from './types'
 
@@ -56,7 +56,11 @@ describe('validateLayout', () => {
   it('accepts the bundled layout', () => {
     expect(() => validateLayout(house)).not.toThrow()
     expect(house.floors).toHaveLength(2)
-    expect(wallLength(house.floors[0].walls[0])).toBeCloseTo(6.025)
+    // Thick front and back walls stop flush with the side walls' outer faces: the house is 6.2 m wide, no stubs.
+    for (const floor of house.floors) {
+      const { min, max } = floorBounds(floor)
+      expect(max[0] - min[0]).toBeCloseTo(6.2)
+    }
   })
 
   it('rejects an opening past the wall end', () => {

@@ -38,19 +38,19 @@
       "walls": [
         {
           "id": "g-north",
-          "from": [0.113, 0.168],
-          "to": [6.138, 0.168],
+          "from": [0.193, 0.168],
+          "to": [6.058, 0.168],
           "thickness": 0.335,
           "openings": [
             {
               "type": "door",
-              "offset": 2.438,
+              "offset": 2.358,
               "width": 1,
               "height": 2.25
             },
             {
               "type": "window",
-              "offset": 3.438,
+              "offset": 3.358,
               "width": 1.5,
               "height": 2.25,
               "sill": 0
@@ -65,13 +65,13 @@
         },
         {
           "id": "g-south",
-          "from": [6.138, 7.782],
+          "from": [6.058, 7.782],
           "to": [2.502, 7.782],
           "thickness": 0.335,
           "openings": [
             {
               "type": "window",
-              "offset": 0.288,
+              "offset": 0.208,
               "width": 2.75,
               "height": 1.75,
               "sill": 0.675
@@ -95,7 +95,7 @@
         {
           "id": "g-entrance-south",
           "from": [2.502, 9.332],
-          "to": [0.113, 9.332],
+          "to": [0.193, 9.332],
           "thickness": 0.335,
           "openings": [
             {
@@ -330,20 +330,20 @@
       "walls": [
         {
           "id": "u-north",
-          "from": [0.113, 0.168],
-          "to": [6.138, 0.168],
+          "from": [0.193, 0.168],
+          "to": [6.058, 0.168],
           "thickness": 0.335,
           "openings": [
             {
               "type": "window",
-              "offset": 0.86,
+              "offset": 0.78,
               "width": 1.65,
               "height": 1.5,
               "sill": 0.9
             },
             {
               "type": "window",
-              "offset": 3.738,
+              "offset": 3.658,
               "width": 1.15,
               "height": 1.2,
               "sill": 1.1
@@ -358,20 +358,20 @@
         },
         {
           "id": "u-south",
-          "from": [6.138, 9.332],
-          "to": [0.113, 9.332],
+          "from": [6.058, 9.332],
+          "to": [0.193, 9.332],
           "thickness": 0.335,
           "openings": [
             {
               "type": "window",
-              "offset": 0.788,
+              "offset": 0.708,
               "width": 1.5,
               "height": 1.5,
               "sill": 0.9
             },
             {
               "type": "window",
-              "offset": 3.286,
+              "offset": 3.206,
               "width": 2,
               "height": 1.5,
               "sill": 0.9
