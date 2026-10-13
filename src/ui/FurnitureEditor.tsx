@@ -1,6 +1,8 @@
+import { RotateCcw, RotateCw, Trash2 } from 'lucide-react'
 import type { FurnitureItem } from '../data/types'
 import { FURNITURE_SWATCHES } from '../scene/palette'
 import { NumberField } from './NumberField'
+import { PanelHead, Section } from './kit'
 
 type FurnitureEditorProps = {
   item: FurnitureItem
@@ -15,16 +17,15 @@ const cm = (m: number) => Math.round(m * 100)
 const degrees = (rad: number) => Math.round(((((rad * 180) / Math.PI) % 360) + 360) % 360)
 
 export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onClose }: FurnitureEditorProps) => (
-  <section className="panel" aria-label="Selected furniture">
-    <div className="panel-head">
-      <h2>{item.name}</h2>
-      <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close">
-        ✕
-      </button>
-    </div>
-    <p className="hint">Drag it on the floor. R / Shift+R rotates, Delete removes.</p>
+  <>
+    <PanelHead
+      eyebrow="Furniture"
+      title={item.name}
+      sub={`${cm(item.width)} × ${cm(item.depth)} × ${cm(item.height)} cm`}
+      onClose={onClose}
+    />
 
-    <div className="row">
+    <Section>
       <label className="field">
         Name
         <input
@@ -36,42 +37,52 @@ export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onClose }:
           }
         />
       </label>
-    </div>
-    <div className="row" key={item.id}>
-      <NumberField label="Width cm" value={cm(item.width)} onCommit={(v) => onChange({ width: v / 100 })} />
-      <NumberField label="Depth cm" value={cm(item.depth)} onCommit={(v) => onChange({ depth: v / 100 })} />
-      <NumberField label="Height cm" value={cm(item.height)} onCommit={(v) => onChange({ height: v / 100 })} />
-    </div>
+      <div className="row" key={item.id}>
+        <NumberField label="Width cm" value={cm(item.width)} onCommit={(v) => onChange({ width: v / 100 })} />
+        <NumberField label="Depth cm" value={cm(item.depth)} onCommit={(v) => onChange({ depth: v / 100 })} />
+        <NumberField label="Height cm" value={cm(item.height)} onCommit={(v) => onChange({ height: v / 100 })} />
+      </div>
+    </Section>
 
-    <div className="row row-wrap">
-      <button className="btn btn-icon" onClick={() => onRotate(-15)} aria-label="Rotate 15° left">
-        ⟲
-      </button>
-      <button className="btn btn-icon" onClick={() => onRotate(15)} aria-label="Rotate 15° right">
-        ⟳
-      </button>
-      <button className="btn" onClick={() => onRotate(90)}>
-        Turn 90°
-      </button>
-      <span className="muted">{degrees(item.rotation)}°</span>
-    </div>
+    <Section title="Rotation" aside={<span className="muted num">{degrees(item.rotation)}°</span>}>
+      <div className="row">
+        <button className="btn" onClick={() => onRotate(-15)} title="Rotate 15° left (Shift+R)">
+          <RotateCcw size={16} />
+          15°
+        </button>
+        <button className="btn" onClick={() => onRotate(15)} title="Rotate 15° right (R)">
+          <RotateCw size={16} />
+          15°
+        </button>
+        <button className="btn" onClick={() => onRotate(90)}>
+          Turn 90°
+        </button>
+      </div>
+    </Section>
 
-    {item.model && <p className="hint">Colour changes the upholstery, where there is some.</p>}
-    <div className="swatches">
-      {FURNITURE_SWATCHES.map((c) => (
-        <button
-          key={c}
-          className="swatch"
-          style={{ background: c }}
-          aria-label={c}
-          aria-pressed={item.color.toLowerCase() === c}
-          onClick={() => onChange({ color: c })}
-        />
-      ))}
-    </div>
+    <Section title={item.model ? 'Upholstery' : 'Colour'}>
+      <div className="swatches">
+        {FURNITURE_SWATCHES.map((c) => (
+          <button
+            key={c}
+            className="swatch"
+            style={{ background: c }}
+            aria-label={c}
+            aria-pressed={item.color.toLowerCase() === c}
+            onClick={() => onChange({ color: c })}
+          />
+        ))}
+      </div>
+    </Section>
 
-    <button className="btn btn-danger" onClick={onDelete}>
-      Delete
-    </button>
-  </section>
+    <Section>
+      <p className="hint">
+        Drag it on the floor. <span className="kbd">R</span> rotates, <span className="kbd">Del</span> removes.
+      </p>
+      <button className="btn btn-danger btn-block" onClick={onDelete}>
+        <Trash2 size={16} />
+        Remove from the house
+      </button>
+    </Section>
+  </>
 )

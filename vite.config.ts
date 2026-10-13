@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Casa',
         short_name: 'Casa',
         description: 'Our house: walls, colours and furniture.',
-        theme_color: '#f4efe8',
-        background_color: '#f4efe8',
+        theme_color: '#ffffff',
+        background_color: '#f4f2ee',
         display: 'standalone',
         start_url: '/',
         icons: [

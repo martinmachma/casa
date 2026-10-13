@@ -1,6 +1,6 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo } from 'react'
-import { BufferGeometry, Float32BufferAttribute } from 'three'
+import { BufferGeometry, Float32BufferAttribute, Mesh } from 'three'
 import type { Rect, RoomRegion } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 import { floorMaterial, floorTexture } from './floorMaterials'
@@ -41,18 +41,28 @@ type RoomFloorsProps = {
   regions: Map<string, RoomRegion>
   materials: Map<string, string>
   selectedRoom: string | undefined
+  /** Lit up softly: the room hovered in the legend or on its number. */
+  hoveredRoom: string | undefined
   interactive: boolean
   onPick: (roomId: string) => void
 }
 
-export const RoomFloors = ({ floor, regions, materials, selectedRoom, interactive, onPick }: RoomFloorsProps) => (
+export const RoomFloors = ({
+  floor,
+  regions,
+  materials,
+  selectedRoom,
+  hoveredRoom,
+  interactive,
+  onPick,
+}: RoomFloorsProps) => (
   <group position={[0, floor.elevation + LIFT, 0]}>
     {[...regions.values()].map((region) => (
       <RoomFloorMesh
         key={region.roomId}
         region={region}
         material={materials.get(region.roomId)}
-        selected={region.roomId === selectedRoom}
+        tint={region.roomId === selectedRoom ? 0.3 : region.roomId === hoveredRoom ? 0.18 : 0}
         interactive={interactive}
         onPick={onPick}
       />
@@ -63,14 +73,16 @@ export const RoomFloors = ({ floor, regions, materials, selectedRoom, interactiv
 type RoomFloorMeshProps = {
   region: RoomRegion
   material: string | undefined
-  selected: boolean
+  /** How strongly the accent colour washes over the floor; 0 for not at all. */
+  tint: number
   interactive: boolean
   onPick: (roomId: string) => void
 }
 
+// Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const RoomFloorMesh = ({ region, material, selected, interactive, onPick }: RoomFloorMeshProps) => {
+const RoomFloorMesh = ({ region, material, tint, interactive, onPick }: RoomFloorMeshProps) => {
   const geometry = useMemo(() => floorGeometry(region.cells), [region])
   const finish = floorMaterial(material)
   const map = finish ? floorTexture(finish) : null
@@ -86,7 +98,7 @@ const RoomFloorMesh = ({ region, material, selected, interactive, onPick }: Room
       <mesh
         geometry={geometry}
         receiveShadow
-        raycast={interactive ? undefined : noRaycast}
+        raycast={interactive ? Mesh.prototype.raycast : noRaycast}
         onClick={interactive ? handleClick : undefined}
       >
         <meshStandardMaterial
@@ -96,9 +108,9 @@ const RoomFloorMesh = ({ region, material, selected, interactive, onPick }: Room
           roughness={finish?.roughness ?? 0.9}
         />
       </mesh>
-      {selected && (
+      {tint > 0 && (
         <mesh geometry={geometry} position={[0, 0.002, 0]} raycast={noRaycast}>
-          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={0.22} depthWrite={false} />
+          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={tint} depthWrite={false} />
         </mesh>
       )}
     </>

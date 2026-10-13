@@ -7,7 +7,7 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Wall, WallSide } from '../layout/types'
+import type { Floor, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
@@ -18,8 +18,7 @@ import { NorthArrow } from './NorthArrow'
 import { WalkCamera } from './WalkCamera'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
 import { clearances } from '../measure/clearance'
-import { faceRuns, openingCenter, openingText, wallText } from '../measure/dimensions'
-import { formatLength, type MeasurePick, type Measurement } from '../measure/measure'
+import { distance, formatLength, measuredLine, type MeasurePick, type Measurement } from '../measure/measure'
 import { floorWallRects } from '../layout/rooms'
 import { Line } from '@react-three/drei'
 import { SELECTED_OUTLINE } from './palette'
@@ -27,7 +26,7 @@ import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
-import type { CameraMode, Selection } from './selection'
+import type { CameraMode, Interaction, Selection } from './selection'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
@@ -37,12 +36,16 @@ type HouseSceneProps = {
   floorIndex: number
   camera: CameraMode
   data: HouseData
+  /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
+  interaction: Interaction
   selection: Selection | undefined
+  hoveredRoom: string | undefined
+  onHoverRoom: (roomId: string | undefined) => void
   snap: boolean
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
-  /** The measurement in progress; undefined when not measuring. Sizes are labelled while measuring. */
+  /** The measurement in progress; undefined when not measuring. */
   measure: Measurement | undefined
   onMeasurePick: (pick: MeasurePick) => void
   nudge: RefObject<CameraNudge>
@@ -56,7 +59,10 @@ export const HouseScene = ({
   floorIndex,
   camera,
   data,
+  interaction,
   selection,
+  hoveredRoom,
+  onHoverRoom,
   snap,
   sun,
   north,
@@ -67,36 +73,12 @@ export const HouseScene = ({
   onSelect,
 }: HouseSceneProps) => {
   const floor = floors[floorIndex]
-  const showSizes = Boolean(measure)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
-  const regions = floorRegions(floor)
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
 
   const items = data.furniture.filter((f) => f.floor === floor.id)
-  const top = floor.elevation + floor.height + 0.02
-  const sizeLabels = useMemo<Annotation[]>(
-    () =>
-      showSizes
-        ? [
-            ...faceRuns(floor).map((r): Annotation => ({
-              key: r.key,
-              at: [r.labelAt[0], top, r.labelAt[1]],
-              text: formatLength(r.length),
-              kind: 'face',
-              anchor: r.facing,
-            })),
-            ...floor.walls.flatMap((w) =>
-              (w.openings ?? []).map((o, i): Annotation => {
-                const [x, y] = openingCenter(w, o)
-                return { key: `${w.id}:o${i}`, at: [x, top, y], text: openingText(o), kind: 'opening' }
-              }),
-            ),
-          ]
-        : [],
-    [showSizes, floor, top],
-  )
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedItem =
@@ -104,8 +86,22 @@ export const HouseScene = ({
   const wallRects = useMemo(() => floorWallRects(floor), [floor])
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = floor.elevation + 0.05
+  const measured = measure && measuredLine(measure)
   const annotations = [
-    ...sizeLabels,
+    ...(measured
+      ? [
+          {
+            key: 'measure',
+            at: [
+              (measured.from[0] + measured.to[0]) / 2,
+              floor.elevation + 0.03,
+              (measured.from[1] + measured.to[1]) / 2,
+            ] as [number, number, number],
+            text: formatLength(distance(measured.from, measured.to)),
+            kind: 'measure' as const,
+          },
+        ]
+      : []),
     ...gaps.map((g, i): Annotation => ({
       key: `gap${i}`,
       at: [(g.from[0] + g.to[0]) / 2, gapY, (g.from[1] + g.to[1]) / 2],
@@ -114,22 +110,11 @@ export const HouseScene = ({
     })),
   ]
 
-  const hoverWall = (wall: Wall | undefined, x: number, y: number) => {
-    const el = tooltip.current
-    if (!el) return
-    if (!wall) {
-      el.style.visibility = 'hidden'
-      return
-    }
-    el.textContent = wallText(wall, floor)
-    el.style.transform = `translate(${x + 14}px, ${y + 14}px)`
-    el.style.visibility = 'visible'
-  }
   const labels = useRef<(HTMLDivElement | null)[]>([])
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
-  const tooltip = useRef<HTMLDivElement>(null)
-  // While measuring, taps go to the floor plane only.
-  const pickable = !measure
+  // Only editing makes walls, floors and furniture respond; while measuring, taps go to the floor plane only.
+  const pickable = interaction === 'edit'
+  const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
   const pickWall = (wallId: string, side: WallSide) => onSelect({ kind: 'wall', wallId, side })
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
@@ -141,7 +126,7 @@ export const HouseScene = ({
 
   return (
     <>
-      <Canvas shadows dpr={[1, 2]} onPointerMissed={() => onSelect(undefined)}>
+      <Canvas shadows dpr={[1, 2]} onPointerMissed={() => pickable && onSelect(undefined)}>
         {camera === 'walk' ? (
           <WalkCamera key={`${floor.id}-${viewKey}`} floor={floor} furniture={data.furniture} nudge={nudge} />
         ) : (
@@ -166,6 +151,7 @@ export const HouseScene = ({
               regions={floorRegions(f)}
               materials={data.roomFloors}
               selectedRoom={selection?.kind === 'room' ? selection.roomId : undefined}
+              hoveredRoom={f.id === floor.id ? hoveredRoom : undefined}
               interactive={pickable && f.id === floor.id}
               onPick={(roomId) => onSelect({ kind: 'room', roomId })}
             />
@@ -175,7 +161,6 @@ export const HouseScene = ({
               selection={selection}
               interactive={pickable && f.id === floor.id}
               onPick={pickWall}
-              onHover={hoverWall}
             />
           </group>
         ))}
@@ -216,9 +201,10 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {camera !== 'walk' && <RoomLabels floor={floor} labels={labels} regions={regions} showSizes={showSizes} />}
+      {camera !== 'walk' && (
+        <RoomLabels floor={floor} labels={labels} hovered={hoveredRoom} onHover={onHoverRoom} onPick={pickRoom} />
+      )}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
-      <div className="wall-tooltip" ref={tooltip} />
     </>
   )
 }

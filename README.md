@@ -134,40 +134,47 @@ the real plan is traced. The format is meant to be edited by hand:
 
 ## Using it
 
-- **Room labels** show each room's floor area, measured to the wall faces with doors closed. Rooms come from the
-  `rooms` label points in the layout: the floor is flood-filled from each label, so a room needs closed walls around
-  it (two labels in one open space, like stairs and landing, split it halfway between them).
-- **Tap a room's floor** to pick its finish: wood, tiles, carpet or concrete (drawn in the app, no downloads). Saved
-  per colour scheme like the walls.
-- **Measure** turns on the size labels: every wall face with its length (inside a room that's its clear width, outside the overall size),
-  every door and window with its width × height (and sill), and each room with width × depth and height. With a
-  mouse, hovering a wall shows its length, thickness and height; the wall panel shows them too. While a piece of
-  furniture is selected or dragged, dashed lines show how far each side is from the nearest wall.
-- **Measure** has two modes. **Points**: tap two points on the floor for the distance between them, diagonals
-  included. Taps near a wall face or corner land exactly on it, and a nearly straight line squares up. **Faces**: tap
-  a wall or the side of a piece, then another, for the square-on distance between them (the second tap prefers a
-  side parallel to the first). A third tap starts a new one. Works best from the Top view.
-- **Sun** lights the house as at a date and time (Europe/Prague clock) with real shadows; Winter/Spring/Summer
-  jump to the solstices and equinox. North isn't known yet: turn the North slider until the orange arrow on the
-  ground points north (remembered on that device). Once known, put it in `site.north` in `house.json` (degrees
-  clockwise from the plan's up), along with the exact `latitude`/`longitude` (Prague for now).
-- **Floor switcher** shows that floor plus the ones below it (for context; only the current floor is clickable).
-- **Top** is a plan view (drag to pan, scroll/pinch to zoom); **3D** orbits.
+The screen has three parts: **rooms** on the left, the **house** in the middle and a **details** panel on the right.
+The two panel buttons in the top bar tuck either side away (on a phone they slide over the house instead).
+
+- **View and Edit** (the switch floating over the house, or E): in View nothing you tap changes anything, so you can
+  look around freely. Edit makes walls, floors and furniture tappable and has two tools: **Select** and
+  **Measure** (or M). Esc steps back.
+- **Rooms** are marked by their plan numbers (1.01…); the legend on the left gives each one's name and floor area,
+  measured to the wall faces with doors closed. Hovering a number or a legend row lights up both and the room's
+  floor. Rooms come from the `rooms` label points in the layout (named "Hall 1.01": the trailing number is what's
+  shown): the floor is flood-filled from each label, so a room needs closed walls around it (two labels in one open
+  space, like stairs and landing, split it halfway between them).
+- **Tap a wall** (Edit) to paint it; **Paint the other side** switches to the opposite face. Colours save
+  automatically. The panel also shows the wall's length, thickness and height.
+- **Tap a room's floor**, or its legend row (Edit), to pick its finish: wood, tiles, carpet or concrete (drawn in the
+  app, no downloads). Saved per colour scheme like the walls.
+- **Furniture**: in Edit with nothing selected, the right panel lists what's on the floor and adds more: pick a piece
+  from the catalog (sofas, tables, beds, kitchen units, bathroom fittings… 48 low-poly models from Kenney's
+  [Furniture Kit](https://kenney.nl/assets/furniture-kit), CC0) or a plain **Box** with a size in centimetres. Models
+  are stretched to the size you set, face south at 0°, and the colour swatches change their upholstery. Drag a piece
+  across the floor; with snapping on, it squares up and sits flush against a wall (or into a corner) when it gets
+  within 25 cm. While it's selected, dashed lines show how far each side is from the nearest wall. Rotate in 15° or
+  90° steps (or R / Shift+R), Delete removes.
+- **Measure** has two modes. **Point to point**: tap two points on the floor for the distance between them,
+  diagonals included. Taps near a wall face or corner land exactly on it, and a nearly straight line squares up.
+  **Wall to wall**: tap a wall or a piece (it lights up whole), then another, for the square-on distance between them
+  (the second tap prefers a side parallel to the first). A third tap starts a new one. The result shows on the line
+  and in the panel. Works best from the Plan view.
+- **Sunlight** (right panel, in View) lights the house as at a date and time (Europe/Prague clock) with real
+  shadows; Winter/Spring/Summer jump to the solstices and equinox. North isn't known yet: turn the North slider until
+  the orange arrow on the ground points north (remembered on that device). Once known, put it in `site.north` in
+  `house.json` (degrees clockwise from the plan's up), along with the exact `latitude`/`longitude` (Prague for now).
+- **Floors** (top bar) show that floor plus the ones below it (for context; only the current floor is tappable).
+- **Plan** is a top-down view (drag to pan, scroll/pinch to zoom); **3D** orbits.
 - **Walk** puts you in the biggest room at eye height (1.6 m). Drag to look around; walk with W A S D or the
   arrow keys (Q/E or ←/→ turn), or the on-screen buttons. Walls stop you except at doors, and so does furniture;
-  ⌂ takes you back to the start. The floor above is drawn as a ceiling so sunlight comes in through the windows.
-- **Camera buttons** (bottom left, made for phones): hold the arrows to move, ⟲ ⟳ to rotate, ⤒ ⤓ to tilt, + − to
-  zoom, ⌂ to reset. ✕ tucks them away (remembered on that device).
-- **Click a wall** (in 3D) to pick its colour; **Other side** switches to the opposite face. Colours save
-  automatically.
+  the house button takes you back to the start. The floor above is drawn as a ceiling so sunlight comes in through
+  the windows.
+- **Camera buttons** (bottom left, made for phones): hold the arrows to move, the curved arrows to rotate, the double
+  chevrons to tilt, + − to zoom, the house to reset. The crossed-out eye tucks them away (remembered on that device).
 - Changes show up on the other signed-in device straight away (Supabase Realtime); in the demo, other tabs of the
   same browser follow along.
-- **Furniture** lists what's on the floor and adds more: pick a piece from the catalog (sofas, tables, beds,
-  kitchen units, bathroom fittings… 48 low-poly models from Kenney's [Furniture Kit](https://kenney.nl/assets/furniture-kit),
-  CC0) or a plain **Box** with a size in centimetres. Models are stretched to the size you set, face south at 0°, and
-  the colour swatches change their upholstery. Drag a piece across the floor; with snapping on, it squares up
-  and sits flush against a wall (or into a corner) when it gets within 25 cm. Rotate in 15° or 90° steps (or R /
-  Shift+R), Delete removes.
 
 ## Code map
 
@@ -175,16 +182,17 @@ the real plan is traced. The format is meant to be edited by hand:
 src/
   layout/      house.json · types · geometry (wall splitting, validation) · rooms (floor regions, areas); tested
   furniture/   catalog.ts: the models and default sizes · snap.ts: wall snapping (pure; tested)
-  measure/     measure.ts: snapping taps to wall faces · dimensions.ts: wall face runs, opening sizes ·
+  measure/     measure.ts: snapping taps to wall faces, picking faces · dimensions.ts: wall size text ·
                clearance.ts: furniture-to-wall gaps (pure; tested)
   walk/        collide.ts: what blocks walking, sliding along walls (pure; tested)
   sun/         sun.ts: sun position and direction, local clock time (pure; tested) · useSun
   data/        Backend interface · supabaseBackend · localBackend (demo) · useHouseData (optimistic + live sync)
   auth/        AuthGate (login / guest-list screen) · useAccess
   scene/       HouseScene (canvas, cameras) · Lights · FloorWalls · RoomFloors + floorMaterials · FurnitureBox +
-               FurnitureModel · WalkCamera · MeasureTool ·
-               RoomLabels
-  ui/          WallPanel · RoomPanel · FurniturePanel · FurnitureEditor · NumberField
+               FurnitureModel · WalkCamera · MeasureTool (wall highlights) · RoomLabels (numbers over the plan)
+  ui/          kit (IconButton, Segmented, Switch, Section, PanelHead) · TopBar · ModeBar · RoomLegend · CameraPad ·
+               WallPanel · RoomPanel · FurniturePanel · FurnitureEditor · MeasurePanel · SunPanel · NumberField
+  styles.css   the design system: colour, radius and shadow tokens up top, then the shell and each part
 public/models/furniture/   catalog models (.glb) and their thumbnails (rendered once from the models)
 supabase/migrations/   the house schema
 ```

@@ -1,6 +1,8 @@
 import type { RoomRegion } from '../layout/rooms'
+import { roomParts } from '../layout/roomName'
 import type { Room } from '../layout/types'
 import { FLOOR_MATERIALS, floorPreview } from '../scene/floorMaterials'
+import { PanelHead, Section } from './kit'
 
 type RoomPanelProps = {
   room: Room
@@ -12,38 +14,39 @@ type RoomPanelProps = {
 
 const GROUPS = ['Wood', 'Tiles', 'Carpet', 'Other'] as const
 
-export const RoomPanel = ({ room, region, material, onMaterial, onClose }: RoomPanelProps) => (
-  <section className="panel" aria-label="Room floor">
-    <div className="panel-head">
-      <h2>{room.name}</h2>
-      <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close">
-        ✕
-      </button>
-    </div>
-    {region && <p className="hint">{region.area.toFixed(1)} m² of floor</p>}
-
-    {GROUPS.map((group) => (
-      <div key={group} className="material-group">
-        <h3>{group}</h3>
-        <div className="materials">
-          {FLOOR_MATERIALS.filter((m) => m.group === group).map((m) => (
-            <button
-              key={m.id}
-              className="material"
-              aria-pressed={material === m.id}
-              onClick={() => onMaterial(m.id)}
-              title={m.name}
-            >
-              <img src={floorPreview(m)} alt="" />
-              <span>{m.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    ))}
-
-    <button className="btn btn-ghost" onClick={() => onMaterial(undefined)} disabled={!material}>
-      No finish (bare slab)
-    </button>
-  </section>
-)
+export const RoomPanel = ({ room, region, material, onMaterial, onClose }: RoomPanelProps) => {
+  const { number, name } = roomParts(room)
+  return (
+    <>
+      <PanelHead
+        eyebrow={number ? `Room ${number}` : 'Room'}
+        title={name}
+        sub={region && `${region.area.toFixed(1)} m² of floor`}
+        onClose={onClose}
+      />
+      {GROUPS.map((group) => (
+        <Section key={group} title={group}>
+          <div className="materials">
+            {FLOOR_MATERIALS.filter((m) => m.group === group).map((m) => (
+              <button
+                key={m.id}
+                className="material"
+                aria-pressed={material === m.id}
+                onClick={() => onMaterial(m.id)}
+                title={m.name}
+              >
+                <img src={floorPreview(m)} alt="" />
+                <span>{m.name}</span>
+              </button>
+            ))}
+          </div>
+        </Section>
+      ))}
+      <Section>
+        <button className="btn btn-ghost btn-block" onClick={() => onMaterial(undefined)} disabled={!material}>
+          No finish (bare slab)
+        </button>
+      </Section>
+    </>
+  )
+}

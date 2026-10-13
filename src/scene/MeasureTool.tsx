@@ -2,9 +2,9 @@ import { Line } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { useMemo, useState } from 'react'
 import type { FurnitureItem } from '../data/types'
-import { floorBounds } from '../layout/geometry'
+import { floorBounds, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
 import { floorWallRects } from '../layout/rooms'
-import type { Floor, Point } from '../layout/types'
+import type { Floor, Point, Wall } from '../layout/types'
 import { OrthographicCamera, PerspectiveCamera } from 'three'
 import {
   alignWith,
@@ -13,7 +13,6 @@ import {
   pickFace,
   rectOutline,
   snapToWallFaces,
-  type Face,
   type MeasurePick,
   type Measurement,
 } from '../measure/measure'
@@ -35,14 +34,31 @@ type MeasureToolProps = {
   onPick: (pick: MeasurePick) => void
 }
 
+// Highlights sit this far proud of the wall or piece they cover, so they don't flicker against it.
+const PROUD = 0.006
+
+/** What a picked face belongs to: a wall, or a piece of furniture. */
+type Owner = { wall: Wall } | { item: FurnitureItem }
+
 /**
  * Catches taps on the floor plane (everything else is made non-clickable while measuring). Point to point, taps
- * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece. Draws the measured
- * line; the distance itself is shown by the MeasureBar.
+ * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece, and the whole wall
+ * or piece lights up. Draws the measured line; the distance is shown in the measure panel and on the line.
  */
 export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps) => {
   const walls = useMemo(() => floorWallRects(floor), [floor])
   const outlines = useMemo(() => [...items.map(footprintOutline), ...walls.map(rectOutline)], [items, walls])
+  const owners = useMemo<Owner[]>(
+    () => [...items.map((item) => ({ item })), ...floor.walls.map((wall) => ({ wall }))],
+    [items, floor],
+  )
+  // A face's ends are corners of the outline it came from.
+  const ownerOf = (pick: MeasurePick | undefined) => {
+    const face = pick?.face
+    if (!face) return undefined
+    const has = (o: Point[], p: Point) => o.some((q) => q[0] === p[0] && q[1] === p[1])
+    return owners[outlines.findIndex((o) => has(o, face.a) && has(o, face.b))]
+  }
   const [hover, setHover] = useState<MeasurePick>()
   const { min, max } = floorBounds(floor)
   const y = floor.elevation + LIFT
@@ -71,9 +87,9 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
   const at = (p: Point): [number, number, number] => [p[0], y, p[1]]
   const done = measuredLine(measure)
   const preview = picks.length === 1 && hover ? measuredLine({ mode, picks: [picks[0], hover] }) : undefined
-  const faces: { face: Face; ghost: boolean }[] = [
-    ...picks.flatMap((p) => (p.face ? [{ face: p.face, ghost: false }] : [])),
-    ...(hover?.face && picks.length < 2 ? [{ face: hover.face, ghost: true }] : []),
+  const lit: { owner: Owner; ghost: boolean }[] = [
+    ...picks.flatMap((p) => (ownerOf(p) ? [{ owner: ownerOf(p)!, ghost: false }] : [])),
+    ...(picks.length < 2 && ownerOf(hover) ? [{ owner: ownerOf(hover)!, ghost: true }] : []),
   ]
   const dots = mode === 'points' ? [...picks, ...(hover && picks.length < 2 ? [hover] : [])] : []
 
@@ -95,16 +111,13 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
         <meshBasicMaterial visible={false} />
       </mesh>
 
-      {faces.map(({ face, ghost }, i) => (
-        <Line
-          key={i}
-          points={[at(face.a), at(face.b)]}
-          color={SELECTED_OUTLINE}
-          lineWidth={ghost ? 3 : 5}
-          transparent
-          opacity={ghost ? 0.5 : 1}
-        />
-      ))}
+      {lit.map(({ owner, ghost }, i) =>
+        'wall' in owner ? (
+          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} />
+        ) : (
+          <ItemHighlight key={i} item={owner.item} elevation={floor.elevation} ghost={ghost} />
+        ),
+      )}
       {done && <Line points={[at(done.from), at(done.to)]} color={SELECTED_OUTLINE} lineWidth={3} />}
       {preview && (
         <Line
@@ -125,3 +138,35 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
     </group>
   )
 }
+
+const HighlightMaterial = ({ ghost }: { ghost: boolean }) => (
+  <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={ghost ? 0.28 : 0.6} depthWrite={false} />
+)
+
+/** The whole wall, openings and all, washed in the accent colour. */
+const WallHighlight = ({ wall, floor, ghost }: { wall: Wall; floor: Floor; ghost: boolean }) => {
+  const thickness = wallThickness(wall, floor)
+  const pieces = useMemo(() => wallPieces(wall, floor.height, thickness / 2), [wall, floor.height, thickness])
+  return (
+    <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
+      {pieces.map((p, i) => (
+        <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={noRaycast}>
+          <boxGeometry args={[p.u1 - p.u0 + 2 * PROUD, p.y1 - p.y0 + 2 * PROUD, thickness + 2 * PROUD]} />
+          <HighlightMaterial ghost={ghost} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+const ItemHighlight = ({ item, elevation, ghost }: { item: FurnitureItem; elevation: number; ghost: boolean }) => {
+  const height = Math.max(item.height, 0.02)
+  return (
+    <mesh position={[item.x, elevation + height / 2, item.y]} rotation={[0, -item.rotation, 0]} raycast={noRaycast}>
+      <boxGeometry args={[item.width + 2 * PROUD, height + 2 * PROUD, item.depth + 2 * PROUD]} />
+      <HighlightMaterial ghost={ghost} />
+    </mesh>
+  )
+}
+
+const noRaycast = () => null

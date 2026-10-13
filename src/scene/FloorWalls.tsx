@@ -1,6 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
 import { useMemo } from 'react'
+import { Mesh } from 'three'
 import { wallAngle, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Wall, WallSide } from '../layout/types'
 import { wallColorKey } from '../data/types'
@@ -19,11 +20,9 @@ type FloorWallsProps = {
   selection: Selection | undefined
   interactive: boolean
   onPick: (wallId: string, side: WallSide) => void
-  /** The pointer is over this wall (at these screen coordinates), or left it. */
-  onHover?: (wall: Wall | undefined, clientX: number, clientY: number) => void
 }
 
-export const FloorWalls = ({ floor, colors, selection, interactive, onPick, onHover }: FloorWallsProps) => (
+export const FloorWalls = ({ floor, colors, selection, interactive, onPick }: FloorWallsProps) => (
   <group>
     {floor.walls.map((wall) => (
       <WallMesh
@@ -35,7 +34,6 @@ export const FloorWalls = ({ floor, colors, selection, interactive, onPick, onHo
         selectedSide={selection?.kind === 'wall' && selection.wallId === wall.id ? selection.side : undefined}
         interactive={interactive}
         onPick={onPick}
-        onHover={onHover}
       />
     ))}
   </group>
@@ -49,13 +47,12 @@ type WallMeshProps = {
   selectedSide: WallSide | undefined
   interactive: boolean
   onPick: (wallId: string, side: WallSide) => void
-  /** The pointer is over this wall (at these screen coordinates), or left it. */
-  onHover?: (wall: Wall | undefined, clientX: number, clientY: number) => void
 }
 
+// Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPick, onHover }: WallMeshProps) => {
+const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPick }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(
     () => wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET),
@@ -86,26 +83,12 @@ const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPi
           position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
           castShadow
           receiveShadow
-          raycast={interactive ? undefined : noRaycast}
+          raycast={interactive ? Mesh.prototype.raycast : noRaycast}
           onClick={interactive ? handleClick : undefined}
           onPointerOver={
             interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined
           }
-          onPointerMove={
-            interactive && onHover
-              ? (e) =>
-                  // Hover is a mouse thing; on touch it would pop up on every tap and stay.
-                  e.nativeEvent.pointerType === 'mouse' && onHover(wall, e.nativeEvent.clientX, e.nativeEvent.clientY)
-              : undefined
-          }
-          onPointerOut={
-            interactive
-              ? () => {
-                  document.body.style.cursor = ''
-                  onHover?.(undefined, 0, 0)
-                }
-              : undefined
-          }
+          onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
         >
           <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
           <meshStandardMaterial attach="material-0" color={WALL_CAP} />

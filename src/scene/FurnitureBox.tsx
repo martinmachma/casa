@@ -1,7 +1,7 @@
 import { Edges } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
-import { Plane, Vector3 } from 'three'
+import { Mesh, Plane, Vector3 } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { snapToWalls, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
@@ -72,6 +72,8 @@ export const FurnitureBox = ({
 
   const handlers = interactive
     ? {
+        // Named, not left out: R3F wouldn't restore it after the item was non-interactive.
+        raycast: Mesh.prototype.raycast,
         onPointerDown,
         onPointerMove,
         onPointerUp: endDrag,
