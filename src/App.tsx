@@ -138,6 +138,16 @@ const House = ({ backend, account }: HouseProps) => {
   const addMeasurePick = (pick: MeasurePick) =>
     setMeasure((m) => m && { ...m, picks: m.picks.length === 1 ? [m.picks[0], pick] : [pick] })
 
+  // A stepped-back item may no longer exist, so nothing stays selected.
+  const undo = () => {
+    setSelection(undefined)
+    data.undo()
+  }
+  const redo = () => {
+    setSelection(undefined)
+    data.redo()
+  }
+
   // E toggles editing, M measuring; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -165,15 +175,6 @@ const House = ({ backend, account }: HouseProps) => {
   })
 
   const editing = interaction !== 'view'
-  // A stepped-back item may no longer exist, so nothing stays selected.
-  const undo = () => {
-    setSelection(undefined)
-    data.undo()
-  }
-  const redo = () => {
-    setSelection(undefined)
-    data.redo()
-  }
   const closeRight = () => setRightOpen(false)
 
   const inspector = (() => {
