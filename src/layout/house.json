@@ -80,13 +80,13 @@
         },
         {
           "id": "g-entrance-east",
-          "from": [2.502, 7.615],
+          "from": [2.502, 7.782],
           "to": [2.502, 9.332],
           "thickness": 0.335,
           "openings": [
             {
               "type": "door",
-              "offset": 0.365,
+              "offset": 0.198,
               "width": 0.94,
               "height": 2.095
             }
