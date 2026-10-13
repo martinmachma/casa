@@ -7,9 +7,13 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, WallSide } from '../layout/types'
+import type { Floor, Point, WallSide } from '../layout/types'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
+import { Outdoor } from './Outdoor'
+import { prismGeometry } from './prism'
+import { Railings, Stairs } from './Stairs'
+import { house } from '../layout/layout'
 import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
 import { Lights } from './Lights'
@@ -142,10 +146,14 @@ export const HouseScene = ({
           />
         )}
 
+        {house.outdoor && <Outdoor outdoor={house.outdoor} />}
+
         {/* Floors below the current one stay visible for context but can't be clicked. */}
-        {floors.slice(0, floorIndex + 1).map((f) => (
+        {floors.slice(0, floorIndex + 1).map((f, i) => (
           <group key={f.id}>
             <Slab floor={f} />
+            {floors[i + 1] && <Stairs floor={f} next={floors[i + 1]} />}
+            <Railings floor={f} />
             <RoomFloors
               floor={f}
               regions={floorRegions(f)}
@@ -209,15 +217,23 @@ export const HouseScene = ({
   )
 }
 
-const Slab = ({ floor, color = FLOOR_SLAB }: { floor: Floor; color?: string }) => {
+/** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */
+const slabGeometry = (floor: Floor) => {
   const { min, max } = floorBounds(floor)
+  const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
+  const holes = (floor.voids ?? []).map((v): Point[] => [
+    [v.x0, v.y0],
+    [v.x1, v.y0],
+    [v.x1, v.y1],
+    [v.x0, v.y1],
+  ])
+  return prismGeometry(outline, SLAB, holes)
+}
+
+const Slab = ({ floor, color = FLOOR_SLAB }: { floor: Floor; color?: string }) => {
+  const geometry = useMemo(() => slabGeometry(floor), [floor])
   return (
-    <mesh
-      position={[(min[0] + max[0]) / 2, floor.elevation - SLAB / 2, (min[1] + max[1]) / 2]}
-      castShadow
-      receiveShadow
-    >
-      <boxGeometry args={[max[0] - min[0], SLAB, max[1] - min[1]]} />
+    <mesh geometry={geometry} position={[0, floor.elevation, 0]} castShadow receiveShadow>
       <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>
   )

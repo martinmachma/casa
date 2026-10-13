@@ -6,6 +6,7 @@ import { wallAngle, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Wall, WallSide } from '../layout/types'
 import { wallColorKey } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
+import { OpeningFills } from './OpeningFills'
 import type { Selection } from './selection'
 
 // Walls overlap at corners by just under half their thickness, so end caps never sit flush
@@ -101,6 +102,7 @@ const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, onPi
           {selectedSide && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
         </mesh>
       ))}
+      {wall.openings && <OpeningFills openings={wall.openings} thickness={thickness} />}
     </group>
   )
 }

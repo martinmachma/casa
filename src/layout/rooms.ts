@@ -1,8 +1,7 @@
 import { floorBounds, wallThickness } from './geometry'
-import type { Floor, Point } from './types'
+import type { Floor, Point, Rect } from './types'
 
-/** An axis-aligned plan rectangle, metres. */
-export type Rect = { x0: number; x1: number; y0: number; y1: number }
+export type { Rect }
 
 /** The floor of a room: rectangles that tile it exactly, and its clear area (to the wall faces). */
 export type RoomRegion = { roomId: string; cells: Rect[]; area: number }
@@ -137,3 +136,21 @@ export const roomAt = (regions: Map<string, RoomRegion>, x: number, y: number): 
     if (region.cells.some((c) => x >= c.x0 && x <= c.x1 && y >= c.y0 && y <= c.y1)) return region.roomId
   return undefined
 }
+
+/** What's left of the rectangles once the holes are cut out, still as rectangles. */
+export const subtractRects = (rects: Rect[], holes: Rect[]): Rect[] =>
+  holes.reduce(
+    (acc, h) =>
+      acc.flatMap((r) => {
+        if (h.x0 >= r.x1 || h.x1 <= r.x0 || h.y0 >= r.y1 || h.y1 <= r.y0) return [r]
+        const y0 = Math.max(r.y0, h.y0)
+        const y1 = Math.min(r.y1, h.y1)
+        return [
+          { ...r, y1: y0 },
+          { ...r, y0: y1 },
+          { x0: r.x0, x1: Math.max(r.x0, h.x0), y0, y1 },
+          { x0: Math.min(r.x1, h.x1), x1: r.x1, y0, y1 },
+        ].filter((c) => c.x1 - c.x0 > EPS && c.y1 - c.y0 > EPS)
+      }),
+    rects,
+  )

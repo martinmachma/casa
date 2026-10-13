@@ -1,7 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo } from 'react'
 import { BufferGeometry, Float32BufferAttribute, Mesh } from 'three'
-import type { Rect, RoomRegion } from '../layout/rooms'
+import { subtractRects, type Rect, type RoomRegion } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 import { floorMaterial, floorTexture } from './floorMaterials'
 import { FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
@@ -61,6 +61,7 @@ export const RoomFloors = ({
       <RoomFloorMesh
         key={region.roomId}
         region={region}
+        voids={floor.voids}
         material={materials.get(region.roomId)}
         tint={region.roomId === selectedRoom ? 0.3 : region.roomId === hoveredRoom ? 0.18 : 0}
         interactive={interactive}
@@ -72,6 +73,8 @@ export const RoomFloors = ({
 
 type RoomFloorMeshProps = {
   region: RoomRegion
+  /** Left bare, like the stairwell. */
+  voids: Rect[] | undefined
   material: string | undefined
   /** How strongly the accent colour washes over the floor; 0 for not at all. */
   tint: number
@@ -82,8 +85,8 @@ type RoomFloorMeshProps = {
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const RoomFloorMesh = ({ region, material, tint, interactive, onPick }: RoomFloorMeshProps) => {
-  const geometry = useMemo(() => floorGeometry(region.cells), [region])
+const RoomFloorMesh = ({ region, voids, material, tint, interactive, onPick }: RoomFloorMeshProps) => {
+  const geometry = useMemo(() => floorGeometry(subtractRects(region.cells, voids ?? [])), [region, voids])
   const finish = floorMaterial(material)
   const map = finish ? floorTexture(finish) : null
 

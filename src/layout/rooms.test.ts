@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { house } from './layout'
-import { roomAt, roomRegions } from './rooms'
+import { roomAt, roomRegions, subtractRects } from './rooms'
 import type { Floor } from './types'
 
 // A 4×3 m box (wall centre lines), 0.2 m walls, split by a wall at x = 2 with a door in it.
@@ -56,5 +56,14 @@ describe('roomRegions', () => {
       const regions = roomRegions(f)
       for (const room of f.rooms) expect(regions.get(room.id)?.area, `${room.id} on ${f.id}`).toBeGreaterThan(0.5)
     }
+  })
+})
+
+describe('subtractRects', () => {
+  it('cuts a hole out of a rectangle, keeping the area around it', () => {
+    const left = subtractRects([{ x0: 0, x1: 4, y0: 0, y1: 4 }], [{ x0: 1, x1: 2, y0: 1, y1: 3 }])
+    const area = left.reduce((a, r) => a + (r.x1 - r.x0) * (r.y1 - r.y0), 0)
+    expect(area).toBeCloseTo(14)
+    expect(left.every((r) => r.x1 <= 1 || r.x0 >= 2 || r.y1 <= 1 || r.y0 >= 3)).toBe(true)
   })
 })

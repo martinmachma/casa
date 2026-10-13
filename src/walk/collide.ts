@@ -1,4 +1,4 @@
-import { wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import { openingSill, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 
 /** A solid rectangle in the plan: centre, half sizes along its own axes, and its angle. */
@@ -7,14 +7,17 @@ export type Obstacle = { cx: number; cy: number; hu: number; hv: number; angle: 
 // Anything lower than this can't be walked through (sills, furniture); door openings start at 0.
 const FOOT_HEIGHT = 0.3
 
-/** The parts of the floor's walls that block walking: everything but door openings. */
+/** The parts of the floor's walls that block walking: everything but doorways (glass down to the floor blocks too). */
 export const wallObstacles = (floor: Floor): Obstacle[] =>
   floor.walls.flatMap((wall) => {
     const angle = wallAngle(wall)
     const c = Math.cos(angle)
     const s = Math.sin(angle)
     const half = wallThickness(wall, floor) / 2
-    return wallPieces(wall, floor.height, half)
+    const glass = (wall.openings ?? [])
+      .filter((o) => o.type === 'window' && openingSill(o) < FOOT_HEIGHT)
+      .map((o) => ({ u0: o.offset, u1: o.offset + o.width, y0: 0, y1: o.height }))
+    return [...wallPieces(wall, floor.height, half), ...glass]
       .filter((p) => p.y0 < FOOT_HEIGHT)
       .map((p) => {
         const u = (p.u0 + p.u1) / 2

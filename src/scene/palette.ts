@@ -2,6 +2,17 @@ export const DEFAULT_WALL = '#f3efe9'
 export const WALL_CAP = '#d8d1c7'
 export const FLOOR_SLAB = '#d9c4a5'
 export const SELECTED_OUTLINE = '#c8664a'
+export const EXTERIOR_FRAME = '#3b4045'
+export const INTERIOR_FRAME = '#e9e4dc'
+export const DOOR_LEAF = '#f7f4ef'
+export const HANDLE = '#8a8d90'
+export const GLASS = '#bcd6e0'
+export const STAIR_WOOD = '#b48a5a'
+export const RAILING = '#3b4045'
+export const LAWN = '#9fb47f'
+export const PAVING = '#c9c4ba'
+export const SHED_WOOD = '#8f6a4a'
+export const SHED_ROOF = '#4a4440'
 
 /** A starter set of paint-like colours; any colour can still be picked. */
 export const PAINT_SWATCHES = [

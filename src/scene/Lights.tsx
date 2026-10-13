@@ -55,10 +55,10 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
         intensity={sunIntensity}
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
+        shadow-camera-left={-20}
+        shadow-camera-right={20}
+        shadow-camera-top={20}
+        shadow-camera-bottom={-20}
         shadow-camera-far={80}
         shadow-bias={-0.0005}
         shadow-intensity={shadow}
