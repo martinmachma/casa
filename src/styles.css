@@ -1876,6 +1876,27 @@ input[type='range'] {
   line-height: 1.4;
 }
 
+.todo-body p {
+  cursor: text;
+}
+
+.todo-edit {
+  display: block;
+  width: 100%;
+  margin: -3px -6px;
+  padding: 2px 6px;
+  box-sizing: content-box;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: var(--ring);
+  background: var(--surface);
+  font: inherit;
+  line-height: 1.4;
+  color: inherit;
+  resize: none;
+  field-sizing: content;
+}
+
 .todo-item.done .todo-body p {
   color: var(--muted);
   text-decoration: line-through;

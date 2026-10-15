@@ -7,6 +7,7 @@ type Todo = { id: string; text: string; done: boolean; author: string | null; cr
 export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
   const [todos, setTodos] = useState<Todo[]>([])
   const [draft, setDraft] = useState('')
+  const [editing, setEditing] = useState<{ id: string; text: string }>()
   const [error, setError] = useState<string>()
   const [pos, setPos] = useState({ x: 300, y: 120 })
   const drag = useRef<{ dx: number; dy: number } | undefined>(undefined)
@@ -54,6 +55,14 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
     })
   }
 
+  const saveEdit = () => {
+    if (!editing) return
+    const text = editing.text.trim()
+    const before = todos.find((t) => t.id === editing.id)?.text
+    setEditing(undefined)
+    if (text && text !== before) run(supabase.from('todos').update({ text }).eq('id', editing.id))
+  }
+
   const open = todos.filter((t) => !t.done)
   const done = todos.filter((t) => t.done)
 
@@ -71,7 +80,27 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
         </svg>
       </button>
       <div className="todo-body">
-        <p>{t.text}</p>
+        {editing?.id === t.id ? (
+          <textarea
+            className="todo-edit"
+            autoFocus
+            rows={Math.max(1, editing.text.split('\n').length)}
+            value={editing.text}
+            onChange={(e) => setEditing({ id: t.id, text: e.target.value })}
+            onBlur={saveEdit}
+            onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                saveEdit()
+              } else if (e.key === 'Escape') setEditing(undefined)
+            }}
+          />
+        ) : (
+          <p title="Click to edit" onClick={() => setEditing({ id: t.id, text: t.text })}>
+            {t.text}
+          </p>
+        )}
         <span className="todo-meta">
           {t.author?.split('@')[0] ?? 'someone'} · {when(t.created_at)}
         </span>
