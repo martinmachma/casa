@@ -1,8 +1,7 @@
-import { Box, Footprints, House, LogOut, Map as PlanIcon, PanelLeft, PanelRight } from 'lucide-react'
+import { House, ListTodo, LogOut } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
-import type { CameraMode } from '../scene/selection'
 import { IconButton, Segmented } from './kit'
 
 type TopBarProps = {
@@ -12,12 +11,9 @@ type TopBarProps = {
   /** Looking at the whole house from outside instead of one floor. */
   outside: boolean
   onOutside: () => void
-  camera: CameraMode
-  onCamera: (camera: CameraMode) => void
-  leftOpen: boolean
-  rightOpen: boolean
-  onToggleLeft: () => void
-  onToggleRight: () => void
+  /** Opens the wishes & bugs list; the badge counts open ones. */
+  onTodos: () => void
+  openTodos: number
   account: Account
   /** The version picker. */
   versions: ReactNode
@@ -33,12 +29,8 @@ export const TopBar = ({
   onFloor,
   outside,
   onOutside,
-  camera,
-  onCamera,
-  leftOpen,
-  rightOpen,
-  onToggleLeft,
-  onToggleRight,
+  onTodos,
+  openTodos,
   account,
   versions,
 }: TopBarProps) => (
@@ -47,9 +39,6 @@ export const TopBar = ({
       <img src="/favicon.svg" alt="" />
       <span className="brand-name">Casa</span>
     </div>
-    <IconButton label={leftOpen ? 'Hide rooms' : 'Show rooms'} aria-pressed={leftOpen} onClick={onToggleLeft}>
-      <PanelLeft size={18} />
-    </IconButton>
     <span className="topbar-divider hide-narrow" />
     <Segmented
       label="Floor"
@@ -63,20 +52,9 @@ export const TopBar = ({
     />
     {versions}
     <span className="spacer" />
-    <Segmented
-      label="View"
-      value={camera}
-      onChange={onCamera}
-      options={[
-        { value: 'top', label: 'Plan', icon: <PlanIcon size={15} /> },
-        { value: 'orbit', label: '3D', icon: <Box size={15} /> },
-        // Walking is for inside a floor.
-        ...(outside ? [] : [{ value: 'walk' as const, label: 'Walk', icon: <Footprints size={15} /> }]),
-      ]}
-      className="views"
-    />
-    <IconButton label={rightOpen ? 'Hide panel' : 'Show panel'} aria-pressed={rightOpen} onClick={onToggleRight}>
-      <PanelRight size={18} />
+    <IconButton label="Wishes & bugs" className="todo-open" onClick={onTodos}>
+      <ListTodo size={18} />
+      {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
     </IconButton>
     <AccountMenu account={account} />
   </header>

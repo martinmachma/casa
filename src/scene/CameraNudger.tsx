@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useMemo, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { OrthographicCamera, PerspectiveCamera, Spherical, Vector3 } from 'three'
 import type { CameraNudge } from './cameraNudge'
 
@@ -14,18 +14,42 @@ const MIN_DISTANCE = 1.5
 const MAX_DISTANCE = 60
 const MIN_POLAR = 0.05
 
-/** Applies the on-screen buttons to the orbit/plan camera (inside the <Canvas>). */
+/** Applies the on-screen buttons and WASD/arrow keys (pan) to the orbit/plan camera (inside the <Canvas>). */
 export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
   const tmp = useMemo(
     () => ({ offset: new Vector3(), right: new Vector3(), forward: new Vector3(), spherical: new Spherical() }),
     [],
   )
   const up = useMemo(() => new Vector3(0, 1, 0), [])
+  const keys = useRef(new Set<string>())
+
+  useEffect(() => {
+    const held = keys.current
+    const down = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return
+      held.add(e.key.toLowerCase())
+    }
+    const up = (e: KeyboardEvent) => held.delete(e.key.toLowerCase())
+    const clear = () => held.clear()
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', clear)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', clear)
+    }
+  }, [])
 
   useFrame(({ camera, controls, size }, delta) => {
     const orbit = controls as unknown as OrbitLike | null
     if (!orbit?.target) return
-    const { forward, right, zoom, turn, tilt } = nudge.current
+    const k = keys.current
+    const axis = (plus: boolean, minus: boolean) => (plus ? 1 : 0) - (minus ? 1 : 0)
+    const { zoom, turn, tilt } = nudge.current
+    const forward = nudge.current.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
+    const right = nudge.current.right + axis(k.has('d') || k.has('arrowright'), k.has('a') || k.has('arrowleft'))
     if (!forward && !right && !zoom && !turn && !tilt) return
     const dt = Math.min(delta, 0.1)
     const { offset } = tmp

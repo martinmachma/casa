@@ -27,6 +27,7 @@ import { wallText } from './measure/dimensions'
 import type { MeasurePick, Measurement } from './measure/measure'
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
+import { ViewDock } from './ui/ViewDock'
 import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallColorKey } from './data/types'
@@ -49,6 +50,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [floorIndex, setFloorIndex] = useState(0)
   const [outside, setOutside] = useState(false)
   const [camera, setCamera] = useState<CameraMode>('orbit')
+  const [cutaway, setCutaway] = useState(false)
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
@@ -56,7 +58,9 @@ const House = ({ backend, account }: HouseProps) => {
   const [todosOpen, setTodosOpen] = useState(false)
   const openTodos = useOpenTodoCount()
   const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
-  const [rightOpen, setRightOpen] = useState(() => !isNarrow())
+  // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
+  const [rightTucked, setRightTucked] = useState(false)
+  const setRightOpen = (open: boolean) => setRightTucked(!open)
   const [snap, setSnap] = useState(true)
   const nudge = useRef(createCameraNudge())
   const [viewKey, setViewKey] = useState(0)
@@ -169,6 +173,7 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
     setPlacing(undefined)
     setInteraction(next)
+    if (next === 'view') setRightTucked(false)
     if (next === 'devices') setRightOpen(true)
     if (next === 'measure') {
       setMeasure((m) => m ?? { mode: 'points', picks: [] })
@@ -189,7 +194,7 @@ const House = ({ backend, account }: HouseProps) => {
     data.redo()
   }
 
-  // E toggles editing, M measuring; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
+  // E toggles editing, M measuring, L devices; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
@@ -204,7 +209,7 @@ const House = ({ backend, account }: HouseProps) => {
       if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') changeInteraction(interaction === 'measure' ? 'edit' : 'measure')
-      else if (key === 'd') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
+      else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
       else if (selectedItem && key === 'r') rotateItem(selectedItem, e.shiftKey ? -15 : 15)
       else if (selectedItem && (e.key === 'Delete' || e.key === 'Backspace')) deleteItem(selectedItem)
       else if (selectedDevice && (e.key === 'Delete' || e.key === 'Backspace')) deleteDevice(selectedDevice)
@@ -220,6 +225,7 @@ const House = ({ backend, account }: HouseProps) => {
   })
 
   const editing = interaction !== 'view'
+  const rightOpen = editing && !rightTucked
   const closeRight = () => setRightOpen(false)
 
   const inspector = (() => {
@@ -297,7 +303,7 @@ const House = ({ backend, account }: HouseProps) => {
           onClose={() => changeInteraction('edit')}
         />
       )
-    if (editing)
+    if (interaction === 'edit')
       return (
         <FurniturePanel
           items={data.furniture.filter((f) => f.floor === floor.id)}
@@ -307,54 +313,22 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={(id) => select({ kind: 'furniture', id })}
         />
       )
-    return <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+    return undefined
   })()
 
   return (
-    <div className="app" data-left={leftOpen ? 'open' : 'closed'} data-right={rightOpen ? 'open' : 'closed'}>
+    <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
         onFloor={switchFloor}
         outside={outside}
         onOutside={goOutside}
-        camera={camera}
-        onCamera={setCamera}
-        leftOpen={leftOpen}
-        rightOpen={rightOpen}
-        onToggleLeft={() => setLeftOpen(!leftOpen)}
-        onToggleRight={() => setRightOpen(!rightOpen)}
+        onTodos={() => setTodosOpen(true)}
+        openTodos={openTodos}
         account={account}
         versions={<VersionMenu data={data} />}
       />
-
-      <aside className="sidebar sidebar-left" aria-label="Rooms" inert={!leftOpen}>
-        <div className="sidebar-inner">
-          {outside ? (
-            <FloorList floors={house.floors} onPick={switchFloor} onClose={() => setLeftOpen(false)} />
-          ) : (
-            <RoomLegend
-              floor={floor}
-              regions={regions}
-              names={data.roomNames}
-              devices={devicesPerRoom(floorDevices, floor, regions)}
-              hovered={hoveredRoom}
-              selected={selection?.kind === 'room' ? selection.roomId : undefined}
-              onHover={setHoveredRoom}
-              onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-              onClose={() => setLeftOpen(false)}
-            />
-          )}
-          <button className="btn btn-ghost todo-open" onClick={() => setTodosOpen(true)}>
-            <svg viewBox="0 0 16 16" aria-hidden>
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
-              <path d="M5.5 8l2 2 3-4" />
-            </svg>
-            Wishes &amp; bugs
-            {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
-          </button>
-        </div>
-      </aside>
 
       {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
 
@@ -364,6 +338,7 @@ const House = ({ backend, account }: HouseProps) => {
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
           outside={outside}
           camera={camera}
+          cutaway={cutaway}
           data={data}
           interaction={interaction}
           selection={selection}
@@ -380,6 +355,31 @@ const House = ({ backend, account }: HouseProps) => {
           viewKey={viewKey}
           onSelect={select}
         />
+
+        <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>
+          {outside ? (
+            <FloorList
+              floors={house.floors}
+              onPick={switchFloor}
+              collapsed={!leftOpen}
+              onToggle={() => setLeftOpen(!leftOpen)}
+            />
+          ) : (
+            <RoomLegend
+              floor={floor}
+              regions={regions}
+              names={data.roomNames}
+              devices={devicesPerRoom(floorDevices, floor, regions)}
+              hovered={hoveredRoom}
+              selected={selection?.kind === 'room' ? selection.roomId : undefined}
+              onHover={setHoveredRoom}
+              onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+              collapsed={!leftOpen}
+              onToggle={() => setLeftOpen(!leftOpen)}
+            />
+          )}
+          {leftOpen && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
+        </ViewDock>
 
         {!outside && (
           <ModeBar

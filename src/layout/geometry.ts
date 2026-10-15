@@ -89,3 +89,68 @@ export const floorBounds = (floor: Floor): { min: Point; max: Point } => {
   }
   return { min: [minX, minY], max: [maxX, maxY] }
 }
+
+/** Outer walls are the thick ones. */
+const EXTERIOR_WALL = 0.2
+
+export const isExteriorWall = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): boolean =>
+  wallThickness(wall, floor) >= EXTERIOR_WALL
+
+/** How square-on an interior wall must face the view to be cut away (|cos| of the angle); side-on walls stay. */
+const CUTAWAY_FACING = 0.5
+/** How far past a wall's face to look for the outside of the house. */
+const OUTSIDE_PROBE = 0.05
+
+const insidePolygon = (p: Point, polygon: Point[]): boolean => {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, zi] = polygon[i]
+    const [xj, zj] = polygon[j]
+    if (zi > p[1] !== zj > p[1] && p[0] < ((xj - xi) * (p[1] - zi)) / (zj - zi) + xi) inside = !inside
+  }
+  return inside
+}
+
+/** The unit normal of a wall, its direction turned a quarter (towards side 'a'). */
+const wallNormal = (wall: Wall): Point => {
+  const length = wallLength(wall)
+  return [-(wall.to[1] - wall.from[1]) / length, (wall.to[0] - wall.from[0]) / length]
+}
+
+/** For an outer wall, the unit normal pointing out of the house; undefined for walls with rooms on both sides. */
+export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
+  if (wallLength(wall) === 0) return undefined
+  const { min, max } = floorBounds(floor)
+  const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
+  const [nx, nz] = wallNormal(wall)
+  const reach = wallThickness(wall, floor) / 2 + OUTSIDE_PROBE
+  const mx = (wall.from[0] + wall.to[0]) / 2
+  const mz = (wall.from[1] + wall.to[1]) / 2
+  for (const sign of [1, -1]) {
+    if (!insidePolygon([mx + sign * nx * reach, mz + sign * nz * reach], outline)) return [sign * nx, sign * nz]
+  }
+  return undefined
+}
+
+/**
+ * Whether a wall is in the way, seen from `eye` looking along `view` (plan coordinates): you see it from
+ * outside a room it closes off. Outer walls are cut whenever the eye is on their `outside`; interior
+ * walls close off a room on either side, so they're cut unless the view runs along them. Judging those
+ * by the view direction, not the angle to each wall, treats parallel walls alike.
+ */
+export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, view: Point): boolean => {
+  if (wallLength(wall) === 0) return false
+  if (outside) {
+    const mx = (wall.from[0] + wall.to[0]) / 2
+    const mz = (wall.from[1] + wall.to[1]) / 2
+    return outside[0] * (eye[0] - mx) + outside[1] * (eye[1] - mz) > 0
+  }
+  const v = Math.hypot(view[0], view[1])
+  if (v === 0) return true
+  const [nx, nz] = wallNormal(wall)
+  return Math.abs(nx * view[0] + nz * view[1]) / v > CUTAWAY_FACING
+}
+
+/** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */
+export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
+  pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))

@@ -43,6 +43,8 @@ type HouseSceneProps = {
   /** The whole house from outside, roof and all; nothing inside is shown or pickable. */
   outside: boolean
   camera: CameraMode
+  /** In the 3D view, hide the walls nearest the camera so you can see inside. */
+  cutaway: boolean
   data: HouseData
   /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
   interaction: Interaction
@@ -70,6 +72,7 @@ export const HouseScene = ({
   floorIndex,
   outside,
   camera,
+  cutaway,
   data,
   interaction,
   selection,
@@ -188,6 +191,7 @@ export const HouseScene = ({
               selection={selection}
               interactive={pickable && f.id === floor.id}
               doors={!measure && (outside || f.id === floor.id)}
+              cutaway={cutaway && camera === 'orbit' && !outside}
               onPick={pickWall}
             />
           </group>

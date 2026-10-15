@@ -88,7 +88,9 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
             value={editing.text}
             onChange={(e) => setEditing({ id: t.id, text: e.target.value })}
             onBlur={saveEdit}
-            onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+            onFocus={(e) =>
+              e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)
+            }
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -119,7 +121,12 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="todo-popup" style={{ left: pos.x, top: pos.y }} role="dialog" aria-label="To-dos">
-      <div className="todo-head" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = undefined)}>
+      <div
+        className="todo-head"
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={() => (drag.current = undefined)}
+      >
         <span className="todo-grip" aria-hidden>
           ⋮⋮
         </span>
@@ -184,5 +191,4 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
   )
 }
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })

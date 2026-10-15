@@ -1,15 +1,14 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useRef, useState } from 'react'
-import { Group, MathUtils, Mesh } from 'three'
+import { Group, MathUtils } from 'three'
 import { openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
+import { raycastIfShown } from './raycast'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME } from './palette'
 
 const FRAME = 0.06
 const FRAME_DEPTH = 0.08
 const LEAF = 0.04
-// Outer walls are the thick ones; their doors and windows get dark aluminium frames.
-const EXTERIOR_WALL = 0.2
 /** How far a door swings open. */
 const SWING = (Math.PI / 180) * 95
 /** How quickly doors move, per second (exponential easing). */
@@ -45,15 +44,15 @@ const Boxes = ({ boxes }: { boxes: Box[] }) =>
 /** Closed doors and glazed windows sitting in a wall's openings, in the wall's own frame (u along it, y up). */
 export const OpeningFills = ({
   openings,
-  thickness,
+  exterior,
   clickable,
 }: {
   openings: Opening[]
-  thickness: number
+  /** Outer walls' doors and windows get dark aluminium frames. */
+  exterior: boolean
   /** Whether a tap on a door opens or closes it. */
   clickable: boolean
 }) => {
-  const exterior = thickness >= EXTERIOR_WALL
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME
   return (
     <group>
@@ -103,7 +102,7 @@ const useToggle = (clickable: boolean, apply: (group: Group, amount: number) => 
   })
   const handlers = clickable
     ? {
-        raycast: Mesh.prototype.raycast,
+        raycast: raycastIfShown,
         onClick: (e: ThreeEvent<MouseEvent>) => {
           if (e.delta > CLICK_SLOP_PX) return
           e.stopPropagation()
