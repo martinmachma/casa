@@ -7,7 +7,7 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point, WallSide } from '../layout/types'
+import type { Floor, Point, WallFace } from '../layout/types'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
@@ -135,7 +135,7 @@ export const HouseScene = ({
   const pickable = interaction === 'edit'
   const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
-  const pickWall = (wallId: string, side: WallSide, part: number) => onSelect({ kind: 'wall', wallId, side, part })
+  const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
     data.patchFurniture(id, placement, `move:${id}`)
   const saveItem = () => data.endEdit()

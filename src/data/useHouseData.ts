@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { WallSide } from '../layout/types'
+import type { WallFace } from '../layout/types'
 import type { Backend, Device, FurnitureItem, HouseState, NewDevice, NewFurnitureItem, Version } from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
 
@@ -118,7 +118,7 @@ export const useHouseData = (backend: Backend) => {
       h.future.length ? { draft: h.future[0], past: [...h.past, h.draft], future: h.future.slice(1) } : h,
     )
 
-  const setWallColor = (wallId: string, side: WallSide, part: number, color: string | undefined) =>
+  const setWallColor = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
     edit(
       (s) => {
         const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
