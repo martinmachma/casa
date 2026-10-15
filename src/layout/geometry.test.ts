@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { floorBounds, validateLayout, wallPieces } from './geometry'
+import { blocksView, floorBounds, validateLayout, wallPieces } from './geometry'
 import { house } from './layout'
 import type { HouseLayout, Wall } from './types'
 
@@ -81,5 +81,26 @@ describe('validateLayout', () => {
     expect(() => validateLayout(layoutWith(wall([{ type: 'window', offset: 1, width: 1, height: 2 }])))).toThrow(
       /taller/,
     )
+  })
+})
+
+describe('blocksView', () => {
+  // A 10 x 10 box around the origin, seen from the south (+z).
+  const south: Wall = { id: 's', from: [-5, 5], to: [5, 5] }
+  const north: Wall = { id: 'n', from: [-5, -5], to: [5, -5] }
+  const east: Wall = { id: 'e', from: [5, -5], to: [5, 5] }
+
+  it('cuts the near wall facing the viewer and keeps the far one', () => {
+    expect(blocksView(south, [0, 0], [0, 20])).toBe(true)
+    expect(blocksView(north, [0, 0], [0, 20])).toBe(false)
+  })
+
+  it('keeps walls seen side-on', () => {
+    expect(blocksView(east, [0, 0], [0, 20])).toBe(false)
+  })
+
+  it('cuts both near walls from a corner', () => {
+    expect(blocksView(south, [0, 0], [20, 20])).toBe(true)
+    expect(blocksView(east, [0, 0], [20, 20])).toBe(true)
   })
 })

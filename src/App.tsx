@@ -49,6 +49,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [floorIndex, setFloorIndex] = useState(0)
   const [outside, setOutside] = useState(false)
   const [camera, setCamera] = useState<CameraMode>('orbit')
+  const [cutaway, setCutaway] = useState(false)
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
@@ -320,6 +321,8 @@ const House = ({ backend, account }: HouseProps) => {
         onOutside={goOutside}
         camera={camera}
         onCamera={setCamera}
+        cutaway={cutaway}
+        onCutaway={setCutaway}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => setLeftOpen(!leftOpen)}
@@ -364,6 +367,7 @@ const House = ({ backend, account }: HouseProps) => {
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
           outside={outside}
           camera={camera}
+          cutaway={cutaway}
           data={data}
           interaction={interaction}
           selection={selection}

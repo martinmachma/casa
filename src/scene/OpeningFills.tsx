@@ -1,8 +1,9 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useRef, useState } from 'react'
-import { Group, MathUtils, Mesh } from 'three'
+import { Group, MathUtils } from 'three'
 import { openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
+import { raycastIfShown } from './raycast'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME } from './palette'
 
 const FRAME = 0.06
@@ -103,7 +104,7 @@ const useToggle = (clickable: boolean, apply: (group: Group, amount: number) => 
   })
   const handlers = clickable
     ? {
-        raycast: Mesh.prototype.raycast,
+        raycast: raycastIfShown,
         onClick: (e: ThreeEvent<MouseEvent>) => {
           if (e.delta > CLICK_SLOP_PX) return
           e.stopPropagation()

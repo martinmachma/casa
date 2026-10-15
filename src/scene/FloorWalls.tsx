@@ -1,12 +1,13 @@
-import type { ThreeEvent } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
-import { useMemo } from 'react'
-import { Mesh } from 'three'
-import { wallAngle, wallPieces, wallThickness } from '../layout/geometry'
-import type { Floor, Wall, WallSide } from '../layout/types'
+import { useMemo, useRef } from 'react'
+import type { Group } from 'three'
+import { blocksView, floorBounds, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import type { Floor, Point, Wall, WallSide } from '../layout/types'
 import { wallColorKey } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
+import { raycastIfShown } from './raycast'
 import type { Selection } from './selection'
 
 // Walls overlap at corners by just under half their thickness, so end caps never sit flush
@@ -22,28 +23,49 @@ type FloorWallsProps = {
   interactive: boolean
   /** Whether taps open and close doors. */
   doors: boolean
+  /** Hide the walls between the camera and the middle of the floor, so you can see in. */
+  cutaway: boolean
   onPick: (wallId: string, side: WallSide) => void
 }
 
-export const FloorWalls = ({ floor, colors, selection, interactive, doors, onPick }: FloorWallsProps) => (
-  <group>
-    {floor.walls.map((wall) => (
-      <WallMesh
-        key={wall.id}
-        wall={wall}
-        floor={floor}
-        colorA={colors.get(wallColorKey(wall.id, 'a')) ?? DEFAULT_WALL}
-        colorB={colors.get(wallColorKey(wall.id, 'b')) ?? DEFAULT_WALL}
-        selectedSide={selection?.kind === 'wall' && selection.wallId === wall.id ? selection.side : undefined}
-        interactive={interactive}
-        doors={doors}
-        onPick={onPick}
-      />
-    ))}
-  </group>
-)
+export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaway, onPick }: FloorWallsProps) => {
+  const groups = useRef(new Map<string, Group | null>())
+  const center = useMemo((): Point => {
+    const { min, max } = floorBounds(floor)
+    return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
+  }, [floor])
+
+  // Every frame, since it depends on where the camera has orbited to.
+  useFrame(({ camera }) => {
+    const eye: Point = [camera.position.x, camera.position.z]
+    for (const wall of floor.walls) {
+      const group = groups.current.get(wall.id)
+      if (group) group.visible = !cutaway || !blocksView(wall, center, eye)
+    }
+  })
+
+  return (
+    <group>
+      {floor.walls.map((wall) => (
+        <WallMesh
+          key={wall.id}
+          ref={(g) => void groups.current.set(wall.id, g)}
+          wall={wall}
+          floor={floor}
+          colorA={colors.get(wallColorKey(wall.id, 'a')) ?? DEFAULT_WALL}
+          colorB={colors.get(wallColorKey(wall.id, 'b')) ?? DEFAULT_WALL}
+          selectedSide={selection?.kind === 'wall' && selection.wallId === wall.id ? selection.side : undefined}
+          interactive={interactive}
+          doors={doors}
+          onPick={onPick}
+        />
+      ))}
+    </group>
+  )
+}
 
 type WallMeshProps = {
+  ref: (group: Group | null) => void
   wall: Wall
   floor: Floor
   colorA: string
@@ -57,7 +79,7 @@ type WallMeshProps = {
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, doors, onPick }: WallMeshProps) => {
+const WallMesh = ({ ref, wall, floor, colorA, colorB, selectedSide, interactive, doors, onPick }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(
     () => wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET),
@@ -81,14 +103,14 @@ const WallMesh = ({ wall, floor, colorA, colorB, selectedSide, interactive, door
   }
 
   return (
-    <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
+    <group ref={ref} position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
       {pieces.map((p, i) => (
         <mesh
           key={i}
           position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
           castShadow
           receiveShadow
-          raycast={interactive ? Mesh.prototype.raycast : noRaycast}
+          raycast={interactive ? raycastIfShown : noRaycast}
           onClick={interactive ? handleClick : undefined}
           onPointerOver={
             interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined

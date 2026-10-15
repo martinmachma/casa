@@ -89,3 +89,25 @@ export const floorBounds = (floor: Floor): { min: Point; max: Point } => {
   }
   return { min: [minX, minY], max: [maxX, maxY] }
 }
+
+/** How square-on a wall must face the viewer to be cut away (|cos| of the angle); side-on walls stay. */
+const CUTAWAY_FACING = 0.5
+
+/**
+ * Whether a wall is in the way when looking at the floor from `eye` (plan coordinates): it lies on the
+ * viewer's half of the floor around `center` and faces the viewer rather than running away from them.
+ */
+export const blocksView = (wall: Wall, center: Point, eye: Point): boolean => {
+  const vx = eye[0] - center[0]
+  const vz = eye[1] - center[1]
+  const v = Math.hypot(vx, vz)
+  const length = wallLength(wall)
+  if (v === 0 || length === 0) return false
+  const mx = (wall.from[0] + wall.to[0]) / 2 - center[0]
+  const mz = (wall.from[1] + wall.to[1]) / 2 - center[1]
+  if (mx * vx + mz * vz <= 0) return false
+  // The wall's normal is its direction turned a quarter.
+  const nx = -(wall.to[1] - wall.from[1]) / length
+  const nz = (wall.to[0] - wall.from[0]) / length
+  return Math.abs(nx * vx + nz * vz) / v > CUTAWAY_FACING
+}
