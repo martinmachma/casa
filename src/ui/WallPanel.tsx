@@ -1,23 +1,22 @@
-import { ArrowLeftRight, RotateCcw } from 'lucide-react'
-import type { WallSide } from '../layout/types'
+import { RotateCcw } from 'lucide-react'
+import type { WallFace } from '../layout/types'
 import { DEFAULT_WALL, PAINT_SWATCHES } from '../scene/palette'
 import { PanelHead, Section } from './kit'
 
 type WallPanelProps = {
-  side: WallSide
+  side: WallFace
   /** Its size, e.g. "6.03 m centre line · 34 cm thick · 2.68 m high". */
   details: string
   color: string | undefined
   onColor: (color: string | undefined) => void
-  onFlip: () => void
   onClose: () => void
 }
 
-export const WallPanel = ({ side, details, color, onColor, onFlip, onClose }: WallPanelProps) => {
+export const WallPanel = ({ side, details, color, onColor, onClose }: WallPanelProps) => {
   const current = color ?? DEFAULT_WALL
   return (
     <>
-      <PanelHead eyebrow="Wall" title={`Side ${side.toUpperCase()}`} sub={details} onClose={onClose} />
+      <PanelHead eyebrow="Wall" title={side === 'end' ? 'Wall end' : `Side ${side.toUpperCase()}`} sub={details} onClose={onClose} />
       <Section title="Paint">
         <div className="swatches">
           {PAINT_SWATCHES.map((c) => (
@@ -42,12 +41,6 @@ export const WallPanel = ({ side, details, color, onColor, onFlip, onClose }: Wa
             Reset
           </button>
         </div>
-      </Section>
-      <Section>
-        <button className="btn btn-block" onClick={onFlip}>
-          <ArrowLeftRight size={16} />
-          Paint the other side
-        </button>
       </Section>
     </>
   )

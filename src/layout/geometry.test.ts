@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blocksView, floorBounds, validateLayout, wallOutside, wallPieces } from './geometry'
+import { blocksView, floorBounds, sidePart, validateLayout, wallJoints, wallOutside, wallPieces } from './geometry'
 import { house } from './layout'
 import type { Floor, HouseLayout, Point, Wall } from './types'
 
@@ -126,5 +126,18 @@ describe('cutaway', () => {
 
   it('keeps interior walls the view runs along', () => {
     expect(cut(mid, [20, 0])).toBe(false)
+  })
+})
+
+describe('wallJoints', () => {
+  it('splits a side where a partition butts into it, not the other side', () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [4, 0] }
+    const partition: Wall = { id: 'p', from: [1.5, 0], to: [1.5, 3] }
+    const floor = { wallThickness: 0.1, walls: [wall, partition] } as unknown as Floor
+    const joints = wallJoints(wall, floor)
+    // y grows south, and side 'a' is to the right walking from→to: here, south.
+    expect(joints).toEqual({ a: [1.5], b: [] })
+    expect(sidePart(joints.a, 1)).toBe(0)
+    expect(sidePart(joints.a, 3)).toBe(1)
   })
 })

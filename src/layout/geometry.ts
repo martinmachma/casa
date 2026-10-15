@@ -1,4 +1,4 @@
-import type { Floor, HouseLayout, Opening, Point, Wall } from './types'
+import type { Floor, HouseLayout, Opening, Point, Wall, WallSide } from './types'
 
 /** A solid box of a wall in wall-local coordinates: u along the wall from `from`, y up from the floor. */
 export type WallPiece = { u0: number; u1: number; y0: number; y1: number }
@@ -154,3 +154,59 @@ export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, v
 /** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */
 export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
   pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))
+
+
+/** How far an end can sit off a wall's face and still count as butting into it. */
+const JOINT_SLACK = 0.02
+
+/**
+ * Where each side of a wall is split into parts that read as separate walls, painted apart: where other
+ * walls butt into it (either side of a partition), and floor-to-ceiling gaps (both sides). Distances
+ * along the wall from `from`, sorted.
+ */
+export const wallJoints = (wall: Wall, floor: Floor): Record<WallSide, number[]> => {
+  const length = wallLength(wall)
+  const joints: Record<WallSide, number[]> = { a: [], b: [] }
+  if (length === 0) return joints
+  const dir: Point = [(wall.to[0] - wall.from[0]) / length, (wall.to[1] - wall.from[1]) / length]
+  const [nx, nz] = wallNormal(wall)
+  const half = wallThickness(wall, floor) / 2
+  const local = (p: Point) => {
+    const dx = p[0] - wall.from[0]
+    const dz = p[1] - wall.from[1]
+    return { u: dx * dir[0] + dz * dir[1], d: dx * nx + dz * nz }
+  }
+  for (const other of floor.walls) {
+    if (other.id === wall.id) continue
+    for (const [end, far] of [
+      [other.from, other.to],
+      [other.to, other.from],
+    ]) {
+      const e = local(end)
+      const f = local(far)
+      if (e.u <= half || e.u >= length - half) continue
+      if (Math.abs(e.d) > half + wallThickness(other, floor) / 2 + JOINT_SLACK) continue
+      if (Math.abs(f.d) <= half) continue
+      joints[f.d > 0 ? 'a' : 'b'].push(e.u)
+    }
+  }
+  for (const o of wall.openings ?? []) {
+    if (openingSill(o) > 0 || o.height < floor.height) continue
+    joints.a.push(o.offset + o.width / 2)
+    joints.b.push(o.offset + o.width / 2)
+  }
+  joints.a.sort((p, q) => p - q)
+  joints.b.sort((p, q) => p - q)
+  return joints
+}
+
+/** Which part of a side, counted from `from`, the point `u` along the wall falls in. */
+export const sidePart = (joints: number[], u: number): number => joints.filter((j) => j < u).length
+
+/** Pieces cut at the given distances along the wall, so no piece spans one of them. */
+export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
+  pieces.flatMap((p) => {
+    const inside = cuts.filter((c) => c > p.u0 && c < p.u1)
+    const edges = [p.u0, ...inside, p.u1]
+    return edges.slice(1).map((u1, i) => ({ ...p, u0: edges[i], u1 }))
+  })

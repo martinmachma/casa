@@ -1,6 +1,10 @@
-import type { WallSide } from '../layout/types'
+import type { WallFace, WallSide } from '../layout/types'
 
-export type WallColor = { wallId: string; side: WallSide; color: string }
+/**
+ * A side's paint; with `part`, just that part of it (see wallJoints), over the whole side's. An end's `part` is
+ * where it is along the wall, in millimetres.
+ */
+export type WallColor = { wallId: string; side: WallFace; part?: number; color: string }
 
 /** A room's floor finish; `material` is an id from scene/floorMaterials. */
 export type RoomFloor = { roomId: string; material: string }
@@ -89,4 +93,9 @@ export type Backend = {
   subscribe: (onChange: () => void) => () => void
 }
 
-export const wallColorKey = (wallId: string, side: WallSide) => `${wallId}:${side}`
+export const wallColorKey = (wallId: string, side: WallFace, part?: number) =>
+  part === undefined ? `${wallId}:${side}` : `${wallId}:${side}:${part}`
+
+/** The paint on one part of a wall side: its own, else the whole side's. */
+export const wallPartColor = (colors: Map<string, string>, wallId: string, side: WallFace, part: number) =>
+  colors.get(wallColorKey(wallId, side, part)) ?? colors.get(wallColorKey(wallId, side))

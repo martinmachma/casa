@@ -744,11 +744,17 @@ p {
 .modebar {
   position: absolute;
   top: 14px;
-  right: calc(14px + var(--right-inset, 0px));
+  right: 14px;
   display: flex;
+  flex-direction: row-reverse;
   align-items: flex-start;
   gap: 8px;
-  z-index: 5;
+  /* Above the right panel, which keeps a strip at its top free for it. */
+  z-index: 21;
+}
+
+.sidebar-right .sidebar-inner {
+  padding-top: 54px;
 }
 
 .modebar .history {
@@ -786,6 +792,7 @@ p {
 .compass {
   position: absolute;
   right: calc(14px + var(--right-inset, 0px));
+  transition: right 200ms ease;
   bottom: max(14px, env(safe-area-inset-bottom));
   padding: 3px;
   border-radius: 50%;
@@ -887,9 +894,34 @@ p {
 }
 
 .annotation-measure {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 10px;
   font-size: 13px;
   background: var(--ink);
+}
+
+.annotation-measure:has(.annotation-remove) {
+  padding-right: 4px;
+}
+
+.annotation-remove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.annotation-remove:hover {
+  background: rgb(255 255 255 / 0.32);
 }
 
 /* ── Floating view dock (view switch, rooms, sunlight) ───── */
@@ -930,8 +962,8 @@ p {
 
 .dock-panel.float {
   width: 100%;
+  flex: none;
   min-height: 0;
-  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
@@ -967,6 +999,14 @@ p {
 
 .dock-panel .badge {
   transform: scale(0.85);
+}
+
+.dock-panel[data-grow] {
+  flex: 0 1 auto;
+}
+
+.dock-panel > .section:first-child {
+  border-top: 0;
 }
 
 .dock-panel .section {
@@ -1332,78 +1372,15 @@ input[type='range'] {
 }
 
 /* Measuring */
-.readout {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-}
-
-.readout-value {
-  font-size: 30px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.readout-value[data-empty] {
-  color: var(--line-strong);
-}
-
-.readout-detail {
-  font-size: 13px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.steps {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.steps li {
+.measure-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
-.steps li::before {
-  content: attr(data-step);
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--surface-3);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-
-.steps li[data-state='current'] {
-  color: var(--ink);
-  font-weight: 500;
-}
-
-.steps li[data-state='current']::before {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.steps li[data-state='done']::before {
-  content: '✓';
-  background: var(--accent-soft);
-  color: var(--accent-hover);
+.measure-row > :first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Phones ──────────────────────────────────────────────── */
@@ -1540,6 +1517,7 @@ input[type='range'] {
   position: absolute;
   top: 64px;
   right: calc(14px + var(--right-inset, 0px));
+  transition: right 200ms ease;
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
@@ -1636,6 +1614,7 @@ input[type='range'] {
 
   .sidebar-right .sidebar-inner {
     max-height: calc(56vh - env(safe-area-inset-bottom));
+    padding-top: 0;
   }
 
   .sheet-handle {
