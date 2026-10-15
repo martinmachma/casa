@@ -365,46 +365,28 @@ const House = ({ backend, account }: HouseProps) => {
 
         <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>
           <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
-          {outside ? (
-            <FloorList
-              floors={house.floors}
-              onPick={switchFloor}
-              collapsed={!leftOpen}
-              onToggle={() => setLeftOpen(!leftOpen)}
-            />
-          ) : (
-            <RoomLegend
-              floor={floor}
-              regions={regions}
-              names={data.roomNames}
-              devices={devicesPerRoom(floorDevices, floor, regions)}
-              hovered={hoveredRoom}
-              selected={selection?.kind === 'room' ? selection.roomId : undefined}
-              onHover={setHoveredRoom}
-              onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-              collapsed={!leftOpen}
-              onToggle={() => setLeftOpen(!leftOpen)}
-            />
-          )}
-          </DockBox>
-          <DockBox label="Sunlight">
-            <SunPanel sun={sun} position={sunAt} onSun={setSun} />
-          </DockBox>
-          {!outside && (
-            <DockBox label="Measure">
-              <MeasurePanel
-                mode={measure?.mode}
-                canClear={measurements.length > 0 || !!measure?.picks.length}
-                onStart={toggleMeasure}
-                onMode={(mode) => setMeasure({ mode, picks: [] })}
-                onClear={() => {
-                  setMeasurements([])
-                  if (measure) setMeasure({ ...measure, picks: [] })
-                }}
-                onClose={toggleMeasure}
+            {outside ? (
+              <FloorList
+                floors={house.floors}
+                onPick={switchFloor}
+                collapsed={!leftOpen}
+                onToggle={() => setLeftOpen(!leftOpen)}
               />
-            </DockBox>
-          )}
+            ) : (
+              <RoomLegend
+                floor={floor}
+                regions={regions}
+                names={data.roomNames}
+                devices={devicesPerRoom(floorDevices, floor, regions)}
+                hovered={hoveredRoom}
+                selected={selection?.kind === 'room' ? selection.roomId : undefined}
+                onHover={setHoveredRoom}
+                onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+                collapsed={!leftOpen}
+                onToggle={() => setLeftOpen(!leftOpen)}
+              />
+            )}
+          </DockBox>
         </ViewDock>
 
         {!outside && (
@@ -415,6 +397,22 @@ const House = ({ backend, account }: HouseProps) => {
             onRedo={data.canRedo ? redo : undefined}
           />
         )}
+
+        <div className="bottom-tools">
+          {!outside && (
+            <MeasurePanel
+              mode={measure?.mode}
+              canClear={measurements.length > 0 || !!measure?.picks.length}
+              onToggle={toggleMeasure}
+              onMode={(mode) => setMeasure({ mode, picks: [] })}
+              onClear={() => {
+                setMeasurements([])
+                if (measure) setMeasure({ ...measure, picks: [] })
+              }}
+            />
+          )}
+          <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+        </div>
 
         <CameraPad
           mode={camera}
