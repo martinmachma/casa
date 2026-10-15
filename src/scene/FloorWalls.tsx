@@ -4,11 +4,11 @@ import { useMemo, useState } from 'react'
 import type { Group } from 'three'
 import {
   blocksView,
-  floorBounds,
   isExteriorWall,
   stubPieces,
   wallAngle,
   wallPieces,
+  wallOutside,
   wallThickness,
   type WallPiece,
 } from '../layout/geometry'
@@ -42,10 +42,7 @@ type FloorWallsProps = {
 export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaway, onPick }: FloorWallsProps) => {
   // A stable lookup filled by the walls' refs, not render state.
   const [parts] = useState(() => new Map<string, WallParts>())
-  const center = useMemo((): Point => {
-    const { min, max } = floorBounds(floor)
-    return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
-  }, [floor])
+  const outsides = useMemo(() => new Map(floor.walls.map((w) => [w.id, wallOutside(w, floor)])), [floor])
 
   // Every frame, since it depends on where the camera has orbited to.
   useFrame(({ camera }) => {
@@ -53,7 +50,7 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
     for (const wall of floor.walls) {
       const { full, stub } = parts.get(wall.id) ?? {}
       if (!full || !stub) continue
-      const cut = cutaway && blocksView(wall, isExteriorWall(wall, floor), center, eye)
+      const cut = cutaway && blocksView(wall, outsides.get(wall.id), eye)
       full.visible = !cut
       stub.visible = cut
     }

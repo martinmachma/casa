@@ -98,26 +98,54 @@ export const isExteriorWall = (wall: Wall, floor: Pick<Floor, 'wallThickness'>):
 
 /** How square-on a wall must face the viewer to be cut away (|cos| of the angle); side-on walls stay. */
 const CUTAWAY_FACING = 0.5
+/** How far past a wall's face to look for the outside of the house. */
+const OUTSIDE_PROBE = 0.05
+
+const insidePolygon = (p: Point, polygon: Point[]): boolean => {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, zi] = polygon[i]
+    const [xj, zj] = polygon[j]
+    if (zi > p[1] !== zj > p[1] && p[0] < ((xj - xi) * (p[1] - zi)) / (zj - zi) + xi) inside = !inside
+  }
+  return inside
+}
+
+/** The unit normal of a wall, its direction turned a quarter (towards side 'a'). */
+const wallNormal = (wall: Wall): Point => {
+  const length = wallLength(wall)
+  return [-(wall.to[1] - wall.from[1]) / length, (wall.to[0] - wall.from[0]) / length]
+}
+
+/** For an outer wall, the unit normal pointing out of the house; undefined for walls with rooms on both sides. */
+export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
+  if (wallLength(wall) === 0) return undefined
+  const { min, max } = floorBounds(floor)
+  const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
+  const [nx, nz] = wallNormal(wall)
+  const reach = wallThickness(wall, floor) / 2 + OUTSIDE_PROBE
+  const mx = (wall.from[0] + wall.to[0]) / 2
+  const mz = (wall.from[1] + wall.to[1]) / 2
+  for (const sign of [1, -1]) {
+    if (!insidePolygon([mx + sign * nx * reach, mz + sign * nz * reach], outline)) return [sign * nx, sign * nz]
+  }
+  return undefined
+}
 
 /**
- * Whether a wall is in the way when looking at the floor from `eye` (plan coordinates): it faces the
- * viewer rather than running away from them, and either has a room behind it (interior walls) or lies
- * on the viewer's half of the floor around `center` (outer walls).
+ * Whether a wall is in the way when looking from `eye` (plan coordinates): it faces the viewer rather
+ * than running away from them, and either has a room behind it (interior walls) or is seen from
+ * outside the house (outer walls, given their `outside` normal).
  */
-export const blocksView = (wall: Wall, exterior: boolean, center: Point, eye: Point): boolean => {
-  const vx = eye[0] - center[0]
-  const vz = eye[1] - center[1]
+export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point): boolean => {
+  if (wallLength(wall) === 0) return false
+  const vx = eye[0] - (wall.from[0] + wall.to[0]) / 2
+  const vz = eye[1] - (wall.from[1] + wall.to[1]) / 2
   const v = Math.hypot(vx, vz)
-  const length = wallLength(wall)
-  if (v === 0 || length === 0) return false
-  // The wall's normal is its direction turned a quarter.
-  const nx = -(wall.to[1] - wall.from[1]) / length
-  const nz = (wall.to[0] - wall.from[0]) / length
+  if (v === 0) return false
+  const [nx, nz] = wallNormal(wall)
   if (Math.abs(nx * vx + nz * vz) / v <= CUTAWAY_FACING) return false
-  if (!exterior) return true
-  const mx = (wall.from[0] + wall.to[0]) / 2 - center[0]
-  const mz = (wall.from[1] + wall.to[1]) / 2 - center[1]
-  return mx * vx + mz * vz > 0
+  return !outside || outside[0] * vx + outside[1] * vz > 0
 }
 
 /** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */

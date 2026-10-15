@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { blocksView, floorBounds, validateLayout, wallPieces } from './geometry'
+import { blocksView, floorBounds, validateLayout, wallOutside, wallPieces } from './geometry'
 import { house } from './layout'
-import type { HouseLayout, Wall } from './types'
+import type { Floor, HouseLayout, Point, Wall } from './types'
 
 const wall = (openings: Wall['openings']): Wall => ({ id: 'w', from: [0, 0], to: [5, 0], openings })
 
@@ -84,27 +84,44 @@ describe('validateLayout', () => {
   })
 })
 
-describe('blocksView', () => {
-  // A 10 x 10 box around the origin, seen from the south (+z).
-  const south: Wall = { id: 's', from: [-5, 5], to: [5, 5] }
-  const north: Wall = { id: 'n', from: [-5, -5], to: [5, -5] }
-  const east: Wall = { id: 'e', from: [5, -5], to: [5, 5] }
+describe('cutaway', () => {
+  // A 10 x 10 box around the origin with a wall across the middle, seen from the south (+z).
+  const floor: Floor = {
+    id: 'f',
+    name: 'Test',
+    rooms: [],
+    elevation: 0,
+    height: 2.6,
+    wallThickness: 0.2,
+    walls: [
+      { id: 's', from: [-5, 5], to: [5, 5] },
+      { id: 'n', from: [-5, -5], to: [5, -5] },
+      { id: 'e', from: [5, -5], to: [5, 5] },
+      { id: 'mid', from: [-5, 1], to: [5, 1] },
+    ],
+  }
+  const [south, north, east, mid] = floor.walls
+  const cut = (wall: Wall, eye: Point) => blocksView(wall, wallOutside(wall, floor), eye)
 
-  it('cuts the near outer wall facing the viewer and keeps the far one', () => {
-    expect(blocksView(south, true, [0, 0], [0, 20])).toBe(true)
-    expect(blocksView(north, true, [0, 0], [0, 20])).toBe(false)
+  it('tells outer walls from interior ones', () => {
+    expect(wallOutside(south, floor)?.map((c) => c + 0)).toEqual([0, 1])
+    expect(wallOutside(mid, floor)).toBeUndefined()
+  })
+
+  it('cuts the outer wall seen from outside and keeps the far one', () => {
+    expect(cut(south, [0, 20])).toBe(true)
+    expect(cut(north, [0, 20])).toBe(false)
+  })
+
+  it('keeps the far outer wall when the camera is inside the house', () => {
+    expect(cut(north, [0, 3])).toBe(false)
   })
 
   it('cuts interior walls facing the viewer wherever they are', () => {
-    expect(blocksView(north, false, [0, 0], [0, 20])).toBe(true)
+    expect(cut(mid, [0, 20])).toBe(true)
   })
 
   it('keeps walls seen side-on', () => {
-    expect(blocksView(east, false, [0, 0], [0, 20])).toBe(false)
-  })
-
-  it('cuts both near outer walls from a corner', () => {
-    expect(blocksView(south, true, [0, 0], [20, 20])).toBe(true)
-    expect(blocksView(east, true, [0, 0], [20, 20])).toBe(true)
+    expect(cut(east, [0, 20])).toBe(false)
   })
 })
