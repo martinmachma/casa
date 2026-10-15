@@ -96,7 +96,7 @@ const EXTERIOR_WALL = 0.2
 export const isExteriorWall = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): boolean =>
   wallThickness(wall, floor) >= EXTERIOR_WALL
 
-/** How square-on a wall must face the viewer to be cut away (|cos| of the angle); side-on walls stay. */
+/** How square-on an interior wall must face the view to be cut away (|cos| of the angle); side-on walls stay. */
 const CUTAWAY_FACING = 0.5
 /** How far past a wall's face to look for the outside of the house. */
 const OUTSIDE_PROBE = 0.05
@@ -133,19 +133,22 @@ export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
 }
 
 /**
- * Whether a wall is in the way when looking from `eye` (plan coordinates): it faces the viewer rather
- * than running away from them, and either has a room behind it (interior walls) or is seen from
- * outside the house (outer walls, given their `outside` normal).
+ * Whether a wall is in the way, seen from `eye` looking along `view` (plan coordinates): you see it from
+ * outside a room it closes off. Outer walls are cut whenever the eye is on their `outside`; interior
+ * walls close off a room on either side, so they're cut unless the view runs along them. Judging those
+ * by the view direction, not the angle to each wall, treats parallel walls alike.
  */
-export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point): boolean => {
+export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, view: Point): boolean => {
   if (wallLength(wall) === 0) return false
-  const vx = eye[0] - (wall.from[0] + wall.to[0]) / 2
-  const vz = eye[1] - (wall.from[1] + wall.to[1]) / 2
-  const v = Math.hypot(vx, vz)
-  if (v === 0) return false
+  if (outside) {
+    const mx = (wall.from[0] + wall.to[0]) / 2
+    const mz = (wall.from[1] + wall.to[1]) / 2
+    return outside[0] * (eye[0] - mx) + outside[1] * (eye[1] - mz) > 0
+  }
+  const v = Math.hypot(view[0], view[1])
+  if (v === 0) return true
   const [nx, nz] = wallNormal(wall)
-  if (Math.abs(nx * vx + nz * vz) / v <= CUTAWAY_FACING) return false
-  return !outside || outside[0] * vx + outside[1] * vz > 0
+  return Math.abs(nx * view[0] + nz * view[1]) / v > CUTAWAY_FACING
 }
 
 /** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */

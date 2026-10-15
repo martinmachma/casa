@@ -1,7 +1,7 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
 import { useMemo, useState } from 'react'
-import type { Group } from 'three'
+import { Vector3, type Group } from 'three'
 import {
   blocksView,
   isExteriorWall,
@@ -26,6 +26,7 @@ const CORNER_INSET = 0.002
 const CLICK_SLOP_PX = 5
 // How much of a wall is left when it's cut away, so the rooms' outlines still show.
 const STUB_HEIGHT = 0.3
+const forward = new Vector3()
 
 type FloorWallsProps = {
   floor: Floor
@@ -47,10 +48,12 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
   // Every frame, since it depends on where the camera has orbited to.
   useFrame(({ camera }) => {
     const eye: Point = [camera.position.x, camera.position.z]
+    camera.getWorldDirection(forward)
+    const view: Point = [forward.x, forward.z]
     for (const wall of floor.walls) {
       const { full, stub } = parts.get(wall.id) ?? {}
       if (!full || !stub) continue
-      const cut = cutaway && blocksView(wall, outsides.get(wall.id), eye)
+      const cut = cutaway && blocksView(wall, outsides.get(wall.id), eye, view)
       full.visible = !cut
       stub.visible = cut
     }
