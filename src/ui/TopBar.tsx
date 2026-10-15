@@ -1,4 +1,4 @@
-import { House, LogOut, PanelLeft } from 'lucide-react'
+import { House, ListTodo, LogOut } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
@@ -11,8 +11,9 @@ type TopBarProps = {
   /** Looking at the whole house from outside instead of one floor. */
   outside: boolean
   onOutside: () => void
-  leftOpen: boolean
-  onToggleLeft: () => void
+  /** Opens the wishes & bugs list; the badge counts open ones. */
+  onTodos: () => void
+  openTodos: number
   account: Account
   /** The version picker. */
   versions: ReactNode
@@ -28,8 +29,8 @@ export const TopBar = ({
   onFloor,
   outside,
   onOutside,
-  leftOpen,
-  onToggleLeft,
+  onTodos,
+  openTodos,
   account,
   versions,
 }: TopBarProps) => (
@@ -38,9 +39,6 @@ export const TopBar = ({
       <img src="/favicon.svg" alt="" />
       <span className="brand-name">Casa</span>
     </div>
-    <IconButton label={leftOpen ? 'Hide rooms' : 'Show rooms'} aria-pressed={leftOpen} onClick={onToggleLeft}>
-      <PanelLeft size={18} />
-    </IconButton>
     <span className="topbar-divider hide-narrow" />
     <Segmented
       label="Floor"
@@ -54,6 +52,10 @@ export const TopBar = ({
     />
     {versions}
     <span className="spacer" />
+    <IconButton label="Wishes & bugs" className="todo-open" onClick={onTodos}>
+      <ListTodo size={18} />
+      {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
+    </IconButton>
     <AccountMenu account={account} />
   </header>
 )

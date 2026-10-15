@@ -71,9 +71,17 @@ export const Section = ({ title, aside, children }: SectionProps) => (
   </section>
 )
 
-type PanelHeadProps = { eyebrow?: string; title: ReactNode; sub?: ReactNode; onClose?: () => void; closeLabel?: string }
+type PanelHeadProps = {
+  eyebrow?: string
+  title: ReactNode
+  sub?: ReactNode
+  onClose?: () => void
+  closeLabel?: string
+  /** Replaces the close cross, e.g. a plus/minus for a panel that folds to its header. */
+  closeIcon?: ReactNode
+}
 
-export const PanelHead = ({ eyebrow, title, sub, onClose, closeLabel = 'Close' }: PanelHeadProps) => (
+export const PanelHead = ({ eyebrow, title, sub, onClose, closeLabel = 'Close', closeIcon }: PanelHeadProps) => (
   <header className="panel-head">
     <div className="panel-head-text">
       {eyebrow && <div className="eyebrow">{eyebrow}</div>}
@@ -82,7 +90,7 @@ export const PanelHead = ({ eyebrow, title, sub, onClose, closeLabel = 'Close' }
     </div>
     {onClose && (
       <IconButton label={closeLabel} small onClick={onClose}>
-        <X size={18} />
+        {closeIcon ?? <X size={18} />}
       </IconButton>
     )}
   </header>

@@ -324,8 +324,8 @@ const House = ({ backend, account }: HouseProps) => {
         onFloor={switchFloor}
         outside={outside}
         onOutside={goOutside}
-        leftOpen={leftOpen}
-        onToggleLeft={() => setLeftOpen(!leftOpen)}
+        onTodos={() => setTodosOpen(true)}
+        openTodos={openTodos}
         account={account}
         versions={<VersionMenu data={data} />}
       />
@@ -357,34 +357,28 @@ const House = ({ backend, account }: HouseProps) => {
         />
 
         <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>
-          {leftOpen && (
-            <>
-              {outside ? (
-                <FloorList floors={house.floors} onPick={switchFloor} onClose={() => setLeftOpen(false)} />
-              ) : (
-                <RoomLegend
-                  floor={floor}
-                  regions={regions}
-                  names={data.roomNames}
-                  devices={devicesPerRoom(floorDevices, floor, regions)}
-                  hovered={hoveredRoom}
-                  selected={selection?.kind === 'room' ? selection.roomId : undefined}
-                  onHover={setHoveredRoom}
-                  onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-                  onClose={() => setLeftOpen(false)}
-                />
-              )}
-              <button className="btn btn-ghost todo-open" onClick={() => setTodosOpen(true)}>
-                <svg viewBox="0 0 16 16" aria-hidden>
-                  <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
-                  <path d="M5.5 8l2 2 3-4" />
-                </svg>
-                Wishes &amp; bugs
-                {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
-              </button>
-              <SunPanel sun={sun} position={sunAt} onSun={setSun} />
-            </>
+          {outside ? (
+            <FloorList
+              floors={house.floors}
+              onPick={switchFloor}
+              collapsed={!leftOpen}
+              onToggle={() => setLeftOpen(!leftOpen)}
+            />
+          ) : (
+            <RoomLegend
+              floor={floor}
+              regions={regions}
+              names={data.roomNames}
+              devices={devicesPerRoom(floorDevices, floor, regions)}
+              hovered={hoveredRoom}
+              selected={selection?.kind === 'room' ? selection.roomId : undefined}
+              onHover={setHoveredRoom}
+              onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+              collapsed={!leftOpen}
+              onToggle={() => setLeftOpen(!leftOpen)}
+            />
           )}
+          {leftOpen && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
         </ViewDock>
 
         {!outside && (

@@ -350,16 +350,16 @@ p {
   inset: 0;
   display: grid;
   grid-template-rows: calc(var(--topbar) + env(safe-area-inset-top)) minmax(0, 1fr);
-  grid-template-columns: minmax(0, 1fr) var(--right);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
-    'top top'
-    'view right';
+    'top'
+    'view';
   background: var(--bg);
-  transition: grid-template-columns 200ms ease;
 }
 
-.app[data-right='closed'] {
-  --right: 0px;
+/* The right panel floats over the view, so opening it doesn't move the house; what sits on the right edge steps aside. */
+.app[data-right='open'] {
+  --right-inset: var(--right);
 }
 
 .topbar {
@@ -473,12 +473,20 @@ p {
 }
 
 .sidebar-right {
-  grid-area: right;
+  position: absolute;
+  z-index: 20;
+  top: calc(var(--topbar) + env(safe-area-inset-top));
+  right: 0;
+  bottom: 0;
+  width: var(--right);
   border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  transition: transform 200ms ease;
 }
 
 .app[data-right='closed'] .sidebar-right {
-  border: 0;
+  transform: translateX(105%);
+  box-shadow: none;
 }
 
 .sidebar-inner {
@@ -736,7 +744,7 @@ p {
 .modebar {
   position: absolute;
   top: 14px;
-  right: 14px;
+  right: calc(14px + var(--right-inset, 0px));
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -777,7 +785,7 @@ p {
 
 .compass {
   position: absolute;
-  right: 14px;
+  right: calc(14px + var(--right-inset, 0px));
   bottom: max(14px, env(safe-area-inset-bottom));
   padding: 3px;
   border-radius: 50%;
@@ -966,13 +974,6 @@ p {
   padding: 10px 14px;
   border-top: 1px solid rgb(31 27 23 / 0.08);
   border-bottom: 0;
-}
-
-.dock-panel .todo-open {
-  margin: 4px 10px 10px;
-  min-height: 30px;
-  font-size: 13px;
-  order: 2;
 }
 
 .edit-toggle {
@@ -1538,7 +1539,7 @@ input[type='range'] {
 .savebar {
   position: absolute;
   top: 64px;
-  right: 14px;
+  right: calc(14px + var(--right-inset, 0px));
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
@@ -1606,10 +1607,16 @@ input[type='range'] {
     transition: transform 220ms ease;
   }
 
+  .app[data-right='open'] {
+    --right-inset: 0px;
+  }
+
   .sidebar-right {
+    top: auto;
     left: 0;
     right: 0;
     bottom: 0;
+    width: auto;
     max-height: 56%;
     border: 0;
     border-top: 1px solid var(--line);
@@ -1743,31 +1750,18 @@ input[type='range'] {
 
 /* To-do popup */
 .todo-open {
-  margin: auto 12px 12px;
-  justify-content: flex-start;
-  gap: 8px;
-  border: 1px dashed var(--line-strong);
-  color: var(--ink-2);
-}
-
-.todo-open:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  position: relative;
 }
 
 .todo-open .todo-count {
-  margin-left: auto;
-}
-
-.todo-open svg {
-  width: 16px;
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 16px;
   height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
 }
 
 .todo-popup {
