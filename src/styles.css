@@ -1665,6 +1665,10 @@ input[type='range'] {
   color: var(--accent);
 }
 
+.todo-open .todo-count {
+  margin-left: auto;
+}
+
 .todo-open svg {
   width: 16px;
   height: 16px;

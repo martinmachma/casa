@@ -1,4 +1,5 @@
 import { TodoPopup } from './ui/TodoPopup'
+import { useOpenTodoCount } from './ui/useOpenTodoCount'
 import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
 import type { Backend, Device, DeviceKind, FurnitureItem } from './data/types'
@@ -53,6 +54,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [placing, setPlacing] = useState<DeviceKind>()
   const [hoveredRoom, setHoveredRoom] = useState<string>()
   const [todosOpen, setTodosOpen] = useState(false)
+  const openTodos = useOpenTodoCount()
   const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
   const [rightOpen, setRightOpen] = useState(() => !isNarrow())
   const [snap, setSnap] = useState(true)
@@ -349,6 +351,7 @@ const House = ({ backend, account }: HouseProps) => {
               <path d="M5.5 8l2 2 3-4" />
             </svg>
             Wishes &amp; bugs
+            {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
           </button>
         </div>
       </aside>
