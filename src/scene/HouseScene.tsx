@@ -2,12 +2,13 @@ import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-thr
 import { Canvas, useThree } from '@react-three/fiber'
 import { useMemo, useRef, type RefObject } from 'react'
 import { MOUSE, TOUCH } from 'three'
-import type { FurnitureItem } from '../data/types'
+import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, Point, WallSide } from '../layout/types'
+import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox } from './FurnitureBox'
 import { Outdoor } from './Outdoor'
@@ -55,6 +56,9 @@ type HouseSceneProps = {
   /** The measurement in progress; undefined when not measuring. */
   measure: Measurement | undefined
   onMeasurePick: (pick: MeasurePick) => void
+  /** The device kind the next tap places, while the devices tool is on. */
+  placing: DeviceKind | undefined
+  onPlaceDevice: (device: Omit<Device, 'id' | 'name'>) => void
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
@@ -76,6 +80,8 @@ export const HouseScene = ({
   north,
   measure,
   onMeasurePick,
+  placing,
+  onPlaceDevice,
   nudge,
   viewKey,
   onSelect,
@@ -87,6 +93,7 @@ export const HouseScene = ({
   const cz = (min[1] + max[1]) / 2
 
   const items = outside ? [] : data.furniture.filter((f) => f.floor === floor.id)
+  const devices = outside ? [] : data.devices.filter((d) => d.floor === floor.id)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedItem =
@@ -129,10 +136,15 @@ export const HouseScene = ({
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
     data.patchFurniture(id, placement, `move:${id}`)
   const saveItem = () => data.endEdit()
+  const moveDevice = (id: string, patch: Partial<Device>) => data.patchDevice(id, patch, `device:${id}`)
 
   return (
     <>
-      <Canvas shadows dpr={[1, 2]} onPointerMissed={() => pickable && onSelect(undefined)}>
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
+      >
         {camera === 'walk' ? (
           <WalkCamera key={`${floor.id}-${viewKey}`} floor={floor} furniture={data.furniture} nudge={nudge} />
         ) : (
@@ -185,6 +197,20 @@ export const HouseScene = ({
 
         {/* Walking needs a ceiling, so light comes in through the windows; the floor above's slab is one. */}
         {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
+
+        {interaction === 'devices' && placing && !outside && (
+          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} />
+        )}
+        <Devices
+          floor={floor}
+          devices={devices}
+          selectedId={selection?.kind === 'device' ? selection.id : undefined}
+          plan={camera === 'top'}
+          interactive={interaction === 'devices' && !placing}
+          onSelect={(id) => onSelect({ kind: 'device', id })}
+          onMove={moveDevice}
+          onMoveEnd={saveItem}
+        />
 
         {measure && <MeasureTool floor={floor} items={items} measure={measure} onPick={onMeasurePick} />}
 

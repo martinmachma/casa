@@ -1,4 +1,4 @@
-import { Eye, MousePointer2, PenLine, Redo2, Ruler, Undo2 } from 'lucide-react'
+import { Eye, Lightbulb, MousePointer2, PenLine, Redo2, Ruler, Undo2 } from 'lucide-react'
 import type { Interaction } from '../scene/selection'
 import { IconButton, Segmented } from './kit'
 
@@ -46,6 +46,7 @@ export const ModeBar = ({ interaction, onChange, onUndo, onRedo }: ModeBarProps)
           options={[
             { value: 'edit', label: 'Select', icon: <MousePointer2 size={17} />, iconOnly: true },
             { value: 'measure', label: 'Measure (M)', icon: <Ruler size={17} />, iconOnly: true },
+            { value: 'devices', label: 'Devices (D)', icon: <Lightbulb size={17} />, iconOnly: true },
           ]}
         />
       )}

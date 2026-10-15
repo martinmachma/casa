@@ -1,10 +1,15 @@
+import { TodoPopup } from './ui/TodoPopup'
+import { useOpenTodoCount } from './ui/useOpenTodoCount'
 import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
-import type { Backend, FurnitureItem } from './data/types'
+import type { Backend, Device, DeviceKind, FurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
+import { DEVICE_KINDS } from './devices/kinds'
+import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
 import { floorRegions } from './layout/rooms'
+import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
@@ -12,6 +17,8 @@ import { FURNITURE_SWATCHES } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
+import { DeviceEditor } from './ui/DeviceEditor'
+import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import type { SunSettings } from './sun/useSun'
@@ -44,7 +51,10 @@ const House = ({ backend, account }: HouseProps) => {
   const [camera, setCamera] = useState<CameraMode>('orbit')
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
+  const [placing, setPlacing] = useState<DeviceKind>()
   const [hoveredRoom, setHoveredRoom] = useState<string>()
+  const [todosOpen, setTodosOpen] = useState(false)
+  const openTodos = useOpenTodoCount()
   const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
   const [rightOpen, setRightOpen] = useState(() => !isNarrow())
   const [snap, setSnap] = useState(true)
@@ -61,6 +71,8 @@ const House = ({ backend, account }: HouseProps) => {
   const regions = floorRegions(floor)
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
   const selectedItem = selection?.kind === 'furniture' ? data.furniture.find((f) => f.id === selection.id) : undefined
+  const selectedDevice = selection?.kind === 'device' ? data.devices.find((d) => d.id === selection.id) : undefined
+  const floorDevices = data.devices.filter((d) => d.floor === floor.id)
 
   // Typing a size or dragging the colour picker undoes as one step per field.
   const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>, key?: string) =>
@@ -82,6 +94,33 @@ const House = ({ backend, account }: HouseProps) => {
   const deleteItem = (item: FurnitureItem) => {
     data.removeFurniture(item.id)
     setSelection(undefined)
+  }
+
+  const deleteDevice = (device: Device) => {
+    data.removeDevice(device.id)
+    setSelection(undefined)
+  }
+
+  /** A numbered name for a new device of the kind ("Socket 3"). */
+  const deviceName = (kind: DeviceKind) => {
+    const { label } = DEVICE_KINDS[kind]
+    const taken = new Set(data.devices.map((d) => d.name))
+    let n = data.devices.filter((d) => d.kind === kind).length + 1
+    while (taken.has(`${label} ${n}`)) n++
+    return `${label} ${n}`
+  }
+
+  /** A placed device is selected, ready to be named. */
+  const placeDevice = (device: Omit<Device, 'id' | 'name'>) => {
+    const created = data.addDevice({ ...device, name: deviceName(device.kind) })
+    setPlacing(undefined)
+    select({ kind: 'device', id: created.id })
+  }
+
+  /** A device still under its numbered name is renamed for its new kind. */
+  const changeDeviceKind = (device: Device, kind: DeviceKind) => {
+    const numbered = new RegExp(`^${DEVICE_KINDS[device.kind].label} \\d+$`).test(device.name)
+    data.patchDevice(device.id, { ...changeKind(device, kind, floor), ...(numbered ? { name: deviceName(kind) } : {}) })
   }
 
   /** Where new pieces appear: the middle of the biggest room's largest open area, else the floor's middle. */
@@ -128,7 +167,9 @@ const House = ({ backend, account }: HouseProps) => {
   /** Measuring is part of editing: leaving edit mode stops it, and nothing stays selected across modes. */
   const changeInteraction = (next: Interaction) => {
     setSelection(undefined)
+    setPlacing(undefined)
     setInteraction(next)
+    if (next === 'devices') setRightOpen(true)
     if (next === 'measure') {
       setMeasure((m) => m ?? { mode: 'points', picks: [] })
       setRightOpen(true)
@@ -163,10 +204,14 @@ const House = ({ backend, account }: HouseProps) => {
       if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') changeInteraction(interaction === 'measure' ? 'edit' : 'measure')
+      else if (key === 'd') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
       else if (selectedItem && key === 'r') rotateItem(selectedItem, e.shiftKey ? -15 : 15)
       else if (selectedItem && (e.key === 'Delete' || e.key === 'Backspace')) deleteItem(selectedItem)
+      else if (selectedDevice && (e.key === 'Delete' || e.key === 'Backspace')) deleteDevice(selectedDevice)
       else if (e.key === 'Escape') {
         if (selection) setSelection(undefined)
+        else if (placing) setPlacing(undefined)
+        else if (interaction === 'devices') changeInteraction('edit')
         else if (interaction === 'measure') changeInteraction('edit')
       }
     }
@@ -222,6 +267,36 @@ const House = ({ backend, account }: HouseProps) => {
           onClose={() => setSelection(undefined)}
         />
       )
+    if (selectedDevice) {
+      const room = deviceRoom(selectedDevice, floor, regions)
+      const roomRecord = floor.rooms.find((r) => r.id === room)
+      return (
+        <DeviceEditor
+          device={selectedDevice}
+          room={roomRecord && roomLabel(roomRecord, data.roomNames).name}
+          onChange={(patch) =>
+            data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
+          }
+          onKind={(kind) => changeDeviceKind(selectedDevice, kind)}
+          onDelete={() => deleteDevice(selectedDevice)}
+          onClose={() => setSelection(undefined)}
+        />
+      )
+    }
+    if (interaction === 'devices')
+      return (
+        <DevicePanel
+          devices={floorDevices}
+          placing={placing}
+          onPlacing={(kind) => {
+            setPlacing(kind)
+            // On a phone the sheet covers the house; tuck it away so there's room to tap.
+            if (kind && isNarrow()) setRightOpen(false)
+          }}
+          onSelect={(id) => select({ kind: 'device', id })}
+          onClose={() => changeInteraction('edit')}
+        />
+      )
     if (editing)
       return (
         <FurniturePanel
@@ -262,15 +337,26 @@ const House = ({ backend, account }: HouseProps) => {
               floor={floor}
               regions={regions}
               names={data.roomNames}
+              devices={devicesPerRoom(floorDevices, floor, regions)}
               hovered={hoveredRoom}
               selected={selection?.kind === 'room' ? selection.roomId : undefined}
               onHover={setHoveredRoom}
-              onPick={editing && !measure ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+              onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
               onClose={() => setLeftOpen(false)}
             />
           )}
+          <button className="btn btn-ghost todo-open" onClick={() => setTodosOpen(true)}>
+            <svg viewBox="0 0 16 16" aria-hidden>
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
+              <path d="M5.5 8l2 2 3-4" />
+            </svg>
+            Wishes &amp; bugs
+            {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
+          </button>
         </div>
       </aside>
+
+      {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
 
       <main className="viewport">
         <HouseScene
@@ -288,6 +374,8 @@ const House = ({ backend, account }: HouseProps) => {
           north={site.north}
           measure={measure}
           onMeasurePick={addMeasurePick}
+          placing={placing}
+          onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}
           onSelect={select}
