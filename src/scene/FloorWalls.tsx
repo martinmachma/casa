@@ -4,15 +4,18 @@ import { Vector3, type Group } from 'three'
 import {
   blocksView,
   isExteriorWall,
+  sidePart,
+  splitPieces,
   stubPieces,
   wallAngle,
+  wallJoints,
   wallPieces,
   wallOutside,
   wallThickness,
   type WallPiece,
 } from '../layout/geometry'
 import type { Floor, Point, Wall, WallSide } from '../layout/types'
-import { wallColorKey } from '../data/types'
+import { wallPartColor } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
 import { raycastIfShown } from './raycast'
@@ -38,7 +41,7 @@ type FloorWallsProps = {
   doors: boolean
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
-  onPick: (wallId: string, side: WallSide) => void
+  onPick: (wallId: string, side: WallSide, part: number) => void
 }
 
 export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaway, onPick }: FloorWallsProps) => {
@@ -68,9 +71,8 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
           parts={parts}
           wall={wall}
           floor={floor}
-          colorA={colors.get(wallColorKey(wall.id, 'a')) ?? DEFAULT_WALL}
-          colorB={colors.get(wallColorKey(wall.id, 'b')) ?? DEFAULT_WALL}
-          selectedSide={selection?.kind === 'wall' && selection.wallId === wall.id ? selection.side : undefined}
+          colors={colors}
+          selected={selection?.kind === 'wall' && selection.wallId === wall.id ? selection : undefined}
           interactive={interactive}
           doors={doors}
           onPick={onPick}
@@ -87,23 +89,29 @@ type WallMeshProps = {
   parts: Map<string, WallParts>
   wall: Wall
   floor: Floor
-  colorA: string
-  colorB: string
-  selectedSide: WallSide | undefined
+  colors: Map<string, string>
+  selected: { side: WallSide; part: number } | undefined
   interactive: boolean
   doors: boolean
-  onPick: (wallId: string, side: WallSide) => void
+  onPick: (wallId: string, side: WallSide, part: number) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactive, doors, onPick }: WallMeshProps) => {
+const WallMesh = ({ parts, wall, floor, colors, selected, interactive, doors, onPick }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
+  const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
+  // Cut where other walls meet either side, so each box lies in one part of each side.
   const pieces = useMemo(
-    () => wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET),
-    [wall, floor.height, thickness],
+    () => splitPieces(wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET), [...joints.a, ...joints.b]),
+    [wall, floor.height, thickness, joints],
   )
+  const partOf = (p: WallPiece, side: WallSide) => sidePart(joints[side], (p.u0 + p.u1) / 2)
+  const colorOf = (p: WallPiece, side: WallSide) =>
+    wallPartColor(colors, wall.id, side, partOf(p, side)) ?? DEFAULT_WALL
+  const inSelection = (list: WallPiece[]) =>
+    selected ? list.filter((p) => partOf(p, selected.side) === selected.part) : []
   const stub = useMemo(() => stubPieces(pieces, STUB_HEIGHT), [pieces])
   const own = (key: keyof WallParts) => (g: Group | null) => {
     parts.set(wall.id, { ...parts.get(wall.id), [key]: g })
@@ -117,12 +125,12 @@ const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactiv
     return undefined
   }
 
-  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+  const handleClick = (p: WallPiece) => (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > CLICK_SLOP_PX) return
     const side = sideOf(e)
     if (!side) return
     e.stopPropagation()
-    onPick(wall.id, side)
+    onPick(wall.id, side, partOf(p, side))
   }
 
   const boxes = (list: WallPiece[]) =>
@@ -133,7 +141,7 @@ const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactiv
         castShadow
         receiveShadow
         raycast={interactive ? raycastIfShown : noRaycast}
-        onClick={interactive ? handleClick : undefined}
+        onClick={interactive ? handleClick(p) : undefined}
         onPointerOver={interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined}
         onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
       >
@@ -142,8 +150,8 @@ const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactiv
         <meshStandardMaterial attach="material-1" color={WALL_CAP} />
         <meshStandardMaterial attach="material-2" color={WALL_CAP} />
         <meshStandardMaterial attach="material-3" color={WALL_CAP} />
-        <meshStandardMaterial attach="material-4" color={colorA} />
-        <meshStandardMaterial attach="material-5" color={colorB} />
+        <meshStandardMaterial attach="material-4" color={colorOf(p, 'a')} />
+        <meshStandardMaterial attach="material-5" color={colorOf(p, 'b')} />
       </mesh>
     ))
 
@@ -151,14 +159,14 @@ const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactiv
     <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
       <group ref={own('full')}>
         {boxes(pieces)}
-        {selectedSide && <SideHighlight pieces={pieces} side={selectedSide} thickness={thickness} />}
+        {selected && <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />}
         {wall.openings && (
           <OpeningFills openings={wall.openings} exterior={isExteriorWall(wall, floor)} clickable={doors} />
         )}
       </group>
       <group ref={own('stub')} visible={false}>
         {boxes(stub)}
-        {selectedSide && <SideHighlight pieces={stub} side={selectedSide} thickness={thickness} />}
+        {selected && <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />}
       </group>
     </group>
   )

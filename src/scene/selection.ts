@@ -1,7 +1,7 @@
 import type { WallSide } from '../layout/types'
 
 export type Selection =
-  | { kind: 'wall'; wallId: string; side: WallSide }
+  | { kind: 'wall'; wallId: string; side: WallSide; part: number }
   | { kind: 'furniture'; id: string }
   | { kind: 'room'; roomId: string }
   | { kind: 'device'; id: string }

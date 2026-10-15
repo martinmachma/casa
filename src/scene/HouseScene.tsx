@@ -135,7 +135,7 @@ export const HouseScene = ({
   const pickable = interaction === 'edit'
   const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
-  const pickWall = (wallId: string, side: WallSide) => onSelect({ kind: 'wall', wallId, side })
+  const pickWall = (wallId: string, side: WallSide, part: number) => onSelect({ kind: 'wall', wallId, side, part })
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
     data.patchFurniture(id, placement, `move:${id}`)
   const saveItem = () => data.endEdit()

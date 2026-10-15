@@ -85,7 +85,7 @@ export const useHouseData = (backend: Backend) => {
   const state = draft?.state ?? viewed?.data ?? EMPTY_STATE
 
   const wallColors = useMemo(
-    () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side), w.color])),
+    () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
     [state.walls],
   )
   const roomNames = useMemo(() => new Map((state.rooms ?? []).map((r) => [r.roomId, r.name])), [state.rooms])
@@ -118,16 +118,20 @@ export const useHouseData = (backend: Backend) => {
       h.future.length ? { draft: h.future[0], past: [...h.past, h.draft], future: h.future.slice(1) } : h,
     )
 
-  const setWallColor = (wallId: string, side: WallSide, color: string | undefined) =>
+  const setWallColor = (wallId: string, side: WallSide, part: number, color: string | undefined) =>
     edit(
-      (s) => ({
-        ...s,
-        walls: [
-          ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side)),
-          ...(color ? [{ wallId, side, color }] : []),
-        ],
-      }),
-      `wall:${wallId}:${side}`,
+      (s) => {
+        const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
+        return {
+          ...s,
+          walls: [
+            ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side && w.part === part)),
+            // A reset part goes back to the whole side's paint; with none, to the default.
+            ...(color && color !== sideColor?.color ? [{ wallId, side, part, color }] : []),
+          ],
+        }
+      },
+      `wall:${wallId}:${side}:${part}`,
     )
 
   const setRoomFloor = (roomId: string, material: string | undefined) =>

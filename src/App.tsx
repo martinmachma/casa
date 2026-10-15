@@ -30,7 +30,7 @@ import { SunPanel } from './ui/SunPanel'
 import { ViewDock } from './ui/ViewDock'
 import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
-import { wallColorKey } from './data/types'
+import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
@@ -244,8 +244,8 @@ const House = ({ backend, account }: HouseProps) => {
         <WallPanel
           side={selection.side}
           details={wall ? wallText(wall, floor) : ''}
-          color={data.wallColors.get(wallColorKey(selection.wallId, selection.side))}
-          onColor={(color) => data.setWallColor(selection.wallId, selection.side, color)}
+          color={wallPartColor(data.wallColors, selection.wallId, selection.side, selection.part)}
+          onColor={(color) => data.setWallColor(selection.wallId, selection.side, selection.part, color)}
           onClose={() => setSelection(undefined)}
         />
       )
