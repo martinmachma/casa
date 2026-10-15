@@ -23,6 +23,8 @@ export type FurnitureItem = {
   y: number
   /** Plan angle, radians. */
   rotation: number
+  /** Height of its underside above the floor, metres: a shelf or cabinet hung on a wall. Absent: on the floor. */
+  z?: number
   /** Box colour, or the fabric colour of a model. */
   color: string
   /** Catalog model (furniture/catalog.ts); a plain box when absent. */
@@ -69,7 +71,7 @@ export type HouseState = {
 
 export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [], rooms: [], devices: [] }
 
-/** A saved snapshot of the house; versions never change once saved. */
+/** A saved snapshot of the house; once saved only its name can change. */
 export type Version = {
   id: string
   name: string
@@ -87,6 +89,7 @@ export type Backend = {
   /** Newest first, with the live version's id (none: the bare house is live). */
   loadVersions: () => Promise<{ versions: Version[]; liveId: string | undefined }>
   saveVersion: (name: string, data: HouseState, basedOn: string | undefined) => Promise<Version>
+  renameVersion: (id: string, name: string) => Promise<void>
   deleteVersion: (id: string) => Promise<void>
   setLive: (id: string | undefined) => Promise<void>
   /** Calls `onChange` whenever versions or the live one may have changed elsewhere. Returns the unsubscribe. */

@@ -754,7 +754,40 @@ p {
 }
 
 .sidebar-right .sidebar-inner {
-  padding-top: 54px;
+  padding-top: 72px;
+}
+
+/* Floats just above the selected furniture item. */
+.item-actions {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  transform: translateY(-28px);
+  pointer-events: auto;
+}
+
+.item-actions button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.item-actions button:hover {
+  background: var(--accent-soft);
+}
+
+.item-actions .danger {
+  color: var(--danger);
+}
+
+.item-actions .danger:hover {
+  background: var(--danger-soft);
 }
 
 .modebar .history {
@@ -2025,7 +2058,6 @@ input[type='range'] {
   font-size: 22px;
   margin-bottom: 4px;
 }
-
 
 .bottom-tools {
   position: absolute;

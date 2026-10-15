@@ -10,7 +10,7 @@ import { floorRegions } from '../layout/rooms'
 import type { Floor, Point, WallFace } from '../layout/types'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
-import { FurnitureBox } from './FurnitureBox'
+import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { Outdoor } from './Outdoor'
 import { prismGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
@@ -70,6 +70,8 @@ type HouseSceneProps = {
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
   onSelect: (selection: Selection | undefined) => void
+  /** The selected item's floating buttons. */
+  itemActions: ItemActions
 }
 
 export const HouseScene = ({
@@ -96,6 +98,7 @@ export const HouseScene = ({
   nudge,
   viewKey,
   onSelect,
+  itemActions,
 }: HouseSceneProps) => {
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
@@ -115,15 +118,13 @@ export const HouseScene = ({
   const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
   const lineY = floor.elevation + 0.03
   const annotations = [
-    ...lines.map(
-      (m): Annotation => ({
-        key: m.id,
-        at: [(m.from[0] + m.to[0]) / 2, lineY, (m.from[1] + m.to[1]) / 2],
-        text: formatLength(distance(m.from, m.to)) + (m.parallel ? '' : ' ∠'),
-        kind: 'measure',
-        onRemove: () => onRemoveMeasurement(m.id),
-      }),
-    ),
+    ...lines.map((m): Annotation => ({
+      key: m.id,
+      at: [(m.from[0] + m.to[0]) / 2, lineY, (m.from[1] + m.to[1]) / 2],
+      text: formatLength(distance(m.from, m.to)) + (m.parallel ? '' : ' ∠'),
+      kind: 'measure',
+      onRemove: () => onRemoveMeasurement(m.id),
+    })),
     ...gaps.map((g, i): Annotation => ({
       key: `gap${i}`,
       at: [(g.from[0] + g.to[0]) / 2, gapY, (g.from[1] + g.to[1]) / 2],
@@ -261,6 +262,7 @@ export const HouseScene = ({
             onSelect={(id) => onSelect({ kind: 'furniture', id })}
             onMove={moveItem}
             onMoveEnd={saveItem}
+            actions={itemActions}
           />
         ))}
       </Canvas>

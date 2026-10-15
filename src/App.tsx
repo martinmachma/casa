@@ -375,6 +375,11 @@ const House = ({ backend, account }: HouseProps) => {
           nudge={nudge}
           viewKey={viewKey}
           onSelect={select}
+          itemActions={{
+            onRotate: (item) => rotateItem(item, 15),
+            onDuplicate: duplicateItem,
+            onDelete: deleteItem,
+          }}
         />
 
         <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>

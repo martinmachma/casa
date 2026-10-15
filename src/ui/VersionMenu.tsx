@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Layers, Radio, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Layers, Pencil, Radio, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BARE, LIVE, type HouseData } from '../data/useHouseData'
 import type { Version } from '../data/types'
@@ -34,6 +34,11 @@ export const VersionMenu = ({ data }: { data: HouseData }) => {
 
   const remove = (v: Version) => confirm(`Delete “${v.name}”? This can't be undone.`) && data.deleteVersion(v.id)
 
+  const rename = (v: Version) => {
+    const name = prompt('Rename version', v.name)?.trim().slice(0, 80)
+    if (name && name !== v.name) data.renameVersion(v.id, name)
+  }
+
   const row = (id: string | undefined, name: string, meta?: string, version?: Version) => {
     const live = id === liveId
     return (
@@ -50,6 +55,11 @@ export const VersionMenu = ({ data }: { data: HouseData }) => {
           <button className="version-action" title="Make this the live version" onClick={() => data.makeLive(id)}>
             <Radio size={15} />
             <span>Make live</span>
+          </button>
+        )}
+        {version && (
+          <button className="version-action" title="Rename" aria-label="Rename" onClick={() => rename(version)}>
+            <Pencil size={15} />
           </button>
         )}
         {version && !live && (

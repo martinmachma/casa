@@ -119,20 +119,17 @@ export const useHouseData = (backend: Backend) => {
     )
 
   const setWallColor = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
-    edit(
-      (s) => {
-        const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
-        return {
-          ...s,
-          walls: [
-            ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side && w.part === part)),
-            // A reset part goes back to the whole side's paint; with none, to the default.
-            ...(color && color !== sideColor?.color ? [{ wallId, side, part, color }] : []),
-          ],
-        }
-      },
-      `wall:${wallId}:${side}:${part}`,
-    )
+    edit((s) => {
+      const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
+      return {
+        ...s,
+        walls: [
+          ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side && w.part === part)),
+          // A reset part goes back to the whole side's paint; with none, to the default.
+          ...(color && color !== sideColor?.color ? [{ wallId, side, part, color }] : []),
+        ],
+      }
+    }, `wall:${wallId}:${side}:${part}`)
 
   const setRoomFloor = (roomId: string, material: string | undefined) =>
     edit((s) => ({
@@ -216,6 +213,7 @@ export const useHouseData = (backend: Backend) => {
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
     makeLive: (id: string | undefined) => run(backend.setLive(id)),
+    renameVersion: (id: string, name: string) => run(backend.renameVersion(id, name)),
     deleteVersion: (id: string) => run(backend.deleteVersion(id)),
     wallColors,
     setWallColor,

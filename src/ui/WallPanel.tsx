@@ -16,7 +16,12 @@ export const WallPanel = ({ side, details, color, onColor, onClose }: WallPanelP
   const current = color ?? DEFAULT_WALL
   return (
     <>
-      <PanelHead eyebrow="Wall" title={side === 'end' ? 'Wall end' : `Side ${side.toUpperCase()}`} sub={details} onClose={onClose} />
+      <PanelHead
+        eyebrow="Wall"
+        title={side === 'end' ? 'Wall end' : `Side ${side.toUpperCase()}`}
+        sub={details}
+        onClose={onClose}
+      />
       <Section title="Paint">
         <div className="swatches">
           {PAINT_SWATCHES.map((c) => (

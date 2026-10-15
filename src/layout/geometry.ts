@@ -155,7 +155,6 @@ export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, v
 export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
   pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))
 
-
 /** How far an end can sit off a wall's face and still count as butting into it. */
 const JOINT_SLACK = 0.02
 

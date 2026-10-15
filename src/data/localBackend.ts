@@ -51,6 +51,14 @@ export const localBackend: Backend = {
     return created
   },
 
+  renameVersion: async (id, name) => {
+    write(
+      VERSIONS_KEY,
+      versions().map((v) => (v.id === id ? { ...v, name } : v)),
+    )
+    announce()
+  },
+
   deleteVersion: async (id) => {
     write(
       VERSIONS_KEY,
