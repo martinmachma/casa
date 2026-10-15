@@ -101,6 +101,14 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
   }
 
+  /** A copy lands a little off the original, selected. */
+  const duplicateItem = (item: FurnitureItem) => {
+    const copy: Omit<FurnitureItem, 'id'> & { id?: string } = { ...item, x: item.x + 0.3, y: item.y + 0.3 }
+    delete copy.id
+    const created = data.addFurniture(copy)
+    select({ kind: 'furniture', id: created.id })
+  }
+
   const deleteDevice = (device: Device) => {
     data.removeDevice(device.id)
     setSelection(undefined)
@@ -207,7 +215,7 @@ const House = ({ backend, account }: HouseProps) => {
     data.redo()
   }
 
-  // E toggles editing, M measuring, L devices; R / Shift+R rotate and Delete removes the selected item; Esc steps back.
+  // E toggles editing, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
@@ -217,6 +225,11 @@ const House = ({ backend, account }: HouseProps) => {
         e.preventDefault()
         if (key === 'y' || e.shiftKey) redo()
         else undo()
+        return
+      }
+      if (!typing && !outside && selectedItem && (e.metaKey || e.ctrlKey) && key === 'd') {
+        e.preventDefault()
+        duplicateItem(selectedItem)
         return
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
@@ -274,6 +287,7 @@ const House = ({ backend, account }: HouseProps) => {
           onChange={(patch) => changeItem(selectedItem, patch, `${selectedItem.id}:${Object.keys(patch).join()}`)}
           onRotate={(deg) => rotateItem(selectedItem, deg)}
           onDelete={() => deleteItem(selectedItem)}
+          onDuplicate={() => duplicateItem(selectedItem)}
           onClose={() => setSelection(undefined)}
         />
       )

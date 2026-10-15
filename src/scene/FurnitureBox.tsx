@@ -78,6 +78,8 @@ export const FurnitureBox = ({
         onPointerMove,
         onPointerUp: endDrag,
         onPointerCancel: endDrag,
+        // The release would otherwise click through to the floor beneath and change the selection.
+        onClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'grab')),
         onPointerOut: () => (document.body.style.cursor = ''),
       }

@@ -16,7 +16,7 @@ describe('snapToWalls', () => {
   })
 
   it('pushes an item flush against a nearby wall face', () => {
-    const p = snapToWalls({ ...box, x: 2, y: 0.5 }, room)
+    const p = snapToWalls({ ...box, x: 2, y: 0.4 }, room)
     expect(p.x).toBeCloseTo(2)
     expect(p.y).toBeCloseTo(0.1 + 0.25)
     expect(p.rotation).toBeCloseTo(0)
@@ -34,21 +34,25 @@ describe('snapToWalls', () => {
   })
 
   it('squares a slightly turned item to the wall', () => {
-    const p = snapToWalls({ ...box, x: 2, y: 0.45, rotation: 0.2 }, room)
+    const p = snapToWalls({ ...box, x: 2, y: 0.4, rotation: 0.2 }, room)
     expect(Math.abs(Math.sin(p.rotation))).toBeCloseTo(0)
     expect(p.y).toBeCloseTo(0.35)
   })
 
   it('uses the right half-size when the item is turned a quarter', () => {
-    const p = snapToWalls({ ...box, x: 3.5, y: 2, rotation: Math.PI / 2 }, room)
+    const p = snapToWalls({ ...box, x: 3.6, y: 2, rotation: Math.PI / 2 }, room)
     // Turned 90°, its 1 m width runs along y, so it sits 0.25 m (half depth) off the east wall face.
     expect(p.x).toBeCloseTo(4 - 0.1 - 0.25)
   })
 
   it('settles into a corner', () => {
-    const p = snapToWalls({ ...box, x: 0.75, y: 0.45 }, room)
+    const p = snapToWalls({ ...box, x: 0.65, y: 0.4 }, room)
     expect(p.x).toBeCloseTo(0.1 + 0.5)
     expect(p.y).toBeCloseTo(0.1 + 0.25)
+  })
+
+  it('leaves an item turned well off square alone', () => {
+    expect(snapToWalls({ ...box, x: 2, y: 0.4, rotation: 0.6 }, room)).toEqual({ x: 2, y: 0.4, rotation: 0.6 })
   })
 
   it('ignores a wall whose segment the item is not beside', () => {

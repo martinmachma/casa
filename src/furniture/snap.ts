@@ -6,6 +6,8 @@ export type SnapWall = { from: Point; to: Point; thickness: number }
 export type Placement = Pick<Footprint, 'x' | 'y' | 'rotation'>
 
 const QUARTER = Math.PI / 2
+// An item turned further than this from square to a wall is left alone by it.
+const SQUARE_TOLERANCE = (15 * Math.PI) / 180
 
 export const floorSnapWalls = (floor: Floor): SnapWall[] =>
   floor.walls.map((w) => ({ from: w.from, to: w.to, thickness: wallThickness(w, floor) }))
@@ -55,16 +57,18 @@ const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
 }
 
 /**
- * Pushes a footprint flush against the nearest wall face within `threshold` metres (or one it overlaps),
- * turning it square to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
+ * Pushes a footprint flush against the nearest wall face within `threshold` metres (or one it overlaps) that it's
+ * nearly square to, turning it square to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
  */
-export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.25): Placement => {
+export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement => {
   const frames = walls.map(frameOf)
 
   let best: { frame: Frame; placed: Footprint; gap: number } | undefined
   for (const frame of frames) {
     // Square up to the wall at the quarter turn nearest the current rotation.
-    const k = Math.round(normalizeAngle(f.rotation - frame.angle) / QUARTER)
+    const off = normalizeAngle(f.rotation - frame.angle)
+    const k = Math.round(off / QUARTER)
+    if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
     const squared = { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) }
     const hit = gapTo(squared, frame, 0)
     if (!hit || hit.gap > threshold || (best && Math.abs(hit.gap) >= best.gap)) continue
