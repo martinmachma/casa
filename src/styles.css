@@ -28,7 +28,6 @@
   --ring: 0 0 0 3px rgb(200 102 74 / 0.25);
 
   --topbar: 56px;
-  --left: 272px;
   --right: 340px;
 
   font-family:
@@ -351,16 +350,12 @@ p {
   inset: 0;
   display: grid;
   grid-template-rows: calc(var(--topbar) + env(safe-area-inset-top)) minmax(0, 1fr);
-  grid-template-columns: var(--left) minmax(0, 1fr) var(--right);
+  grid-template-columns: minmax(0, 1fr) var(--right);
   grid-template-areas:
-    'top top top'
-    'left view right';
+    'top top'
+    'view right';
   background: var(--bg);
   transition: grid-template-columns 200ms ease;
-}
-
-.app[data-left='closed'] {
-  --left: 0px;
 }
 
 .app[data-right='closed'] {
@@ -477,17 +472,11 @@ p {
   background: var(--surface);
 }
 
-.sidebar-left {
-  grid-area: left;
-  border-right: 1px solid var(--line);
-}
-
 .sidebar-right {
   grid-area: right;
   border-left: 1px solid var(--line);
 }
 
-.app[data-left='closed'] .sidebar-left,
 .app[data-right='closed'] .sidebar-right {
   border: 0;
 }
@@ -500,10 +489,6 @@ p {
   flex-direction: column;
   /* Content keeps its width while the column animates open or shut. */
   width: var(--panel-width);
-}
-
-.sidebar-left .sidebar-inner {
-  --panel-width: 272px;
 }
 
 .sidebar-right .sidebar-inner {
@@ -792,8 +777,8 @@ p {
 
 .compass {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  right: 14px;
+  bottom: max(14px, env(safe-area-inset-bottom));
   padding: 3px;
   border-radius: 50%;
   z-index: 5;
@@ -897,6 +882,116 @@ p {
   padding: 4px 10px;
   font-size: 13px;
   background: var(--ink);
+}
+
+/* ── Floating view dock (view switch, rooms, sunlight) ───── */
+.dock {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  bottom: 150px;
+  z-index: 6;
+  width: 248px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.dock > * {
+  pointer-events: auto;
+}
+
+.dock-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+}
+
+.dock-bar .segmented {
+  padding: 0;
+  background: transparent;
+}
+
+.dock-bar .segmented button {
+  min-height: 30px;
+  padding: 0 9px;
+}
+
+.dock-panel.float {
+  width: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  background: rgb(255 255 255 / 0.72);
+}
+
+.dock-panel .panel-head {
+  padding: 10px 10px 2px 14px;
+}
+
+.dock-panel .panel-title {
+  font-size: 14px;
+}
+
+.dock-panel .legend {
+  padding: 4px 6px;
+  gap: 0;
+}
+
+.dock-panel .legend-item {
+  min-height: 30px;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 13px;
+  background: transparent;
+}
+
+.dock-panel .legend-item[data-active],
+.dock-panel .legend-item:hover {
+  background: rgb(31 27 23 / 0.06);
+}
+
+.dock-panel .badge {
+  transform: scale(0.85);
+}
+
+.dock-panel .section {
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid rgb(31 27 23 / 0.08);
+  border-bottom: 0;
+}
+
+.dock-panel .todo-open {
+  margin: 4px 10px 10px;
+  min-height: 30px;
+  font-size: 13px;
+  order: 2;
+}
+
+.edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.edit-toggle[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
 }
 
 /* ── Camera buttons ──────────────────────────────────────── */
@@ -1511,18 +1606,6 @@ input[type='range'] {
     transition: transform 220ms ease;
   }
 
-  .sidebar-left {
-    top: calc(var(--topbar) + env(safe-area-inset-top));
-    bottom: 0;
-    left: 0;
-    width: min(300px, 86vw);
-    border-right: 1px solid var(--line);
-  }
-
-  .app[data-left='closed'] .sidebar-left {
-    transform: translateX(-105%);
-  }
-
   .sidebar-right {
     left: 0;
     right: 0;
@@ -1539,7 +1622,6 @@ input[type='range'] {
   }
 
   .sidebar-inner,
-  .sidebar-left .sidebar-inner,
   .sidebar-right .sidebar-inner {
     width: 100%;
     max-height: inherit;
@@ -1573,8 +1655,17 @@ input[type='range'] {
   }
 
   .compass {
+    right: 10px;
+  }
+
+  .dock {
     top: 10px;
     left: 10px;
+    width: min(240px, calc(100% - 120px));
+  }
+
+  .app[data-right='open'] .dock-panel {
+    display: none;
   }
 
   .version-button {

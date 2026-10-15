@@ -103,7 +103,7 @@ export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
   useEffect(() => {
     const held = keys.current
     const down = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return
       held.add(e.key.toLowerCase())
     }
     const up = (e: KeyboardEvent) => held.delete(e.key.toLowerCase())
@@ -128,7 +128,7 @@ export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
     const axis = (plus: boolean, minus: boolean) => (plus ? 1 : 0) - (minus ? 1 : 0)
     const forward = n.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
     const strafe = n.right + axis(k.has('d'), k.has('a'))
-    const turn = n.turn + axis(k.has('arrowright') || k.has('e'), k.has('arrowleft') || k.has('q'))
+    const turn = n.turn + axis(k.has('arrowright'), k.has('arrowleft'))
 
     p.yaw += turn * TURN_SPEED * dt
     p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch + n.tilt * LOOK_SPEED * dt))

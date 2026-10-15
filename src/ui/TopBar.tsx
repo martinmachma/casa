@@ -1,17 +1,7 @@
-import {
-  Box,
-  Footprints,
-  House,
-  LogOut,
-  Map as PlanIcon,
-  PanelLeft,
-  PanelRight,
-  SquareBottomDashedScissors,
-} from 'lucide-react'
+import { House, LogOut, PanelLeft } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
-import type { CameraMode } from '../scene/selection'
 import { IconButton, Segmented } from './kit'
 
 type TopBarProps = {
@@ -21,15 +11,8 @@ type TopBarProps = {
   /** Looking at the whole house from outside instead of one floor. */
   outside: boolean
   onOutside: () => void
-  camera: CameraMode
-  onCamera: (camera: CameraMode) => void
-  /** Near walls hidden in the 3D view. */
-  cutaway: boolean
-  onCutaway: (cutaway: boolean) => void
   leftOpen: boolean
-  rightOpen: boolean
   onToggleLeft: () => void
-  onToggleRight: () => void
   account: Account
   /** The version picker. */
   versions: ReactNode
@@ -45,14 +28,8 @@ export const TopBar = ({
   onFloor,
   outside,
   onOutside,
-  camera,
-  onCamera,
-  cutaway,
-  onCutaway,
   leftOpen,
-  rightOpen,
   onToggleLeft,
-  onToggleRight,
   account,
   versions,
 }: TopBarProps) => (
@@ -77,30 +54,6 @@ export const TopBar = ({
     />
     {versions}
     <span className="spacer" />
-    <Segmented
-      label="View"
-      value={camera}
-      onChange={onCamera}
-      options={[
-        { value: 'top', label: 'Plan', icon: <PlanIcon size={15} /> },
-        { value: 'orbit', label: '3D', icon: <Box size={15} /> },
-        // Walking is for inside a floor.
-        ...(outside ? [] : [{ value: 'walk' as const, label: 'Walk', icon: <Footprints size={15} /> }]),
-      ]}
-      className="views"
-    />
-    {camera === 'orbit' && !outside && (
-      <IconButton
-        label={cutaway ? 'Show near walls' : 'Hide near walls'}
-        aria-pressed={cutaway}
-        onClick={() => onCutaway(!cutaway)}
-      >
-        <SquareBottomDashedScissors size={18} />
-      </IconButton>
-    )}
-    <IconButton label={rightOpen ? 'Hide panel' : 'Show panel'} aria-pressed={rightOpen} onClick={onToggleRight}>
-      <PanelRight size={18} />
-    </IconButton>
     <AccountMenu account={account} />
   </header>
 )
