@@ -246,7 +246,6 @@ const House = ({ backend, account }: HouseProps) => {
           details={wall ? wallText(wall, floor) : ''}
           color={data.wallColors.get(wallColorKey(selection.wallId, selection.side))}
           onColor={(color) => data.setWallColor(selection.wallId, selection.side, color)}
-          onFlip={() => setSelection({ ...selection, side: selection.side === 'a' ? 'b' : 'a' })}
           onClose={() => setSelection(undefined)}
         />
       )

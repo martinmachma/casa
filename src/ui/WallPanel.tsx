@@ -1,4 +1,4 @@
-import { ArrowLeftRight, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import type { WallSide } from '../layout/types'
 import { DEFAULT_WALL, PAINT_SWATCHES } from '../scene/palette'
 import { PanelHead, Section } from './kit'
@@ -9,11 +9,10 @@ type WallPanelProps = {
   details: string
   color: string | undefined
   onColor: (color: string | undefined) => void
-  onFlip: () => void
   onClose: () => void
 }
 
-export const WallPanel = ({ side, details, color, onColor, onFlip, onClose }: WallPanelProps) => {
+export const WallPanel = ({ side, details, color, onColor, onClose }: WallPanelProps) => {
   const current = color ?? DEFAULT_WALL
   return (
     <>
@@ -42,12 +41,6 @@ export const WallPanel = ({ side, details, color, onColor, onFlip, onClose }: Wa
             Reset
           </button>
         </div>
-      </Section>
-      <Section>
-        <button className="btn btn-block" onClick={onFlip}>
-          <ArrowLeftRight size={16} />
-          Paint the other side
-        </button>
       </Section>
     </>
   )

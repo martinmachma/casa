@@ -154,3 +154,36 @@ export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, v
 /** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */
 export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
   pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))
+
+/**
+ * The outline of a wall face made of several pieces, as segments [u0, y0, u1, y1]: the pieces' edges
+ * minus the stretches two pieces share, so openings show but the seams between pieces don't.
+ */
+export const pieceOutline = (pieces: WallPiece[]): [number, number, number, number][] => {
+  const key = (n: number) => n.toFixed(4)
+  // Edges grouped by the line they lie on: horizontal by y, vertical by u.
+  const lines = new Map<string, { horizontal: boolean; at: number; spans: [number, number][] }>()
+  const add = (horizontal: boolean, at: number, a: number, b: number) => {
+    const k = `${horizontal ? 'h' : 'v'}${key(at)}`
+    const line = lines.get(k) ?? { horizontal, at, spans: [] }
+    line.spans.push([a, b])
+    lines.set(k, line)
+  }
+  for (const p of pieces) {
+    add(true, p.y0, p.u0, p.u1)
+    add(true, p.y1, p.u0, p.u1)
+    add(false, p.u0, p.y0, p.y1)
+    add(false, p.u1, p.y0, p.y1)
+  }
+  const out: [number, number, number, number][] = []
+  for (const { horizontal, at, spans } of lines.values()) {
+    const cuts = [...new Set(spans.flat())].sort((a, b) => a - b)
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const mid = (cuts[i] + cuts[i + 1]) / 2
+      // Covered by one piece: an outer edge. By two: a seam between neighbours.
+      if (spans.filter(([a, b]) => a <= mid && mid <= b).length !== 1) continue
+      out.push(horizontal ? [cuts[i], at, cuts[i + 1], at] : [at, cuts[i], at, cuts[i + 1]])
+    }
+  }
+  return out
+}
