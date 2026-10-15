@@ -1,11 +1,9 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { Line } from '@react-three/drei'
 import { useMemo, useState } from 'react'
 import { Vector3, type Group } from 'three'
 import {
   blocksView,
   isExteriorWall,
-  pieceOutline,
   stubPieces,
   wallAngle,
   wallPieces,
@@ -27,8 +25,8 @@ const CORNER_INSET = 0.002
 const CLICK_SLOP_PX = 5
 // How much of a wall is left when it's cut away, so the rooms' outlines still show.
 const STUB_HEIGHT = 0.3
-// The selection outline sits this far off the wall face, so it doesn't flicker against it.
-const OUTLINE_OFFSET = 0.004
+// The selection wash sits this far off the wall face, so it doesn't flicker against it.
+const PROUD = 0.006
 const forward = new Vector3()
 
 type FloorWallsProps = {
@@ -153,27 +151,34 @@ const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactiv
     <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
       <group ref={own('full')}>
         {boxes(pieces)}
-        {selectedSide && <SideOutline pieces={pieces} side={selectedSide} thickness={thickness} />}
+        {selectedSide && <SideHighlight pieces={pieces} side={selectedSide} thickness={thickness} />}
         {wall.openings && (
           <OpeningFills openings={wall.openings} exterior={isExteriorWall(wall, floor)} clickable={doors} />
         )}
       </group>
       <group ref={own('stub')} visible={false}>
         {boxes(stub)}
-        {selectedSide && <SideOutline pieces={stub} side={selectedSide} thickness={thickness} />}
+        {selectedSide && <SideHighlight pieces={stub} side={selectedSide} thickness={thickness} />}
       </group>
     </group>
   )
 }
 
-/** The picked side's face, outlined whole. An outline rather than a tint, so the colour is seen as it is. */
-const SideOutline = ({ pieces, side, thickness }: { pieces: WallPiece[]; side: WallSide; thickness: number }) => {
-  const segments = useMemo(() => {
-    const z = (side === 'a' ? 1 : -1) * (thickness / 2 + OUTLINE_OFFSET)
-    return pieceOutline(pieces).flatMap(([u0, y0, u1, y1]) => [
-      [u0, y0, z] as const,
-      [u1, y1, z] as const,
-    ])
-  }, [pieces, side, thickness])
-  return <Line points={segments} segments color={SELECTED_OUTLINE} lineWidth={2} />
+/** The picked side's face washed in the accent colour, as when measuring. */
+const SideHighlight = ({ pieces, side, thickness }: { pieces: WallPiece[]; side: WallSide; thickness: number }) => {
+  const z = (side === 'a' ? 1 : -1) * (thickness / 2 + PROUD)
+  return (
+    <group rotation-y={side === 'a' ? 0 : Math.PI}>
+      {pieces.map((p, i) => (
+        <mesh
+          key={i}
+          position={[((p.u0 + p.u1) / 2) * (side === 'a' ? 1 : -1), (p.y0 + p.y1) / 2, Math.abs(z)]}
+          raycast={noRaycast}
+        >
+          <planeGeometry args={[p.u1 - p.u0, p.y1 - p.y0]} />
+          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={0.6} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  )
 }
