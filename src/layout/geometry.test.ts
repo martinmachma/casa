@@ -90,17 +90,21 @@ describe('blocksView', () => {
   const north: Wall = { id: 'n', from: [-5, -5], to: [5, -5] }
   const east: Wall = { id: 'e', from: [5, -5], to: [5, 5] }
 
-  it('cuts the near wall facing the viewer and keeps the far one', () => {
-    expect(blocksView(south, [0, 0], [0, 20])).toBe(true)
-    expect(blocksView(north, [0, 0], [0, 20])).toBe(false)
+  it('cuts the near outer wall facing the viewer and keeps the far one', () => {
+    expect(blocksView(south, true, [0, 0], [0, 20])).toBe(true)
+    expect(blocksView(north, true, [0, 0], [0, 20])).toBe(false)
+  })
+
+  it('cuts interior walls facing the viewer wherever they are', () => {
+    expect(blocksView(north, false, [0, 0], [0, 20])).toBe(true)
   })
 
   it('keeps walls seen side-on', () => {
-    expect(blocksView(east, [0, 0], [0, 20])).toBe(false)
+    expect(blocksView(east, false, [0, 0], [0, 20])).toBe(false)
   })
 
-  it('cuts both near walls from a corner', () => {
-    expect(blocksView(south, [0, 0], [20, 20])).toBe(true)
-    expect(blocksView(east, [0, 0], [20, 20])).toBe(true)
+  it('cuts both near outer walls from a corner', () => {
+    expect(blocksView(south, true, [0, 0], [20, 20])).toBe(true)
+    expect(blocksView(east, true, [0, 0], [20, 20])).toBe(true)
   })
 })

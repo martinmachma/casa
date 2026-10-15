@@ -6,7 +6,10 @@ export const useOpenTodoCount = () => {
   const [count, setCount] = useState(0)
   useEffect(() => {
     const load = async () => {
-      const { count, error } = await supabase.from('todos').select('id', { count: 'exact', head: true }).eq('done', false)
+      const { count, error } = await supabase
+        .from('todos')
+        .select('id', { count: 'exact', head: true })
+        .eq('done', false)
       if (!error) setCount(count ?? 0)
     }
     void Promise.resolve().then(load)

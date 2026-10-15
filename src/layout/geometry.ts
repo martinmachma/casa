@@ -90,24 +90,36 @@ export const floorBounds = (floor: Floor): { min: Point; max: Point } => {
   return { min: [minX, minY], max: [maxX, maxY] }
 }
 
+/** Outer walls are the thick ones. */
+const EXTERIOR_WALL = 0.2
+
+export const isExteriorWall = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): boolean =>
+  wallThickness(wall, floor) >= EXTERIOR_WALL
+
 /** How square-on a wall must face the viewer to be cut away (|cos| of the angle); side-on walls stay. */
 const CUTAWAY_FACING = 0.5
 
 /**
- * Whether a wall is in the way when looking at the floor from `eye` (plan coordinates): it lies on the
- * viewer's half of the floor around `center` and faces the viewer rather than running away from them.
+ * Whether a wall is in the way when looking at the floor from `eye` (plan coordinates): it faces the
+ * viewer rather than running away from them, and either has a room behind it (interior walls) or lies
+ * on the viewer's half of the floor around `center` (outer walls).
  */
-export const blocksView = (wall: Wall, center: Point, eye: Point): boolean => {
+export const blocksView = (wall: Wall, exterior: boolean, center: Point, eye: Point): boolean => {
   const vx = eye[0] - center[0]
   const vz = eye[1] - center[1]
   const v = Math.hypot(vx, vz)
   const length = wallLength(wall)
   if (v === 0 || length === 0) return false
-  const mx = (wall.from[0] + wall.to[0]) / 2 - center[0]
-  const mz = (wall.from[1] + wall.to[1]) / 2 - center[1]
-  if (mx * vx + mz * vz <= 0) return false
   // The wall's normal is its direction turned a quarter.
   const nx = -(wall.to[1] - wall.from[1]) / length
   const nz = (wall.to[0] - wall.from[0]) / length
-  return Math.abs(nx * vx + nz * vz) / v > CUTAWAY_FACING
+  if (Math.abs(nx * vx + nz * vz) / v <= CUTAWAY_FACING) return false
+  if (!exterior) return true
+  const mx = (wall.from[0] + wall.to[0]) / 2 - center[0]
+  const mz = (wall.from[1] + wall.to[1]) / 2 - center[1]
+  return mx * vx + mz * vz > 0
 }
+
+/** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */
+export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
+  pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))

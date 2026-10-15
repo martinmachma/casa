@@ -1,8 +1,17 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
-import { useMemo, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import type { Group } from 'three'
-import { blocksView, floorBounds, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import {
+  blocksView,
+  floorBounds,
+  isExteriorWall,
+  stubPieces,
+  wallAngle,
+  wallPieces,
+  wallThickness,
+  type WallPiece,
+} from '../layout/geometry'
 import type { Floor, Point, Wall, WallSide } from '../layout/types'
 import { wallColorKey } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
@@ -15,6 +24,8 @@ import type { Selection } from './selection'
 const CORNER_INSET = 0.002
 // A pointer that moved further than this between down and up was an orbit/pan, not a click.
 const CLICK_SLOP_PX = 5
+// How much of a wall is left when it's cut away, so the rooms' outlines still show.
+const STUB_HEIGHT = 0.3
 
 type FloorWallsProps = {
   floor: Floor
@@ -29,7 +40,8 @@ type FloorWallsProps = {
 }
 
 export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaway, onPick }: FloorWallsProps) => {
-  const groups = useRef(new Map<string, Group | null>())
+  // A stable lookup filled by the walls' refs, not render state.
+  const [parts] = useState(() => new Map<string, WallParts>())
   const center = useMemo((): Point => {
     const { min, max } = floorBounds(floor)
     return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
@@ -39,8 +51,11 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
   useFrame(({ camera }) => {
     const eye: Point = [camera.position.x, camera.position.z]
     for (const wall of floor.walls) {
-      const group = groups.current.get(wall.id)
-      if (group) group.visible = !cutaway || !blocksView(wall, center, eye)
+      const { full, stub } = parts.get(wall.id) ?? {}
+      if (!full || !stub) continue
+      const cut = cutaway && blocksView(wall, isExteriorWall(wall, floor), center, eye)
+      full.visible = !cut
+      stub.visible = cut
     }
   })
 
@@ -49,7 +64,7 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
       {floor.walls.map((wall) => (
         <WallMesh
           key={wall.id}
-          ref={(g) => void groups.current.set(wall.id, g)}
+          parts={parts}
           wall={wall}
           floor={floor}
           colorA={colors.get(wallColorKey(wall.id, 'a')) ?? DEFAULT_WALL}
@@ -64,8 +79,11 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
   )
 }
 
+/** A wall drawn whole, and cut down to a stub for when it's in the way; one of the two is shown. */
+type WallParts = { full?: Group | null; stub?: Group | null }
+
 type WallMeshProps = {
-  ref: (group: Group | null) => void
+  parts: Map<string, WallParts>
   wall: Wall
   floor: Floor
   colorA: string
@@ -79,12 +97,16 @@ type WallMeshProps = {
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ ref, wall, floor, colorA, colorB, selectedSide, interactive, doors, onPick }: WallMeshProps) => {
+const WallMesh = ({ parts, wall, floor, colorA, colorB, selectedSide, interactive, doors, onPick }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(
     () => wallPieces(wall, floor.height, thickness / 2 - CORNER_INSET),
     [wall, floor.height, thickness],
   )
+  const stub = useMemo(() => stubPieces(pieces, STUB_HEIGHT), [pieces])
+  const own = (key: keyof WallParts) => (g: Group | null) => {
+    parts.set(wall.id, { ...parts.get(wall.id), [key]: g })
+  }
 
   // Box faces in wall-local space: +z is side 'a', -z is side 'b'.
   const sideOf = (e: ThreeEvent<MouseEvent>): WallSide | undefined => {
@@ -102,33 +124,41 @@ const WallMesh = ({ ref, wall, floor, colorA, colorB, selectedSide, interactive,
     onPick(wall.id, side)
   }
 
+  const boxes = (list: WallPiece[]) =>
+    list.map((p, i) => (
+      <mesh
+        key={i}
+        position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
+        castShadow
+        receiveShadow
+        raycast={interactive ? raycastIfShown : noRaycast}
+        onClick={interactive ? handleClick : undefined}
+        onPointerOver={interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined}
+        onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
+      >
+        <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
+        <meshStandardMaterial attach="material-0" color={WALL_CAP} />
+        <meshStandardMaterial attach="material-1" color={WALL_CAP} />
+        <meshStandardMaterial attach="material-2" color={WALL_CAP} />
+        <meshStandardMaterial attach="material-3" color={WALL_CAP} />
+        <meshStandardMaterial attach="material-4" color={colorA} />
+        <meshStandardMaterial attach="material-5" color={colorB} />
+        {/* An outline rather than a tint, so the picked colour is seen as it is. */}
+        {selectedSide && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
+      </mesh>
+    ))
+
   return (
-    <group ref={ref} position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
-      {pieces.map((p, i) => (
-        <mesh
-          key={i}
-          position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
-          castShadow
-          receiveShadow
-          raycast={interactive ? raycastIfShown : noRaycast}
-          onClick={interactive ? handleClick : undefined}
-          onPointerOver={
-            interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined
-          }
-          onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
-        >
-          <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-          <meshStandardMaterial attach="material-0" color={WALL_CAP} />
-          <meshStandardMaterial attach="material-1" color={WALL_CAP} />
-          <meshStandardMaterial attach="material-2" color={WALL_CAP} />
-          <meshStandardMaterial attach="material-3" color={WALL_CAP} />
-          <meshStandardMaterial attach="material-4" color={colorA} />
-          <meshStandardMaterial attach="material-5" color={colorB} />
-          {/* An outline rather than a tint, so the picked colour is seen as it is. */}
-          {selectedSide && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
-        </mesh>
-      ))}
-      {wall.openings && <OpeningFills openings={wall.openings} thickness={thickness} clickable={doors} />}
+    <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
+      <group ref={own('full')}>
+        {boxes(pieces)}
+        {wall.openings && (
+          <OpeningFills openings={wall.openings} exterior={isExteriorWall(wall, floor)} clickable={doors} />
+        )}
+      </group>
+      <group ref={own('stub')} visible={false}>
+        {boxes(stub)}
+      </group>
     </group>
   )
 }
