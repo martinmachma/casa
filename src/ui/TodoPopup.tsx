@@ -54,12 +54,52 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
     })
   }
 
+  const open = todos.filter((t) => !t.done)
+  const done = todos.filter((t) => t.done)
+
+  const item = (t: Todo) => (
+    <li key={t.id} className={t.done ? 'todo-item done' : 'todo-item'}>
+      <button
+        className="todo-check"
+        role="checkbox"
+        aria-checked={t.done}
+        aria-label={t.done ? 'Mark as not done' : 'Mark as done'}
+        onClick={() => run(supabase.from('todos').update({ done: !t.done }).eq('id', t.id))}
+      >
+        <svg viewBox="0 0 16 16" aria-hidden>
+          <path d="M3.5 8.5l3 3 6-7" />
+        </svg>
+      </button>
+      <div className="todo-body">
+        <p>{t.text}</p>
+        <span className="todo-meta">
+          {t.author?.split('@')[0] ?? 'someone'} · {when(t.created_at)}
+        </span>
+      </div>
+      <button
+        className="todo-delete"
+        aria-label="Delete"
+        onClick={() => confirm('Delete this to-do?') && run(supabase.from('todos').delete().eq('id', t.id))}
+      >
+        <svg viewBox="0 0 16 16" aria-hidden>
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
+      </button>
+    </li>
+  )
+
   return (
     <div className="todo-popup" style={{ left: pos.x, top: pos.y }} role="dialog" aria-label="To-dos">
       <div className="todo-head" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = undefined)}>
-        <strong>To-dos</strong>
+        <span className="todo-grip" aria-hidden>
+          ⋮⋮
+        </span>
+        <h3>Wishes &amp; bugs</h3>
+        {open.length > 0 && <span className="todo-count">{open.length}</span>}
         <button className="icon-btn icon-btn-sm" aria-label="Close" onClick={onClose}>
-          ×
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
         </button>
       </div>
       <form
@@ -71,7 +111,7 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
       >
         <textarea
           value={draft}
-          placeholder="Idea, wish or bug…"
+          placeholder="An idea, a wish, a bug…"
           rows={2}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -81,35 +121,39 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
             }
           }}
         />
-        <button className="btn btn-primary btn-small" disabled={!draft.trim()}>
-          Add
-        </button>
+        <div className="todo-add-foot">
+          <span className="todo-meta">Enter to add · Shift+Enter for a new line</span>
+          <button className="btn btn-primary btn-small" disabled={!draft.trim()}>
+            Add
+          </button>
+        </div>
       </form>
       {error && (
-        <p className="hint todo-error" onClick={() => setError(undefined)}>
+        <p className="todo-error" onClick={() => setError(undefined)}>
           {error}
         </p>
       )}
-      <ul className="todo-list">
-        {todos.map((t) => (
-          <li key={t.id} className={t.done ? 'done' : ''}>
-            <input
-              type="checkbox"
-              checked={t.done}
-              onChange={() => run(supabase.from('todos').update({ done: !t.done }).eq('id', t.id))}
-            />
-            <span title={t.author ?? undefined}>{t.text}</span>
-            <button
-              className="icon-btn icon-btn-sm"
-              aria-label="Delete"
-              onClick={() => confirm('Delete this to-do?') && run(supabase.from('todos').delete().eq('id', t.id))}
-            >
-              ×
-            </button>
-          </li>
-        ))}
-        {!todos.length && <li className="hint">Nothing yet.</li>}
-      </ul>
+      <div className="todo-scroll">
+        {todos.length === 0 ? (
+          <div className="todo-empty">
+            <span aria-hidden>✨</span>
+            <p>Nothing on the list yet.</p>
+          </div>
+        ) : (
+          <>
+            <ul className="todo-list">{open.map(item)}</ul>
+            {done.length > 0 && (
+              <>
+                <div className="todo-section">Done · {done.length}</div>
+                <ul className="todo-list">{done.map(item)}</ul>
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
+
+const when = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })

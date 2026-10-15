@@ -344,7 +344,11 @@ const House = ({ backend, account }: HouseProps) => {
             />
           )}
           <button className="btn btn-ghost todo-open" onClick={() => setTodosOpen(true)}>
-            To-dos
+            <svg viewBox="0 0 16 16" aria-hidden>
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
+              <path d="M5.5 8l2 2 3-4" />
+            </svg>
+            Wishes &amp; bugs
           </button>
         </div>
       </aside>
