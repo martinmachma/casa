@@ -1,3 +1,4 @@
+import { TodoPopup } from './ui/TodoPopup'
 import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
 import type { Backend, Device, DeviceKind, FurnitureItem } from './data/types'
@@ -51,6 +52,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
   const [hoveredRoom, setHoveredRoom] = useState<string>()
+  const [todosOpen, setTodosOpen] = useState(false)
   const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
   const [rightOpen, setRightOpen] = useState(() => !isNarrow())
   const [snap, setSnap] = useState(true)
@@ -341,8 +343,13 @@ const House = ({ backend, account }: HouseProps) => {
               onClose={() => setLeftOpen(false)}
             />
           )}
+          <button className="btn btn-ghost todo-open" onClick={() => setTodosOpen(true)}>
+            To-dos
+          </button>
         </div>
       </aside>
+
+      {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
 
       <main className="viewport">
         <HouseScene

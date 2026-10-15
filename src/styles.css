@@ -1649,3 +1649,76 @@ input[type='range'] {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* To-do popup */
+.todo-open {
+  margin: auto 12px 12px;
+}
+
+.todo-popup {
+  position: fixed;
+  z-index: 50;
+  width: min(340px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.todo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.todo-add {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 12px;
+}
+
+.todo-add textarea {
+  flex: 1;
+  resize: vertical;
+  font: inherit;
+}
+
+.todo-error {
+  color: var(--danger);
+  padding: 0 12px;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+}
+
+.todo-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.todo-list li span {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.todo-list li.done span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
