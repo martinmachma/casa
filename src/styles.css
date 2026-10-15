@@ -792,6 +792,7 @@ p {
 .compass {
   position: absolute;
   right: calc(14px + var(--right-inset, 0px));
+  transition: right 200ms ease;
   bottom: max(14px, env(safe-area-inset-bottom));
   padding: 3px;
   border-radius: 50%;
@@ -1516,6 +1517,7 @@ input[type='range'] {
   position: absolute;
   top: 64px;
   right: calc(14px + var(--right-inset, 0px));
+  transition: right 200ms ease;
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
