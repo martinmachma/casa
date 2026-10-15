@@ -754,7 +754,40 @@ p {
 }
 
 .sidebar-right .sidebar-inner {
-  padding-top: 54px;
+  padding-top: 72px;
+}
+
+/* Floats just above the selected furniture item. */
+.item-actions {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  transform: translateY(-28px);
+  pointer-events: auto;
+}
+
+.item-actions button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.item-actions button:hover {
+  background: var(--accent-soft);
+}
+
+.item-actions .danger {
+  color: var(--danger);
+}
+
+.item-actions .danger:hover {
+  background: var(--danger-soft);
 }
 
 .modebar .history {
@@ -1515,9 +1548,10 @@ input[type='range'] {
 
 .savebar {
   position: absolute;
-  top: 64px;
-  right: calc(14px + var(--right-inset, 0px));
-  transition: right 200ms ease;
+  top: 14px;
+  left: calc(50% - var(--right-inset, 0px) / 2);
+  transform: translateX(-50%);
+  transition: left 200ms ease;
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
@@ -1674,6 +1708,7 @@ input[type='range'] {
 
   .savebar {
     top: 58px;
+    transform: none;
     left: 10px;
     right: 10px;
     max-width: none;
@@ -2024,4 +2059,104 @@ input[type='range'] {
   display: block;
   font-size: 22px;
   margin-bottom: 4px;
+}
+
+.bottom-tools {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: min(680px, calc(100% - 32px));
+  pointer-events: none;
+  z-index: 5;
+}
+
+.bottom-tools > * {
+  pointer-events: auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+}
+
+.toolbar[data-open] {
+  padding-left: 12px;
+}
+
+.toolbar-hint {
+  font-size: 13px;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.toolbar .segmented button {
+  min-height: 30px;
+}
+
+.toolbar-icon {
+  flex: none;
+  opacity: 0.7;
+}
+
+.sunbar[data-open] {
+  position: relative;
+  width: 300px;
+  min-width: 0;
+}
+
+.sunbar-time {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sunbar-sun {
+  font-size: 11px;
+  color: var(--muted, rgb(31 27 23 / 0.55));
+}
+
+.sunbar-slider {
+  flex: 1;
+  min-width: 80px;
+}
+
+.sunbar-date {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+}
+
+@media (max-width: 700px) {
+  .bottom-tools {
+    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 150px);
+  }
+  .bottom-tools {
+    flex-wrap: wrap;
+  }
+  .sunbar[data-open] {
+    width: auto;
+    flex: 1;
+  }
+  .sunbar-date {
+    flex-wrap: wrap;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }

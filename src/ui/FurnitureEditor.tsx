@@ -1,4 +1,4 @@
-import { RotateCcw, RotateCw, Trash2 } from 'lucide-react'
+import { Copy, RotateCcw, RotateCw, Trash2 } from 'lucide-react'
 import type { FurnitureItem } from '../data/types'
 import { FURNITURE_SWATCHES } from '../scene/palette'
 import { NumberField } from './NumberField'
@@ -10,13 +10,14 @@ type FurnitureEditorProps = {
   onChange: (patch: Partial<FurnitureItem>) => void
   onRotate: (degrees: number) => void
   onDelete: () => void
+  onDuplicate: () => void
   onClose: () => void
 }
 
 const cm = (m: number) => Math.round(m * 100)
 const degrees = (rad: number) => Math.round(((((rad * 180) / Math.PI) % 360) + 360) % 360)
 
-export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onClose }: FurnitureEditorProps) => (
+export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onDuplicate, onClose }: FurnitureEditorProps) => (
   <>
     <PanelHead
       eyebrow="Furniture"
@@ -41,6 +42,14 @@ export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onClose }:
         <NumberField label="Width cm" value={cm(item.width)} onCommit={(v) => onChange({ width: v / 100 })} />
         <NumberField label="Depth cm" value={cm(item.depth)} onCommit={(v) => onChange({ depth: v / 100 })} />
         <NumberField label="Height cm" value={cm(item.height)} onCommit={(v) => onChange({ height: v / 100 })} />
+      </div>
+      <div className="row" key={`${item.id}:z`}>
+        <NumberField
+          label="Above floor cm"
+          value={cm(item.z ?? 0)}
+          min={0}
+          onCommit={(v) => onChange({ z: v ? v / 100 : undefined })}
+        />
       </div>
     </Section>
 
@@ -77,8 +86,14 @@ export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onClose }:
 
     <Section>
       <p className="hint">
-        Drag it on the floor. <span className="kbd">R</span> rotates, <span className="kbd">Del</span> removes.
+        Drag it around; raise it off the floor to hang it on a wall. <span className="kbd">Shift</span>-tap others to
+        move them together. <span className="kbd">R</span> rotates, <span className="kbd">⌘D</span> duplicates,{' '}
+        <span className="kbd">Del</span> removes.
       </p>
+      <button className="btn btn-block" onClick={onDuplicate}>
+        <Copy size={16} />
+        Duplicate
+      </button>
       <button className="btn btn-danger btn-block" onClick={onDelete}>
         <Trash2 size={16} />
         Remove from the house

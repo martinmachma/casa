@@ -1,4 +1,5 @@
-import { Edges } from '@react-three/drei'
+import { Edges, Html } from '@react-three/drei'
+import { Copy, RotateCw, Trash2 } from 'lucide-react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
 import { Mesh, Plane, Vector3 } from 'three'
@@ -11,12 +12,25 @@ type FurnitureBoxProps = {
   item: FurnitureItem
   elevation: number
   selected: boolean
+  /** Whether the rotate/duplicate/remove buttons float over this one (one item of a group carries them). */
+  showActions: boolean
   /** False while another tool (measuring) owns the pointer. */
   interactive: boolean
   snapWalls: SnapWall[] | undefined
-  onSelect: (id: string) => void
+  /** `add` (Shift, ⌘ or Ctrl held) adds the item to the selection, or takes it out again. */
+  onSelect: (id: string, add: boolean) => void
   onMove: (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
   onMoveEnd: (id: string) => void
+  /** A plain press let go without moving. */
+  onTap: (id: string) => void
+  actions: ItemActions
+}
+
+/** What the buttons floating over the selection do. */
+export type ItemActions = {
+  onRotate: () => void
+  onDuplicate: () => void
+  onDelete: () => void
 }
 
 type Controls = { enabled: boolean }
@@ -26,15 +40,19 @@ export const FurnitureBox = ({
   item,
   elevation,
   selected,
+  showActions,
   interactive,
   snapWalls,
   onSelect,
   onMove,
   onMoveEnd,
+  onTap,
+  actions,
 }: FurnitureBoxProps) => {
+  const z = item.z ?? 0
   const getState = useThree((s) => s.get)
-  const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -elevation), [elevation])
-  const drag = useRef<{ dx: number; dy: number; moved: boolean }>(undefined)
+  const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -(elevation + z)), [elevation, z])
+  const drag = useRef<{ dx: number; dy: number; moved: boolean; add: boolean }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
 
   // Stops the camera from orbiting/panning along with a drag.
@@ -45,9 +63,12 @@ export const FurnitureBox = ({
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
-    onSelect(item.id)
+    const add = e.shiftKey || e.metaKey || e.ctrlKey
+    onSelect(item.id, add)
+    // Taking an item out of the selection doesn't pick it up.
+    if (add && selected) return
     if (!e.ray.intersectPlane(plane, hit)) return
-    drag.current = { dx: hit.x - item.x, dy: hit.z - item.y, moved: false }
+    drag.current = { dx: hit.x - item.x, dy: hit.z - item.y, moved: false, add }
     ;(e.target as Element).setPointerCapture(e.pointerId)
     setControlsEnabled(false)
   }
@@ -68,6 +89,7 @@ export const FurnitureBox = ({
     ;(e.target as Element).releasePointerCapture(e.pointerId)
     setControlsEnabled(true)
     if (d.moved) onMoveEnd(item.id)
+    else if (!d.add) onTap(item.id)
   }
 
   const handlers = interactive
@@ -78,6 +100,8 @@ export const FurnitureBox = ({
         onPointerMove,
         onPointerUp: endDrag,
         onPointerCancel: endDrag,
+        // The release would otherwise click through to the floor beneath and change the selection.
+        onClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'grab')),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
@@ -86,7 +110,7 @@ export const FurnitureBox = ({
   const hitHeight = Math.max(item.height, 0.02)
 
   return (
-    <group position={[item.x, elevation, item.y]} rotation={[0, -item.rotation, 0]}>
+    <group position={[item.x, elevation + z, item.y]} rotation={[0, -item.rotation, 0]}>
       {/* The box is the item itself, or, for a model, its invisible hit box and selection outline. */}
       <mesh position={[0, hitHeight / 2, 0]} castShadow={!item.model} receiveShadow={!item.model} {...handlers}>
         <boxGeometry args={[item.width, hitHeight, item.depth]} />
@@ -107,6 +131,21 @@ export const FurnitureBox = ({
             fabric={item.color}
           />
         </Suspense>
+      )}
+      {showActions && interactive && (
+        <Html position={[0, hitHeight, 0]} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="float item-actions" onPointerDown={(e) => e.stopPropagation()}>
+            <button title="Rotate 15° (R)" aria-label="Rotate" onClick={() => actions.onRotate()}>
+              <RotateCw size={16} />
+            </button>
+            <button title="Duplicate (⌘D)" aria-label="Duplicate" onClick={() => actions.onDuplicate()}>
+              <Copy size={16} />
+            </button>
+            <button className="danger" title="Remove (Del)" aria-label="Remove" onClick={() => actions.onDelete()}>
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </Html>
       )}
     </group>
   )

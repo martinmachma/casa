@@ -41,7 +41,7 @@ const PROUD = 0.006
 type Owner = { wall: Wall } | { item: FurnitureItem }
 
 /**
- * Catches taps on the floor plane (everything else is made non-clickable while measuring). Point to point, taps
+ * Catches taps on the floor plane and up the walls (everything else is made non-clickable while measuring). Point to point, taps
  * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece, and the whole wall
  * or piece lights up. Draws the line being measured; finished ones are drawn by the scene.
  */
@@ -84,6 +84,17 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
     return { at: picks.length === 1 ? alignWith(picks[0].at, at) : at }
   }
 
+  const catcher = {
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      if (e.delta > CLICK_SLOP_PX) return
+      e.stopPropagation()
+      const pick = place(e)
+      if (pick) onPick(pick)
+    },
+    onPointerMove: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), setHover(place(e))),
+    onPointerOut: () => setHover(undefined),
+  }
+
   const at = (p: Point): [number, number, number] => [p[0], y, p[1]]
   const preview = picks.length === 1 && hover ? measuredLine({ mode, picks: [picks[0], hover] }) : undefined
   const lit: { owner: Owner; ghost: boolean }[] = [
@@ -97,18 +108,22 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
       <mesh
         rotation-x={-Math.PI / 2}
         position={[(min[0] + max[0]) / 2, floor.elevation + 0.01, (min[1] + max[1]) / 2]}
-        onClick={(e) => {
-          if (e.delta > CLICK_SLOP_PX) return
-          e.stopPropagation()
-          const pick = place(e)
-          if (pick) onPick(pick)
-        }}
-        onPointerMove={(e) => setHover(place(e))}
-        onPointerOut={() => setHover(undefined)}
+        {...catcher}
       >
         <planeGeometry args={[200, 200]} />
         <meshBasicMaterial visible={false} />
       </mesh>
+      {/* Taps anywhere up a wall count too: the hit on its face is straight above the face on the floor. */}
+      {walls.map((r, i) => (
+        <mesh
+          key={i}
+          position={[(r.x0 + r.x1) / 2, floor.elevation + floor.height / 2, (r.y0 + r.y1) / 2]}
+          {...catcher}
+        >
+          <boxGeometry args={[r.x1 - r.x0, floor.height, r.y1 - r.y0]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+      ))}
 
       {lit.map(({ owner, ghost }, i) =>
         'wall' in owner ? (

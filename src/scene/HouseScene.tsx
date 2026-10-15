@@ -10,7 +10,7 @@ import { floorRegions } from '../layout/rooms'
 import type { Floor, Point, WallFace } from '../layout/types'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
-import { FurnitureBox } from './FurnitureBox'
+import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { Outdoor } from './Outdoor'
 import { prismGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
@@ -70,6 +70,8 @@ type HouseSceneProps = {
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
   onSelect: (selection: Selection | undefined) => void
+  /** The selected item's floating buttons. */
+  itemActions: ItemActions
 }
 
 export const HouseScene = ({
@@ -96,6 +98,7 @@ export const HouseScene = ({
   nudge,
   viewKey,
   onSelect,
+  itemActions,
 }: HouseSceneProps) => {
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
@@ -107,23 +110,21 @@ export const HouseScene = ({
   const devices = outside ? [] : data.devices.filter((d) => d.floor === floor.id)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
-  const selectedItem =
-    selection?.kind === 'furniture' ? items.find((f) => f.id === selection.id && f.floor === floor.id) : undefined
+  const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
+  const selectedItem = selectedIds.length === 1 ? items.find((f) => f.id === selectedIds[0]) : undefined
   const wallRects = useMemo(() => floorWallRects(floor), [floor])
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = floor.elevation + 0.05
   const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
   const lineY = floor.elevation + 0.03
   const annotations = [
-    ...lines.map(
-      (m): Annotation => ({
-        key: m.id,
-        at: [(m.from[0] + m.to[0]) / 2, lineY, (m.from[1] + m.to[1]) / 2],
-        text: formatLength(distance(m.from, m.to)) + (m.parallel ? '' : ' ∠'),
-        kind: 'measure',
-        onRemove: () => onRemoveMeasurement(m.id),
-      }),
-    ),
+    ...lines.map((m): Annotation => ({
+      key: m.id,
+      at: [(m.from[0] + m.to[0]) / 2, lineY, (m.from[1] + m.to[1]) / 2],
+      text: formatLength(distance(m.from, m.to)) + (m.parallel ? '' : ' ∠'),
+      kind: 'measure',
+      onRemove: () => onRemoveMeasurement(m.id),
+    })),
     ...gaps.map((g, i): Annotation => ({
       key: `gap${i}`,
       at: [(g.from[0] + g.to[0]) / 2, gapY, (g.from[1] + g.to[1]) / 2],
@@ -140,8 +141,22 @@ export const HouseScene = ({
   const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
   const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
-  const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) =>
-    data.patchFurniture(id, placement, `move:${id}`)
+  // A group moves together by however far the grabbed piece went.
+  const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
+    const grabbed = items.find((f) => f.id === id)
+    if (!grabbed || selectedIds.length < 2) return data.patchFurniture(id, placement, `move:${id}`)
+    const dx = placement.x - grabbed.x
+    const dy = placement.y - grabbed.y
+    const moved = items.filter((f) => selectedIds.includes(f.id))
+    data.patchFurnitures(new Map(moved.map((f) => [f.id, { x: f.x + dx, y: f.y + dy }])), `move:${selectedIds.join()}`)
+  }
+  // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
+  const pickItem = (id: string, add: boolean) => {
+    if (add) {
+      const ids = selectedIds.includes(id) ? selectedIds.filter((s) => s !== id) : [...selectedIds, id]
+      onSelect(ids.length ? { kind: 'furniture', ids } : undefined)
+    } else if (!selectedIds.includes(id)) onSelect({ kind: 'furniture', ids: [id] })
+  }
   const saveItem = () => data.endEdit()
   const moveDevice = (id: string, patch: Partial<Device>) => data.patchDevice(id, patch, `device:${id}`)
 
@@ -255,12 +270,16 @@ export const HouseScene = ({
             key={item.id}
             item={item}
             elevation={floor.elevation}
-            selected={selection?.kind === 'furniture' && selection.id === item.id}
+            selected={selectedIds.includes(item.id)}
+            showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}
-            snapWalls={snap ? snapWalls : undefined}
-            onSelect={(id) => onSelect({ kind: 'furniture', id })}
+            // Snapping one piece of a group to a wall would leave the others where they were.
+            snapWalls={snap && selectedIds.length < 2 ? snapWalls : undefined}
+            onSelect={pickItem}
             onMove={moveItem}
             onMoveEnd={saveItem}
+            onTap={(id) => selectedIds.length > 1 && onSelect({ kind: 'furniture', ids: [id] })}
+            actions={itemActions}
           />
         ))}
       </Canvas>

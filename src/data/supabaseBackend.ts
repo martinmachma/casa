@@ -57,6 +57,10 @@ export const supabaseBackend: Backend = {
     return fromRow(row as VersionRow)
   },
 
+  renameVersion: async (id, name) => {
+    check(await supabase.from('versions').update({ name }).eq('id', id))
+  },
+
   deleteVersion: async (id) => {
     check(await supabase.from('versions').delete().eq('id', id))
   },

@@ -1,6 +1,8 @@
+import { CalendarDays, Sun, X } from 'lucide-react'
+import { useState } from 'react'
 import type { SunPosition } from '../sun/sun'
 import { sunNow, type SunSettings } from '../sun/useSun'
-import { Section, Switch } from './kit'
+import { IconButton } from './kit'
 
 type SunPanelProps = {
   /** Undefined while sunlight is off (even light). */
@@ -24,57 +26,71 @@ const SEASONS = [
   { label: 'Summer', monthDay: '06-21' },
 ]
 
+/** Bottom centre of the 3D view: a sun button that opens into a timeline of the day while sunlight is on. */
 export const SunPanel = ({ sun, position, onSun }: SunPanelProps) => {
-  const year = sun?.date.slice(0, 4)
+  const [dateOpen, setDateOpen] = useState(false)
+  const toggle = (
+    <IconButton
+      label={sun ? 'Even light' : 'Sunlight by time of day'}
+      aria-pressed={Boolean(sun)}
+      small
+      onClick={() => onSun(sun ? undefined : sunNow())}
+    >
+      <Sun size={17} />
+    </IconButton>
+  )
+  if (!sun) return <div className="toolbar float">{toggle}</div>
+
+  const year = sun.date.slice(0, 4)
   return (
-    <Section title="Sunlight">
-      <Switch label="Light by time of day" checked={Boolean(sun)} onChange={(on) => onSun(on ? sunNow() : undefined)} />
-      {sun && position && (
-        <>
-          <p className="hint">
-            {position.altitude > 0
-              ? `The sun is ${deg(position.altitude)}° high in the ${compass(position.azimuth)}.`
-              : 'The sun is down.'}
-          </p>
-
-          <label className="field">
-            <span className="field-row">
-              Time <strong>{clock(sun.minutes)}</strong>
-            </span>
-            <input
-              type="range"
-              min={4 * 60}
-              max={22 * 60}
-              step={5}
-              value={sun.minutes}
-              onChange={(e) => onSun({ ...sun, minutes: Number(e.target.value) })}
-            />
-          </label>
-
-          <div className="row row-wrap">
-            <input
-              className="date-input"
-              type="date"
-              value={sun.date}
-              onChange={(e) => e.target.value && onSun({ ...sun, date: e.target.value })}
-              aria-label="Date"
-            />
-            {SEASONS.map((s) => (
-              <button
-                key={s.label}
-                className="btn btn-small"
-                aria-pressed={sun.date === `${year}-${s.monthDay}`}
-                onClick={() => onSun({ ...sun, date: `${year}-${s.monthDay}` })}
-              >
-                {s.label}
-              </button>
-            ))}
-            <button className="btn btn-small btn-ghost" onClick={() => onSun(sunNow())}>
-              Now
+    <div className="toolbar sunbar float" data-open="">
+      <Sun size={17} className="toolbar-icon" />
+      <div className="sunbar-time">
+        <strong>{clock(sun.minutes)}</strong>
+        <span className="sunbar-sun">
+          {position && position.altitude > 0 ? `${deg(position.altitude)}° ${compass(position.azimuth)}` : 'Down'}
+        </span>
+      </div>
+      <input
+        className="sunbar-slider"
+        type="range"
+        min={4 * 60}
+        max={22 * 60}
+        step={5}
+        value={sun.minutes}
+        onChange={(e) => onSun({ ...sun, minutes: Number(e.target.value) })}
+        aria-label="Time of day"
+      />
+      <IconButton label="Date" aria-pressed={dateOpen} small onClick={() => setDateOpen(!dateOpen)}>
+        <CalendarDays size={16} />
+      </IconButton>
+      <IconButton label="Even light" small onClick={() => onSun(undefined)}>
+        <X size={16} />
+      </IconButton>
+      {dateOpen && (
+        <div className="sunbar-date float">
+          <input
+            className="date-input"
+            type="date"
+            value={sun.date}
+            onChange={(e) => e.target.value && onSun({ ...sun, date: e.target.value })}
+            aria-label="Date"
+          />
+          {SEASONS.map((s) => (
+            <button
+              key={s.label}
+              className="btn btn-small"
+              aria-pressed={sun.date === `${year}-${s.monthDay}`}
+              onClick={() => onSun({ ...sun, date: `${year}-${s.monthDay}` })}
+            >
+              {s.label}
             </button>
-          </div>
-        </>
+          ))}
+          <button className="btn btn-small btn-ghost" onClick={() => onSun(sunNow())}>
+            Now
+          </button>
+        </div>
       )}
-    </Section>
+    </div>
   )
 }
