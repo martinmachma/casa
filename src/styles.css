@@ -1548,9 +1548,10 @@ input[type='range'] {
 
 .savebar {
   position: absolute;
-  top: 64px;
-  right: calc(14px + var(--right-inset, 0px));
-  transition: right 200ms ease;
+  top: 14px;
+  left: calc(50% - var(--right-inset, 0px) / 2);
+  transform: translateX(-50%);
+  transition: left 200ms ease;
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
@@ -1707,6 +1708,7 @@ input[type='range'] {
 
   .savebar {
     top: 58px;
+    transform: none;
     left: 10px;
     right: 10px;
     max-width: none;
