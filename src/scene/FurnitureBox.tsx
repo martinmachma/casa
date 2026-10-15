@@ -12,20 +12,25 @@ type FurnitureBoxProps = {
   item: FurnitureItem
   elevation: number
   selected: boolean
+  /** Whether the rotate/duplicate/remove buttons float over this one (one item of a group carries them). */
+  showActions: boolean
   /** False while another tool (measuring) owns the pointer. */
   interactive: boolean
   snapWalls: SnapWall[] | undefined
-  onSelect: (id: string) => void
+  /** `add` (Shift, ⌘ or Ctrl held) adds the item to the selection, or takes it out again. */
+  onSelect: (id: string, add: boolean) => void
   onMove: (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
   onMoveEnd: (id: string) => void
+  /** A plain press let go without moving. */
+  onTap: (id: string) => void
   actions: ItemActions
 }
 
-/** What the buttons floating over a selected item do. */
+/** What the buttons floating over the selection do. */
 export type ItemActions = {
-  onRotate: (item: FurnitureItem) => void
-  onDuplicate: (item: FurnitureItem) => void
-  onDelete: (item: FurnitureItem) => void
+  onRotate: () => void
+  onDuplicate: () => void
+  onDelete: () => void
 }
 
 type Controls = { enabled: boolean }
@@ -35,17 +40,19 @@ export const FurnitureBox = ({
   item,
   elevation,
   selected,
+  showActions,
   interactive,
   snapWalls,
   onSelect,
   onMove,
   onMoveEnd,
+  onTap,
   actions,
 }: FurnitureBoxProps) => {
   const z = item.z ?? 0
   const getState = useThree((s) => s.get)
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -(elevation + z)), [elevation, z])
-  const drag = useRef<{ dx: number; dy: number; moved: boolean }>(undefined)
+  const drag = useRef<{ dx: number; dy: number; moved: boolean; add: boolean }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
 
   // Stops the camera from orbiting/panning along with a drag.
@@ -56,9 +63,12 @@ export const FurnitureBox = ({
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
-    onSelect(item.id)
+    const add = e.shiftKey || e.metaKey || e.ctrlKey
+    onSelect(item.id, add)
+    // Taking an item out of the selection doesn't pick it up.
+    if (add && selected) return
     if (!e.ray.intersectPlane(plane, hit)) return
-    drag.current = { dx: hit.x - item.x, dy: hit.z - item.y, moved: false }
+    drag.current = { dx: hit.x - item.x, dy: hit.z - item.y, moved: false, add }
     ;(e.target as Element).setPointerCapture(e.pointerId)
     setControlsEnabled(false)
   }
@@ -79,6 +89,7 @@ export const FurnitureBox = ({
     ;(e.target as Element).releasePointerCapture(e.pointerId)
     setControlsEnabled(true)
     if (d.moved) onMoveEnd(item.id)
+    else if (!d.add) onTap(item.id)
   }
 
   const handlers = interactive
@@ -121,16 +132,16 @@ export const FurnitureBox = ({
           />
         </Suspense>
       )}
-      {selected && interactive && (
+      {showActions && interactive && (
         <Html position={[0, hitHeight, 0]} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
           <div className="float item-actions" onPointerDown={(e) => e.stopPropagation()}>
-            <button title="Rotate 15° (R)" aria-label="Rotate" onClick={() => actions.onRotate(item)}>
+            <button title="Rotate 15° (R)" aria-label="Rotate" onClick={() => actions.onRotate()}>
               <RotateCw size={16} />
             </button>
-            <button title="Duplicate (⌘D)" aria-label="Duplicate" onClick={() => actions.onDuplicate(item)}>
+            <button title="Duplicate (⌘D)" aria-label="Duplicate" onClick={() => actions.onDuplicate()}>
               <Copy size={16} />
             </button>
-            <button className="danger" title="Remove (Del)" aria-label="Remove" onClick={() => actions.onDelete(item)}>
+            <button className="danger" title="Remove (Del)" aria-label="Remove" onClick={() => actions.onDelete()}>
               <Trash2 size={16} />
             </button>
           </div>

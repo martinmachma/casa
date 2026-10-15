@@ -147,17 +147,26 @@ export const useHouseData = (backend: Backend) => {
       `room:${roomId}`,
     )
 
-  const addFurniture = (item: NewFurnitureItem): FurnitureItem => {
-    const created = { ...item, id: crypto.randomUUID() }
-    edit((s) => ({ ...s, furniture: [...s.furniture, created] }))
+  /** Adds pieces as one undo step. */
+  const addFurniture = (...items: NewFurnitureItem[]): FurnitureItem[] => {
+    const created = items.map((item) => ({ ...item, id: crypto.randomUUID() }))
+    edit((s) => ({ ...s, furniture: [...s.furniture, ...created] }))
     return created
   }
 
   /** Changes an item; changes with the same `key` (one drag, one colour being picked) undo as one step. */
   const patchFurniture = (id: string, patch: Partial<FurnitureItem>, key?: string) =>
-    edit((s) => ({ ...s, furniture: s.furniture.map((f) => (f.id === id ? { ...f, ...patch } : f)) }), key)
+    patchFurnitures(new Map([[id, patch]]), key)
 
-  const removeFurniture = (id: string) => edit((s) => ({ ...s, furniture: s.furniture.filter((f) => f.id !== id) }))
+  /** Changes several items at once (a group being dragged or turned), as one undo step. */
+  const patchFurnitures = (patches: Map<string, Partial<FurnitureItem>>, key?: string) =>
+    edit(
+      (s) => ({ ...s, furniture: s.furniture.map((f) => (patches.has(f.id) ? { ...f, ...patches.get(f.id) } : f)) }),
+      key,
+    )
+
+  const removeFurniture = (...ids: string[]) =>
+    edit((s) => ({ ...s, furniture: s.furniture.filter((f) => !ids.includes(f.id)) }))
 
   const addDevice = (device: NewDevice): Device => {
     const created = { ...device, id: crypto.randomUUID() }
@@ -224,6 +233,7 @@ export const useHouseData = (backend: Backend) => {
     furniture: state.furniture,
     addFurniture,
     patchFurniture,
+    patchFurnitures,
     removeFurniture,
     // Versions and drafts from before devices have none.
     devices: state.devices ?? NO_DEVICES,

@@ -6,6 +6,7 @@ import type { Backend, Device, DeviceKind, FurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
 import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
+import { rotateGroup } from './furniture/group'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
 import { floorRegions } from './layout/rooms'
@@ -20,6 +21,7 @@ import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
 import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
+import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import type { SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
@@ -75,7 +77,9 @@ const House = ({ backend, account }: HouseProps) => {
   const floor = house.floors[floorIndex]
   const regions = floorRegions(floor)
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
-  const selectedItem = selection?.kind === 'furniture' ? data.furniture.find((f) => f.id === selection.id) : undefined
+  const selectedItems =
+    selection?.kind === 'furniture' ? data.furniture.filter((f) => selection.ids.includes(f.id)) : []
+  const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
   const selectedDevice = selection?.kind === 'device' ? data.devices.find((d) => d.id === selection.id) : undefined
   const floorDevices = data.devices.filter((d) => d.floor === floor.id)
 
@@ -96,17 +100,23 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(next)
     if (next) setRightOpen(true)
   }
-  const deleteItem = (item: FurnitureItem) => {
-    data.removeFurniture(item.id)
+  /** One piece turns (and re-seats against its wall); a group swings about its middle as it's arranged. */
+  const rotateSelection = (degrees: number) => {
+    if (selectedItem) return rotateItem(selectedItem, degrees)
+    if (selectedItems.length) data.patchFurnitures(rotateGroup(selectedItems, (degrees * Math.PI) / 180))
+  }
+  const deleteSelection = () => {
+    data.removeFurniture(...selectedItems.map((f) => f.id))
     setSelection(undefined)
   }
 
-  /** A copy lands a little off the original, selected. */
-  const duplicateItem = (item: FurnitureItem) => {
-    const copy: Omit<FurnitureItem, 'id'> & { id?: string } = { ...item, x: item.x + 0.3, y: item.y + 0.3 }
-    delete copy.id
-    const created = data.addFurniture(copy)
-    select({ kind: 'furniture', id: created.id })
+  /** Copies land a little off the originals, selected. */
+  const duplicateSelection = () => {
+    if (!selectedItems.length) return
+    const created = data.addFurniture(
+      ...selectedItems.map(({ id: _, ...item }) => ({ ...item, x: item.x + 0.3, y: item.y + 0.3 })),
+    )
+    select({ kind: 'furniture', ids: created.map((f) => f.id) })
   }
 
   const deleteDevice = (device: Device) => {
@@ -149,7 +159,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   const addPiece = (piece: NewPiece) => {
     const [x, y] = dropPoint()
-    const created = data.addFurniture({
+    const [created] = data.addFurniture({
       ...piece,
       floor: floor.id,
       x,
@@ -158,7 +168,7 @@ const House = ({ backend, account }: HouseProps) => {
       // A box gets a wood tone; a model's colour is its fabric (blue-grey, as in the thumbnails).
       color: piece.model ? FURNITURE_SWATCHES[4] : FURNITURE_SWATCHES[1],
     })
-    select({ kind: 'furniture', id: created.id })
+    select({ kind: 'furniture', ids: [created.id] })
   }
 
   const switchFloor = (index: number) => {
@@ -227,17 +237,17 @@ const House = ({ backend, account }: HouseProps) => {
         else undo()
         return
       }
-      if (!typing && !outside && selectedItem && (e.metaKey || e.ctrlKey) && key === 'd') {
+      if (!typing && !outside && selectedItems.length && (e.metaKey || e.ctrlKey) && key === 'd') {
         e.preventDefault()
-        duplicateItem(selectedItem)
+        duplicateSelection()
         return
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') toggleMeasure()
       else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
-      else if (selectedItem && key === 'r') rotateItem(selectedItem, e.shiftKey ? -15 : 15)
-      else if (selectedItem && (e.key === 'Delete' || e.key === 'Backspace')) deleteItem(selectedItem)
+      else if (selectedItems.length && key === 'r') rotateSelection(e.shiftKey ? -15 : 15)
+      else if (selectedItems.length && (e.key === 'Delete' || e.key === 'Backspace')) deleteSelection()
       else if (selectedDevice && (e.key === 'Delete' || e.key === 'Backspace')) deleteDevice(selectedDevice)
       else if (e.key === 'Escape') {
         if (selection) setSelection(undefined)
@@ -285,9 +295,22 @@ const House = ({ backend, account }: HouseProps) => {
         <FurnitureEditor
           item={selectedItem}
           onChange={(patch) => changeItem(selectedItem, patch, `${selectedItem.id}:${Object.keys(patch).join()}`)}
-          onRotate={(deg) => rotateItem(selectedItem, deg)}
-          onDelete={() => deleteItem(selectedItem)}
-          onDuplicate={() => duplicateItem(selectedItem)}
+          onRotate={rotateSelection}
+          onDelete={deleteSelection}
+          onDuplicate={duplicateSelection}
+          onClose={() => setSelection(undefined)}
+        />
+      )
+    if (selectedItems.length > 1)
+      return (
+        <FurnitureGroupEditor
+          items={selectedItems}
+          onColor={(color) => data.patchFurnitures(new Map(selectedItems.map((f) => [f.id, { color }])))}
+          onRotate={rotateSelection}
+          onDelete={deleteSelection}
+          onDuplicate={duplicateSelection}
+          onPick={(id) => select({ kind: 'furniture', ids: [id] })}
+          onRemove={(id) => select({ kind: 'furniture', ids: selectedItems.map((f) => f.id).filter((i) => i !== id) })}
           onClose={() => setSelection(undefined)}
         />
       )
@@ -328,7 +351,7 @@ const House = ({ backend, account }: HouseProps) => {
           snap={snap}
           onSnap={setSnap}
           onAdd={addPiece}
-          onSelect={(id) => select({ kind: 'furniture', id })}
+          onSelect={(id) => select({ kind: 'furniture', ids: [id] })}
         />
       )
     return undefined
@@ -376,9 +399,9 @@ const House = ({ backend, account }: HouseProps) => {
           viewKey={viewKey}
           onSelect={select}
           itemActions={{
-            onRotate: (item) => rotateItem(item, 15),
-            onDuplicate: duplicateItem,
-            onDelete: deleteItem,
+            onRotate: () => rotateSelection(15),
+            onDuplicate: duplicateSelection,
+            onDelete: deleteSelection,
           }}
         />
 

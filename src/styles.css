@@ -2154,3 +2154,9 @@ input[type='range'] {
     max-width: calc(100vw - 32px);
   }
 }
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}

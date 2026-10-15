@@ -86,8 +86,9 @@ export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onDuplicat
 
     <Section>
       <p className="hint">
-        Drag it around; raise it off the floor to hang it on a wall. <span className="kbd">R</span> rotates,{' '}
-        <span className="kbd">⌘D</span> duplicates, <span className="kbd">Del</span> removes.
+        Drag it around; raise it off the floor to hang it on a wall. <span className="kbd">Shift</span>-tap others to
+        move them together. <span className="kbd">R</span> rotates, <span className="kbd">⌘D</span> duplicates,{' '}
+        <span className="kbd">Del</span> removes.
       </p>
       <button className="btn btn-block" onClick={onDuplicate}>
         <Copy size={16} />
