@@ -24,7 +24,7 @@ import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import type { SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { wallText } from './measure/dimensions'
-import type { MeasurePick, Measurement } from './measure/measure'
+import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } from './measure/measure'
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
 import { DockBox, ViewDock } from './ui/ViewDock'
@@ -65,6 +65,7 @@ const House = ({ backend, account }: HouseProps) => {
   const nudge = useRef(createCameraNudge())
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
+  const [measurements, setMeasurements] = useState<MeasuredLine[]>([])
   const [sun, setSun] = useState<SunSettings>()
   const { site } = house
   const sunAt = sun
@@ -168,12 +169,11 @@ const House = ({ backend, account }: HouseProps) => {
     if (camera === 'walk') setCamera('orbit')
   }
 
-  /** Nothing stays selected across modes, and switching modes stops measuring. */
+  /** Nothing stays selected across modes; measuring carries on. */
   const changeInteraction = (next: Interaction) => {
     setSelection(undefined)
     setPlacing(undefined)
     setInteraction(next)
-    setMeasure(undefined)
     if (next === 'view') setRightTucked(false)
     if (next === 'devices') setRightOpen(true)
   }
@@ -181,11 +181,21 @@ const House = ({ backend, account }: HouseProps) => {
   const toggleMeasure = () => {
     setSelection(undefined)
     setPlacing(undefined)
-    setMeasure((m) => (m ? undefined : { mode: 'points', picks: [] }))
+    if (measure) stopMeasuring()
+    else setMeasure({ mode: 'points', picks: [] })
   }
-  // A third tap starts a new measurement.
-  const addMeasurePick = (pick: MeasurePick) =>
-    setMeasure((m) => m && { ...m, picks: m.picks.length === 1 ? [m.picks[0], pick] : [pick] })
+  const stopMeasuring = () => {
+    setMeasure(undefined)
+    setMeasurements([])
+  }
+  // The second tap finishes a measurement and the next tap starts another.
+  const addMeasurePick = (pick: MeasurePick) => {
+    if (!measure) return
+    const line = measure.picks.length === 1 && measuredLine({ ...measure, picks: [measure.picks[0], pick] })
+    if (!line) return setMeasure({ ...measure, picks: [pick] })
+    setMeasurements((ms) => [...ms, { ...line, id: crypto.randomUUID(), floor: floor.id }])
+    setMeasure({ ...measure, picks: [] })
+  }
 
   // A stepped-back item may no longer exist, so nothing stays selected.
   const undo = () => {
@@ -219,7 +229,8 @@ const House = ({ backend, account }: HouseProps) => {
       else if (e.key === 'Escape') {
         if (selection) setSelection(undefined)
         else if (placing) setPlacing(undefined)
-        else if (measure) setMeasure(undefined)
+        else if (measure?.picks.length) setMeasure({ ...measure, picks: [] })
+        else if (measure) stopMeasuring()
         else if (interaction === 'devices') changeInteraction('edit')
       }
     }
@@ -343,6 +354,8 @@ const House = ({ backend, account }: HouseProps) => {
           roomNumbers={leftOpen}
           measure={measure}
           onMeasurePick={addMeasurePick}
+          measurements={measurements}
+          onRemoveMeasurement={(id) => setMeasurements((ms) => ms.filter((m) => m.id !== id))}
           placing={placing}
           onPlaceDevice={placeDevice}
           nudge={nudge}
@@ -380,10 +393,14 @@ const House = ({ backend, account }: HouseProps) => {
           {!outside && (
             <DockBox label="Measure">
               <MeasurePanel
-                measure={measure}
+                mode={measure?.mode}
+                canClear={measurements.length > 0 || !!measure?.picks.length}
                 onStart={toggleMeasure}
                 onMode={(mode) => setMeasure({ mode, picks: [] })}
-                onClear={() => measure && setMeasure({ ...measure, picks: [] })}
+                onClear={() => {
+                  setMeasurements([])
+                  if (measure) setMeasure({ ...measure, picks: [] })
+                }}
                 onClose={toggleMeasure}
               />
             </DockBox>

@@ -1,5 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, type RefObject } from 'react'
+import { X } from 'lucide-react'
 import { Vector3 } from 'three'
 
 // Lengths pinned to points in the scene: plain DOM over the canvas, moved every frame (like the room labels).
@@ -9,6 +10,8 @@ export type Annotation = {
   at: [number, number, number]
   text: string
   kind: 'gap' | 'measure'
+  /** Shows a remove button on the pill. */
+  onRemove?: () => void
 }
 
 type AnnotationRefs = RefObject<Map<string, HTMLDivElement | null>>
@@ -16,7 +19,7 @@ type AnnotationsProps = { items: Annotation[]; refs: AnnotationRefs }
 
 /** The DOM half: render next to the <Canvas>. */
 export const AnnotationLabels = ({ items, refs }: AnnotationsProps) => (
-  <div className="overlay" aria-hidden>
+  <div className="overlay">
     {items.map((a) => (
       <div
         key={a.key}
@@ -26,6 +29,11 @@ export const AnnotationLabels = ({ items, refs }: AnnotationsProps) => (
         }}
       >
         {a.text}
+        {a.onRemove && (
+          <button className="annotation-remove" aria-label={`Remove ${a.text}`} onClick={a.onRemove}>
+            <X size={12} />
+          </button>
+        )}
       </div>
     ))}
   </div>

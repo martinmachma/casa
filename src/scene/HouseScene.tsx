@@ -24,7 +24,7 @@ import { Compass, CompassTracker } from './Compass'
 import { WalkCamera } from './WalkCamera'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
 import { clearances } from '../measure/clearance'
-import { distance, formatLength, measuredLine, type MeasurePick, type Measurement } from '../measure/measure'
+import { distance, formatLength, type MeasuredLine, type MeasurePick, type Measurement } from '../measure/measure'
 import { floorWallRects } from '../layout/rooms'
 import { Line } from '@react-three/drei'
 import { SELECTED_OUTLINE } from './palette'
@@ -60,6 +60,9 @@ type HouseSceneProps = {
   /** The measurement in progress; undefined when not measuring. */
   measure: Measurement | undefined
   onMeasurePick: (pick: MeasurePick) => void
+  /** Finished measurements; those on this floor are drawn with a removable length. */
+  measurements: MeasuredLine[]
+  onRemoveMeasurement: (id: string) => void
   /** The device kind the next tap places, while the devices tool is on. */
   placing: DeviceKind | undefined
   onPlaceDevice: (device: Omit<Device, 'id' | 'name'>) => void
@@ -86,6 +89,8 @@ export const HouseScene = ({
   roomNumbers,
   measure,
   onMeasurePick,
+  measurements,
+  onRemoveMeasurement,
   placing,
   onPlaceDevice,
   nudge,
@@ -107,22 +112,18 @@ export const HouseScene = ({
   const wallRects = useMemo(() => floorWallRects(floor), [floor])
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = floor.elevation + 0.05
-  const measured = measure && measuredLine(measure)
+  const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
+  const lineY = floor.elevation + 0.03
   const annotations = [
-    ...(measured
-      ? [
-          {
-            key: 'measure',
-            at: [
-              (measured.from[0] + measured.to[0]) / 2,
-              floor.elevation + 0.03,
-              (measured.from[1] + measured.to[1]) / 2,
-            ] as [number, number, number],
-            text: formatLength(distance(measured.from, measured.to)),
-            kind: 'measure' as const,
-          },
-        ]
-      : []),
+    ...lines.map(
+      (m): Annotation => ({
+        key: m.id,
+        at: [(m.from[0] + m.to[0]) / 2, lineY, (m.from[1] + m.to[1]) / 2],
+        text: formatLength(distance(m.from, m.to)) + (m.parallel ? '' : ' ∠'),
+        kind: 'measure',
+        onRemove: () => onRemoveMeasurement(m.id),
+      }),
+    ),
     ...gaps.map((g, i): Annotation => ({
       key: `gap${i}`,
       at: [(g.from[0] + g.to[0]) / 2, gapY, (g.from[1] + g.to[1]) / 2],
@@ -194,7 +195,7 @@ export const HouseScene = ({
               selection={selection}
               interactive={pickable && f.id === floor.id}
               doors={!measure && (outside || f.id === floor.id)}
-              cutaway={cutaway && camera === 'orbit' && !outside}
+              cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
               onPick={pickWall}
             />
           </group>
@@ -219,6 +220,17 @@ export const HouseScene = ({
           onMoveEnd={saveItem}
         />
 
+        {lines.map((m) => (
+          <Line
+            key={m.id}
+            points={[
+              [m.from[0], lineY, m.from[1]],
+              [m.to[0], lineY, m.to[1]],
+            ]}
+            color={SELECTED_OUTLINE}
+            lineWidth={3}
+          />
+        ))}
         {measure && <MeasureTool floor={floor} items={items} measure={measure} onPick={onMeasurePick} />}
 
         {camera !== 'walk' && !outside && <RoomLabelProjector floor={floor} labels={labels} />}

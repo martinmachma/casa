@@ -137,6 +137,9 @@ export const pickFace = (
  * What a finished measurement measures. Between faces it's the square distance from the first face's line to
  * the second tap, which for parallel faces is the gap between them wherever you tap.
  */
+/** A finished measurement, kept on its floor until removed. */
+export type MeasuredLine = { id: string; floor: string; from: Point; to: Point; parallel: boolean }
+
 export const measuredLine = (m: Measurement): { from: Point; to: Point; parallel: boolean } | undefined => {
   const [p, q] = m.picks
   if (!q) return undefined

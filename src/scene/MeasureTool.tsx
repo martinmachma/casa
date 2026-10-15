@@ -43,7 +43,7 @@ type Owner = { wall: Wall } | { item: FurnitureItem }
 /**
  * Catches taps on the floor plane (everything else is made non-clickable while measuring). Point to point, taps
  * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece, and the whole wall
- * or piece lights up. Draws the measured line; the distance is shown in the measure panel and on the line.
+ * or piece lights up. Draws the line being measured; finished ones are drawn by the scene.
  */
 export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps) => {
   const walls = useMemo(() => floorWallRects(floor), [floor])
@@ -85,7 +85,6 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
   }
 
   const at = (p: Point): [number, number, number] => [p[0], y, p[1]]
-  const done = measuredLine(measure)
   const preview = picks.length === 1 && hover ? measuredLine({ mode, picks: [picks[0], hover] }) : undefined
   const lit: { owner: Owner; ghost: boolean }[] = [
     ...picks.flatMap((p) => (ownerOf(p) ? [{ owner: ownerOf(p)!, ghost: false }] : [])),
@@ -118,7 +117,6 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
           <ItemHighlight key={i} item={owner.item} elevation={floor.elevation} ghost={ghost} />
         ),
       )}
-      {done && <Line points={[at(done.from), at(done.to)]} color={SELECTED_OUTLINE} lineWidth={3} />}
       {preview && (
         <Line
           points={[at(preview.from), at(preview.to)]}
