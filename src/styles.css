@@ -744,11 +744,17 @@ p {
 .modebar {
   position: absolute;
   top: 14px;
-  right: calc(14px + var(--right-inset, 0px));
+  right: 14px;
   display: flex;
+  flex-direction: row-reverse;
   align-items: flex-start;
   gap: 8px;
-  z-index: 5;
+  /* Above the right panel, which keeps a strip at its top free for it. */
+  z-index: 21;
+}
+
+.sidebar-right .sidebar-inner {
+  padding-top: 54px;
 }
 
 .modebar .history {
@@ -930,8 +936,8 @@ p {
 
 .dock-panel.float {
   width: 100%;
+  flex: none;
   min-height: 0;
-  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
@@ -967,6 +973,14 @@ p {
 
 .dock-panel .badge {
   transform: scale(0.85);
+}
+
+.dock-panel[data-grow] {
+  flex: 0 1 auto;
+}
+
+.dock-panel > .section:first-child {
+  border-top: 0;
 }
 
 .dock-panel .section {
@@ -1636,6 +1650,7 @@ input[type='range'] {
 
   .sidebar-right .sidebar-inner {
     max-height: calc(56vh - env(safe-area-inset-bottom));
+    padding-top: 0;
   }
 
   .sheet-handle {

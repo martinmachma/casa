@@ -11,7 +11,7 @@ type ViewDockProps = {
   /** Near walls hidden in the 3D view; offered only there. */
   cutaway: boolean
   onCutaway: (cutaway: boolean) => void
-  /** The floating panel under the view switch (rooms, sunlight); absent while tucked away. */
+  /** The floating boxes under the view switch (rooms, sunlight, measure). */
   children?: ReactNode
 }
 
@@ -41,10 +41,15 @@ export const ViewDock = ({ camera, onCamera, canWalk, cutaway, onCutaway, childr
         </IconButton>
       )}
     </div>
-    {children && (
-      <aside className="dock-panel float" aria-label="Rooms">
-        {children}
-      </aside>
-    )}
+    {children}
   </div>
+)
+
+type DockBoxProps = { label: string; grow?: boolean; children: ReactNode }
+
+/** One floating box in the dock; `grow` lets a long list take the leftover height and scroll. */
+export const DockBox = ({ label, grow, children }: DockBoxProps) => (
+  <aside className="dock-panel float" data-grow={grow ? '' : undefined} aria-label={label}>
+    {children}
+  </aside>
 )

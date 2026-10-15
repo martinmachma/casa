@@ -55,6 +55,8 @@ type HouseSceneProps = {
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
+  /** The room numbers over the 3D view, shown while the rooms box is open. */
+  roomNumbers: boolean
   /** The measurement in progress; undefined when not measuring. */
   measure: Measurement | undefined
   onMeasurePick: (pick: MeasurePick) => void
@@ -81,6 +83,7 @@ export const HouseScene = ({
   snap,
   sun,
   north,
+  roomNumbers,
   measure,
   onMeasurePick,
   placing,
@@ -249,7 +252,7 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {camera !== 'walk' && !outside && (
+      {camera !== 'walk' && !outside && roomNumbers && (
         <RoomLabels
           floor={floor}
           labels={labels}

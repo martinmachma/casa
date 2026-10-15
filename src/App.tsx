@@ -27,7 +27,7 @@ import { wallText } from './measure/dimensions'
 import type { MeasurePick, Measurement } from './measure/measure'
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
-import { ViewDock } from './ui/ViewDock'
+import { DockBox, ViewDock } from './ui/ViewDock'
 import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallPartColor } from './data/types'
@@ -168,17 +168,20 @@ const House = ({ backend, account }: HouseProps) => {
     if (camera === 'walk') setCamera('orbit')
   }
 
-  /** Measuring is part of editing: leaving edit mode stops it, and nothing stays selected across modes. */
+  /** Nothing stays selected across modes, and switching modes stops measuring. */
   const changeInteraction = (next: Interaction) => {
     setSelection(undefined)
     setPlacing(undefined)
     setInteraction(next)
+    setMeasure(undefined)
     if (next === 'view') setRightTucked(false)
     if (next === 'devices') setRightOpen(true)
-    if (next === 'measure') {
-      setMeasure((m) => m ?? { mode: 'points', picks: [] })
-      setRightOpen(true)
-    } else setMeasure(undefined)
+  }
+  /** Measuring works in any mode; while it's on, taps measure instead of selecting. */
+  const toggleMeasure = () => {
+    setSelection(undefined)
+    setPlacing(undefined)
+    setMeasure((m) => (m ? undefined : { mode: 'points', picks: [] }))
   }
   // A third tap starts a new measurement.
   const addMeasurePick = (pick: MeasurePick) =>
@@ -208,7 +211,7 @@ const House = ({ backend, account }: HouseProps) => {
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
-      else if (key === 'm') changeInteraction(interaction === 'measure' ? 'edit' : 'measure')
+      else if (key === 'm') toggleMeasure()
       else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
       else if (selectedItem && key === 'r') rotateItem(selectedItem, e.shiftKey ? -15 : 15)
       else if (selectedItem && (e.key === 'Delete' || e.key === 'Backspace')) deleteItem(selectedItem)
@@ -216,8 +219,8 @@ const House = ({ backend, account }: HouseProps) => {
       else if (e.key === 'Escape') {
         if (selection) setSelection(undefined)
         else if (placing) setPlacing(undefined)
+        else if (measure) setMeasure(undefined)
         else if (interaction === 'devices') changeInteraction('edit')
-        else if (interaction === 'measure') changeInteraction('edit')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -229,15 +232,6 @@ const House = ({ backend, account }: HouseProps) => {
   const closeRight = () => setRightOpen(false)
 
   const inspector = (() => {
-    if (measure)
-      return (
-        <MeasurePanel
-          measure={measure}
-          onMode={(mode) => setMeasure({ mode, picks: [] })}
-          onClear={() => setMeasure({ ...measure, picks: [] })}
-          onClose={() => changeInteraction('edit')}
-        />
-      )
     if (selection?.kind === 'wall') {
       const wall = floor.walls.find((w) => w.id === selection.wallId)
       return (
@@ -339,13 +333,14 @@ const House = ({ backend, account }: HouseProps) => {
           camera={camera}
           cutaway={cutaway}
           data={data}
-          interaction={interaction}
+          interaction={measure ? 'measure' : interaction}
           selection={selection}
           hoveredRoom={hoveredRoom}
           onHoverRoom={setHoveredRoom}
           snap={snap}
           sun={sunAt}
           north={site.north}
+          roomNumbers={leftOpen}
           measure={measure}
           onMeasurePick={addMeasurePick}
           placing={placing}
@@ -356,6 +351,7 @@ const House = ({ backend, account }: HouseProps) => {
         />
 
         <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>
+          <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
           {outside ? (
             <FloorList
               floors={house.floors}
@@ -377,7 +373,21 @@ const House = ({ backend, account }: HouseProps) => {
               onToggle={() => setLeftOpen(!leftOpen)}
             />
           )}
-          {leftOpen && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
+          </DockBox>
+          <DockBox label="Sunlight">
+            <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+          </DockBox>
+          {!outside && (
+            <DockBox label="Measure">
+              <MeasurePanel
+                measure={measure}
+                onStart={toggleMeasure}
+                onMode={(mode) => setMeasure({ mode, picks: [] })}
+                onClear={() => measure && setMeasure({ ...measure, picks: [] })}
+                onClose={toggleMeasure}
+              />
+            </DockBox>
+          )}
         </ViewDock>
 
         {!outside && (

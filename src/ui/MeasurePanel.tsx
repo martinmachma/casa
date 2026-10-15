@@ -1,9 +1,11 @@
-import { Eraser, MoveDiagonal, PanelLeftRightDashed } from 'lucide-react'
+import { Eraser, MoveDiagonal, PanelLeftRightDashed, Ruler, X } from 'lucide-react'
 import { distance, formatLength, measuredLine, type MeasureMode, type Measurement } from '../measure/measure'
 import { PanelHead, Section, Segmented } from './kit'
 
 type MeasurePanelProps = {
-  measure: Measurement
+  /** Undefined while not measuring: the box is just its header. */
+  measure: Measurement | undefined
+  onStart: () => void
   onMode: (mode: MeasureMode) => void
   onClear: () => void
   onClose: () => void
@@ -14,7 +16,17 @@ const STEPS: Record<MeasureMode, [string, string]> = {
   faces: ['Tap a wall or the side of a piece', 'Tap the wall or side opposite'],
 }
 
-export const MeasurePanel = ({ measure, onMode, onClear, onClose }: MeasurePanelProps) => {
+/** The measure box in the left dock: a toggle, and while measuring, how and what was measured. */
+export const MeasurePanel = ({ measure, onStart, onMode, onClear, onClose }: MeasurePanelProps) => {
+  const head = (
+    <PanelHead
+      title="Measure"
+      onClose={measure ? onClose : onStart}
+      closeLabel={measure ? 'Stop measuring (M)' : 'Measure (M)'}
+      closeIcon={measure ? <X size={18} /> : <Ruler size={17} />}
+    />
+  )
+  if (!measure) return head
   const { mode, picks } = measure
   const line = measuredLine(measure)
   const [a, b] = line ? [line.from, line.to] : []
@@ -23,7 +35,7 @@ export const MeasurePanel = ({ measure, onMode, onClear, onClose }: MeasurePanel
 
   return (
     <>
-      <PanelHead eyebrow="Editing" title="Measure" onClose={onClose} closeLabel="Stop measuring" />
+      {head}
       <Section>
         <Segmented
           label="Measure between"
@@ -31,8 +43,8 @@ export const MeasurePanel = ({ measure, onMode, onClear, onClose }: MeasurePanel
           value={mode}
           onChange={onMode}
           options={[
-            { value: 'points', label: 'Point to point', icon: <MoveDiagonal size={15} /> },
-            { value: 'faces', label: 'Wall to wall', icon: <PanelLeftRightDashed size={15} /> },
+            { value: 'points', label: 'Points', icon: <MoveDiagonal size={15} /> },
+            { value: 'faces', label: 'Walls', icon: <PanelLeftRightDashed size={15} /> },
           ]}
         />
         <div className="readout" role="status">
@@ -54,12 +66,7 @@ export const MeasurePanel = ({ measure, onMode, onClear, onClose }: MeasurePanel
             </li>
           ))}
         </ol>
-        <p className="hint">
-          {mode === 'faces'
-            ? 'Measures square on from the first wall, so it reads the true gap between two walls or pieces.'
-            : 'A third tap starts a new measurement.'}
-        </p>
-        <button className="btn btn-block" onClick={onClear} disabled={picks.length === 0}>
+        <button className="btn btn-small btn-block" onClick={onClear} disabled={picks.length === 0}>
           <Eraser size={16} />
           Clear
         </button>
