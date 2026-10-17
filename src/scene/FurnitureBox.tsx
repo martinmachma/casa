@@ -7,6 +7,7 @@ import type { FurnitureItem } from '../data/types'
 import { snapToWalls, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
 import { SELECTED_OUTLINE } from './palette'
+import { pastDragThreshold } from './selection'
 
 type FurnitureBoxProps = {
   item: FurnitureItem
@@ -52,7 +53,17 @@ export const FurnitureBox = ({
   const z = item.z ?? 0
   const getState = useThree((s) => s.get)
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -(elevation + z)), [elevation, z])
-  const drag = useRef<{ dx: number; dy: number; moved: boolean; add: boolean }>(undefined)
+  const drag = useRef<{
+    pointerId: number
+    clientX: number
+    clientY: number
+    pointerType: string
+    dx: number
+    dy: number
+    started: boolean
+    moved: boolean
+    add: boolean
+  }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
 
   // Stops the camera from orbiting/panning along with a drag.
@@ -63,33 +74,55 @@ export const FurnitureBox = ({
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
+    if (drag.current) return
     const add = e.shiftKey || e.metaKey || e.ctrlKey
     onSelect(item.id, add)
     // Taking an item out of the selection doesn't pick it up.
     if (add && selected) return
     if (!e.ray.intersectPlane(plane, hit)) return
-    drag.current = { dx: hit.x - item.x, dy: hit.z - item.y, moved: false, add }
+    drag.current = {
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      pointerType: e.pointerType,
+      dx: hit.x - item.x,
+      dy: hit.z - item.y,
+      started: false,
+      moved: false,
+      add,
+    }
     ;(e.target as Element).setPointerCapture(e.pointerId)
     setControlsEnabled(false)
   }
 
   const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
     const d = drag.current
-    if (!d || !e.ray.intersectPlane(plane, hit)) return
+    if (!d || d.pointerId !== e.pointerId) return
     e.stopPropagation()
-    d.moved = true
+    if (!d.started && !pastDragThreshold(d, e)) return
+    if (!e.ray.intersectPlane(plane, hit)) return
+    if (!d.started) {
+      d.started = true
+      // Pick up from here, so crossing the threshold doesn't jump by the ignored movement.
+      d.dx = hit.x - item.x
+      d.dy = hit.z - item.y
+      return
+    }
     const free = { x: hit.x - d.dx, y: hit.z - d.dy, rotation: item.rotation }
-    onMove(item.id, snapWalls ? snapToWalls({ ...item, ...free }, snapWalls) : free)
+    const placement = snapWalls ? snapToWalls({ ...item, ...free }, snapWalls) : free
+    if (placement.x === item.x && placement.y === item.y && placement.rotation === item.rotation) return
+    d.moved = true
+    onMove(item.id, placement)
   }
 
   const endDrag = (e: ThreeEvent<PointerEvent>) => {
     const d = drag.current
-    if (!d) return
+    if (!d || d.pointerId !== e.pointerId) return
     drag.current = undefined
     ;(e.target as Element).releasePointerCapture(e.pointerId)
     setControlsEnabled(true)
     if (d.moved) onMoveEnd(item.id)
-    else if (!d.add) onTap(item.id)
+    else if (!d.started && !d.add && e.type !== 'pointercancel') onTap(item.id)
   }
 
   const handlers = interactive
