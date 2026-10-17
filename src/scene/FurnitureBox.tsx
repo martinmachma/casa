@@ -74,7 +74,7 @@ export const FurnitureBox = ({
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
-    if (drag.current) return
+    if (drag.current && drag.current.pointerId !== e.pointerId) return
     const add = e.shiftKey || e.metaKey || e.ctrlKey
     onSelect(item.id, add)
     // Taking an item out of the selection doesn't pick it up.
