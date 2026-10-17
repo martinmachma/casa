@@ -38,6 +38,7 @@ import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
+import { isTyping } from './ui/isTyping'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -229,7 +230,7 @@ const House = ({ backend, account }: HouseProps) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
-      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
+      const typing = isTyping(e.target)
       const key = e.key.toLowerCase()
       if (!typing && !outside && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
         e.preventDefault()
