@@ -119,14 +119,15 @@ describe('snapFurniture', () => {
       expect(snapFurniture(item, [], [neighbour])).toEqual({ x: item.x, y: item.y, rotation: item.rotation })
   })
 
-  it('gives walls priority even when already flush, and preserves wall corner snapping', () => {
+  it('snaps along a wall while preserving its placement, and leaves snapped corners alone', () => {
     for (const item of [
       { ...dragged, x: 2, y: 0.35 },
       { ...dragged, x: 2, y: 0.4 },
       { ...dragged, x: 0.65, y: 0.4 },
     ]) {
       const other = { ...neighbour, x: item.x + 1.02, y: item.y }
-      expect(snapFurniture(item, room, [other])).toEqual(snapToWalls(item, room))
+      const wall = snapToWalls(item, room)
+      expect(snapFurniture(item, room, [other])).toEqual(item.x === 0.65 ? wall : { ...wall, x: other.x - 1 })
     }
   })
 })

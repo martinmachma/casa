@@ -62,7 +62,11 @@ const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
  * Pushes a footprint flush against the nearest wall face within `threshold` metres (or one it overlaps) that it's
  * nearly square to, turning it square to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
  */
-const wallPlacement = (f: Footprint, walls: SnapWall[], threshold: number): Placement | undefined => {
+const wallPlacement = (
+  f: Footprint,
+  walls: SnapWall[],
+  threshold: number,
+): { placement: Placement; frame: Frame; corner: boolean } | undefined => {
   const frames = walls.map(frameOf)
 
   let best: { frame: Frame; placed: Footprint; gap: number } | undefined
@@ -92,13 +96,17 @@ const wallPlacement = (f: Footprint, walls: SnapWall[], threshold: number): Plac
     cornerGap = Math.abs(hit.gap)
     placed = { ...best.placed, x: best.placed.x + frame.n[0] * hit.shift, y: best.placed.y + frame.n[1] * hit.shift }
   }
-  return { x: placed.x, y: placed.y, rotation: placed.rotation }
+  return {
+    placement: { x: placed.x, y: placed.y, rotation: placed.rotation },
+    frame: first,
+    corner: cornerGap < Infinity,
+  }
 }
 
 export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement =>
-  wallPlacement(f, walls, threshold) ?? { x: f.x, y: f.y, rotation: f.rotation }
+  wallPlacement(f, walls, threshold)?.placement ?? { x: f.x, y: f.y, rotation: f.rotation }
 
-/** Seats against a wall first, otherwise the nearest overlapping furniture edge within reach. */
+/** Seats against walls, then furniture on any axis the walls leave free. */
 export const snapFurniture = (
   f: SnapItem,
   walls: SnapWall[],
@@ -107,9 +115,10 @@ export const snapFurniture = (
   ignoredIds: readonly string[] = [f.id],
 ): Placement => {
   const wall = wallPlacement(f, walls, threshold)
-  if (wall) return wall
+  if (wall?.corner) return wall.placement
+  const seated = wall ? { ...f, ...wall.placement } : f
 
-  let best: Placement = { x: f.x, y: f.y, rotation: f.rotation }
+  let best: Placement = { x: seated.x, y: seated.y, rotation: seated.rotation }
   let bestGap = Infinity
   for (const item of items) {
     if (item.id === f.id || ignoredIds.includes(item.id) || item.floor !== f.floor) continue
@@ -117,10 +126,11 @@ export const snapFurniture = (
     const otherZ = item.z ?? 0
     if (Math.min(z + f.height, otherZ + item.height) <= Math.max(z, otherZ)) continue
 
-    const off = normalizeAngle(f.rotation - item.rotation)
+    const off = normalizeAngle(seated.rotation - item.rotation)
     const k = Math.round(off / QUARTER)
     if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
-    const squared = { ...f, rotation: normalizeAngle(item.rotation + k * QUARTER) }
+    const squared = { ...seated, rotation: normalizeAngle(item.rotation + k * QUARTER) }
+    if (wall && Math.abs(normalizeAngle(squared.rotation - wall.placement.rotation)) > 1e-6) continue
     const c = Math.cos(item.rotation)
     const s = Math.sin(item.rotation)
     const axes: Point[] = [
@@ -129,9 +139,10 @@ export const snapFurniture = (
     ]
     for (let i = 0; i < axes.length; i++) {
       const normal = axes[i]
+      if (wall && Math.abs(normal[0] * wall.frame.n[0] + normal[1] * wall.frame.n[1]) >= 1e-3) continue
       const tangent = axes[1 - i]
-      const dx = f.x - item.x
-      const dy = f.y - item.y
+      const dx = seated.x - item.x
+      const dy = seated.y - item.y
       // The finite edges must overlap, rather than attracting diagonally separated corners.
       const along = dx * tangent[0] + dy * tangent[1]
       if (Math.abs(along) >= extentAlong(squared, tangent) + extentAlong(item, tangent)) continue
@@ -141,7 +152,7 @@ export const snapFurniture = (
       const gap = Math.abs(shift)
       if (gap > threshold || gap >= bestGap) continue
       bestGap = gap
-      best = { x: f.x + normal[0] * shift, y: f.y + normal[1] * shift, rotation: squared.rotation }
+      best = { x: seated.x + normal[0] * shift, y: seated.y + normal[1] * shift, rotation: squared.rotation }
     }
   }
   return best
