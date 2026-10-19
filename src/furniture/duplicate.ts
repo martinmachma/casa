@@ -60,11 +60,14 @@ export const duplicateOffset = (items: Footprint[], walls: SnapWall[]): Point =>
   for (const offset of [...offsets, ...offsets.map(([x, y]): Point => [-x, -y])]) {
     const blocked = items.some((item) => {
       const copy = { ...item, x: item.x + offset[0], y: item.y + offset[1] }
-      // Sweep clear walls, but allow escape from an existing overlap if the copy clears it.
+      // Escape existing overlaps on the same side of the wall; sweep walls that start clear.
       return (
-        wallFootprints.some((wall) =>
-          overlaps(item, wall) ? overlaps(copy, wall) : overlaps(item, wall, offset),
-        ) ||
+        wallFootprints.some((wall) => {
+          if (!overlaps(item, wall)) return overlaps(item, wall, offset)
+          const normal: Point = [-Math.sin(wall.rotation), Math.cos(wall.rotation)]
+          const side = (f: Footprint) => Math.sign(dot([f.x - wall.x, f.y - wall.y], normal))
+          return overlaps(copy, wall) || side(item) !== side(copy)
+        }) ||
         items.some((original) => overlaps(copy, original))
       )
     })

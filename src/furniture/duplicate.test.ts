@@ -20,9 +20,8 @@ describe('duplicateOffset', () => {
     expect(duplicateOffset([{ ...box, width: 3.8, y: 3.65 }], room)).toEqual([0, -0.8])
   })
 
-  it('checks only the destination when the original already overlaps a wall', () => {
-    // The literal destination-only rule permits the first clear candidate beyond the wall.
-    expect(duplicateOffset([{ ...box, y: 3.7 }], room)).toEqual([-0, 0.8])
+  it('keeps the copy on the room side when the original already overlaps a wall', () => {
+    expect(duplicateOffset([{ ...box, y: 3.7 }], room)).toEqual([-0, -0.8])
   })
 
   it('uses the rotated width axis, including diagonal walls', () => {
