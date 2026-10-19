@@ -283,6 +283,7 @@ export const HouseScene = ({
             interactive={pickable}
             // Snapping one piece of a group to a wall would leave the others where they were.
             snapWalls={snap && selectedIds.length < 2 ? snapWalls : undefined}
+            snapItems={items}
             onSelect={pickItem}
             onMove={moveItem}
             onMoveEnd={saveItem}
