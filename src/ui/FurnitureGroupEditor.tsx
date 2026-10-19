@@ -81,7 +81,7 @@ export const FurnitureGroupEditor = ({
 
       <Section>
         <p className="hint">
-          Drag any of them to move the lot; they don't snap to walls together. <span className="kbd">Shift</span>-tap
+          Drag any of them to move the lot; with snapping on, they snap to walls together. <span className="kbd">Shift</span>-tap
           adds or leaves out a piece; a plain tap picks just that one.
         </p>
         <button className="btn btn-block" onClick={onDuplicate}>

@@ -66,6 +66,7 @@ const wallPlacement = (
   f: Footprint,
   walls: SnapWall[],
   threshold: number,
+  square = true,
 ): { placement: Placement; frame: Frame; corner: boolean } | undefined => {
   const frames = walls.map(frameOf)
 
@@ -75,7 +76,7 @@ const wallPlacement = (
     const off = normalizeAngle(f.rotation - frame.angle)
     const k = Math.round(off / QUARTER)
     if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
-    const squared = { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) }
+    const squared = square ? { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) } : f
     const hit = gapTo(squared, frame, 0)
     if (!hit || hit.gap > threshold || (best && Math.abs(hit.gap) >= best.gap)) continue
     best = {
@@ -105,6 +106,23 @@ const wallPlacement = (
 
 export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement =>
   wallPlacement(f, walls, threshold)?.placement ?? { x: f.x, y: f.y, rotation: f.rotation }
+
+/** The smallest member's wall correction, shared by the whole group without turning any piece. */
+export const snapGroupToWalls = (items: Footprint[], walls: SnapWall[], threshold = 0.1): Point => {
+  let correction: Point = [0, 0]
+  let bestDistance = Infinity
+  for (const item of items) {
+    const wall = wallPlacement(item, walls, threshold, false)
+    if (!wall) continue
+    const dx = wall.placement.x - item.x
+    const dy = wall.placement.y - item.y
+    const distance = Math.hypot(dx, dy)
+    if (distance >= bestDistance) continue
+    bestDistance = distance
+    correction = [dx, dy]
+  }
+  return correction
+}
 
 /** Seats against walls, then furniture on any axis the walls leave free. */
 export const snapFurniture = (

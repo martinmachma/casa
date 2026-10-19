@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { snapFurniture, snapToWalls, type SnapWall } from './snap'
+import { snapFurniture, snapGroupToWalls, snapToWalls, type SnapWall } from './snap'
 
 // A 4×4 room, walls 0.2 thick on their centre lines.
 const room: SnapWall[] = [
@@ -58,6 +58,44 @@ describe('snapToWalls', () => {
   it('ignores a wall whose segment the item is not beside', () => {
     const short: SnapWall[] = [{ from: [0, 0], to: [1, 0], thickness: 0.2 }]
     expect(snapToWalls({ ...box, x: 3, y: 0.4 }, short)).toEqual({ x: 3, y: 0.4, rotation: 0 })
+  })
+})
+
+describe('snapGroupToWalls', () => {
+  it('uses the nearest member and shares its correction without changing the layout', () => {
+    const items = [{ ...box, x: 1, y: 0.43 }, { ...box, x: 3, y: 0.38 }]
+    const [dx, dy] = snapGroupToWalls(items, room)
+    expect(dx).toBe(0)
+    expect(dy).toBeCloseTo(-0.03)
+    const moved = items.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
+    expect(moved[1].y).toBeCloseTo(0.35)
+    expect(moved[1].x - moved[0].x).toBeCloseTo(items[1].x - items[0].x)
+    expect(moved[1].y - moved[0].y).toBeCloseTo(items[1].y - items[0].y)
+    expect(items[1].y).toBe(0.38)
+  })
+
+  it('uses the actual rotated footprint without squaring it, including at corners', () => {
+    const item = { ...box, x: 0.68, y: 0.48, rotation: 0.2 }
+    const [dx, dy] = snapGroupToWalls([item], room)
+    expect(item.x + dx).toBeCloseTo(0.1 + 0.5 * Math.cos(0.2) + 0.25 * Math.sin(0.2))
+    expect(item.y + dy).toBeCloseTo(0.1 + 0.5 * Math.sin(0.2) + 0.25 * Math.cos(0.2))
+    expect(item.rotation).toBe(0.2)
+    const angle = Math.PI / 4
+    const diagonal: SnapWall[] = [{ from: [0, 0], to: [4, 4], thickness: 0.2 }]
+    const [sx, sy] = snapGroupToWalls([{ ...box, x: 2, y: 2 + 0.4 * Math.SQRT2, rotation: angle }], diagonal)
+    expect(sx).toBeCloseTo(0.05 / Math.SQRT2)
+    expect(sy).toBeCloseTo(-0.05 / Math.SQRT2)
+  })
+
+  it('ignores ineligible members and keeps free or already flush groups in place', () => {
+    for (const items of [
+      [],
+      [{ ...box, x: 2, y: 2 }],
+      [{ ...box, x: 5, y: 0.4 }],
+      [{ ...box, x: 2, y: 0.4, rotation: 0.6 }],
+      [{ ...box, x: 1, y: 0.35 }, { ...box, x: 3, y: 0.4 }],
+    ]) expect(snapGroupToWalls(items, room)).toEqual([0, 0])
+    expect(snapGroupToWalls([{ ...box, x: 2, y: 0.2 }], room)[1]).toBeCloseTo(0.15)
   })
 })
 

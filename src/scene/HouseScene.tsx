@@ -4,7 +4,7 @@ import { useMemo, useRef, type RefObject } from 'react'
 import { MOUSE, TOUCH } from 'three'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
-import { floorSnapWalls } from '../furniture/snap'
+import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, Point, WallFace } from '../layout/types'
@@ -148,7 +148,9 @@ export const HouseScene = ({
     const dx = placement.x - grabbed.x
     const dy = placement.y - grabbed.y
     const moved = items.filter((f) => selectedIds.includes(f.id))
-    data.patchFurnitures(new Map(moved.map((f) => [f.id, { x: f.x + dx, y: f.y + dy }])), `move:${selectedIds.join()}`)
+    const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
+    const [sx, sy] = snap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
+    data.patchFurnitures(new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])), `move:${selectedIds.join()}`)
   }
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
   const pickItem = (id: string, add: boolean) => {
@@ -281,7 +283,7 @@ export const HouseScene = ({
             selected={selectedIds.includes(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}
-            // Snapping one piece of a group to a wall would leave the others where they were.
+            // Group snapping is applied to the shared translation in moveItem.
             snapWalls={snap && selectedIds.length < 2 ? snapWalls : undefined}
             snapItems={items}
             onSelect={pickItem}
