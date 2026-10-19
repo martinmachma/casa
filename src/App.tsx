@@ -7,6 +7,7 @@ import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
 import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
 import { rotateGroup } from './furniture/group'
+import { duplicateOffset } from './furniture/duplicate'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
 import { floorRegions } from './layout/rooms'
@@ -111,11 +112,12 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
   }
 
-  /** Copies land a little off the originals, selected. */
+  /** Copies land beside the originals, selected. */
   const duplicateSelection = () => {
     if (!selectedItems.length) return
+    const [dx, dy] = duplicateOffset(selectedItems, floorSnapWalls(floor))
     const created = data.addFurniture(
-      ...selectedItems.map(({ id: _, ...item }) => ({ ...item, x: item.x + 0.3, y: item.y + 0.3 })),
+      ...selectedItems.map(({ id: _, ...item }) => ({ ...item, x: item.x + dx, y: item.y + dy })),
     )
     select({ kind: 'furniture', ids: created.map((f) => f.id) })
   }
