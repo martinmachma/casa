@@ -8,6 +8,7 @@ import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
 import { wallAngle } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
+import { visibleWallHeight } from './CutawayWall'
 
 const CLICK_SLOP_PX = 5
 
@@ -198,13 +199,15 @@ type DevicePlacerProps = {
   floor: Floor
   kind: DeviceKind
   onPlace: (device: Omit<Device, 'id' | 'name'>) => void
+  cutaway: boolean
 }
 
 /**
  * Catches taps while a device kind is picked. The tap is read at the kind's height (a socket's tap on a wall lands
  * on that wall), then a light goes on the ceiling there and anything else onto the nearest wall face.
  */
-export const DevicePlacer = ({ floor, kind, onPlace }: DevicePlacerProps) => {
+export const DevicePlacer = ({ floor, kind, onPlace, cutaway }: DevicePlacerProps) => {
+  const camera = useThree((s) => s.camera)
   const kindHeight = DEVICE_KINDS[kind].height
   // Lights are placed where the floor was tapped, the way a plan is read.
   const level = floor.elevation + (kindHeight === 'ceiling' ? 0 : kindHeight)
@@ -218,7 +221,14 @@ export const DevicePlacer = ({ floor, kind, onPlace }: DevicePlacerProps) => {
         if (e.delta > CLICK_SLOP_PX) return
         e.stopPropagation()
         if (!e.ray.intersectPlane(plane, hit)) return
-        const placed = placeDevice(kind, [hit.x, hit.z], floor)
+        const visibleFloor =
+          cutaway && kindHeight !== 'ceiling'
+            ? {
+                ...floor,
+                walls: floor.walls.filter((wall) => visibleWallHeight(wall, floor, camera, cutaway) >= kindHeight),
+              }
+            : floor
+        const placed = placeDevice(kind, [hit.x, hit.z], visibleFloor)
         if (placed) onPlace(placed)
       }}
       onPointerOver={() => (document.body.style.cursor = 'crosshair')}
