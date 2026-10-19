@@ -1,9 +1,11 @@
 import { wallThickness } from '../layout/geometry'
+import type { FurnitureItem } from '../data/types'
 import type { Floor, Point } from '../layout/types'
 
 export type Footprint = { x: number; y: number; width: number; depth: number; rotation: number }
 export type SnapWall = { from: Point; to: Point; thickness: number }
 export type Placement = Pick<Footprint, 'x' | 'y' | 'rotation'>
+type SnapItem = Footprint & Pick<FurnitureItem, 'id' | 'floor' | 'z' | 'height'>
 
 const QUARTER = Math.PI / 2
 // An item turned further than this from square to a wall is left alone by it.
@@ -60,7 +62,7 @@ const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
  * Pushes a footprint flush against the nearest wall face within `threshold` metres (or one it overlaps) that it's
  * nearly square to, turning it square to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
  */
-export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement => {
+const wallPlacement = (f: Footprint, walls: SnapWall[], threshold: number): Placement | undefined => {
   const frames = walls.map(frameOf)
 
   let best: { frame: Frame; placed: Footprint; gap: number } | undefined
@@ -78,7 +80,7 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): P
       placed: { ...squared, x: squared.x + frame.n[0] * hit.shift, y: squared.y + frame.n[1] * hit.shift },
     }
   }
-  if (!best) return { x: f.x, y: f.y, rotation: f.rotation }
+  if (!best) return undefined
 
   const first = best.frame
   let placed = best.placed
@@ -91,4 +93,56 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): P
     placed = { ...best.placed, x: best.placed.x + frame.n[0] * hit.shift, y: best.placed.y + frame.n[1] * hit.shift }
   }
   return { x: placed.x, y: placed.y, rotation: placed.rotation }
+}
+
+export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement =>
+  wallPlacement(f, walls, threshold) ?? { x: f.x, y: f.y, rotation: f.rotation }
+
+/** Seats against a wall first, otherwise the nearest overlapping furniture edge within reach. */
+export const snapFurniture = (
+  f: SnapItem,
+  walls: SnapWall[],
+  items: SnapItem[],
+  threshold = 0.1,
+  ignoredIds: readonly string[] = [f.id],
+): Placement => {
+  const wall = wallPlacement(f, walls, threshold)
+  if (wall) return wall
+
+  let best: Placement = { x: f.x, y: f.y, rotation: f.rotation }
+  let bestGap = Infinity
+  for (const item of items) {
+    if (item.id === f.id || ignoredIds.includes(item.id) || item.floor !== f.floor) continue
+    const z = f.z ?? 0
+    const otherZ = item.z ?? 0
+    if (Math.min(z + f.height, otherZ + item.height) <= Math.max(z, otherZ)) continue
+
+    const off = normalizeAngle(f.rotation - item.rotation)
+    const k = Math.round(off / QUARTER)
+    if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
+    const squared = { ...f, rotation: normalizeAngle(item.rotation + k * QUARTER) }
+    const c = Math.cos(item.rotation)
+    const s = Math.sin(item.rotation)
+    const axes: Point[] = [
+      [c, s],
+      [-s, c],
+    ]
+    for (let i = 0; i < axes.length; i++) {
+      const normal = axes[i]
+      const tangent = axes[1 - i]
+      const dx = f.x - item.x
+      const dy = f.y - item.y
+      // The finite edges must overlap, rather than attracting diagonally separated corners.
+      const along = dx * tangent[0] + dy * tangent[1]
+      if (Math.abs(along) >= extentAlong(squared, tangent) + extentAlong(item, tangent)) continue
+      const across = dx * normal[0] + dy * normal[1]
+      const target = Math.sign(across || 1) * (extentAlong(squared, normal) + extentAlong(item, normal))
+      const shift = target - across
+      const gap = Math.abs(shift)
+      if (gap > threshold || gap >= bestGap) continue
+      bestGap = gap
+      best = { x: f.x + normal[0] * shift, y: f.y + normal[1] * shift, rotation: squared.rotation }
+    }
+  }
+  return best
 }

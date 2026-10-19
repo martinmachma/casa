@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { snapToWalls, type SnapWall } from './snap'
+import { snapFurniture, snapToWalls, type SnapWall } from './snap'
 
 // A 4×4 room, walls 0.2 thick on their centre lines.
 const room: SnapWall[] = [
@@ -58,5 +58,75 @@ describe('snapToWalls', () => {
   it('ignores a wall whose segment the item is not beside', () => {
     const short: SnapWall[] = [{ from: [0, 0], to: [1, 0], thickness: 0.2 }]
     expect(snapToWalls({ ...box, x: 3, y: 0.4 }, short)).toEqual({ x: 3, y: 0.4, rotation: 0 })
+  })
+})
+
+describe('snapFurniture', () => {
+  const neighbour = { ...box, id: 'other', floor: 'ground', height: 0.8, x: 2, y: 2 }
+  const dragged = { ...neighbour, id: 'dragged', x: 3.05 }
+
+  it('butts edges on either axis and side, correcting small overlaps and choosing the nearest piece', () => {
+    for (const [x, y, expectedX, expectedY] of [
+      [3.05, 2.1, 3, 2.1],
+      [1.05, 2, 1, 2],
+      [2.1, 2.55, 2.1, 2.5],
+      [2, 1.45, 2, 1.5],
+    ]) {
+      expect(snapFurniture({ ...dragged, x, y }, [], [neighbour])).toEqual({
+        x: expectedX,
+        y: expectedY,
+        rotation: 0,
+      })
+    }
+    expect(snapFurniture(dragged, [], [{ ...neighbour, id: 'farther', x: 1.97 }, neighbour]).x).toBe(3)
+  })
+
+  it('squares and seats rotated, unequal pieces at the nearest quarter turn', () => {
+    const angle = Math.PI / 3
+    const distance = neighbour.width / 2 + dragged.depth / 2
+    const item = {
+      ...dragged,
+      x: 2 + (distance + 0.05) * Math.cos(angle),
+      y: 2 + (distance + 0.05) * Math.sin(angle),
+      rotation: angle + Math.PI / 2 + 0.2,
+    }
+    const p = snapFurniture(item, [], [{ ...neighbour, rotation: angle }])
+    expect(p.x).toBeCloseTo(2 + distance * Math.cos(angle))
+    expect(p.y).toBeCloseTo(2 + distance * Math.sin(angle))
+    expect(p.rotation).toBeCloseTo(angle + Math.PI / 2)
+  })
+
+  it('ignores other floors, disjoint heights, itself and excluded dragged items', () => {
+    const free = { x: dragged.x, y: dragged.y, rotation: dragged.rotation }
+    for (const other of [
+      { ...neighbour, floor: 'upstairs' },
+      { ...neighbour, z: dragged.height },
+      { ...neighbour, z: -neighbour.height },
+      { ...neighbour, id: dragged.id },
+    ])
+      expect(snapFurniture(dragged, [], [other])).toEqual(free)
+    expect(snapFurniture(dragged, [], [neighbour], 0.1, [neighbour.id])).toEqual(free)
+    expect(snapFurniture({ ...dragged, z: 0.4 }, [], [{ ...neighbour, z: 0.5 }]).x).toBe(3)
+  })
+
+  it('requires nearby, overlapping edges and a rotation within 15 degrees', () => {
+    for (const item of [
+      { ...dragged, x: 3.11 },
+      { ...dragged, y: 2.55 },
+      { ...dragged, x: 2.5 },
+      { ...dragged, rotation: 0.3 },
+    ])
+      expect(snapFurniture(item, [], [neighbour])).toEqual({ x: item.x, y: item.y, rotation: item.rotation })
+  })
+
+  it('gives walls priority even when already flush, and preserves wall corner snapping', () => {
+    for (const item of [
+      { ...dragged, x: 2, y: 0.35 },
+      { ...dragged, x: 2, y: 0.4 },
+      { ...dragged, x: 0.65, y: 0.4 },
+    ]) {
+      const other = { ...neighbour, x: item.x + 1.02, y: item.y }
+      expect(snapFurniture(item, room, [other])).toEqual(snapToWalls(item, room))
+    }
   })
 })

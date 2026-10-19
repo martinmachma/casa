@@ -4,7 +4,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
 import { Mesh, Plane, Vector3 } from 'three'
 import type { FurnitureItem } from '../data/types'
-import { snapToWalls, type SnapWall } from '../furniture/snap'
+import { snapFurniture, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
 import { SELECTED_OUTLINE } from './palette'
 import { pastDragThreshold } from './selection'
@@ -18,6 +18,7 @@ type FurnitureBoxProps = {
   /** False while another tool (measuring) owns the pointer. */
   interactive: boolean
   snapWalls: SnapWall[] | undefined
+  snapItems: FurnitureItem[]
   /** `add` (Shift, ⌘ or Ctrl held) adds the item to the selection, or takes it out again. */
   onSelect: (id: string, add: boolean) => void
   onMove: (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
@@ -36,7 +37,7 @@ export type ItemActions = {
 
 type Controls = { enabled: boolean }
 
-/** A furniture item (a box, or a model stretched to its size) that can be dragged across its floor, snapping to walls when `snapWalls` is given. */
+/** A furniture item that can be dragged across its floor, snapping when `snapWalls` is given. */
 export const FurnitureBox = ({
   item,
   elevation,
@@ -44,6 +45,7 @@ export const FurnitureBox = ({
   showActions,
   interactive,
   snapWalls,
+  snapItems,
   onSelect,
   onMove,
   onMoveEnd,
@@ -109,7 +111,7 @@ export const FurnitureBox = ({
       return
     }
     const free = { x: hit.x - d.dx, y: hit.z - d.dy, rotation: item.rotation }
-    const placement = snapWalls ? snapToWalls({ ...item, ...free }, snapWalls) : free
+    const placement = snapWalls ? snapFurniture({ ...item, ...free }, snapWalls, snapItems) : free
     if (placement.x === item.x && placement.y === item.y && placement.rotation === item.rotation) return
     d.moved = true
     onMove(item.id, placement)
