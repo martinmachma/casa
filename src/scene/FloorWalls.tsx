@@ -1,36 +1,30 @@
-import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { useMemo, useState } from 'react'
-import { Vector3, type Group } from 'three'
+import { type ThreeEvent } from '@react-three/fiber'
+import { useMemo } from 'react'
 import {
-  blocksView,
   isExteriorWall,
   sidePart,
   splitPieces,
   stubPieces,
-  wallAngle,
   wallJoints,
   wallPieces,
-  wallOutside,
   wallThickness,
   type WallPiece,
 } from '../layout/geometry'
-import type { Floor, Point, Wall, WallFace, WallSide } from '../layout/types'
+import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
 import { wallPartColor } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
 import { raycastIfShown } from './raycast'
 import type { Selection } from './selection'
+import { CutawayWall, STUB_HEIGHT } from './CutawayWall'
 
 // Walls overlap at corners by just under half their thickness, so end caps never sit flush
 // with the neighbouring wall's face (which would z-fight).
 const CORNER_INSET = 0.002
 // A pointer that moved further than this between down and up was an orbit/pan, not a click.
 const CLICK_SLOP_PX = 5
-// How much of a wall is left when it's cut away, so the rooms' outlines still show.
-const STUB_HEIGHT = 0.3
 // The selection wash sits this far off the wall face, so it doesn't flicker against it.
 const PROUD = 0.006
-const forward = new Vector3()
 
 /** An end face is told apart by where it is along the wall, in millimetres. */
 const endPart = (u: number) => Math.round(u * 1000)
@@ -42,42 +36,38 @@ type FloorWallsProps = {
   interactive: boolean
   /** Whether taps open and close doors. */
   doors: boolean
+  openDoors: ReadonlySet<string>
+  onToggleDoor: (id: string) => void
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
-export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaway, onPick }: FloorWallsProps) => {
-  // A stable lookup filled by the walls' refs, not render state.
-  const [parts] = useState(() => new Map<string, WallParts>())
-  const outsides = useMemo(() => new Map(floor.walls.map((w) => [w.id, wallOutside(w, floor)])), [floor])
-
-  // Every frame, since it depends on where the camera has orbited to.
-  useFrame(({ camera }) => {
-    const eye: Point = [camera.position.x, camera.position.z]
-    camera.getWorldDirection(forward)
-    const view: Point = [forward.x, forward.z]
-    for (const wall of floor.walls) {
-      const { full, stub } = parts.get(wall.id) ?? {}
-      if (!full || !stub) continue
-      const cut = cutaway && blocksView(wall, outsides.get(wall.id), eye, view)
-      full.visible = !cut
-      stub.visible = cut
-    }
-  })
-
+export const FloorWalls = ({
+  floor,
+  colors,
+  selection,
+  interactive,
+  doors,
+  openDoors,
+  onToggleDoor,
+  cutaway,
+  onPick,
+}: FloorWallsProps) => {
   return (
     <group>
       {floor.walls.map((wall) => (
         <WallMesh
           key={wall.id}
-          parts={parts}
+          cutaway={cutaway}
           wall={wall}
           floor={floor}
           colors={colors}
           selected={selection?.kind === 'wall' && selection.wallId === wall.id ? selection : undefined}
           interactive={interactive}
           doors={doors}
+          openDoors={openDoors}
+          onToggleDoor={onToggleDoor}
           onPick={onPick}
         />
       ))}
@@ -85,24 +75,34 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
   )
 }
 
-/** A wall drawn whole, and cut down to a stub for when it's in the way; one of the two is shown. */
-type WallParts = { full?: Group | null; stub?: Group | null }
-
 type WallMeshProps = {
-  parts: Map<string, WallParts>
+  cutaway: boolean
   wall: Wall
   floor: Floor
   colors: Map<string, string>
   selected: { side: WallFace; part: number } | undefined
   interactive: boolean
   doors: boolean
+  openDoors: ReadonlySet<string>
+  onToggleDoor: (id: string) => void
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ parts, wall, floor, colors, selected, interactive, doors, onPick }: WallMeshProps) => {
+const WallMesh = ({
+  cutaway,
+  wall,
+  floor,
+  colors,
+  selected,
+  interactive,
+  doors,
+  openDoors,
+  onToggleDoor,
+  onPick,
+}: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
   // Cut where other walls meet either side, so each box lies in one part of each side.
@@ -120,9 +120,6 @@ const WallMesh = ({ parts, wall, floor, colors, selected, interactive, doors, on
     return list.filter((p) => partOf(p, side) === selected?.part)
   }
   const stub = useMemo(() => stubPieces(pieces, STUB_HEIGHT), [pieces])
-  const own = (key: keyof WallParts) => (g: Group | null) => {
-    parts.set(wall.id, { ...parts.get(wall.id), [key]: g })
-  }
 
   // Box faces in wall-local space: +z is side 'a', -z is side 'b', ±x the ends at u1 and u0.
   const handleClick = (p: WallPiece) => (e: ThreeEvent<MouseEvent>) => {
@@ -158,25 +155,39 @@ const WallMesh = ({ parts, wall, floor, colors, selected, interactive, doors, on
     ))
 
   return (
-    <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
-      <group ref={own('full')}>
-        {boxes(pieces)}
-        {selected && selected.side !== 'end' && (
-          <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
-        )}
-        {selected?.side === 'end' && <EndHighlight pieces={pieces} part={selected.part} thickness={thickness} />}
-        {wall.openings && (
-          <OpeningFills openings={wall.openings} exterior={isExteriorWall(wall, floor)} clickable={doors} />
-        )}
-      </group>
-      <group ref={own('stub')} visible={false}>
-        {boxes(stub)}
-        {selected && selected.side !== 'end' && (
-          <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
-        )}
-        {selected?.side === 'end' && <EndHighlight pieces={stub} part={selected.part} thickness={thickness} />}
-      </group>
-    </group>
+    <CutawayWall
+      wall={wall}
+      floor={floor}
+      cutaway={cutaway}
+      full={
+        <>
+          {boxes(pieces)}
+          {selected && selected.side !== 'end' && (
+            <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
+          )}
+          {selected?.side === 'end' && <EndHighlight pieces={pieces} part={selected.part} thickness={thickness} />}
+          {wall.openings && (
+            <OpeningFills
+              wallId={wall.id}
+              openings={wall.openings}
+              exterior={isExteriorWall(wall, floor)}
+              clickable={doors}
+              openDoors={openDoors}
+              onToggleDoor={onToggleDoor}
+            />
+          )}
+        </>
+      }
+      stub={
+        <>
+          {boxes(stub)}
+          {selected && selected.side !== 'end' && (
+            <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
+          )}
+          {selected?.side === 'end' && <EndHighlight pieces={stub} part={selected.part} thickness={thickness} />}
+        </>
+      }
+    />
   )
 }
 

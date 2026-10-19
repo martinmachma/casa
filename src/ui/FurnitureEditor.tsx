@@ -1,5 +1,7 @@
 import { Copy, RotateCcw, RotateCw, Trash2 } from 'lucide-react'
 import type { FurnitureItem } from '../data/types'
+import type { Floor } from '../layout/types'
+import { DuplicateToFloor } from './DuplicateToFloor'
 import { FURNITURE_SWATCHES } from '../scene/palette'
 import { NumberField } from './NumberField'
 import { PanelHead, Section } from './kit'
@@ -11,13 +13,24 @@ type FurnitureEditorProps = {
   onRotate: (degrees: number) => void
   onDelete: () => void
   onDuplicate: () => void
+  floors: Floor[]
+  onDuplicateToFloor: (floorId: string) => void
   onClose: () => void
 }
 
 const cm = (m: number) => Math.round(m * 100)
 const degrees = (rad: number) => Math.round(((((rad * 180) / Math.PI) % 360) + 360) % 360)
 
-export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onDuplicate, onClose }: FurnitureEditorProps) => (
+export const FurnitureEditor = ({
+  item,
+  onChange,
+  onRotate,
+  onDelete,
+  onDuplicate,
+  floors,
+  onDuplicateToFloor,
+  onClose,
+}: FurnitureEditorProps) => (
   <>
     <PanelHead
       eyebrow="Furniture"
@@ -94,6 +107,7 @@ export const FurnitureEditor = ({ item, onChange, onRotate, onDelete, onDuplicat
         <Copy size={16} />
         Duplicate
       </button>
+      <DuplicateToFloor floors={floors} currentFloor={item.floor} onDuplicate={onDuplicateToFloor} />
       <button className="btn btn-danger btn-block" onClick={onDelete}>
         <Trash2 size={16} />
         Remove from the house

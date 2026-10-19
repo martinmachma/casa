@@ -5,6 +5,7 @@ import type { PerspectiveCamera as Camera } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { floorRegions, roomAt } from '../layout/rooms'
 import type { Floor, Point } from '../layout/types'
+import { isTyping } from '../ui/isTyping'
 import { resolveCollisions, wallObstacles, type Obstacle } from '../walk/collide'
 import type { CameraNudge } from './cameraNudge'
 
@@ -23,6 +24,7 @@ type WalkCameraProps = {
   floor: Floor
   furniture: FurnitureItem[]
   nudge: RefObject<CameraNudge>
+  openDoors: ReadonlySet<string>
 }
 
 /** Where to stand at first: at one end of the biggest room, looking down its length. */
@@ -44,9 +46,9 @@ const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
 
 /**
  * First-person camera at eye height: drag to look around, WASD/arrow keys or the on-screen buttons to walk.
- * Walls block the way except through doors; furniture does too.
+ * Walls block the way except through open doors and passages; furniture does too.
  */
-export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
+export const WalkCamera = ({ floor, furniture, nudge, openDoors }: WalkCameraProps) => {
   const camera = useRef<Camera>(null)
   const gl = useThree((s) => s.gl)
   const set = useThree((s) => s.set)
@@ -56,7 +58,7 @@ export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
-  const walls = useMemo(() => wallObstacles(floor), [floor])
+  const walls = useMemo(() => wallObstacles(floor, openDoors), [floor, openDoors])
   const obstacles = useMemo<Obstacle[]>(
     () => [
       ...walls,
@@ -103,18 +105,23 @@ export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
   useEffect(() => {
     const held = keys.current
     const down = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return
+      if (isTyping(e.target) || e.metaKey || e.ctrlKey) return
       held.add(e.key.toLowerCase())
     }
     const up = (e: KeyboardEvent) => held.delete(e.key.toLowerCase())
     const clear = () => held.clear()
+    const focus = (e: FocusEvent) => {
+      if (isTyping(e.target)) clear()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
+    window.addEventListener('focusin', focus)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
+      window.removeEventListener('focusin', focus)
     }
   }, [])
 

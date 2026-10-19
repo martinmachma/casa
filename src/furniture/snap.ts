@@ -1,9 +1,11 @@
 import { wallThickness } from '../layout/geometry'
+import type { FurnitureItem } from '../data/types'
 import type { Floor, Point } from '../layout/types'
 
 export type Footprint = { x: number; y: number; width: number; depth: number; rotation: number }
 export type SnapWall = { from: Point; to: Point; thickness: number }
 export type Placement = Pick<Footprint, 'x' | 'y' | 'rotation'>
+type SnapItem = Footprint & Pick<FurnitureItem, 'id' | 'floor' | 'z' | 'height'>
 
 const QUARTER = Math.PI / 2
 // An item turned further than this from square to a wall is left alone by it.
@@ -60,7 +62,12 @@ const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
  * Pushes a footprint flush against the nearest wall face within `threshold` metres (or one it overlaps) that it's
  * nearly square to, turning it square to that wall. A second, perpendicular wall in reach is snapped too, so items settle into corners.
  */
-export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement => {
+const wallPlacement = (
+  f: Footprint,
+  walls: SnapWall[],
+  threshold: number,
+  square = true,
+): { placement: Placement; frame: Frame; corner: boolean } | undefined => {
   const frames = walls.map(frameOf)
 
   let best: { frame: Frame; placed: Footprint; gap: number } | undefined
@@ -69,7 +76,7 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): P
     const off = normalizeAngle(f.rotation - frame.angle)
     const k = Math.round(off / QUARTER)
     if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
-    const squared = { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) }
+    const squared = square ? { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) } : f
     const hit = gapTo(squared, frame, 0)
     if (!hit || hit.gap > threshold || (best && Math.abs(hit.gap) >= best.gap)) continue
     best = {
@@ -78,7 +85,7 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): P
       placed: { ...squared, x: squared.x + frame.n[0] * hit.shift, y: squared.y + frame.n[1] * hit.shift },
     }
   }
-  if (!best) return { x: f.x, y: f.y, rotation: f.rotation }
+  if (!best) return undefined
 
   const first = best.frame
   let placed = best.placed
@@ -90,5 +97,81 @@ export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): P
     cornerGap = Math.abs(hit.gap)
     placed = { ...best.placed, x: best.placed.x + frame.n[0] * hit.shift, y: best.placed.y + frame.n[1] * hit.shift }
   }
-  return { x: placed.x, y: placed.y, rotation: placed.rotation }
+  return {
+    placement: { x: placed.x, y: placed.y, rotation: placed.rotation },
+    frame: first,
+    corner: cornerGap < Infinity,
+  }
+}
+
+export const snapToWalls = (f: Footprint, walls: SnapWall[], threshold = 0.1): Placement =>
+  wallPlacement(f, walls, threshold)?.placement ?? { x: f.x, y: f.y, rotation: f.rotation }
+
+/** The smallest member's wall correction, shared by the whole group without turning any piece. */
+export const snapGroupToWalls = (items: Footprint[], walls: SnapWall[], threshold = 0.1): Point => {
+  let correction: Point = [0, 0]
+  let bestDistance = Infinity
+  for (const item of items) {
+    const wall = wallPlacement(item, walls, threshold, false)
+    if (!wall) continue
+    const dx = wall.placement.x - item.x
+    const dy = wall.placement.y - item.y
+    const distance = Math.hypot(dx, dy)
+    if (distance >= bestDistance) continue
+    bestDistance = distance
+    correction = [dx, dy]
+  }
+  return correction
+}
+
+/** Seats against walls, then furniture on any axis the walls leave free. */
+export const snapFurniture = (
+  f: SnapItem,
+  walls: SnapWall[],
+  items: SnapItem[],
+  threshold = 0.1,
+  ignoredIds: readonly string[] = [f.id],
+): Placement => {
+  const wall = wallPlacement(f, walls, threshold)
+  if (wall?.corner) return wall.placement
+  const seated = wall ? { ...f, ...wall.placement } : f
+
+  let best: Placement = { x: seated.x, y: seated.y, rotation: seated.rotation }
+  let bestGap = Infinity
+  for (const item of items) {
+    if (item.id === f.id || ignoredIds.includes(item.id) || item.floor !== f.floor) continue
+    const z = f.z ?? 0
+    const otherZ = item.z ?? 0
+    if (Math.min(z + f.height, otherZ + item.height) <= Math.max(z, otherZ)) continue
+
+    const off = normalizeAngle(seated.rotation - item.rotation)
+    const k = Math.round(off / QUARTER)
+    if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
+    const squared = { ...seated, rotation: normalizeAngle(item.rotation + k * QUARTER) }
+    if (wall && Math.abs(normalizeAngle(squared.rotation - wall.placement.rotation)) > 1e-6) continue
+    const c = Math.cos(item.rotation)
+    const s = Math.sin(item.rotation)
+    const axes: Point[] = [
+      [c, s],
+      [-s, c],
+    ]
+    for (let i = 0; i < axes.length; i++) {
+      const normal = axes[i]
+      if (wall && Math.abs(normal[0] * wall.frame.n[0] + normal[1] * wall.frame.n[1]) >= 1e-3) continue
+      const tangent = axes[1 - i]
+      const dx = seated.x - item.x
+      const dy = seated.y - item.y
+      // The finite edges must overlap, rather than attracting diagonally separated corners.
+      const along = dx * tangent[0] + dy * tangent[1]
+      if (Math.abs(along) >= extentAlong(squared, tangent) + extentAlong(item, tangent)) continue
+      const across = dx * normal[0] + dy * normal[1]
+      const target = Math.sign(across || 1) * (extentAlong(squared, normal) + extentAlong(item, normal))
+      const shift = target - across
+      const gap = Math.abs(shift)
+      if (gap > threshold || gap >= bestGap) continue
+      bestGap = gap
+      best = { x: seated.x + normal[0] * shift, y: seated.y + normal[1] * shift, rotation: squared.rotation }
+    }
+  }
+  return best
 }

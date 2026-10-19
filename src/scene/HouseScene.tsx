@@ -1,10 +1,10 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
-import { useMemo, useRef, type RefObject } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import { MOUSE, TOUCH } from 'three'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
-import { floorSnapWalls } from '../furniture/snap'
+import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, Point, WallFace } from '../layout/types'
@@ -100,6 +100,14 @@ export const HouseScene = ({
   onSelect,
   itemActions,
 }: HouseSceneProps) => {
+  const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
+  const toggleDoor = (id: string) =>
+    setOpenDoors((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const { min, max } = floorBounds(floor)
@@ -136,7 +144,7 @@ export const HouseScene = ({
   const labels = useRef<(HTMLDivElement | null)[]>([])
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
-  // Only editing makes walls, floors and furniture respond; while measuring, taps go to the floor plane only.
+  // Measuring uses its own floor and wall targets.
   const pickable = interaction === 'edit'
   const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
@@ -148,7 +156,12 @@ export const HouseScene = ({
     const dx = placement.x - grabbed.x
     const dy = placement.y - grabbed.y
     const moved = items.filter((f) => selectedIds.includes(f.id))
-    data.patchFurnitures(new Map(moved.map((f) => [f.id, { x: f.x + dx, y: f.y + dy }])), `move:${selectedIds.join()}`)
+    const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
+    const [sx, sy] = snap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
+    data.patchFurnitures(
+      new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
+      `move:${selectedIds.join()}`,
+    )
   }
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
   const pickItem = (id: string, add: boolean) => {
@@ -168,7 +181,13 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
       >
         {camera === 'walk' ? (
-          <WalkCamera key={`${floor.id}-${viewKey}`} floor={floor} furniture={data.furniture} nudge={nudge} />
+          <WalkCamera
+            key={`${floor.id}-${viewKey}`}
+            floor={floor}
+            furniture={data.furniture}
+            nudge={nudge}
+            openDoors={openDoors}
+          />
         ) : (
           <CameraRig
             key={`${camera}-${outside ? 'outside' : floor.id}-${viewKey}`}
@@ -210,6 +229,8 @@ export const HouseScene = ({
               selection={selection}
               interactive={pickable && f.id === floor.id}
               doors={!measure && (outside || f.id === floor.id)}
+              openDoors={openDoors}
+              onToggleDoor={toggleDoor}
               cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
               onPick={pickWall}
             />
@@ -222,7 +243,7 @@ export const HouseScene = ({
         {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
 
         {interaction === 'devices' && placing && !outside && (
-          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} />
+          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} cutaway={cutaway && camera === 'orbit'} />
         )}
         <Devices
           floor={floor}
@@ -246,7 +267,15 @@ export const HouseScene = ({
             lineWidth={3}
           />
         ))}
-        {measure && <MeasureTool floor={floor} items={items} measure={measure} onPick={onMeasurePick} />}
+        {measure && (
+          <MeasureTool
+            floor={floor}
+            items={items}
+            measure={measure}
+            onPick={onMeasurePick}
+            cutaway={cutaway && camera === 'orbit' && !outside}
+          />
+        )}
 
         {camera !== 'walk' && !outside && <RoomLabelProjector floor={floor} labels={labels} />}
         <AnnotationProjector items={annotations} refs={annotationRefs} />
@@ -273,8 +302,9 @@ export const HouseScene = ({
             selected={selectedIds.includes(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}
-            // Snapping one piece of a group to a wall would leave the others where they were.
+            // Group snapping is applied to the shared translation in moveItem.
             snapWalls={snap && selectedIds.length < 2 ? snapWalls : undefined}
+            snapItems={items}
             onSelect={pickItem}
             onMove={moveItem}
             onMoveEnd={saveItem}

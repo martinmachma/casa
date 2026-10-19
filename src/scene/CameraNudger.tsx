@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { OrthographicCamera, PerspectiveCamera, Spherical, Vector3 } from 'three'
+import { isTyping } from '../ui/isTyping'
 import type { CameraNudge } from './cameraNudge'
 
 type OrbitLike = { target: Vector3; maxPolarAngle: number; update: () => void }
@@ -26,19 +27,23 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
   useEffect(() => {
     const held = keys.current
     const down = (e: KeyboardEvent) => {
-      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
-      if (typing || e.metaKey || e.ctrlKey || e.altKey) return
+      if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return
       held.add(e.key.toLowerCase())
     }
     const up = (e: KeyboardEvent) => held.delete(e.key.toLowerCase())
     const clear = () => held.clear()
+    const focus = (e: FocusEvent) => {
+      if (isTyping(e.target)) clear()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
+    window.addEventListener('focusin', focus)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
+      window.removeEventListener('focusin', focus)
     }
   }, [])
 

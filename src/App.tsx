@@ -7,6 +7,7 @@ import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
 import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
 import { rotateGroup } from './furniture/group'
+import { duplicateOffset } from './furniture/duplicate'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
 import { floorRegions } from './layout/rooms'
@@ -38,6 +39,7 @@ import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
+import { isTyping } from './ui/isTyping'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -110,12 +112,21 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
   }
 
-  /** Copies land a little off the originals, selected. */
-  const duplicateSelection = () => {
-    if (!selectedItems.length) return
+  /** Copies land beside the originals, or at the same plan position on another floor. */
+  const duplicateSelection = (targetFloorId = floor.id) => {
+    const targetIndex = house.floors.findIndex((f) => f.id === targetFloorId)
+    if (!selectedItems.length || targetIndex < 0) return
+    const sameFloor = targetFloorId === floor.id
+    const [dx, dy] = sameFloor ? duplicateOffset(selectedItems, floorSnapWalls(floor)) : [0, 0]
     const created = data.addFurniture(
-      ...selectedItems.map(({ id: _, ...item }) => ({ ...item, x: item.x + 0.3, y: item.y + 0.3 })),
+      ...selectedItems.map(({ id: _, ...item }) => ({
+        ...item,
+        floor: targetFloorId,
+        x: item.x + dx,
+        y: item.y + dy,
+      })),
     )
+    if (!sameFloor) switchFloor(targetIndex)
     select({ kind: 'furniture', ids: created.map((f) => f.id) })
   }
 
@@ -229,7 +240,7 @@ const House = ({ backend, account }: HouseProps) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
-      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
+      const typing = isTyping(e.target)
       const key = e.key.toLowerCase()
       if (!typing && !outside && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
         e.preventDefault()
@@ -297,7 +308,9 @@ const House = ({ backend, account }: HouseProps) => {
           onChange={(patch) => changeItem(selectedItem, patch, `${selectedItem.id}:${Object.keys(patch).join()}`)}
           onRotate={rotateSelection}
           onDelete={deleteSelection}
-          onDuplicate={duplicateSelection}
+          onDuplicate={() => duplicateSelection()}
+          floors={house.floors}
+          onDuplicateToFloor={duplicateSelection}
           onClose={() => setSelection(undefined)}
         />
       )
@@ -308,7 +321,9 @@ const House = ({ backend, account }: HouseProps) => {
           onColor={(color) => data.patchFurnitures(new Map(selectedItems.map((f) => [f.id, { color }])))}
           onRotate={rotateSelection}
           onDelete={deleteSelection}
-          onDuplicate={duplicateSelection}
+          onDuplicate={() => duplicateSelection()}
+          floors={house.floors}
+          onDuplicateToFloor={duplicateSelection}
           onPick={(id) => select({ kind: 'furniture', ids: [id] })}
           onRemove={(id) => select({ kind: 'furniture', ids: selectedItems.map((f) => f.id).filter((i) => i !== id) })}
           onClose={() => setSelection(undefined)}
@@ -400,7 +415,7 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={select}
           itemActions={{
             onRotate: () => rotateSelection(15),
-            onDuplicate: duplicateSelection,
+            onDuplicate: () => duplicateSelection(),
             onDelete: deleteSelection,
           }}
         />

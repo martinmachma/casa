@@ -9,6 +9,7 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string }>()
   const [error, setError] = useState<string>()
+  const [copied, setCopied] = useState(false)
   const [pos, setPos] = useState({ x: 300, y: 120 })
   const drag = useRef<{ dx: number; dy: number } | undefined>(undefined)
 
@@ -65,6 +66,17 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
 
   const open = todos.filter((t) => !t.done)
   const done = todos.filter((t) => t.done)
+
+  const copy = async () => {
+    const lines = [...open.map((t) => `- [ ] ${t.text}`), ...done.map((t) => `- [x] ${t.text}`)]
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not copy')
+    }
+  }
 
   const item = (t: Todo) => (
     <li key={t.id} className={t.done ? 'todo-item done' : 'todo-item'}>
@@ -132,6 +144,34 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
         </span>
         <h3>Wishes &amp; bugs</h3>
         {open.length > 0 && <span className="todo-count">{open.length}</span>}
+        <button
+          className="icon-btn icon-btn-sm"
+          aria-label="Copy list"
+          title={copied ? 'Copied' : 'Copy list'}
+          disabled={todos.length === 0}
+          onClick={copy}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            width="14"
+            height="14"
+            aria-hidden
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {copied ? (
+              <path d="M3.5 8.5l3 3 6-7" />
+            ) : (
+              <>
+                <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+                <path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
+              </>
+            )}
+          </svg>
+        </button>
         <button className="icon-btn icon-btn-sm" aria-label="Close" onClick={onClose}>
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
