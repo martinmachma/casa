@@ -20,6 +20,11 @@ describe('duplicateOffset', () => {
     expect(duplicateOffset([{ ...box, width: 3.8, y: 3.65 }], room)).toEqual([0, -0.8])
   })
 
+  it('checks only the destination when the original already overlaps a wall', () => {
+    // The literal destination-only rule permits the first clear candidate beyond the wall.
+    expect(duplicateOffset([{ ...box, y: 3.7 }], room)).toEqual([-0, 0.8])
+  })
+
   it('uses the rotated width axis, including diagonal walls', () => {
     const rotation = Math.PI / 4
     const wall: SnapWall = { from: [0, 0], to: [4, 4], thickness: 0.2 }
