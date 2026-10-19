@@ -2,7 +2,7 @@ import { Line } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { useMemo, useState } from 'react'
 import type { FurnitureItem } from '../data/types'
-import { floorBounds, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import { floorBounds, stubPieces, wallLength, wallPieces, wallThickness } from '../layout/geometry'
 import { floorWallRects } from '../layout/rooms'
 import type { Floor, Point, Wall } from '../layout/types'
 import { OrthographicCamera, PerspectiveCamera } from 'three'
@@ -17,6 +17,8 @@ import {
   type Measurement,
 } from '../measure/measure'
 import { SELECTED_OUTLINE } from './palette'
+import { CutawayWall, STUB_HEIGHT } from './CutawayWall'
+import { raycastIfShown } from './raycast'
 
 const CLICK_SLOP_PX = 5
 // Drawn just above the floor finishes and rugs.
@@ -32,6 +34,7 @@ type MeasureToolProps = {
   items: FurnitureItem[]
   measure: Measurement
   onPick: (pick: MeasurePick) => void
+  cutaway: boolean
 }
 
 // Highlights sit this far proud of the wall or piece they cover, so they don't flicker against it.
@@ -45,7 +48,7 @@ type Owner = { wall: Wall } | { item: FurnitureItem }
  * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece, and the whole wall
  * or piece lights up. Draws the line being measured; finished ones are drawn by the scene.
  */
-export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps) => {
+export const MeasureTool = ({ floor, items, measure, onPick, cutaway }: MeasureToolProps) => {
   const walls = useMemo(() => floorWallRects(floor), [floor])
   const outlines = useMemo(() => [...items.map(footprintOutline), ...walls.map(rectOutline)], [items, walls])
   const owners = useMemo<Owner[]>(
@@ -114,20 +117,34 @@ export const MeasureTool = ({ floor, items, measure, onPick }: MeasureToolProps)
         <meshBasicMaterial visible={false} />
       </mesh>
       {/* Taps anywhere up a wall count too: the hit on its face is straight above the face on the floor. */}
-      {walls.map((r, i) => (
-        <mesh
-          key={i}
-          position={[(r.x0 + r.x1) / 2, floor.elevation + floor.height / 2, (r.y0 + r.y1) / 2]}
-          {...catcher}
-        >
-          <boxGeometry args={[r.x1 - r.x0, floor.height, r.y1 - r.y0]} />
-          <meshBasicMaterial visible={false} />
-        </mesh>
-      ))}
+      {floor.walls.map((wall) => {
+        const thickness = wallThickness(wall, floor)
+        const target = (height: number) => (
+          <mesh position={[wallLength(wall) / 2, height / 2, 0]} raycast={raycastIfShown} {...catcher}>
+            <boxGeometry args={[wallLength(wall) + thickness, height, thickness]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
+        )
+        return (
+          <CutawayWall
+            key={wall.id}
+            wall={wall}
+            floor={floor}
+            cutaway={cutaway}
+            full={target(floor.height)}
+            stub={stubPieces(wallPieces(wall, floor.height, thickness / 2 - 0.002), STUB_HEIGHT).map((p, i) => (
+              <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={raycastIfShown} {...catcher}>
+                <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
+                <meshBasicMaterial visible={false} />
+              </mesh>
+            ))}
+          />
+        )
+      })}
 
       {lit.map(({ owner, ghost }, i) =>
         'wall' in owner ? (
-          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} />
+          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} cutaway={cutaway} />
         ) : (
           <ItemHighlight key={i} item={owner.item} elevation={floor.elevation} ghost={ghost} />
         ),
@@ -157,18 +174,34 @@ const HighlightMaterial = ({ ghost }: { ghost: boolean }) => (
 )
 
 /** The whole wall, openings and all, washed in the accent colour. */
-const WallHighlight = ({ wall, floor, ghost }: { wall: Wall; floor: Floor; ghost: boolean }) => {
+const WallHighlight = ({
+  wall,
+  floor,
+  ghost,
+  cutaway,
+}: {
+  wall: Wall
+  floor: Floor
+  ghost: boolean
+  cutaway: boolean
+}) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(() => wallPieces(wall, floor.height, thickness / 2), [wall, floor.height, thickness])
+  const boxes = (list: typeof pieces) =>
+    list.map((p, i) => (
+      <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={noRaycast}>
+        <boxGeometry args={[p.u1 - p.u0 + 2 * PROUD, p.y1 - p.y0 + 2 * PROUD, thickness + 2 * PROUD]} />
+        <HighlightMaterial ghost={ghost} />
+      </mesh>
+    ))
   return (
-    <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
-      {pieces.map((p, i) => (
-        <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={noRaycast}>
-          <boxGeometry args={[p.u1 - p.u0 + 2 * PROUD, p.y1 - p.y0 + 2 * PROUD, thickness + 2 * PROUD]} />
-          <HighlightMaterial ghost={ghost} />
-        </mesh>
-      ))}
-    </group>
+    <CutawayWall
+      wall={wall}
+      floor={floor}
+      cutaway={cutaway}
+      full={boxes(pieces)}
+      stub={boxes(stubPieces(pieces, STUB_HEIGHT))}
+    />
   )
 }
 

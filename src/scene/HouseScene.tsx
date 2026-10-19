@@ -136,7 +136,7 @@ export const HouseScene = ({
   const labels = useRef<(HTMLDivElement | null)[]>([])
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
-  // Only editing makes walls, floors and furniture respond; while measuring, taps go to the floor plane only.
+  // Measuring uses its own floor and wall targets.
   const pickable = interaction === 'edit'
   const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
@@ -222,7 +222,7 @@ export const HouseScene = ({
         {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
 
         {interaction === 'devices' && placing && !outside && (
-          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} />
+          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} cutaway={cutaway && camera === 'orbit'} />
         )}
         <Devices
           floor={floor}
@@ -246,7 +246,15 @@ export const HouseScene = ({
             lineWidth={3}
           />
         ))}
-        {measure && <MeasureTool floor={floor} items={items} measure={measure} onPick={onMeasurePick} />}
+        {measure && (
+          <MeasureTool
+            floor={floor}
+            items={items}
+            measure={measure}
+            onPick={onMeasurePick}
+            cutaway={cutaway && camera === 'orbit' && !outside}
+          />
+        )}
 
         {camera !== 'walk' && !outside && <RoomLabelProjector floor={floor} labels={labels} />}
         <AnnotationProjector items={annotations} refs={annotationRefs} />
