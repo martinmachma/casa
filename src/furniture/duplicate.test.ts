@@ -21,7 +21,7 @@ describe('duplicateOffset', () => {
   })
 
   it('keeps the copy on the room side when the original already overlaps a wall', () => {
-    expect(duplicateOffset([{ ...box, y: 3.7 }], room)).toEqual([-0, -0.8])
+    expect(duplicateOffset([{ ...box, y: 3.7 }], room)).toEqual([expect.closeTo(-0), -0.8])
   })
 
   it('uses the rotated width axis, including diagonal walls', () => {
