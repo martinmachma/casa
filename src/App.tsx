@@ -112,13 +112,21 @@ const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
   }
 
-  /** Copies land beside the originals, selected. */
-  const duplicateSelection = () => {
-    if (!selectedItems.length) return
-    const [dx, dy] = duplicateOffset(selectedItems, floorSnapWalls(floor))
+  /** Copies land beside the originals, or at the same plan position on another floor. */
+  const duplicateSelection = (targetFloorId = floor.id) => {
+    const targetIndex = house.floors.findIndex((f) => f.id === targetFloorId)
+    if (!selectedItems.length || targetIndex < 0) return
+    const sameFloor = targetFloorId === floor.id
+    const [dx, dy] = sameFloor ? duplicateOffset(selectedItems, floorSnapWalls(floor)) : [0, 0]
     const created = data.addFurniture(
-      ...selectedItems.map(({ id: _, ...item }) => ({ ...item, x: item.x + dx, y: item.y + dy })),
+      ...selectedItems.map(({ id: _, ...item }) => ({
+        ...item,
+        floor: targetFloorId,
+        x: item.x + dx,
+        y: item.y + dy,
+      })),
     )
+    if (!sameFloor) switchFloor(targetIndex)
     select({ kind: 'furniture', ids: created.map((f) => f.id) })
   }
 
@@ -300,7 +308,9 @@ const House = ({ backend, account }: HouseProps) => {
           onChange={(patch) => changeItem(selectedItem, patch, `${selectedItem.id}:${Object.keys(patch).join()}`)}
           onRotate={rotateSelection}
           onDelete={deleteSelection}
-          onDuplicate={duplicateSelection}
+          onDuplicate={() => duplicateSelection()}
+          floors={house.floors}
+          onDuplicateToFloor={duplicateSelection}
           onClose={() => setSelection(undefined)}
         />
       )
@@ -311,7 +321,9 @@ const House = ({ backend, account }: HouseProps) => {
           onColor={(color) => data.patchFurnitures(new Map(selectedItems.map((f) => [f.id, { color }])))}
           onRotate={rotateSelection}
           onDelete={deleteSelection}
-          onDuplicate={duplicateSelection}
+          onDuplicate={() => duplicateSelection()}
+          floors={house.floors}
+          onDuplicateToFloor={duplicateSelection}
           onPick={(id) => select({ kind: 'furniture', ids: [id] })}
           onRemove={(id) => select({ kind: 'furniture', ids: selectedItems.map((f) => f.id).filter((i) => i !== id) })}
           onClose={() => setSelection(undefined)}
@@ -403,7 +415,7 @@ const House = ({ backend, account }: HouseProps) => {
           onSelect={select}
           itemActions={{
             onRotate: () => rotateSelection(15),
-            onDuplicate: duplicateSelection,
+            onDuplicate: () => duplicateSelection(),
             onDelete: deleteSelection,
           }}
         />

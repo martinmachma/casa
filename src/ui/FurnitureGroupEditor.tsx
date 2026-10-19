@@ -1,5 +1,7 @@
 import { Copy, RotateCcw, RotateCw, Trash2, X } from 'lucide-react'
 import type { FurnitureItem } from '../data/types'
+import type { Floor } from '../layout/types'
+import { DuplicateToFloor } from './DuplicateToFloor'
 import { FURNITURE_SWATCHES } from '../scene/palette'
 import { IconButton, PanelHead, Section } from './kit'
 
@@ -9,6 +11,8 @@ type FurnitureGroupEditorProps = {
   onRotate: (degrees: number) => void
   onDelete: () => void
   onDuplicate: () => void
+  floors: Floor[]
+  onDuplicateToFloor: (floorId: string) => void
   /** Narrows the selection to just this piece, to edit it. */
   onPick: (id: string) => void
   /** Takes a piece out of the selection. */
@@ -23,6 +27,8 @@ export const FurnitureGroupEditor = ({
   onRotate,
   onDelete,
   onDuplicate,
+  floors,
+  onDuplicateToFloor,
   onPick,
   onRemove,
   onClose,
@@ -88,6 +94,7 @@ export const FurnitureGroupEditor = ({
           <Copy size={16} />
           Duplicate all
         </button>
+        <DuplicateToFloor floors={floors} currentFloor={items[0].floor} onDuplicate={onDuplicateToFloor} />
         <button className="btn btn-danger btn-block" onClick={onDelete}>
           <Trash2 size={16} />
           Remove {items.length} pieces
