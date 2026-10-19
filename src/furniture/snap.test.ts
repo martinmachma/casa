@@ -63,7 +63,10 @@ describe('snapToWalls', () => {
 
 describe('snapGroupToWalls', () => {
   it('uses the nearest member and shares its correction without changing the layout', () => {
-    const items = [{ ...box, x: 1, y: 0.43 }, { ...box, x: 3, y: 0.38 }]
+    const items = [
+      { ...box, x: 1, y: 0.43 },
+      { ...box, x: 3, y: 0.38 },
+    ]
     const [dx, dy] = snapGroupToWalls(items, room)
     expect(dx).toBe(0)
     expect(dy).toBeCloseTo(-0.03)
@@ -93,8 +96,12 @@ describe('snapGroupToWalls', () => {
       [{ ...box, x: 2, y: 2 }],
       [{ ...box, x: 5, y: 0.4 }],
       [{ ...box, x: 2, y: 0.4, rotation: 0.6 }],
-      [{ ...box, x: 1, y: 0.35 }, { ...box, x: 3, y: 0.4 }],
-    ]) expect(snapGroupToWalls(items, room)).toEqual([0, 0])
+      [
+        { ...box, x: 1, y: 0.35 },
+        { ...box, x: 3, y: 0.4 },
+      ],
+    ])
+      expect(snapGroupToWalls(items, room)).toEqual([0, 0])
     expect(snapGroupToWalls([{ ...box, x: 2, y: 0.2 }], room)[1]).toBeCloseTo(0.15)
   })
 })

@@ -150,7 +150,10 @@ export const HouseScene = ({
     const moved = items.filter((f) => selectedIds.includes(f.id))
     const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
     const [sx, sy] = snap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
-    data.patchFurnitures(new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])), `move:${selectedIds.join()}`)
+    data.patchFurnitures(
+      new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
+      `move:${selectedIds.join()}`,
+    )
   }
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
   const pickItem = (id: string, add: boolean) => {
