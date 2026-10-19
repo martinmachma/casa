@@ -5,6 +5,7 @@ import type { PerspectiveCamera as Camera } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { floorRegions, roomAt } from '../layout/rooms'
 import type { Floor, Point } from '../layout/types'
+import { isTyping } from '../ui/isTyping'
 import { resolveCollisions, wallObstacles, type Obstacle } from '../walk/collide'
 import type { CameraNudge } from './cameraNudge'
 
@@ -103,18 +104,23 @@ export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
   useEffect(() => {
     const held = keys.current
     const down = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return
+      if (isTyping(e.target) || e.metaKey || e.ctrlKey) return
       held.add(e.key.toLowerCase())
     }
     const up = (e: KeyboardEvent) => held.delete(e.key.toLowerCase())
     const clear = () => held.clear()
+    const focus = (e: FocusEvent) => {
+      if (isTyping(e.target)) clear()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
+    window.addEventListener('focusin', focus)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
+      window.removeEventListener('focusin', focus)
     }
   }, [])
 
