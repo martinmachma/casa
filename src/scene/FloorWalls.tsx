@@ -36,12 +36,24 @@ type FloorWallsProps = {
   interactive: boolean
   /** Whether taps open and close doors. */
   doors: boolean
+  openDoors: ReadonlySet<string>
+  onToggleDoor: (id: string) => void
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
-export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaway, onPick }: FloorWallsProps) => {
+export const FloorWalls = ({
+  floor,
+  colors,
+  selection,
+  interactive,
+  doors,
+  openDoors,
+  onToggleDoor,
+  cutaway,
+  onPick,
+}: FloorWallsProps) => {
   return (
     <group>
       {floor.walls.map((wall) => (
@@ -54,6 +66,8 @@ export const FloorWalls = ({ floor, colors, selection, interactive, doors, cutaw
           selected={selection?.kind === 'wall' && selection.wallId === wall.id ? selection : undefined}
           interactive={interactive}
           doors={doors}
+          openDoors={openDoors}
+          onToggleDoor={onToggleDoor}
           onPick={onPick}
         />
       ))}
@@ -69,13 +83,26 @@ type WallMeshProps = {
   selected: { side: WallFace; part: number } | undefined
   interactive: boolean
   doors: boolean
+  openDoors: ReadonlySet<string>
+  onToggleDoor: (id: string) => void
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({ cutaway, wall, floor, colors, selected, interactive, doors, onPick }: WallMeshProps) => {
+const WallMesh = ({
+  cutaway,
+  wall,
+  floor,
+  colors,
+  selected,
+  interactive,
+  doors,
+  openDoors,
+  onToggleDoor,
+  onPick,
+}: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
   // Cut where other walls meet either side, so each box lies in one part of each side.
@@ -140,7 +167,14 @@ const WallMesh = ({ cutaway, wall, floor, colors, selected, interactive, doors, 
           )}
           {selected?.side === 'end' && <EndHighlight pieces={pieces} part={selected.part} thickness={thickness} />}
           {wall.openings && (
-            <OpeningFills openings={wall.openings} exterior={isExteriorWall(wall, floor)} clickable={doors} />
+            <OpeningFills
+              wallId={wall.id}
+              openings={wall.openings}
+              exterior={isExteriorWall(wall, floor)}
+              clickable={doors}
+              openDoors={openDoors}
+              onToggleDoor={onToggleDoor}
+            />
           )}
         </>
       }
