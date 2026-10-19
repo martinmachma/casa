@@ -24,6 +24,7 @@ type WalkCameraProps = {
   floor: Floor
   furniture: FurnitureItem[]
   nudge: RefObject<CameraNudge>
+  openDoors: ReadonlySet<string>
 }
 
 /** Where to stand at first: at one end of the biggest room, looking down its length. */
@@ -45,9 +46,9 @@ const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
 
 /**
  * First-person camera at eye height: drag to look around, WASD/arrow keys or the on-screen buttons to walk.
- * Walls block the way except through doors; furniture does too.
+ * Walls block the way except through open doors and passages; furniture does too.
  */
-export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
+export const WalkCamera = ({ floor, furniture, nudge, openDoors }: WalkCameraProps) => {
   const camera = useRef<Camera>(null)
   const gl = useThree((s) => s.gl)
   const set = useThree((s) => s.set)
@@ -57,7 +58,7 @@ export const WalkCamera = ({ floor, furniture, nudge }: WalkCameraProps) => {
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
-  const walls = useMemo(() => wallObstacles(floor), [floor])
+  const walls = useMemo(() => wallObstacles(floor, openDoors), [floor, openDoors])
   const obstacles = useMemo<Obstacle[]>(
     () => [
       ...walls,

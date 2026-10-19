@@ -15,6 +15,9 @@ export const wallThickness = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): 
 
 export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window' ? DEFAULT_WINDOW_SILL : 0)
 
+/** Openings have no stored id; wall ids are unique and openings retain their layout order. */
+export const openingId = (wallId: string, index: number): string => `${wallId}:${index}`
+
 /**
  * Splits a wall into solid boxes around its openings. The two ends are pushed out by `endExtension`
  * so walls meeting at a corner overlap instead of leaving a notch.

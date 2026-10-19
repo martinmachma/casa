@@ -1,6 +1,6 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
-import { useMemo, useRef, type RefObject } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import { MOUSE, TOUCH } from 'three'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
@@ -100,6 +100,14 @@ export const HouseScene = ({
   onSelect,
   itemActions,
 }: HouseSceneProps) => {
+  const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
+  const toggleDoor = (id: string) =>
+    setOpenDoors((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const floor = floors[floorIndex]
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const { min, max } = floorBounds(floor)
@@ -173,7 +181,13 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
       >
         {camera === 'walk' ? (
-          <WalkCamera key={`${floor.id}-${viewKey}`} floor={floor} furniture={data.furniture} nudge={nudge} />
+          <WalkCamera
+            key={`${floor.id}-${viewKey}`}
+            floor={floor}
+            furniture={data.furniture}
+            nudge={nudge}
+            openDoors={openDoors}
+          />
         ) : (
           <CameraRig
             key={`${camera}-${outside ? 'outside' : floor.id}-${viewKey}`}
@@ -215,6 +229,8 @@ export const HouseScene = ({
               selection={selection}
               interactive={pickable && f.id === floor.id}
               doors={!measure && (outside || f.id === floor.id)}
+              openDoors={openDoors}
+              onToggleDoor={toggleDoor}
               cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
               onPick={pickWall}
             />

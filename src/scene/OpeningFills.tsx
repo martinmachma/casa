@@ -1,7 +1,7 @@
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Group, MathUtils } from 'three'
-import { openingSill } from '../layout/geometry'
+import { openingId, openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
 import { raycastIfShown } from './raycast'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME } from './palette'
@@ -43,11 +43,17 @@ const Boxes = ({ boxes }: { boxes: Box[] }) =>
 
 /** Closed doors and glazed windows sitting in a wall's openings, in the wall's own frame (u along it, y up). */
 export const OpeningFills = ({
+  wallId,
   openings,
   exterior,
   clickable,
+  openDoors,
+  onToggleDoor,
 }: {
+  wallId: string
   openings: Opening[]
+  openDoors: ReadonlySet<string>
+  onToggleDoor: (id: string) => void
   /** Outer walls' doors and windows get dark aluminium frames. */
   exterior: boolean
   /** Whether a tap on a door opens or closes it. */
@@ -58,6 +64,8 @@ export const OpeningFills = ({
     <group>
       {openings.map((o, i) => {
         if (o.type === 'passage') return null
+        const id = openingId(wallId, i)
+        const door = { open: openDoors.has(id), onToggle: () => onToggleDoor(id), clickable }
         const u0 = o.offset
         const u1 = o.offset + o.width
         const y0 = openingSill(o)
@@ -65,13 +73,11 @@ export const OpeningFills = ({
         const window = o.type === 'window'
         const inner = { u0: u0 + FRAME, u1: u1 - FRAME, y0: window ? y0 + FRAME : y0, y1: y1 - FRAME }
         return (
-          <group key={i}>
+          <group key={id}>
             <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} />
             {o.type === 'window' && <Glass inner={inner} />}
-            {o.type === 'door' && (
-              <Door inner={inner} color={exterior ? EXTERIOR_FRAME : DOOR_LEAF} clickable={clickable} />
-            )}
-            {o.type === 'sliding' && <SlidingDoor inner={inner} clickable={clickable} />}
+            {o.type === 'door' && <Door inner={inner} color={exterior ? EXTERIOR_FRAME : DOOR_LEAF} {...door} />}
+            {o.type === 'sliding' && <SlidingDoor inner={inner} {...door} />}
           </group>
         )
       })}
@@ -89,8 +95,9 @@ const Glass = ({ inner, z = 0 }: { inner: Inner; z?: number }) => (
 )
 
 /** Open or closed on a tap, and how far it has got (0 closed to 1 open), eased each frame. */
-const useToggle = (clickable: boolean, apply: (group: Group, amount: number) => void) => {
-  const [open, setOpen] = useState(false)
+type DoorState = { open: boolean; onToggle: () => void; clickable: boolean }
+
+const useToggle = ({ open, onToggle, clickable }: DoorState, apply: (group: Group, amount: number) => void) => {
   const group = useRef<Group>(null)
   const amount = useRef(0)
   useFrame((_, dt) => {
@@ -106,7 +113,7 @@ const useToggle = (clickable: boolean, apply: (group: Group, amount: number) => 
         onClick: (e: ThreeEvent<MouseEvent>) => {
           if (e.delta > CLICK_SLOP_PX) return
           e.stopPropagation()
-          setOpen(!open)
+          onToggle()
         },
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')),
         onPointerOut: () => (document.body.style.cursor = ''),
@@ -116,8 +123,8 @@ const useToggle = (clickable: boolean, apply: (group: Group, amount: number) => 
 }
 
 /** A leaf hinged at the opening's start, swinging into side 'a' (+z). */
-const Door = ({ inner, color, clickable }: { inner: Inner; color: string; clickable: boolean }) => {
-  const { group, handlers } = useToggle(clickable, (g, t) => (g.rotation.y = -t * SWING))
+const Door = ({ inner, color, ...state }: { inner: Inner; color: string } & DoorState) => {
+  const { group, handlers } = useToggle(state, (g, t) => (g.rotation.y = -t * SWING))
   const w = inner.u1 - inner.u0
   const h = inner.y1 - inner.y0
   return (
@@ -136,10 +143,10 @@ const Door = ({ inner, color, clickable }: { inner: Inner; color: string; clicka
 }
 
 /** A glazed panel just inside the frame, sliding along the wall towards its end (+u), over whatever is next to it. */
-const SlidingDoor = ({ inner, clickable }: { inner: Inner; clickable: boolean }) => {
+const SlidingDoor = ({ inner, ...state }: { inner: Inner } & DoorState) => {
   const w = inner.u1 - inner.u0
   const z = FRAME_DEPTH / 2 + LEAF / 2 + 0.005
-  const { group, handlers } = useToggle(clickable, (g, t) => (g.position.x = inner.u0 + t * (w - FRAME)))
+  const { group, handlers } = useToggle(state, (g, t) => (g.position.x = inner.u0 + t * (w - FRAME)))
   const panel: Inner = { u0: FRAME, u1: w - FRAME, y0: inner.y0 + FRAME, y1: inner.y1 - FRAME }
   const boxes = frame(0, w, inner.y0, inner.y1, EXTERIOR_FRAME, true).map((b) => ({
     ...b,
