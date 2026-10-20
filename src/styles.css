@@ -474,11 +474,13 @@ p {
 
 .sidebar-right {
   position: absolute;
+  display: flex;
+  flex-direction: column;
   z-index: 20;
   top: calc(var(--topbar) + env(safe-area-inset-top));
   right: 0;
   bottom: 0;
-  width: var(--right);
+  width: min(var(--right), 100%);
   border-left: 1px solid var(--line);
   box-shadow: var(--shadow-lg);
   transition: transform 200ms ease;
@@ -490,17 +492,13 @@ p {
 }
 
 .sidebar-inner {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  /* Content keeps its width while the column animates open or shut. */
-  width: var(--panel-width);
-}
-
-.sidebar-right .sidebar-inner {
-  --panel-width: 340px;
+  width: 100%;
 }
 
 .sheet-handle {
@@ -747,14 +745,26 @@ p {
   right: 14px;
   display: flex;
   flex-direction: row-reverse;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
-  /* Above the right panel, which keeps a strip at its top free for it. */
+  max-width: calc(100% - 28px);
   z-index: 21;
 }
 
-.sidebar-right .sidebar-inner {
-  padding-top: 72px;
+.sidebar-right .modebar {
+  position: static;
+  flex: none;
+  max-width: none;
+  padding: 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-right .modebar .float {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 /* Floats just above the selected furniture item. */
@@ -1629,7 +1639,7 @@ input[type='range'] {
     right: 0;
     bottom: 0;
     width: auto;
-    max-height: 56%;
+    height: 56%;
     border: 0;
     border-top: 1px solid var(--line);
     border-radius: 18px 18px 0 0;
@@ -1638,17 +1648,6 @@ input[type='range'] {
 
   .app[data-right='closed'] .sidebar-right {
     transform: translateY(105%);
-  }
-
-  .sidebar-inner,
-  .sidebar-right .sidebar-inner {
-    width: 100%;
-    max-height: inherit;
-  }
-
-  .sidebar-right .sidebar-inner {
-    max-height: calc(56vh - env(safe-area-inset-bottom));
-    padding-top: 0;
   }
 
   .sheet-handle {
