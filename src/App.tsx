@@ -478,7 +478,7 @@ const House = ({ backend, account }: HouseProps) => {
           </DockBox>
         </ViewDock>
 
-        {!rightOpen && modeBar}
+        {modeBar}
 
         <div className="bottom-tools">
           {!outside && (
@@ -515,10 +515,7 @@ const House = ({ backend, account }: HouseProps) => {
 
       <aside className="sidebar sidebar-right" aria-label="Details" inert={!rightOpen}>
         <div className="sheet-handle" onClick={closeRight} />
-        {rightOpen && modeBar}
-        <div className="sidebar-inner">
-          {inspector}
-        </div>
+        <div className="sidebar-inner">{inspector}</div>
       </aside>
     </div>
   )

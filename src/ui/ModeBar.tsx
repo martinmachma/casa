@@ -13,7 +13,7 @@ type ModeBarProps = {
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 
-/** The panel header while open; floats over the view when the panel is closed. */
+/** Stays anchored over the view, including while the details panel opens. */
 export const ModeBar = ({ interaction, onChange, onUndo, onRedo, onOpenPanel }: ModeBarProps) => {
   const editing = interaction !== 'view'
   return (

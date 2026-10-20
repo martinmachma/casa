@@ -1,5 +1,6 @@
+import { Settings } from 'lucide-react'
 import { useRef } from 'react'
-import { PanelHead } from './kit'
+import { IconButton, PanelHead } from './kit'
 
 /** A reference to the handlers in App, CameraNudger, WalkCamera and FurnitureBox. */
 export const SettingsMenu = () => {
@@ -76,13 +77,9 @@ export const SettingsMenu = () => {
 
   return (
     <>
-      <button
-        className="btn btn-small settings-open"
-        aria-haspopup="dialog"
-        onClick={() => dialog.current?.showModal()}
-      >
-        Settings
-      </button>
+      <IconButton label="Settings" aria-haspopup="dialog" onClick={() => dialog.current?.showModal()}>
+        <Settings size={18} />
+      </IconButton>
       <dialog
         ref={dialog}
         className="settings-dialog"

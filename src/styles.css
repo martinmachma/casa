@@ -465,10 +465,6 @@ p {
   background: var(--surface-3);
 }
 
-.settings-open {
-  flex: none;
-}
-
 .settings-dialog {
   width: min(640px, calc(100% - 24px));
   max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
@@ -828,19 +824,24 @@ p {
   z-index: 21;
 }
 
-.sidebar-right .modebar {
-  position: static;
-  flex: none;
-  max-width: none;
-  padding: 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-}
+@media (min-width: 821px) {
+  /* Reserve the panel header behind the toolbar without moving its buttons. */
+  .sidebar-right::before {
+    content: '';
+    flex: none;
+    height: 68px;
+    border-bottom: 1px solid var(--line);
+  }
 
-.sidebar-right .modebar .float {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
+  .app[data-right='open'] .modebar {
+    max-width: calc(var(--right) - 28px);
+  }
+
+  .app[data-right='open'] .modebar .float {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
 }
 
 /* Floats just above the selected furniture item. */
