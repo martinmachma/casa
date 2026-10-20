@@ -465,6 +465,82 @@ p {
   background: var(--surface-3);
 }
 
+.settings-open {
+  flex: none;
+}
+
+.settings-dialog {
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.settings-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-dialog::backdrop {
+  background: rgb(31 27 23 / 0.35);
+}
+
+.settings-dialog .panel-head {
+  flex: none;
+}
+
+.settings-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+}
+
+.settings-scroll h2 {
+  font-size: 18px;
+}
+
+.settings-intro,
+.shortcut-section > p {
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+
+.shortcut-section {
+  margin-top: 24px;
+}
+
+.shortcut-section h3 {
+  font-size: 14px;
+}
+
+.shortcut-section dl {
+  margin: 12px 0 0;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.shortcut-row kbd {
+  font: inherit;
+  font-weight: 600;
+}
+
+.shortcut-row dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
 /* ── Side panels ─────────────────────────────────────────── */
 .sidebar {
   min-width: 0;

@@ -33,7 +33,7 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
     const up = (e: KeyboardEvent) => held.delete(e.key.toLowerCase())
     const clear = () => held.clear()
     const focus = (e: FocusEvent) => {
-      if (isTyping(e.target)) clear()
+      if (isTyping(e.target) || (e.target instanceof Element && e.target.closest('dialog'))) clear()
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
