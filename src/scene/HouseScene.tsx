@@ -185,7 +185,7 @@ export const HouseScene = ({
         dpr={[1, 2]}
         onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
       >
-        <FloorPointerTracker elevation={floor.elevation} point={floorPointer} />
+        <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
         {camera === 'walk' ? (
           <WalkCamera
             key={`${floor.id}-${viewKey}`}
