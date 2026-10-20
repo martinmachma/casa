@@ -362,11 +362,9 @@ const House = ({ backend, account }: HouseProps) => {
     if (interaction === 'edit')
       return (
         <FurniturePanel
-          items={data.furniture.filter((f) => f.floor === floor.id)}
           snap={snap}
           onSnap={setSnap}
           onAdd={addPiece}
-          onSelect={(id) => select({ kind: 'furniture', ids: [id] })}
         />
       )
     return undefined

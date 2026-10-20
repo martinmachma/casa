@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import type { FurnitureItem } from '../data/types'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
 import { NumberField } from './NumberField'
 import { Section, Switch } from './kit'
@@ -9,45 +8,20 @@ import { Section, Switch } from './kit'
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
 type FurniturePanelProps = {
-  items: FurnitureItem[]
   snap: boolean
   onSnap: (snap: boolean) => void
   onAdd: (piece: NewPiece) => void
-  onSelect: (id: string) => void
 }
 
-const cm = (m: number) => Math.round(m * 100)
-
-/** What the right panel shows while editing with nothing selected: what's on the floor, and what can be added. */
-export const FurniturePanel = ({ items, snap, onSnap, onAdd, onSelect }: FurniturePanelProps) => {
+/** Furniture creation and snapping controls shown while editing with nothing selected. */
+export const FurniturePanel = ({ snap, onSnap, onAdd }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
   const [group, setGroup] = useState<CatalogGroup | 'Box'>('Living')
 
   return (
     <>
-      <Section>
-        <p className="hint">Tap a wall to paint it, a floor to change its finish, or add furniture below.</p>
-      </Section>
-
-      <Section title="On this floor" aside={<span className="muted num">{items.length}</span>}>
-        {items.length > 0 ? (
-          <ul className="item-list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <button onClick={() => onSelect(item.id)}>
-                  <span className="dot" style={{ background: item.color }} />
-                  <span className="item-name">{item.name}</span>
-                  <span className="item-size">
-                    {cm(item.width)}×{cm(item.depth)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="hint">Nothing here yet. Pick a piece below and it appears in the biggest room.</p>
-        )}
+      <Section title="Snapping">
         <Switch label="Snap to walls while dragging" checked={snap} onChange={onSnap} />
       </Section>
 
