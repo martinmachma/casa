@@ -8,13 +8,21 @@ import { Section, Switch } from './kit'
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
 type FurniturePanelProps = {
-  snap: boolean
-  onSnap: (snap: boolean) => void
+  wallSnap: boolean
+  onWallSnap: (snap: boolean) => void
+  furnitureSnap: boolean
+  onFurnitureSnap: (snap: boolean) => void
   onAdd: (piece: NewPiece) => void
 }
 
 /** Furniture creation and snapping controls shown while editing with nothing selected. */
-export const FurniturePanel = ({ snap, onSnap, onAdd }: FurniturePanelProps) => {
+export const FurniturePanel = ({
+  wallSnap,
+  onWallSnap,
+  furnitureSnap,
+  onFurnitureSnap,
+  onAdd,
+}: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
   const [group, setGroup] = useState<CatalogGroup | 'Box'>('Living')
@@ -22,7 +30,8 @@ export const FurniturePanel = ({ snap, onSnap, onAdd }: FurniturePanelProps) => 
   return (
     <>
       <Section title="Snapping">
-        <Switch label="Snap to walls while dragging" checked={snap} onChange={onSnap} />
+        <Switch label="Snap to walls" checked={wallSnap} onChange={onWallSnap} />
+        <Switch label="Snap to furniture" checked={furnitureSnap} onChange={onFurnitureSnap} />
       </Section>
 
       <Section title="Add furniture">

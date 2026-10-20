@@ -51,7 +51,8 @@ type HouseSceneProps = {
   selection: Selection | undefined
   hoveredRoom: string | undefined
   onHoverRoom: (roomId: string | undefined) => void
-  snap: boolean
+  wallSnap: boolean
+  furnitureSnap: boolean
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
@@ -85,7 +86,8 @@ export const HouseScene = ({
   selection,
   hoveredRoom,
   onHoverRoom,
-  snap,
+  wallSnap,
+  furnitureSnap,
   sun,
   north,
   roomNumbers,
@@ -157,7 +159,7 @@ export const HouseScene = ({
     const dy = placement.y - grabbed.y
     const moved = items.filter((f) => selectedIds.includes(f.id))
     const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
-    const [sx, sy] = snap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
+    const [sx, sy] = wallSnap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
     data.patchFurnitures(
       new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
       `move:${selectedIds.join()}`,
@@ -303,7 +305,9 @@ export const HouseScene = ({
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}
             // Group snapping is applied to the shared translation in moveItem.
-            snapWalls={snap && selectedIds.length < 2 ? snapWalls : undefined}
+            wallSnap={wallSnap && selectedIds.length < 2}
+            furnitureSnap={furnitureSnap && selectedIds.length < 2}
+            snapWalls={wallSnap ? snapWalls : undefined}
             snapItems={items}
             onSelect={pickItem}
             onMove={moveItem}
