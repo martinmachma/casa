@@ -276,6 +276,15 @@ const House = ({ backend, account }: HouseProps) => {
   const editing = interaction !== 'view'
   const rightOpen = editing && !rightTucked
   const closeRight = () => setRightOpen(false)
+  const modeBar = !outside && (
+    <ModeBar
+      interaction={interaction}
+      onChange={changeInteraction}
+      onUndo={data.canUndo ? undo : undefined}
+      onRedo={data.canRedo ? redo : undefined}
+      onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
+    />
+  )
 
   const inspector = (() => {
     if (selection?.kind === 'wall') {
@@ -448,14 +457,7 @@ const House = ({ backend, account }: HouseProps) => {
           </DockBox>
         </ViewDock>
 
-        {!outside && (
-          <ModeBar
-            interaction={interaction}
-            onChange={changeInteraction}
-            onUndo={data.canUndo ? undo : undefined}
-            onRedo={data.canRedo ? redo : undefined}
-          />
-        )}
+        {!rightOpen && modeBar}
 
         <div className="bottom-tools">
           {!outside && (
@@ -491,8 +493,9 @@ const House = ({ backend, account }: HouseProps) => {
       </main>
 
       <aside className="sidebar sidebar-right" aria-label="Details" inert={!rightOpen}>
+        <div className="sheet-handle" onClick={closeRight} />
+        {rightOpen && modeBar}
         <div className="sidebar-inner">
-          <div className="sheet-handle" onClick={closeRight} />
           {inspector}
         </div>
       </aside>
