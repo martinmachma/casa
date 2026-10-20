@@ -7,7 +7,6 @@ import type { FurnitureItem } from '../data/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
 import { SELECTED_OUTLINE } from './palette'
-import { pastDragThreshold } from './selection'
 
 type FurnitureBoxProps = {
   item: FurnitureItem
@@ -59,14 +58,9 @@ export const FurnitureBox = ({
   const z = item.z ?? 0
   const getState = useThree((s) => s.get)
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -(elevation + z)), [elevation, z])
-  const drag = useRef<{
+  const press = useRef<{
     pointerId: number
-    clientX: number
-    clientY: number
-    pointerType: string
-    dx: number
-    dy: number
-    started: boolean
+    offset?: { dx: number; dy: number }
     moved: boolean
     add: boolean
   }>(undefined)
@@ -80,20 +74,16 @@ export const FurnitureBox = ({
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
-    if (drag.current && drag.current.pointerId !== e.pointerId) return
+    if (press.current) return
     const add = e.shiftKey || e.metaKey || e.ctrlKey
-    onSelect(item.id, add)
-    // Taking an item out of the selection doesn't pick it up.
-    if (add && selected) return
-    if (!e.ray.intersectPlane(plane, hit)) return
-    drag.current = {
+    // Only a piece already in the selection can be picked up. Modifier-clicks only change selection.
+    const offset =
+      selected && !add && e.ray.intersectPlane(plane, hit)
+        ? { dx: hit.x - item.x, dy: hit.z - item.y }
+        : undefined
+    press.current = {
       pointerId: e.pointerId,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      pointerType: e.pointerType,
-      dx: hit.x - item.x,
-      dy: hit.z - item.y,
-      started: false,
+      offset,
       moved: false,
       add,
     }
@@ -102,19 +92,12 @@ export const FurnitureBox = ({
   }
 
   const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
-    const d = drag.current
+    const d = press.current
     if (!d || d.pointerId !== e.pointerId) return
     e.stopPropagation()
-    if (!d.started && !pastDragThreshold(d, e)) return
+    if (!d.offset) return
     if (!e.ray.intersectPlane(plane, hit)) return
-    if (!d.started) {
-      d.started = true
-      // Pick up from here, so crossing the threshold doesn't jump by the ignored movement.
-      d.dx = hit.x - item.x
-      d.dy = hit.z - item.y
-      return
-    }
-    const free = { x: hit.x - d.dx, y: hit.z - d.dy, rotation: item.rotation }
+    const free = { x: hit.x - d.offset.dx, y: hit.z - d.offset.dy, rotation: item.rotation }
     const placement = snapFurniture({ ...item, ...free }, snapWalls, snapItems, {
       walls: wallSnap,
       furniture: furnitureSnap,
@@ -125,13 +108,17 @@ export const FurnitureBox = ({
   }
 
   const endDrag = (e: ThreeEvent<PointerEvent>) => {
-    const d = drag.current
+    const d = press.current
     if (!d || d.pointerId !== e.pointerId) return
-    drag.current = undefined
+    e.stopPropagation()
+    press.current = undefined
     ;(e.target as Element).releasePointerCapture(e.pointerId)
     setControlsEnabled(true)
     if (d.moved) onMoveEnd(item.id)
-    else if (!d.started && !d.add && e.type !== 'pointercancel') onTap(item.id)
+    else if (e.type !== 'pointercancel') {
+      onSelect(item.id, d.add)
+      if (!d.add) onTap(item.id)
+    }
   }
 
   const handlers = interactive
@@ -144,7 +131,8 @@ export const FurnitureBox = ({
         onPointerCancel: endDrag,
         // The release would otherwise click through to the floor beneath and change the selection.
         onClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
-        onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'grab')),
+        onPointerOver: (e: ThreeEvent<PointerEvent>) =>
+          (e.stopPropagation(), (document.body.style.cursor = selected ? 'grab' : 'pointer')),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
     : { raycast: () => null }
