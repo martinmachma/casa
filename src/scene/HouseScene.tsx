@@ -32,12 +32,14 @@ import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
+import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
 
 type HouseSceneProps = {
+  floorPointer: FloorPointer
   floors: Floor[]
   floorIndex: number
   /** The whole house from outside, roof and all; nothing inside is shown or pickable. */
@@ -75,6 +77,7 @@ type HouseSceneProps = {
 }
 
 export const HouseScene = ({
+  floorPointer,
   floors,
   floorIndex,
   outside,
@@ -180,6 +183,7 @@ export const HouseScene = ({
         dpr={[1, 2]}
         onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
       >
+        <FloorPointerTracker elevation={floor.elevation} point={floorPointer} />
         {camera === 'walk' ? (
           <WalkCamera
             key={`${floor.id}-${viewKey}`}
