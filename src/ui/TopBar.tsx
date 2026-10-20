@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
 import { IconButton, Segmented } from './kit'
+import { SettingsMenu } from './SettingsMenu'
 
 type TopBarProps = {
   floors: Floor[]
@@ -52,6 +53,7 @@ export const TopBar = ({
     />
     {versions}
     <span className="spacer" />
+    <SettingsMenu />
     <IconButton label="Wishes & bugs" className="todo-open" onClick={onTodos}>
       <ListTodo size={18} />
       {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
