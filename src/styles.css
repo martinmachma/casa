@@ -1782,7 +1782,7 @@ input[type='range'] {
   /* Above the scene's HTML labels, which take z-indexes up to ~16.8M. */
   z-index: 20000000;
   width: min(360px, calc(100vw - 32px));
-  max-height: min(560px, 75vh);
+  max-height: min(560px, 75dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1791,6 +1791,10 @@ input[type='range'] {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   animation: todo-in 160ms ease-out;
+}
+
+.todo-popup > :not(.todo-scroll) {
+  flex-shrink: 0;
 }
 
 @keyframes todo-in {
@@ -1898,8 +1902,34 @@ input[type='range'] {
 }
 
 .todo-scroll {
+  min-height: 0;
   overflow-y: auto;
   padding: 0 6px 8px;
+}
+
+.todo-footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.todo-footer .btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.todo-footer .todo-clear-armed {
+  background: #287343;
+  border-color: #287343;
+  color: #fff;
+}
+
+.todo-footer .todo-clear-armed:hover {
+  background: #205e37;
 }
 
 .todo-list {
