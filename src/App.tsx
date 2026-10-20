@@ -66,7 +66,8 @@ const House = ({ backend, account }: HouseProps) => {
   // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
   const [rightTucked, setRightTucked] = useState(false)
   const setRightOpen = (open: boolean) => setRightTucked(!open)
-  const [snap, setSnap] = useState(true)
+  const [wallSnap, setWallSnap] = useState(true)
+  const [furnitureSnap, setFurnitureSnap] = useState(true)
   const nudge = useRef(createCameraNudge())
   const clipboard = useRef<NewFurnitureItem[]>([])
   const floorPointer = useRef<(() => Point | undefined) | undefined>(undefined)
@@ -95,7 +96,7 @@ const House = ({ backend, account }: HouseProps) => {
     const rotation = normalizeAngle(item.rotation + (degrees * Math.PI) / 180)
     // Turning an item that sits against a wall would swing it into the wall; re-seat it, unless
     // snapping would also undo the turn (a 15° step).
-    const seated = snap ? snapToWalls({ ...item, rotation }, floorSnapWalls(floor)) : undefined
+    const seated = wallSnap ? snapToWalls({ ...item, rotation }, floorSnapWalls(floor)) : undefined
     const keepsTurn = seated && Math.abs(normalizeAngle(seated.rotation - rotation)) < 1e-6
     changeItem(item, keepsTurn ? seated : { rotation })
   }
@@ -389,8 +390,10 @@ const House = ({ backend, account }: HouseProps) => {
     if (interaction === 'edit')
       return (
         <FurniturePanel
-          snap={snap}
-          onSnap={setSnap}
+          wallSnap={wallSnap}
+          onWallSnap={setWallSnap}
+          furnitureSnap={furnitureSnap}
+          onFurnitureSnap={setFurnitureSnap}
           onAdd={addPiece}
         />
       )
@@ -426,7 +429,8 @@ const House = ({ backend, account }: HouseProps) => {
           selection={selection}
           hoveredRoom={hoveredRoom}
           onHoverRoom={setHoveredRoom}
-          snap={snap}
+          wallSnap={wallSnap}
+          furnitureSnap={furnitureSnap}
           sun={sunAt}
           north={site.north}
           roomNumbers={leftOpen}
