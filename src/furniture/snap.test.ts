@@ -110,6 +110,34 @@ describe('snapFurniture', () => {
   const neighbour = { ...box, id: 'other', floor: 'ground', height: 0.8, x: 2, y: 2 }
   const dragged = { ...neighbour, id: 'dragged', x: 3.05 }
 
+  it.each([
+    [true, true, 2, 0.35],
+    [true, false, 2.05, 0.35],
+    [false, true, 2, 0.4],
+    [false, false, 2.05, 0.4],
+  ])('snaps independently with walls=%s and furniture=%s', (walls, furniture, x, y) => {
+    const item = { ...dragged, x: 2.05, y: 0.4 }
+    const other = { ...neighbour, x: 1, y: 0.35 }
+    expect(snapFurniture(item, room, [other], { walls, furniture })).toEqual({ x, y, rotation: 0 })
+  })
+
+  it('snaps to furniture without wall candidates', () => {
+    expect(snapFurniture(dragged, undefined, [neighbour], { walls: false, furniture: true })).toEqual({
+      x: 3,
+      y: 2,
+      rotation: 0,
+    })
+  })
+
+  it('gives walls and corners priority over competing furniture', () => {
+    for (const x of [2, 0.65]) {
+      const item = { ...dragged, x, y: 0.4 }
+      const other = { ...neighbour, x, y: 0.9 }
+      expect(snapFurniture(item, room, [other], { walls: true, furniture: true })).toEqual(snapToWalls(item, room))
+      expect(snapFurniture(item, room, [other], { walls: false, furniture: true }).y).toBe(0.4)
+    }
+  })
+
   it('butts edges on either axis and side, correcting small overlaps and choosing the nearest piece', () => {
     for (const [x, y, expectedX, expectedY] of [
       [3.05, 2.1, 3, 2.1],
@@ -150,7 +178,7 @@ describe('snapFurniture', () => {
       { ...neighbour, id: dragged.id },
     ])
       expect(snapFurniture(dragged, [], [other])).toEqual(free)
-    expect(snapFurniture(dragged, [], [neighbour], 0.1, [neighbour.id])).toEqual(free)
+    expect(snapFurniture(dragged, [], [neighbour], { walls: true, furniture: true }, 0.1, [neighbour.id])).toEqual(free)
     expect(snapFurniture({ ...dragged, z: 0.4 }, [], [{ ...neighbour, z: 0.5 }]).x).toBe(3)
   })
 

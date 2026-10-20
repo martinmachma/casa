@@ -17,6 +17,8 @@ type FurnitureBoxProps = {
   showActions: boolean
   /** False while another tool (measuring) owns the pointer. */
   interactive: boolean
+  wallSnap: boolean
+  furnitureSnap: boolean
   snapWalls: SnapWall[] | undefined
   snapItems: FurnitureItem[]
   /** `add` (Shift, ⌘ or Ctrl held) adds the item to the selection, or takes it out again. */
@@ -37,13 +39,15 @@ export type ItemActions = {
 
 type Controls = { enabled: boolean }
 
-/** A furniture item that can be dragged across its floor, snapping when `snapWalls` is given. */
+/** A furniture item that can be dragged across its floor with independent snapping options. */
 export const FurnitureBox = ({
   item,
   elevation,
   selected,
   showActions,
   interactive,
+  wallSnap,
+  furnitureSnap,
   snapWalls,
   snapItems,
   onSelect,
@@ -111,7 +115,10 @@ export const FurnitureBox = ({
       return
     }
     const free = { x: hit.x - d.dx, y: hit.z - d.dy, rotation: item.rotation }
-    const placement = snapWalls ? snapFurniture({ ...item, ...free }, snapWalls, snapItems) : free
+    const placement = snapFurniture({ ...item, ...free }, snapWalls, snapItems, {
+      walls: wallSnap,
+      furniture: furnitureSnap,
+    })
     if (placement.x === item.x && placement.y === item.y && placement.rotation === item.rotation) return
     d.moved = true
     onMove(item.id, placement)

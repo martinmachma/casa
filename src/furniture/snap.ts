@@ -5,6 +5,7 @@ import type { Floor, Point } from '../layout/types'
 export type Footprint = { x: number; y: number; width: number; depth: number; rotation: number }
 export type SnapWall = { from: Point; to: Point; thickness: number }
 export type Placement = Pick<Footprint, 'x' | 'y' | 'rotation'>
+type SnapOptions = { walls: boolean; furniture: boolean }
 type SnapItem = Footprint & Pick<FurnitureItem, 'id' | 'floor' | 'z' | 'height'>
 
 const QUARTER = Math.PI / 2
@@ -124,19 +125,21 @@ export const snapGroupToWalls = (items: Footprint[], walls: SnapWall[], threshol
   return correction
 }
 
-/** Seats against walls, then furniture on any axis the walls leave free. */
+/** Seats against enabled targets, giving walls priority over furniture. */
 export const snapFurniture = (
   f: SnapItem,
-  walls: SnapWall[],
+  walls: SnapWall[] | undefined,
   items: SnapItem[],
+  options: SnapOptions = { walls: true, furniture: true },
   threshold = 0.1,
   ignoredIds: readonly string[] = [f.id],
 ): Placement => {
-  const wall = wallPlacement(f, walls, threshold)
+  const wall = options.walls && walls ? wallPlacement(f, walls, threshold) : undefined
   if (wall?.corner) return wall.placement
   const seated = wall ? { ...f, ...wall.placement } : f
 
   let best: Placement = { x: seated.x, y: seated.y, rotation: seated.rotation }
+  if (!options.furniture) return best
   let bestGap = Infinity
   for (const item of items) {
     if (item.id === f.id || ignoredIds.includes(item.id) || item.floor !== f.floor) continue
