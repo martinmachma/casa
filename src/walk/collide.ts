@@ -8,7 +8,11 @@ export type Obstacle = { cx: number; cy: number; hu: number; hv: number; angle: 
 const FOOT_HEIGHT = 0.3
 
 /** Solid walls, closed doors and glass down to the floor block walking. Unlisted doors are closed. */
-export const wallObstacles = (floor: Floor, openDoors: ReadonlySet<string> = new Set()): Obstacle[] =>
+export const wallObstacles = (
+  floor: Floor,
+  openDoors: ReadonlySet<string> = new Set(),
+  elevation = floor.elevation,
+): Obstacle[] =>
   floor.walls.flatMap((wall) => {
     const angle = wallAngle(wall)
     const c = Math.cos(angle)
@@ -22,7 +26,7 @@ export const wallObstacles = (floor: Floor, openDoors: ReadonlySet<string> = new
       )
       .map((o) => ({ u0: o.offset, u1: o.offset + o.width, y0: 0, y1: o.height }))
     return [...wallPieces(wall, floor.height, half), ...fills]
-      .filter((p) => p.y0 < FOOT_HEIGHT)
+      .filter((p) => p.y0 < elevation - floor.elevation + 1.8 && p.y1 > elevation - floor.elevation + 0.15)
       .map((p) => {
         const u = (p.u0 + p.u1) / 2
         return { cx: wall.from[0] + c * u, cy: wall.from[1] + s * u, hu: (p.u1 - p.u0) / 2, hv: half, angle }
