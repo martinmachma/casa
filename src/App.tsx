@@ -2,12 +2,13 @@ import { TodoPopup } from './ui/TodoPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
 import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
-import type { Backend, Device, DeviceKind, FurnitureItem } from './data/types'
+import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
 import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
 import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
+import { pasteFurniture } from './furniture/clipboard'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
 import { floorRegions } from './layout/rooms'
@@ -68,6 +69,8 @@ const House = ({ backend, account }: HouseProps) => {
   const [wallSnap, setWallSnap] = useState(true)
   const [furnitureSnap, setFurnitureSnap] = useState(true)
   const nudge = useRef(createCameraNudge())
+  const clipboard = useRef<NewFurnitureItem[]>([])
+  const floorPointer = useRef<(() => Point | undefined) | undefined>(undefined)
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
   const [measurements, setMeasurements] = useState<MeasuredLine[]>([])
@@ -243,6 +246,21 @@ const House = ({ backend, account }: HouseProps) => {
       // Text fields keep their own undo.
       const typing = isTyping(e.target)
       const key = e.key.toLowerCase()
+      if (!typing && !outside && interaction === 'edit' && !measure && (e.metaKey || e.ctrlKey)) {
+        if (key === 'c' && selectedItems.length) {
+          e.preventDefault()
+          clipboard.current = selectedItems.map(({ id: _, ...item }) => ({ ...item }))
+          return
+        }
+        if (key === 'v' && clipboard.current.length) {
+          e.preventDefault()
+          const at = floorPointer.current?.()
+          if (!at) return
+          const created = data.addFurniture(...pasteFurniture(clipboard.current, floor.id, at))
+          select({ kind: 'furniture', ids: created.map((f) => f.id) })
+          return
+        }
+      }
       if (!typing && !outside && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
         e.preventDefault()
         if (key === 'y' || e.shiftKey) redo()
@@ -400,6 +418,7 @@ const House = ({ backend, account }: HouseProps) => {
 
       <main className="viewport">
         <HouseScene
+          floorPointer={floorPointer}
           floors={house.floors}
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
           outside={outside}
