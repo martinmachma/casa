@@ -7,6 +7,7 @@ import { floorRegions, roomAt } from '../layout/rooms'
 import type { Floor, Point } from '../layout/types'
 import { isTyping } from '../ui/isTyping'
 import { resolveCollisions, wallObstacles, type Obstacle } from '../walk/collide'
+import { stairHeight, stairRuns, type StairRun } from '../walk/stairs'
 import type { CameraNudge } from './cameraNudge'
 
 const EYE_HEIGHT = 1.6
@@ -22,6 +23,8 @@ const START_BACKOFF = 0.9
 
 type WalkCameraProps = {
   floor: Floor
+  floors: Floor[]
+  onFloorChange: (index: number) => void
   furniture: FurnitureItem[]
   nudge: RefObject<CameraNudge>
   openDoors: ReadonlySet<string>
@@ -48,26 +51,31 @@ const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
  * First-person camera at eye height: drag to look around, WASD/arrow keys or the on-screen buttons to walk.
  * Walls block the way except through open doors and passages; furniture does too.
  */
-export const WalkCamera = ({ floor, furniture, nudge, openDoors }: WalkCameraProps) => {
+export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, openDoors }: WalkCameraProps) => {
   const camera = useRef<Camera>(null)
   const gl = useThree((s) => s.gl)
   const set = useThree((s) => s.set)
   const start = useMemo(() => startingPoint(floor), [floor])
   const pose = useRef({ x: start.at[0], y: start.at[1], yaw: start.yaw, pitch: 0 })
+  const walking = useRef({
+    floorIndex: floors.indexOf(floor),
+    elevation: floor.elevation,
+    stair: undefined as StairRun | undefined,
+  })
+  const runs = useMemo(() => stairRuns(floors), [floors])
   const keys = useRef(new Set<string>())
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
-  const walls = useMemo(() => wallObstacles(floor, openDoors), [floor, openDoors])
-  const obstacles = useMemo<Obstacle[]>(
-    () => [
-      ...walls,
-      ...furniture
-        .filter((f) => f.floor === floor.id && f.height > STEP_OVER)
-        .map((f) => ({ cx: f.x, cy: f.y, hu: f.width / 2, hv: f.depth / 2, angle: f.rotation })),
-    ],
-    [walls, furniture, floor.id],
-  )
+  const obstaclesAt = (elevation: number): Obstacle[] => [
+    ...floors.flatMap((f) => wallObstacles(f, openDoors, elevation)),
+    ...furniture
+      .filter((item) => {
+        const base = floors.find((f) => f.id === item.floor)?.elevation
+        return base !== undefined && base < elevation + EYE_HEIGHT && base + item.height > elevation + STEP_OVER
+      })
+      .map((f) => ({ cx: f.x, cy: f.y, hu: f.width / 2, hv: f.depth / 2, angle: f.rotation })),
+  ]
 
   useEffect(() => {
     set({ controls: look as never })
@@ -145,10 +153,64 @@ export const WalkCamera = ({ floor, furniture, nudge, openDoors }: WalkCameraPro
       const fy = -Math.cos(p.yaw)
       const step = WALK_SPEED * dt
       const moved: Point = [p.x + (fx * forward - fy * strafe) * step, p.y + (fy * forward + fx * strafe) * step]
-      ;[p.x, p.y] = resolveCollisions(moved, RADIUS, obstacles)
+      const w = walking.current
+      const apron = RADIUS + step * 2
+      const stair =
+        w.stair ??
+        runs.find((run) => {
+          if (run.lower !== w.floorIndex && run.upper !== w.floorIndex) return false
+          const h = stairHeight(run, floors, moved, apron)
+          return h !== undefined && Math.abs(h - w.elevation) < STEP_OVER
+        })
+      const proposedHeight = stair ? stairHeight(stair, floors, moved, apron) : undefined
+      const resolved = resolveCollisions(moved, RADIUS, obstaclesAt(proposedHeight ?? w.elevation))
+      const height = stair ? stairHeight(stair, floors, resolved, apron) : undefined
+      // The footprint is the support surface: don't let a walker step sideways off a flight or into a void.
+      const supported =
+        stair &&
+        height !== undefined &&
+        Array.from({ length: 16 }, (_, i) => {
+          const angle = (i * Math.PI) / 8
+          return (
+            stairHeight(
+              stair,
+              floors,
+              [resolved[0] + Math.cos(angle) * RADIUS, resolved[1] + Math.sin(angle) * RADIUS],
+              apron + RADIUS,
+            ) !== undefined
+          )
+        }).every(Boolean)
+      const atEnd =
+        stair &&
+        (Math.abs(w.elevation - floors[stair.lower].elevation) < 1e-6 ||
+          Math.abs(w.elevation - floors[stair.upper].elevation) < 1e-6)
+      const inVoid = (floors[w.floorIndex].voids ?? []).some(
+        (v) =>
+          resolved[0] > v.x0 - RADIUS &&
+          resolved[0] < v.x1 + RADIUS &&
+          resolved[1] > v.y0 - RADIUS &&
+          resolved[1] < v.y1 + RADIUS,
+      )
+      if (supported || ((!stair || (atEnd && height === undefined)) && !inVoid)) {
+        ;[p.x, p.y] = resolved
+        w.stair = supported ? stair : undefined
+        w.elevation = supported ? height! : floors[w.floorIndex].elevation
+        if (stair && supported) {
+          const next =
+            Math.abs(w.elevation - floors[stair.upper].elevation) < 1e-6
+              ? stair.upper
+              : Math.abs(w.elevation - floors[stair.lower].elevation) < 1e-6
+                ? stair.lower
+                : w.floorIndex
+          if (next !== w.floorIndex) {
+            w.floorIndex = next
+            onFloorChange(next)
+          }
+        }
+      }
     }
 
-    cam.position.set(p.x, floor.elevation + EYE_HEIGHT, p.y)
+    cam.position.set(p.x, walking.current.elevation + EYE_HEIGHT, p.y)
     cam.rotation.set(p.pitch, -p.yaw, 0, 'YXZ')
   })
 

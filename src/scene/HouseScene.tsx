@@ -16,7 +16,7 @@ import { prismGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
 import { Roof } from './Roof'
 import { house } from '../layout/layout'
-import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
+import { FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
 import { Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
@@ -42,6 +42,7 @@ type HouseSceneProps = {
   floorPointer: FloorPointer
   floors: Floor[]
   floorIndex: number
+  onWalkFloorChange: (index: number) => void
   /** The whole house from outside, roof and all; nothing inside is shown or pickable. */
   outside: boolean
   camera: CameraMode
@@ -81,6 +82,7 @@ export const HouseScene = ({
   floorPointer,
   floors,
   floorIndex,
+  onWalkFloorChange,
   outside,
   camera,
   cutaway,
@@ -119,7 +121,7 @@ export const HouseScene = ({
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
 
-  const items = outside ? [] : data.furniture.filter((f) => f.floor === floor.id)
+  const items = outside ? [] : data.furniture.filter((f) => camera === 'walk' || f.floor === floor.id)
   const devices = outside ? [] : data.devices.filter((d) => d.floor === floor.id)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
@@ -188,8 +190,10 @@ export const HouseScene = ({
         <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
         {camera === 'walk' ? (
           <WalkCamera
-            key={`${floor.id}-${viewKey}`}
+            key={viewKey}
             floor={floor}
+            floors={floors}
+            onFloorChange={onWalkFloorChange}
             furniture={data.furniture}
             nudge={nudge}
             openDoors={openDoors}
@@ -208,8 +212,8 @@ export const HouseScene = ({
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
 
-        {/* Floors below the current one stay visible for context but can't be clicked. */}
-        {floors.slice(0, floorIndex + 1).map((f, i) => (
+        {/* Walking shows the connected floors, including the landing and the slab overhead. */}
+        {floors.slice(0, camera === 'walk' ? floors.length : floorIndex + 1).map((f, i) => (
           <group key={f.id}>
             {/* The ground floor's slab reaches down into the garden, so the house stands on the ground. */}
             <Slab
@@ -217,7 +221,11 @@ export const HouseScene = ({
               depth={i === 0 && house.outdoor ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1) : SLAB}
             />
             {floors[i + 1] && (
-              <Stairs floor={f} next={floors[i + 1]} cut={i === floorIndex && !outside ? f.height : undefined} />
+              <Stairs
+                floor={f}
+                next={floors[i + 1]}
+                cut={i === floorIndex && !outside && camera !== 'walk' ? f.height : undefined}
+              />
             )}
             <Railings floor={f} />
             <RoomFloors
@@ -244,9 +252,6 @@ export const HouseScene = ({
         ))}
 
         {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
-
-        {/* Walking needs a ceiling, so light comes in through the windows; the floor above's slab is one. */}
-        {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
 
         {interaction === 'devices' && placing && !outside && (
           <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} cutaway={cutaway && camera === 'orbit'} />
@@ -304,7 +309,7 @@ export const HouseScene = ({
           <FurnitureBox
             key={item.id}
             item={item}
-            elevation={floor.elevation}
+            elevation={floors.find((f) => f.id === item.floor)?.elevation ?? floor.elevation}
             selected={selectedIds.includes(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}

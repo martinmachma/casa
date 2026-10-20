@@ -188,6 +188,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   const switchFloor = (index: number) => {
     setFloorIndex(index)
+    setViewKey((key) => key + 1)
     setOutside(false)
     setSelection(undefined)
     setHoveredRoom(undefined)
@@ -421,6 +422,7 @@ const House = ({ backend, account }: HouseProps) => {
           floorPointer={floorPointer}
           floors={house.floors}
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
+          onWalkFloorChange={setFloorIndex}
           outside={outside}
           camera={camera}
           cutaway={cutaway}
