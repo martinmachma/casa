@@ -10,6 +10,10 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
   const [editing, setEditing] = useState<{ id: string; text: string }>()
   const [error, setError] = useState<string>()
   const [copied, setCopied] = useState(false)
+  const [clearArmed, setClearArmed] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const clearButton = useRef<HTMLButtonElement>(null)
+  const clearPending = useRef(false)
   const [pos, setPos] = useState({ x: 300, y: 120 })
   const drag = useRef<{ dx: number; dy: number } | undefined>(undefined)
 
@@ -30,6 +34,18 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
     }
   }, [])
 
+  useEffect(() => {
+    const cancelClear = (event: Event) => {
+      if (!clearButton.current?.contains(event.target as Node)) setClearArmed(false)
+    }
+    document.addEventListener('pointerdown', cancelClear, true)
+    document.addEventListener('click', cancelClear, true)
+    return () => {
+      document.removeEventListener('pointerdown', cancelClear, true)
+      document.removeEventListener('click', cancelClear, true)
+    }
+  }, [])
+
   const run = async (query: PromiseLike<{ error: { message: string } | null }>) => {
     const { error } = await query
     if (error) setError(error.message)
@@ -45,7 +61,8 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
 
   const onDown = (e: PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return
-    drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }
+    const bounds = e.currentTarget.parentElement!.getBoundingClientRect()
+    drag.current = { dx: e.clientX - bounds.left, dy: e.clientY - bounds.top }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
   const onMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -75,6 +92,32 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
       setTimeout(() => setCopied(false), 1500)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not copy')
+    }
+  }
+
+  const clear = async () => {
+    if (clearPending.current || todos.length === 0) return
+    if (!clearArmed) {
+      setClearArmed(true)
+      return
+    }
+    clearPending.current = true
+    setClearing(true)
+    setClearArmed(false)
+    setError(undefined)
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .in('id', todos.map((t) => t.id))
+      if (error) throw error
+      setEditing(undefined)
+      await load()
+    } catch (e) {
+      setError(e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Could not clear list')
+    } finally {
+      clearPending.current = false
+      setClearing(false)
     }
   }
 
@@ -132,7 +175,15 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
   )
 
   return (
-    <div className="todo-popup" style={{ left: pos.x, top: pos.y }} role="dialog" aria-label="To-dos">
+    <div
+      className="todo-popup"
+      style={{
+        left: `clamp(16px, ${pos.x}px, calc(100vw - min(360px, 100vw - 32px) - 16px))`,
+        top: `clamp(16px, ${pos.y}px, calc(100dvh - min(560px, 75dvh) - 16px))`,
+      }}
+      role="dialog"
+      aria-label="To-dos"
+    >
       <div
         className="todo-head"
         onPointerDown={onDown}
@@ -144,34 +195,6 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
         </span>
         <h3>Wishes &amp; bugs</h3>
         {open.length > 0 && <span className="todo-count">{open.length}</span>}
-        <button
-          className="icon-btn icon-btn-sm"
-          aria-label="Copy list"
-          title={copied ? 'Copied' : 'Copy list'}
-          disabled={todos.length === 0}
-          onClick={copy}
-        >
-          <svg
-            viewBox="0 0 16 16"
-            width="14"
-            height="14"
-            aria-hidden
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {copied ? (
-              <path d="M3.5 8.5l3 3 6-7" />
-            ) : (
-              <>
-                <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-                <path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
-              </>
-            )}
-          </svg>
-        </button>
         <button className="icon-btn icon-btn-sm" aria-label="Close" onClick={onClose}>
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -226,6 +249,19 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
             )}
           </>
         )}
+      </div>
+      <div className="todo-footer">
+        <button className="btn" disabled={todos.length === 0 || clearing} onClick={copy}>
+          {copied ? 'Copied' : 'Copy list'}
+        </button>
+        <button
+          ref={clearButton}
+          className={`btn${clearArmed && todos.length > 0 ? ' todo-clear-armed' : ''}`}
+          disabled={todos.length === 0 || clearing}
+          onClick={clear}
+        >
+          {clearing ? 'Clearing…' : clearArmed && todos.length > 0 ? 'Sure?' : 'Clear list'}
+        </button>
       </div>
     </div>
   )
