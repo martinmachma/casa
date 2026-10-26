@@ -1,4 +1,4 @@
-import { House, ListTodo, LogOut } from 'lucide-react'
+import { CloudSun, House, ListTodo, LogOut } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
@@ -15,6 +15,7 @@ type TopBarProps = {
   /** Opens the wishes & bugs list; the badge counts open ones. */
   onTodos: () => void
   openTodos: number
+  onWeather: () => void
   account: Account
   /** The version picker. */
   versions: ReactNode
@@ -32,6 +33,7 @@ export const TopBar = ({
   onOutside,
   onTodos,
   openTodos,
+  onWeather,
   account,
   versions,
 }: TopBarProps) => (
@@ -54,6 +56,9 @@ export const TopBar = ({
     {versions}
     <span className="spacer" />
     <SettingsMenu />
+    <IconButton label="Weather forecast" onClick={onWeather} aria-haspopup="dialog">
+      <CloudSun size={18} />
+    </IconButton>
     <IconButton label="Wishes & bugs" className="todo-open" onClick={onTodos}>
       <ListTodo size={18} />
       {openTodos > 0 && <span className="todo-count">{openTodos}</span>}

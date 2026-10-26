@@ -1854,6 +1854,219 @@ input[type='range'] {
   line-height: 16px;
 }
 
+.weather-popup {
+  position: fixed;
+  z-index: 20000000;
+  top: calc(var(--topbar) + env(safe-area-inset-top) + 12px);
+  right: 12px;
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100dvh - var(--topbar) - env(safe-area-inset-top) - 24px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: todo-in 160ms ease-out;
+}
+
+.weather-popup > .panel-head,
+.weather-footer {
+  flex-shrink: 0;
+}
+
+.weather-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.weather-status {
+  padding: 14px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.weather-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.weather-day {
+  border-bottom: 1px solid var(--line);
+}
+
+.weather-day summary {
+  display: block;
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.weather-day summary::-webkit-details-marker {
+  display: none;
+}
+
+.weather-day summary:hover,
+.weather-day[open] {
+  background: var(--surface-2);
+}
+
+.weather-day-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.weather-date {
+  display: flex;
+  flex-direction: column;
+  min-width: 50px;
+}
+
+.weather-date > span,
+.weather-model-count,
+.weather-range-label,
+.weather-rain,
+.weather-confidence-line,
+.weather-model-note {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.weather-temperatures {
+  display: flex;
+  gap: 8px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-temperatures > span {
+  color: var(--muted);
+}
+
+.weather-model-count {
+  margin-left: auto;
+}
+
+.weather-expand {
+  color: var(--muted);
+}
+
+.weather-day[open] .weather-expand {
+  transform: rotate(180deg);
+}
+
+.weather-range-label {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.weather-range {
+  display: block;
+  position: relative;
+  height: 5px;
+  margin: 5px 0 9px;
+  border-radius: 4px;
+  background: var(--surface-3);
+}
+
+.weather-range > span {
+  position: absolute;
+  height: 100%;
+  min-width: 2px;
+  max-width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.weather-rain,
+.weather-confidence-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.weather-rain svg {
+  flex-shrink: 0;
+}
+
+.weather-badge {
+  flex-shrink: 0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 600;
+}
+
+.weather-high {
+  background: var(--surface-3);
+}
+
+.weather-medium {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.weather-low {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.weather-models {
+  width: calc(100% - 32px);
+  margin: 0 16px;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-models caption {
+  text-align: left;
+  color: var(--muted);
+  font-size: 11px;
+  padding-bottom: 6px;
+}
+
+.weather-models th,
+.weather-models td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.weather-models th:first-child {
+  text-align: left;
+}
+
+.weather-models thead th {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.weather-model-note {
+  padding: 10px 16px;
+  line-height: 1.6;
+}
+
+.weather-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.weather-footer a {
+  color: var(--accent-hover);
+}
+
 .todo-popup {
   position: fixed;
   /* Above the scene's HTML labels, which take z-indexes up to ~16.8M. */
