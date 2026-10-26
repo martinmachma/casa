@@ -18,6 +18,7 @@ const temperature = (value: number) => `${formatValue(value)}°`
 const rangeText = ([min, max]: [number, number]) => `${formatValue(min)}–${formatValue(max)}`
 
 export const WeatherPopup = ({ onClose }: { onClose: () => void }) => {
+  const [openedAt] = useState(Date.now)
   const [forecast, setForecast] = useState(readForecast)
   const [loading, setLoading] = useState(() => {
     const cached = readForecast()
@@ -105,7 +106,7 @@ export const WeatherPopup = ({ onClose }: { onClose: () => void }) => {
               minute: '2-digit',
               hour12: false,
             })}
-            {Date.now() - forecast.updatedAt >= CACHE_MAX_AGE ? ' · Saved forecast' : ''}
+            {openedAt - forecast.updatedAt >= CACHE_MAX_AGE ? ' · Saved forecast' : ''}
           </span>
         )}
         <span>Confidence describes model agreement. Rain ≥ 1 mm.</span>
