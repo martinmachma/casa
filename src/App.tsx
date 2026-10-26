@@ -1,4 +1,5 @@
 import { TodoPopup } from './ui/TodoPopup'
+import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
 import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
@@ -61,6 +62,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [placing, setPlacing] = useState<DeviceKind>()
   const [hoveredRoom, setHoveredRoom] = useState<string>()
   const [todosOpen, setTodosOpen] = useState(false)
+  const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
   const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
   // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
@@ -411,11 +413,13 @@ const House = ({ backend, account }: HouseProps) => {
         onOutside={goOutside}
         onTodos={() => setTodosOpen(true)}
         openTodos={openTodos}
+        onWeather={() => setWeatherOpen(true)}
         account={account}
         versions={<VersionMenu data={data} />}
       />
 
       {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
+      {weatherOpen && <WeatherPopup onClose={() => setWeatherOpen(false)} />}
 
       <main className="viewport">
         <HouseScene
