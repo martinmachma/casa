@@ -1,8 +1,8 @@
 import { Line } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
-import type { Outdoor as OutdoorLayout, Shed } from '../layout/types'
+import type { GardenBlock, Outdoor as OutdoorLayout, Point, Shed } from '../layout/types'
 import { surroundingsTexture } from './groundTexture'
-import { EXTERIOR_FRAME, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
+import { DEFAULT_WALL, EXTERIOR_FRAME, HEDGE, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
 import { prismGeometry } from './prism'
 
 const LAWN_DEPTH = 0.05
@@ -15,7 +15,7 @@ const GROUND_DROP = 0.01
 
 const noRaycast = () => null
 
-/** The garden behind the house: lawn, the paved terrace and the shed, edged and set in soft blurred surroundings. */
+/** The plot: lawn, the paved terrace and front, the shed and the bits standing in the front yard, edged and set in soft blurred surroundings. */
 export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
   const lawn = useMemo(() => prismGeometry(outdoor.garden, LAWN_DEPTH), [outdoor.garden])
   const terrace = useMemo(
@@ -51,12 +51,43 @@ export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
       <mesh geometry={terrace} position={[0, outdoor.terrace.level, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={PAVING} roughness={0.95} />
       </mesh>
+      {outdoor.paving?.map((p) => (
+        <Paving key={p.name} outline={p.outline} level={p.level} ground={outdoor.level} />
+      ))}
+      {outdoor.blocks?.map((b) => (
+        <BlockMesh key={b.id} block={b} base={outdoor.level} />
+      ))}
       {outdoor.sheds.map((s) => (
         <ShedMesh key={s.id} shed={s} base={outdoor.terrace.level} />
       ))}
     </group>
   )
 }
+
+/** Paving laid on the lawn, its top at `level`. */
+const Paving = ({ outline, level, ground }: { outline: Point[]; level: number; ground: number }) => {
+  const geometry = useMemo(() => prismGeometry(outline, level - ground), [outline, level, ground])
+  return (
+    <mesh geometry={geometry} position={[0, level, 0]} receiveShadow raycast={noRaycast}>
+      <meshStandardMaterial color={PAVING} roughness={0.95} />
+    </mesh>
+  )
+}
+
+const BlockMesh = ({ block, base }: { block: GardenBlock; base: number }) => (
+  <mesh
+    position={[(block.x0 + block.x1) / 2, base + block.height / 2, (block.y0 + block.y1) / 2]}
+    castShadow
+    receiveShadow
+    raycast={noRaycast}
+  >
+    <boxGeometry args={[block.x1 - block.x0, block.height, block.y1 - block.y0]} />
+    <meshStandardMaterial
+      color={block.kind === 'green' ? HEDGE : DEFAULT_WALL}
+      roughness={block.kind === 'green' ? 1 : 0.9}
+    />
+  </mesh>
+)
 
 const ShedMesh = ({ shed, base }: { shed: Shed; base: number }) => {
   const w = shed.x1 - shed.x0

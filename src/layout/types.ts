@@ -78,8 +78,14 @@ export type Outdoor = {
   level: number
   garden: Point[]
   terrace: { name: string; level: number; outline: Point[] }
+  /** Paved areas besides the terrace: under the overhang, the driveway and the path to the door. */
+  paving?: { name: string; level: number; outline: Point[] }[]
   sheds: Shed[]
+  /** Solid garden pieces standing on the lawn: rendered walls (bins, meters, mailbox) and green trellises. */
+  blocks?: GardenBlock[]
 }
+
+export type GardenBlock = Rect & { id: string; name: string; height: number; kind: 'wall' | 'green' }
 
 /** A flat roof on the top floor, edged by a parapet. */
 export type Roof = {
