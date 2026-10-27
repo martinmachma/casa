@@ -375,6 +375,25 @@
         {
           "id": "u-east",
           "from": [6.138, 0.168],
+          "to": [6.138, 2.19],
+          "thickness": 0.175
+        },
+        {
+          "id": "u-east-shaft",
+          "from": [5.92, 2.19],
+          "to": [5.92, 3.21],
+          "thickness": 0.611
+        },
+        {
+          "id": "u-wc-frame",
+          "from": [5.565, 2.24],
+          "to": [5.565, 3.16],
+          "thickness": 0.1,
+          "height": 1.2
+        },
+        {
+          "id": "u-east-south",
+          "from": [6.138, 3.21],
           "to": [6.138, 9.332],
           "thickness": 0.175
         },
@@ -495,18 +514,6 @@
           "id": "u-bath-shaft",
           "from": [5.26, 2.19],
           "to": [6.0505, 2.19]
-        },
-        {
-          "id": "u-chimney",
-          "from": [5.84, 2.45],
-          "to": [5.84, 2.8],
-          "thickness": 0.4
-        },
-        {
-          "id": "u-shaft-s15-west",
-          "from": [5.615, 2.252],
-          "to": [5.615, 3.153],
-          "thickness": 0.05
         }
       ],
       "voids": [
