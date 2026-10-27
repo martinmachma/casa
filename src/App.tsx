@@ -69,8 +69,8 @@ const House = ({ backend, account }: HouseProps) => {
   // The app opens on the whole house.
   const [outside, setOutside] = useState(true)
   const [planCamera, setCamera] = useState<CameraMode>('orbit')
-  // Plan and walk are planning tools; at home the house is always seen in 3D.
-  const camera = planning ? planCamera : 'orbit'
+  // The plan is a planning tool; at home the house is seen in 3D or walked through.
+  const camera = planning || planCamera !== 'top' ? planCamera : 'orbit'
   const [cutaway, setCutaway] = useState(true)
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
@@ -499,7 +499,8 @@ const House = ({ backend, account }: HouseProps) => {
 
         <ViewDock
           camera={camera}
-          onCamera={planning ? setCamera : undefined}
+          onCamera={setCamera}
+          canPlan={planning}
           canWalk={!outside}
           cutaway={cutaway}
           onCutaway={setCutaway}

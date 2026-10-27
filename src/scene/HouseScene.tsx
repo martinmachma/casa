@@ -389,6 +389,9 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
   return { position: new Vector3(cx + away * 0.8, up, cz + away * 1.25), target: new Vector3(cx, look, cz) }
 }
 
+// Closer to the target than this, panning and zooming keep the pace they have here.
+const NEAR_PACE = 4
+
 /** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
 const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }
 
@@ -414,9 +417,17 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   })
   useFrame(({ camera, controls }) => {
     if (!controls) return
+    const orbit = controls as OrbitControlsImpl
+    // Panning and zooming scale with the distance to the target, so close in they'd crawl.
+    // Speed them up there to keep the pace they have this far out.
+    if (mode === 'orbit') {
+      const boost = Math.max(1, NEAR_PACE / camera.position.distanceTo(orbit.target))
+      orbit.panSpeed = boost
+      orbit.zoomSpeed = boost
+    }
     Object.assign(lastView, { mode, viewKey, zoom: camera.zoom })
     lastView.position.copy(camera.position)
-    lastView.target.copy((controls as OrbitControlsImpl).target)
+    lastView.target.copy(orbit.target)
   })
 
   if (mode === 'top') {
@@ -441,7 +452,7 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   return (
     <>
       <PerspectiveCamera makeDefault position={start.position.toArray()} fov={45} near={0.1} far={200} />
-      <OrbitControls makeDefault target={start.target.toArray()} maxPolarAngle={Math.PI / 2.05} />
+      <OrbitControls makeDefault target={start.target.toArray()} maxPolarAngle={Math.PI / 2.05} minDistance={0.5} />
       <IntroFlight />
     </>
   )
