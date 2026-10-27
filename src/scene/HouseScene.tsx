@@ -5,7 +5,7 @@ import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
-import { colliding, constrainMove } from '../furniture/collision'
+import { colliding } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
@@ -169,30 +169,22 @@ export const HouseScene = ({
 
   const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
   // A group moves together by however far the grabbed piece went.
-  // Nothing can be pushed into a wall or another piece; the move slides along whatever is in the way.
+  // Pieces may overlap walls and each other; overlaps are only highlighted.
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
     const grabbed = items.find((f) => f.id === id)
     if (!grabbed) return
     if (selectedIds.length < 2) {
-      const [allowed] = constrainMove([grabbed], [placement], items, wallRects) ?? []
-      return allowed && data.patchFurniture(id, allowed, `move:${id}`)
+      return data.patchFurniture(id, placement, `move:${id}`)
     }
     const dx = placement.x - grabbed.x
     const dy = placement.y - grabbed.y
     const moved = items.filter((f) => selectedIds.includes(f.id))
     const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
     const [sx, sy] = wallSnap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
-    const allowed = constrainMove(
-      moved,
-      proposed.map((f) => ({ x: f.x + sx, y: f.y + sy, rotation: f.rotation })),
-      items,
-      wallRects,
+    data.patchFurnitures(
+      new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
+      `move:${selectedIds.join()}`,
     )
-    if (allowed)
-      data.patchFurnitures(
-        new Map(moved.map((f, i) => [f.id, { x: allowed[i].x, y: allowed[i].y }])),
-        `move:${selectedIds.join()}`,
-      )
   }
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
   const pickItem = (id: string, add: boolean) => {

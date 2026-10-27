@@ -1,7 +1,6 @@
 import type { FurnitureItem } from '../data/types'
 import type { Point, Rect } from '../layout/types'
 import FOOTPRINTS from './footprints.json'
-import type { Placement } from './snap'
 
 export type Solid = Pick<FurnitureItem, 'id' | 'floor' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height' | 'z'> &
   Partial<Pick<FurnitureItem, 'model'>>
@@ -13,8 +12,6 @@ const FLAT = 0.02
 // Chairs and stools tuck under tables, desks and counters up to this height.
 const SEATS = new Set(['chair', 'chairCushion', 'chairModernCushion', 'chairDesk', 'stoolBar'])
 const TABLE_HEIGHT = 0.95
-// How finely a move is checked on its way, so a quick drag can't jump through a wall.
-const STEP = 0.05
 
 type Box = { c: Point; axes: [Point, Point]; half: [number, number] }
 
@@ -95,43 +92,6 @@ export const hits = (piece: Solid, others: Solid[], walls: Rect[]): string[] => 
 /** Every piece on the floor that runs into a wall or another piece. */
 export const colliding = (items: Solid[], walls: Rect[]): Set<string> =>
   new Set(items.filter((item) => hits(item, items, walls).length).map((item) => item.id))
-
-/**
- * Whether the pieces may move to `to` (same order): nowhere on the way may they run into anything they
- * weren't already in, so a piece stuck in a wall can still be pulled out but nothing new can be pushed in.
- */
-export const canMove = (pieces: Solid[], to: Placement[], items: Solid[], walls: Rect[]): boolean => {
-  const ids = new Set(pieces.map((p) => p.id))
-  const others = items.filter((o) => !ids.has(o.id))
-  const before = pieces.map((p) => new Set(hits(p, others, walls)))
-  const travel = Math.max(0, ...pieces.map((p, i) => Math.hypot(to[i].x - p.x, to[i].y - p.y)))
-  const steps = Math.max(1, Math.ceil(travel / STEP))
-  for (let k = 1; k <= steps; k++) {
-    const t = k / steps
-    for (let i = 0; i < pieces.length; i++) {
-      const p = pieces[i]
-      const at = {
-        ...p,
-        x: p.x + (to[i].x - p.x) * t,
-        y: p.y + (to[i].y - p.y) * t,
-        rotation: k === steps ? to[i].rotation : p.rotation,
-      }
-      if (hits(at, others, walls).some((h) => !before[i].has(h))) return false
-    }
-  }
-  return true
-}
-
-/** The move if it's free, else as much of it as slides along whatever is in the way; undefined if stuck. */
-export const constrainMove = (
-  pieces: Solid[],
-  to: Placement[],
-  items: Solid[],
-  walls: Rect[],
-): Placement[] | undefined => {
-  const slides = [to, to.map((p, i) => ({ ...p, y: pieces[i].y })), to.map((p, i) => ({ ...p, x: pieces[i].x }))]
-  return slides.find((s) => canMove(pieces, s, items, walls))
-}
 
 const unique = (values: number[]) => [...new Set(values)].sort((a, b) => a - b)
 
