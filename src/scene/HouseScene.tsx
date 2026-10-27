@@ -1,6 +1,6 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
@@ -76,8 +76,6 @@ type HouseSceneProps = {
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
-  /** The opening fly-in has landed on the 1st floor's view. */
-  onIntroEnd: () => void
   onSelect: (selection: Selection | undefined) => void
   /** The selected item's floating buttons. */
   itemActions: ItemActions
@@ -109,7 +107,6 @@ export const HouseScene = ({
   onPlaceDevice,
   nudge,
   viewKey,
-  onIntroEnd,
   onSelect,
   itemActions,
 }: HouseSceneProps) => {
@@ -210,7 +207,7 @@ export const HouseScene = ({
             mode={camera}
             floor={outside ? floors[0] : floor}
             houseHeight={outside ? roofTop(floors) : undefined}
-            onIntroEnd={onIntroEnd}
+            viewKey={viewKey}
           />
         )}
         <CameraNudger nudge={nudge} />
@@ -371,7 +368,8 @@ type CameraRigProps = {
   floor: Floor
   /** Set from outside: the whole house this tall has to fit, seen from lower down. */
   houseHeight?: number
-  onIntroEnd: () => void
+  /** Bumped by Reset view, which starts the camera afresh instead of keeping where it was. */
+  viewKey: number
 }
 
 type Pose = { position: Vector3; target: Vector3 }
@@ -391,32 +389,46 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
   return { position: new Vector3(cx + away * 0.8, up, cz + away * 1.25), target: new Vector3(cx, look, cz) }
 }
 
-const CameraRig = ({ mode, floor, houseHeight, onIntroEnd }: CameraRigProps) => {
+/** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
+const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }
+
+const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   const size = useThree((s) => s.size)
-  const { min, max } = floorBounds(floor)
-  const cx = (min[0] + max[0]) / 2
-  const cz = (min[1] + max[1]) / 2
-  const span = Math.max(max[0] - min[0], max[1] - min[1])
-  // After the fly-in, the 1st floor's view picks up where the camera landed instead of jumping.
-  const [handoff] = useState(() => intro.handoff)
-  useEffect(() => {
-    intro.handoff = undefined
-  }, [])
+  // Chosen once: carried over from the previous floor's camera, or this view's own start
+  // (after Reset view, or a change between 3D and top). Resizing doesn't move it.
+  const [start] = useState(() => {
+    if (lastView.mode === mode && lastView.viewKey === viewKey)
+      return { position: lastView.position.clone(), target: lastView.target.clone(), zoom: lastView.zoom }
+    const { min, max } = floorBounds(floor)
+    const cx = (min[0] + max[0]) / 2
+    const cz = (min[1] + max[1]) / 2
+    const span = Math.max(max[0] - min[0], max[1] - min[1])
+    if (mode === 'top')
+      return {
+        // Straight down with north at the top; the tiny z offset keeps OrbitControls' math stable.
+        position: new Vector3(cx, floor.elevation + 40, cz + 0.001),
+        target: new Vector3(cx, floor.elevation, cz),
+        zoom: Math.min(size.width, size.height) / (span * 1.35),
+      }
+    return { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
+  })
+  useFrame(({ camera, controls }) => {
+    if (!controls) return
+    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom })
+    lastView.position.copy(camera.position)
+    lastView.target.copy((controls as OrbitControlsImpl).target)
+  })
 
   if (mode === 'top') {
+    // The plan stays put sideways and in zoom; only its height follows the floor.
+    const position = start.position.clone().setY(floor.elevation + 40)
+    const target = start.target.clone().setY(floor.elevation)
     return (
       <>
-        {/* Straight down with north at the top; the tiny z offset keeps OrbitControls' math stable. */}
-        <OrthographicCamera
-          makeDefault
-          position={[cx, floor.elevation + 40, cz + 0.001]}
-          zoom={Math.min(size.width, size.height) / (span * 1.35)}
-          near={0.1}
-          far={200}
-        />
+        <OrthographicCamera makeDefault position={position.toArray()} zoom={start.zoom} near={0.1} far={200} />
         <OrbitControls
           makeDefault
-          target={[cx, floor.elevation, cz]}
+          target={target.toArray()}
           enableRotate={false}
           screenSpacePanning
           mouseButtons={{ LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
@@ -426,12 +438,11 @@ const CameraRig = ({ mode, floor, houseHeight, onIntroEnd }: CameraRigProps) => 
     )
   }
 
-  const pose = handoff ?? orbitPose(floor, size.width / size.height, houseHeight)
   return (
     <>
-      <PerspectiveCamera makeDefault position={pose.position} fov={45} near={0.1} far={200} />
-      <OrbitControls makeDefault target={pose.target} maxPolarAngle={Math.PI / 2.05} />
-      <IntroFlight onEnd={onIntroEnd} />
+      <PerspectiveCamera makeDefault position={start.position.toArray()} fov={45} near={0.1} far={200} />
+      <OrbitControls makeDefault target={start.target.toArray()} maxPolarAngle={Math.PI / 2.05} />
+      <IntroFlight />
     </>
   )
 }
@@ -443,7 +454,7 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 
  * Starts high above the house looking straight down with the house square on, drops towards it,
  * and from about halfway down swings round and tilts into the view the camera was set up with.
  */
-const IntroFlight = ({ onEnd }: { onEnd: () => void }) => {
+const IntroFlight = () => {
   // Stays mounted through re-renders; only the first camera of the session flies in.
   const flight = useRef<{ end: Spherical; start: Spherical; t: number }>(undefined)
 
@@ -475,8 +486,6 @@ const IntroFlight = ({ onEnd }: { onEnd: () => void }) => {
     if (f.t >= 1) {
       controls.enabled = true
       controls.update()
-      intro.handoff = { position: camera.position.clone(), target: controls.target.clone() }
-      onEnd()
     }
   })
   return null
