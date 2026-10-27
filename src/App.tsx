@@ -93,6 +93,12 @@ const House = ({ backend, account }: HouseProps) => {
   // Sunlight follows the clock at home; planning starts with even light.
   const [sun, setSun] = useState<SunSettings | undefined>(() => (planning ? undefined : sunNow()))
   const { site } = house
+  // At home the sun can't be moved; it keeps up with the clock.
+  useEffect(() => {
+    if (planning) return
+    const timer = setInterval(() => setSun(sunNow()), 60 * 1000)
+    return () => clearInterval(timer)
+  }, [planning])
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
     : undefined
@@ -539,7 +545,7 @@ const House = ({ backend, account }: HouseProps) => {
               }}
             />
           )}
-          <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+          {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
         </div>
 
         <CameraPad
