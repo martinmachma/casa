@@ -1,6 +1,6 @@
 import { Edges } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Mesh, Plane, Vector3 } from 'three'
 import type { Device, DeviceKind } from '../data/types'
 import { DEVICE_KINDS } from '../devices/kinds'
@@ -217,42 +217,70 @@ type DevicePlacerProps = {
   kind: DeviceKind
   onPlace: (device: Omit<Device, 'id' | 'name'>) => void
   cutaway: boolean
+  /** Seen from straight above, as for Devices. */
+  plan: boolean
 }
 
 /**
- * Catches taps while a device kind is picked. The tap is read at the kind's height (a socket's tap on a wall lands
- * on that wall), then a light goes on the ceiling there and anything else onto the nearest wall face.
+ * Catches taps while a device kind is picked, showing the device where a tap would put it. The pointer is read at
+ * the kind's height (a socket's tap on a wall lands on that wall), then a light goes on the ceiling there and
+ * anything else onto the nearest wall face.
  */
-export const DevicePlacer = ({ floor, kind, onPlace, cutaway }: DevicePlacerProps) => {
+export const DevicePlacer = ({ floor, kind, onPlace, cutaway, plan }: DevicePlacerProps) => {
   const camera = useThree((s) => s.camera)
   const kindHeight = DEVICE_KINDS[kind].height
   // Lights are placed where the floor was tapped, the way a plan is read.
   const level = floor.elevation + (kindHeight === 'ceiling' ? 0 : kindHeight)
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -level), [level])
   const hit = useMemo(() => new Vector3(), [])
+  const [preview, setPreview] = useState<Omit<Device, 'id' | 'name'>>()
+
+  const placement = (e: ThreeEvent<PointerEvent | MouseEvent>) => {
+    if (!e.ray.intersectPlane(plane, hit)) return undefined
+    const visibleFloor =
+      cutaway && kindHeight !== 'ceiling'
+        ? {
+            ...floor,
+            walls: floor.walls.filter((wall) => visibleWallHeight(wall, floor, camera, cutaway) >= kindHeight),
+          }
+        : floor
+    return placeDevice(kind, [hit.x, hit.z], visibleFloor)
+  }
+
   return (
-    <mesh
-      rotation-x={-Math.PI / 2}
-      position={[0, floor.elevation + 0.01, 0]}
-      onClick={(e) => {
-        if (e.delta > CLICK_SLOP_PX) return
-        e.stopPropagation()
-        if (!e.ray.intersectPlane(plane, hit)) return
-        const visibleFloor =
-          cutaway && kindHeight !== 'ceiling'
-            ? {
-                ...floor,
-                walls: floor.walls.filter((wall) => visibleWallHeight(wall, floor, camera, cutaway) >= kindHeight),
-              }
-            : floor
-        const placed = placeDevice(kind, [hit.x, hit.z], visibleFloor)
-        if (placed) onPlace(placed)
-      }}
-      onPointerOver={() => (document.body.style.cursor = 'crosshair')}
-      onPointerOut={() => (document.body.style.cursor = '')}
-    >
-      <planeGeometry args={[400, 400]} />
-      <meshBasicMaterial visible={false} />
-    </mesh>
+    <>
+      <mesh
+        rotation-x={-Math.PI / 2}
+        position={[0, floor.elevation + 0.01, 0]}
+        onClick={(e) => {
+          if (e.delta > CLICK_SLOP_PX) return
+          e.stopPropagation()
+          const placed = placement(e)
+          if (placed) onPlace(placed)
+        }}
+        onPointerMove={(e) => setPreview(placement(e))}
+        onPointerOver={() => (document.body.style.cursor = 'crosshair')}
+        onPointerOut={() => {
+          document.body.style.cursor = ''
+          setPreview(undefined)
+        }}
+      >
+        <planeGeometry args={[400, 400]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      {preview && (
+        <DeviceMesh
+          device={{ ...preview, id: 'placing', name: '' }}
+          floor={floor}
+          selected
+          glow={0}
+          plan={plan}
+          interactive={false}
+          onSelect={() => {}}
+          onMove={() => {}}
+          onMoveEnd={() => {}}
+        />
+      )}
+    </>
   )
 }

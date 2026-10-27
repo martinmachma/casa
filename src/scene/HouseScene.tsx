@@ -268,7 +268,13 @@ export const HouseScene = ({
         {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
 
         {interaction === 'devices' && placing && !outside && (
-          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} cutaway={cutaway && camera === 'orbit'} />
+          <DevicePlacer
+            floor={floor}
+            kind={placing}
+            onPlace={onPlaceDevice}
+            cutaway={cutaway && camera === 'orbit'}
+            plan={camera === 'top'}
+          />
         )}
         <Devices
           floor={floor}
