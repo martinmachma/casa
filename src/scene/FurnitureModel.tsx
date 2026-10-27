@@ -2,7 +2,10 @@ import { useGLTF } from '@react-three/drei'
 import { useLayoutEffect, useMemo } from 'react'
 import { Box3, Mesh, MeshStandardMaterial, Vector3, type Material } from 'three'
 import { modelUrl } from '../furniture/catalog'
-import { BULB, isLamp } from './HouseLights'
+import { isLamp } from './HouseLights'
+import { lightColor } from '../devices/lights'
+
+const WARM = lightColor(undefined)
 
 // Kenney's upholstery materials; the item's colour goes on these, so a sofa can be any fabric.
 const FABRIC = new Set(['carpet', 'carpetBlue'])
@@ -18,13 +21,23 @@ type FurnitureModelProps = {
   fabric: string
   /** How brightly a lamp is lit, 0 (off) to 1. */
   glow?: number
+  /** The colour a lamp gives off. */
+  glowColor?: string
 }
 
 /**
  * A furniture model stretched to exactly width × depth × height, standing on the floor and centred on the item.
  * Models face +z (plan south) at rotation 0, so they back onto a north wall.
  */
-export const FurnitureModel = ({ model, width, depth, height, fabric, glow = 0 }: FurnitureModelProps) => {
+export const FurnitureModel = ({
+  model,
+  width,
+  depth,
+  height,
+  fabric,
+  glow = 0,
+  glowColor = WARM,
+}: FurnitureModelProps) => {
   const { scene } = useGLTF(modelUrl(model))
 
   const { object, size, offset } = useMemo(() => {
@@ -41,7 +54,6 @@ export const FurnitureModel = ({ model, width, depth, height, fabric, glow = 0 }
         const copy = m.clone()
         copy.userData.fabric = fabric
         copy.userData.shade = shade
-        if (shade) copy.emissive.set(BULB)
         return copy
       }
       o.material = Array.isArray(o.material) ? o.material.map(tint) : tint(o.material)
@@ -57,10 +69,13 @@ export const FurnitureModel = ({ model, width, depth, height, fabric, glow = 0 }
       if (!(o instanceof Mesh)) return
       for (const m of [o.material].flat()) {
         if (m.userData.fabric) (m as MeshStandardMaterial).color.set(fabric)
-        if (m.userData.shade) (m as MeshStandardMaterial).emissiveIntensity = glow * SHADE_GLOW
+        if (m.userData.shade) {
+          ;(m as MeshStandardMaterial).emissive.set(glowColor)
+          ;(m as MeshStandardMaterial).emissiveIntensity = glow * SHADE_GLOW
+        }
       }
     })
-  }, [object, fabric, glow])
+  }, [object, fabric, glow, glowColor])
 
   return (
     <group scale={[width / (size.x || 1), Math.max(height, 0.005) / (size.y || 1), depth / (size.z || 1)]}>

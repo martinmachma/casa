@@ -23,7 +23,7 @@ import { FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
 import { daylight, Lights } from './Lights'
 import { HouseLights, isLamp } from './HouseLights'
-import { lightLevel, type LightState } from '../devices/lights'
+import { lightColor, lightLevel, type LightState } from '../devices/lights'
 import { MeasureTool } from './MeasureTool'
 import { Compass, CompassTracker } from './Compass'
 import { WalkCamera } from './WalkCamera'
@@ -72,7 +72,8 @@ type HouseSceneProps = {
   placing: DeviceKind | undefined
   /** Lights switched by hand, by device or lamp id; the rest come on after dark. */
   lights: Readonly<Record<string, LightState>>
-  onToggleLight: (id: string) => void
+  /** A light or lamp tapped while looking round. */
+  onPickLight: (id: string) => void
   onPlaceDevice: (device: Omit<Device, 'id' | 'name'>) => void
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
@@ -103,7 +104,7 @@ export const HouseScene = ({
   onRemoveMeasurement,
   placing,
   lights,
-  onToggleLight,
+  onPickLight,
   onPlaceDevice,
   nudge,
   viewKey,
@@ -129,8 +130,10 @@ export const HouseScene = ({
   // After dark the house's own lights come on, on every floor that's shown.
   const dark = 1 - daylight(sun)
   const level = (id: string) => lightLevel(lights[id], dark)
-  // While looking round, a tap on a light or lamp switches it.
-  const switchable = interaction === 'view' ? onToggleLight : undefined
+  const tint = (id: string) => lightColor(lights[id])
+  // While looking round, a tap on a light or lamp picks it, to switch and set it.
+  const lightPick = interaction === 'view' ? onPickLight : undefined
+  const pickedLight = selection?.kind === 'light' ? selection.id : undefined
   const litFloors = floors.slice(0, outside || camera === 'walk' ? floors.length : floorIndex + 1)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
@@ -206,7 +209,7 @@ export const HouseScene = ({
       <Canvas
         shadows
         dpr={[1, 2]}
-        onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
+        onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
       >
         <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
         {camera === 'walk' ? (
@@ -230,7 +233,7 @@ export const HouseScene = ({
         )}
         <CameraNudger nudge={nudge} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
-        <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} />
+        <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
@@ -288,10 +291,11 @@ export const HouseScene = ({
         <Devices
           floor={floor}
           devices={devices}
-          selectedId={selection?.kind === 'device' ? selection.id : undefined}
+          selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
           glow={level}
+          tint={tint}
           plan={camera === 'top'}
-          onToggle={switchable}
+          onPickLight={lightPick}
           interactive={interaction === 'devices' && !placing}
           onSelect={(id) => onSelect({ kind: 'device', id })}
           onMove={moveDevice}
@@ -340,9 +344,10 @@ export const HouseScene = ({
             key={item.id}
             item={item}
             glow={isLamp(item.model) ? level(item.id) : 0}
-            onToggle={isLamp(item.model) ? switchable : undefined}
+            glowColor={tint(item.id)}
+            onPickLight={isLamp(item.model) ? lightPick : undefined}
             elevation={floors.find((f) => f.id === item.floor)?.elevation ?? floor.elevation}
-            selected={selectedIds.includes(item.id)}
+            selected={selectedIds.includes(item.id) || pickedLight === item.id}
             colliding={clashes.has(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}

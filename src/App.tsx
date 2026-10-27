@@ -13,7 +13,7 @@ import { duplicateOffset } from './furniture/duplicate'
 import { pasteFurniture } from './furniture/clipboard'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
-import { floorRegions, floorWallRects } from './layout/rooms'
+import { floorRegions, floorWallRects, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
 import { house } from './layout/layout'
@@ -23,7 +23,8 @@ import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
-import { lightLevel, useLights } from './devices/lights'
+import { lightSettings, useLights } from './devices/lights'
+import { LightPanel } from './ui/LightPanel'
 import { daylight } from './scene/Lights'
 import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
@@ -345,7 +346,8 @@ const House = ({ backend, account }: HouseProps) => {
   })
 
   const editing = interaction !== 'view'
-  const rightOpen = editing && !rightTucked
+  // While looking round, it opens only for a picked light.
+  const rightOpen = (editing || selection?.kind === 'light') && !rightTucked
   const closeRight = () => setRightOpen(false)
   const modeBar = !locked && (
     <ModeBar
@@ -358,6 +360,26 @@ const House = ({ backend, account }: HouseProps) => {
   )
 
   const inspector = (() => {
+    if (selection?.kind === 'light') {
+      const device = data.devices.find((d) => d.id === selection.id)
+      const lamp = data.furniture.find((f) => f.id === selection.id)
+      const home = house.floors.find((f) => f.id === (device ?? lamp)?.floor)
+      if (!home || !(device || lamp)) return undefined
+      const regions = floorRegions(home)
+      const roomId = device ? deviceRoom(device, home, regions) : roomAt(regions, lamp!.x, lamp!.y)
+      const room = home.rooms.find((r) => r.id === roomId)
+      return (
+        <LightPanel
+          kind={device ? 'Ceiling light' : 'Lamp'}
+          name={device?.name ?? lamp!.name}
+          room={room && roomLabel(room, data.roomNames).name}
+          entity={device?.entity}
+          light={lightSettings(lights.states[selection.id], dark)}
+          onChange={(patch) => lights.set(selection.id, patch, dark)}
+          onClose={() => setSelection(undefined)}
+        />
+      )
+    }
     if (selection?.kind === 'wall') {
       // From outside, the wall can be on any floor.
       const home = house.floors.find((f) => f.walls.some((w) => w.id === selection.wallId)) ?? floor
@@ -423,7 +445,7 @@ const House = ({ backend, account }: HouseProps) => {
             data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
           }
           onKind={(kind) => changeDeviceKind(selectedDevice, kind)}
-          level={lightLevel(lights.states[selectedDevice.id], dark)}
+          light={lightSettings(lights.states[selectedDevice.id], dark)}
           onLight={(patch) => lights.set(selectedDevice.id, patch, dark)}
           onDelete={() => deleteDevice(selectedDevice)}
           onClose={() => setSelection(undefined)}
@@ -498,7 +520,7 @@ const House = ({ backend, account }: HouseProps) => {
           onRemoveMeasurement={(id) => setMeasurements((ms) => ms.filter((m) => m.id !== id))}
           placing={placing}
           lights={lights.states}
-          onToggleLight={(id) => lights.toggle(id, dark)}
+          onPickLight={(id) => select({ kind: 'light', id })}
           onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}

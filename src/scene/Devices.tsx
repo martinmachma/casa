@@ -7,7 +7,6 @@ import { DEVICE_KINDS } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
 import { wallAngle } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
-import { BULB } from './HouseLights'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
 
@@ -36,6 +35,8 @@ type DevicesProps = {
   selectedId: string | undefined
   /** How brightly each ceiling light is lit, 0 (off) to 1. */
   glow: (id: string) => number
+  /** The colour each ceiling light gives off. */
+  tint: (id: string) => string
   /** Seen from straight above: wall plates get a marker on top of the wall, where they can be seen and picked. */
   plan: boolean
   /** False unless the devices tool is on. */
@@ -43,8 +44,8 @@ type DevicesProps = {
   onSelect: (id: string) => void
   onMove: (id: string, patch: Partial<Device>) => void
   onMoveEnd: () => void
-  /** Set while viewing: a tap on a light switches it. */
-  onToggle?: (id: string) => void
+  /** Set while looking round: a tap on a light picks it, to switch and set it. */
+  onPickLight?: (id: string) => void
 }
 
 type Controls = { enabled: boolean }
@@ -55,12 +56,13 @@ export const Devices = ({
   devices,
   selectedId,
   glow,
+  tint,
   plan,
   interactive,
   onSelect,
   onMove,
   onMoveEnd,
-  onToggle,
+  onPickLight,
 }: DevicesProps) => (
   <group>
     {devices.map((device) => (
@@ -70,21 +72,23 @@ export const Devices = ({
         floor={floor}
         selected={device.id === selectedId}
         glow={glow(device.id)}
+        tint={tint(device.id)}
         plan={plan}
         interactive={interactive}
         onSelect={onSelect}
         onMove={onMove}
         onMoveEnd={onMoveEnd}
-        onToggle={onToggle}
+        onPickLight={onPickLight}
       />
     ))}
   </group>
 )
 
-type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId' | 'glow'> & {
+type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId' | 'glow' | 'tint'> & {
   device: Device
   selected: boolean
   glow: number
+  tint: string
 }
 
 const DeviceMesh = ({
@@ -92,12 +96,13 @@ const DeviceMesh = ({
   floor,
   selected,
   glow,
+  tint,
   plan,
   interactive,
   onSelect,
   onMove,
   onMoveEnd,
-  onToggle,
+  onPickLight,
 }: DeviceMeshProps) => {
   const getState = useThree((s) => s.get)
   const level = floor.elevation + device.z
@@ -154,13 +159,13 @@ const DeviceMesh = ({
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'grab')),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
-    : onToggle && device.kind === 'light'
+    : onPickLight && device.kind === 'light'
       ? {
           raycast: Mesh.prototype.raycast,
           onClick: (e: ThreeEvent<MouseEvent>) => {
             if (e.delta > CLICK_SLOP_PX) return
             e.stopPropagation()
-            onToggle(device.id)
+            onPickLight(device.id)
           },
           onPointerOver: (e: ThreeEvent<PointerEvent>) => (
             e.stopPropagation(),
@@ -174,7 +179,7 @@ const DeviceMesh = ({
     <meshStandardMaterial
       color={color}
       roughness={0.5}
-      emissive={device.kind !== 'light' ? '#000000' : glow > 0 ? BULB : color}
+      emissive={device.kind !== 'light' ? '#000000' : glow > 0 ? tint : color}
       emissiveIntensity={device.kind === 'light' ? Math.max(0.35, glow * LIT_GLOW) : 0}
     />
   )
@@ -297,6 +302,7 @@ export const DevicePlacer = ({ floor, kind, onPlace, cutaway, plan }: DevicePlac
           floor={floor}
           selected
           glow={0}
+          tint={DEVICE_KINDS[kind].color}
           plan={plan}
           interactive={false}
           onSelect={() => {}}

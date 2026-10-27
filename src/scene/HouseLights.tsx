@@ -4,8 +4,6 @@ import { PointLight, Vector3 } from 'three'
 import type { Device, FurnitureItem } from '../data/types'
 import type { Floor } from '../layout/types'
 
-/** Warm white, about 2700 K, like an ordinary household bulb. */
-export const BULB = '#ffc285'
 const CEILING_INTENSITY = 7
 const LAMP_INTENSITY = 2.5
 // Light falls off with the square of the distance; past this it's cut off so far rooms cost nothing.
@@ -22,7 +20,7 @@ const LAMPS: Record<string, number> = { lampRoundFloor: 0.88, lampSquareTable: 0
 
 export const isLamp = (model: string | undefined) => model !== undefined && model in LAMPS
 
-type Bulb = { id: string; position: [number, number, number]; intensity: number }
+type Bulb = { id: string; position: [number, number, number]; intensity: number; color: string }
 
 type HouseLightsProps = {
   /** The floors on show; lights on any other floor stay dark. */
@@ -31,10 +29,12 @@ type HouseLightsProps = {
   furniture: FurnitureItem[]
   /** How brightly each light (by device or furniture id) shines, 0 (off) to 1. */
   level: (id: string) => number
+  /** The colour each light gives off. */
+  tint: (id: string) => string
 }
 
-/** The house's own lights: each ceiling light and lamp that's on is a warm point light. */
-export const HouseLights = ({ floors, devices, furniture, level }: HouseLightsProps) => {
+/** The house's own lights: each ceiling light and lamp that's on is a point light. */
+export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLightsProps) => {
   const lights = useRef<(PointLight | null)[]>([])
   const frame = useRef(0)
   const tmp = useRef(new Vector3())
@@ -47,6 +47,7 @@ export const HouseLights = ({ floors, devices, furniture, level }: HouseLightsPr
           id: d.id,
           position: [d.x, f.elevation + d.z - 0.08, d.y],
           intensity: CEILING_INTENSITY * level(d.id),
+          color: tint(d.id),
         })
     for (const item of furniture)
       if (item.floor === f.id && isLamp(item.model) && level(item.id) > 0)
@@ -54,6 +55,7 @@ export const HouseLights = ({ floors, devices, furniture, level }: HouseLightsPr
           id: item.id,
           position: [item.x, f.elevation + (item.z ?? 0) + item.height * LAMPS[item.model!], item.y],
           intensity: LAMP_INTENSITY * level(item.id),
+          color: tint(item.id),
         })
   }
 
@@ -88,7 +90,7 @@ export const HouseLights = ({ floors, devices, furniture, level }: HouseLightsPr
             lights.current[i] = l
           }}
           position={b.position}
-          color={BULB}
+          color={b.color}
           intensity={b.intensity}
           distance={REACH}
           decay={2}

@@ -14,6 +14,8 @@ type FurnitureBoxProps = {
   item: FurnitureItem
   /** How brightly a lamp is lit, 0 to 1. */
   glow?: number
+  /** The colour a lamp gives off. */
+  glowColor?: string
   elevation: number
   selected: boolean
   /** Runs into a wall or another piece. */
@@ -32,8 +34,8 @@ type FurnitureBoxProps = {
   onMoveEnd: (id: string) => void
   /** A plain press let go without moving. */
   onTap: (id: string) => void
-  /** Set for a lamp while viewing: a tap switches it. */
-  onToggle?: (id: string) => void
+  /** Set for a lamp while looking round: a tap picks it, to switch and set it. */
+  onPickLight?: (id: string) => void
   actions: ItemActions
 }
 
@@ -52,6 +54,7 @@ const CLICK_SLOP_PX = 5
 export const FurnitureBox = ({
   item,
   glow,
+  glowColor,
   elevation,
   selected,
   colliding,
@@ -62,7 +65,7 @@ export const FurnitureBox = ({
   snapWalls,
   snapItems,
   onSelect,
-  onToggle,
+  onPickLight,
   onMove,
   onMoveEnd,
   onTap,
@@ -148,13 +151,13 @@ export const FurnitureBox = ({
         ),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
-    : onToggle
+    : onPickLight
       ? {
           raycast: Mesh.prototype.raycast,
           onClick: (e: ThreeEvent<MouseEvent>) => {
             if (e.delta > CLICK_SLOP_PX) return
             e.stopPropagation()
-            onToggle(item.id)
+            onPickLight(item.id)
           },
           onPointerOver: (e: ThreeEvent<PointerEvent>) => (
             e.stopPropagation(),
@@ -225,6 +228,7 @@ export const FurnitureBox = ({
             height={item.height}
             fabric={item.color}
             glow={glow}
+            glowColor={glowColor}
           />
         </Suspense>
       )}
