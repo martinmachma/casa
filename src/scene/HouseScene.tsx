@@ -408,7 +408,7 @@ const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
     <>
       <PerspectiveCamera makeDefault position={[cx + away * 0.8, up, cz + away * 1.25]} fov={45} near={0.1} far={200} />
       <OrbitControls makeDefault target={[cx, look, cz]} maxPolarAngle={Math.PI / 2.05} />
-      {introPending && <IntroFlight />}
+      <IntroFlight />
     </>
   )
 }
@@ -427,11 +427,14 @@ const IntroFlight = () => {
     const controls = active as OrbitControlsImpl | null
     if (!controls) return
     if (!flight.current) {
+      // Stays mounted through re-renders; only the first camera of the session flies in.
+      const pending = introPending
       introPending = false
       const end = new Spherical().setFromVector3(offset.copy(camera.position).sub(controls.target))
       // High enough that the whole house fits from overhead; the tiny angle keeps north up.
       const start = new Spherical(end.radius * 1.6, 0.001, end.theta)
-      flight.current = { end, start, t: 0 }
+      flight.current = { end, start, t: pending ? 0 : 1 }
+      if (!pending) return
       controls.enabled = false
     }
     const f = flight.current
