@@ -26,7 +26,7 @@ import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
-import type { SunSettings } from './sun/useSun'
+import { sunNow, type SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { wallText } from './measure/dimensions'
 import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } from './measure/measure'
@@ -62,13 +62,15 @@ const savedSection = (): Section => {
 }
 
 const House = ({ backend, account }: HouseProps) => {
-  const data = useHouseData(backend)
   const [section, setSection] = useState(savedSection)
   const planning = section === 'planning'
+  const data = useHouseData(backend, !planning)
   const [floorIndex, setFloorIndex] = useState(0)
   const [outside, setOutside] = useState(false)
-  const [camera, setCamera] = useState<CameraMode>('orbit')
-  const [cutaway, setCutaway] = useState(false)
+  const [planCamera, setCamera] = useState<CameraMode>('orbit')
+  // Plan and walk are planning tools; at home the house is always seen in 3D.
+  const camera = planning ? planCamera : 'orbit'
+  const [cutaway, setCutaway] = useState(true)
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
@@ -88,7 +90,8 @@ const House = ({ backend, account }: HouseProps) => {
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
   const [measurements, setMeasurements] = useState<MeasuredLine[]>([])
-  const [sun, setSun] = useState<SunSettings>()
+  // Sunlight follows the clock at home; planning starts with even light.
+  const [sun, setSun] = useState<SunSettings | undefined>(() => (planning ? undefined : sunNow()))
   const { site } = house
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
@@ -214,16 +217,17 @@ const House = ({ backend, account }: HouseProps) => {
     setOutside(true)
     setHoveredRoom(undefined)
     changeInteraction('view')
-    if (camera === 'walk') setCamera('orbit')
+    if (planCamera === 'walk') setCamera('orbit')
   }
 
-  /** Home is for looking at the house: editing and measuring stop. */
+  /** Home is for looking at the house: editing and measuring stop, and the sun follows the clock. */
   const changeSection = (next: Section) => {
     if (next === section) return
     if (next === 'home') {
       changeInteraction('view')
       stopMeasuring()
     }
+    setSun(next === 'home' ? sunNow() : undefined)
     setSection(next)
     try {
       localStorage.setItem(SECTION_KEY, next)
@@ -434,14 +438,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
-      <NavRail
-        section={section}
-        onSection={changeSection}
-        onWeather={() => setWeatherOpen(true)}
-        onTodos={() => setTodosOpen(true)}
-        openTodos={openTodos}
-        account={account}
-      />
+      <NavRail section={section} onSection={changeSection} />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
@@ -449,6 +446,10 @@ const House = ({ backend, account }: HouseProps) => {
         outside={outside}
         onOutside={goOutside}
         versions={planning && <VersionMenu data={data} />}
+        onWeather={() => setWeatherOpen(true)}
+        onTodos={() => setTodosOpen(true)}
+        openTodos={openTodos}
+        account={account}
       />
 
       {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
@@ -489,7 +490,13 @@ const House = ({ backend, account }: HouseProps) => {
           }}
         />
 
-        <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>
+        <ViewDock
+          camera={camera}
+          onCamera={planning ? setCamera : undefined}
+          canWalk={!outside}
+          cutaway={cutaway}
+          onCutaway={setCutaway}
+        >
           <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
             {outside ? (
               <FloorList
@@ -540,7 +547,7 @@ const House = ({ backend, account }: HouseProps) => {
           onReset={() => setViewKey((k) => k + 1)}
         />
 
-        {data.dirty && <SaveBar data={data} />}
+        {planning && data.dirty && <SaveBar data={data} />}
 
         {data.loading && <div className="toast">Loading the house…</div>}
         {data.error && (

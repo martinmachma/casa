@@ -1,7 +1,9 @@
-import { House } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { House, ListTodo, LogOut } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
-import { Segmented } from './kit'
+import { IconButton, Segmented } from './kit'
+import { WeatherButton } from './WeatherButton'
 
 type TopBarProps = {
   floors: Floor[]
@@ -12,13 +14,29 @@ type TopBarProps = {
   onOutside: () => void
   /** The version picker, while planning. */
   versions?: ReactNode
+  onWeather: () => void
+  /** Opens the wishes & bugs list; the badge counts open ones. */
+  onTodos: () => void
+  openTodos: number
+  account: Account
 }
 
 const OUTSIDE = 'outside'
 
 const ordinal = (n: number) => `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
 
-export const TopBar = ({ floors, floorIndex, onFloor, outside, onOutside, versions }: TopBarProps) => (
+export const TopBar = ({
+  floors,
+  floorIndex,
+  onFloor,
+  outside,
+  onOutside,
+  versions,
+  onWeather,
+  onTodos,
+  openTodos,
+  account,
+}: TopBarProps) => (
   <header className="topbar">
     <Segmented
       label="Floor"
@@ -31,5 +49,41 @@ export const TopBar = ({ floors, floorIndex, onFloor, outside, onOutside, versio
       className="floors"
     />
     {versions}
+    <span className="spacer" />
+    <WeatherButton onClick={onWeather} />
+    <IconButton label="Wishes & bugs" className="todo-open" onClick={onTodos}>
+      <ListTodo size={18} />
+      {openTodos > 0 && <span className="todo-count">{openTodos}</span>}
+    </IconButton>
+    <AccountMenu account={account} />
   </header>
 )
+
+const AccountMenu = ({ account }: { account: Account }) => {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [open])
+
+  return (
+    <div className="menu-anchor" ref={ref}>
+      <button className="avatar" onClick={() => setOpen(!open)} aria-label="Account" aria-expanded={open}>
+        {account.label.charAt(0).toUpperCase()}
+      </button>
+      {open && (
+        <div className="menu" role="menu">
+          <div className="menu-label">{account.label}</div>
+          <button role="menuitem" onClick={account.signOut}>
+            <LogOut size={16} />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}

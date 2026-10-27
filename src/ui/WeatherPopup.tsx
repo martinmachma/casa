@@ -1,19 +1,11 @@
-import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Droplets, Sun } from 'lucide-react'
+import { Cloud, Droplets } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { house } from '../layout/layout'
-import { formatValue, summarizeDay, type WeatherGroup } from '../weather/confidence'
+import { formatValue, summarizeDay } from '../weather/confidence'
 import { CACHE_MAX_AGE, loadForecast, MODELS, readForecast, type ForecastDay } from '../weather/forecast'
 import { PanelHead } from './kit'
+import { WEATHER_ICONS } from './weatherIcons'
 
-const ICONS: Record<WeatherGroup, typeof Sun> = {
-  Clear: Sun,
-  'Partly cloudy': CloudSun,
-  Cloudy: Cloud,
-  Fog: CloudFog,
-  Rain: CloudRain,
-  Snow: CloudSnow,
-  Thunderstorm: CloudLightning,
-}
 const temperature = (value: number) => `${formatValue(value)}°`
 const rangeText = ([min, max]: [number, number]) => `${formatValue(min)}–${formatValue(max)}`
 
@@ -56,64 +48,67 @@ export const WeatherPopup = ({ onClose }: { onClose: () => void }) => {
   const scale: [number, number] = ranges.length ? [Math.min(...ranges), Math.max(...ranges)] : [0, 1]
 
   return (
-    <div
-      ref={popup}
-      className="weather-popup"
-      role="dialog"
-      aria-label="Weather forecast"
-      onKeyDown={(event) => {
-        event.stopPropagation()
-        if (event.key === 'Escape') onClose()
-      }}
-    >
-      <PanelHead title="Weather at home" sub="7 days · agreement across four models" onClose={onClose} />
-      <div className="weather-scroll">
-        {loading && (
-          <p className="weather-status" role="status">
-            {forecast ? 'Updating forecast…' : 'Loading forecast…'}
-          </p>
-        )}
-        {error && (
-          <div className="weather-status weather-error" role="alert">
-            <span>
-              {forecast
-                ? 'Could not update. Showing saved forecast.'
-                : 'Could not load the forecast. Check your connection.'}
+    // Clicking the dimmed house around the forecast closes it.
+    <div className="weather-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div
+        ref={popup}
+        className="weather-popup"
+        role="dialog"
+        aria-label="Weather forecast"
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          if (event.key === 'Escape') onClose()
+        }}
+      >
+        <PanelHead title="Weather at home" sub="7 days · agreement across four models" onClose={onClose} />
+        <div className="weather-scroll">
+          {loading && (
+            <p className="weather-status" role="status">
+              {forecast ? 'Updating forecast…' : 'Loading forecast…'}
+            </p>
+          )}
+          {error && (
+            <div className="weather-status weather-error" role="alert">
+              <span>
+                {forecast
+                  ? 'Could not update. Showing saved forecast.'
+                  : 'Could not load the forecast. Check your connection.'}
+              </span>
+              <button
+                className="btn btn-small"
+                onClick={() => {
+                  setError(false)
+                  setLoading(true)
+                  setAttempt((n) => n + 1)
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {forecast?.days.map((day) => (
+            <DayRow key={day.date} day={day} scale={scale} />
+          ))}
+        </div>
+        <footer className="weather-footer">
+          {forecast && (
+            <span title={new Date(forecast.updatedAt).toLocaleString(undefined, { timeZone: house.site.timeZone })}>
+              Updated{' '}
+              {new Date(forecast.updatedAt).toLocaleTimeString(undefined, {
+                timeZone: house.site.timeZone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })}
+              {openedAt - forecast.updatedAt >= CACHE_MAX_AGE ? ' · Saved forecast' : ''}
             </span>
-            <button
-              className="btn btn-small"
-              onClick={() => {
-                setError(false)
-                setLoading(true)
-                setAttempt((n) => n + 1)
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
-        {forecast?.days.map((day) => (
-          <DayRow key={day.date} day={day} scale={scale} />
-        ))}
+          )}
+          <span>Confidence describes model agreement. Rain ≥ 1 mm.</span>
+          <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
+            Weather data by Open-Meteo.com
+          </a>
+        </footer>
       </div>
-      <footer className="weather-footer">
-        {forecast && (
-          <span title={new Date(forecast.updatedAt).toLocaleString(undefined, { timeZone: house.site.timeZone })}>
-            Updated{' '}
-            {new Date(forecast.updatedAt).toLocaleTimeString(undefined, {
-              timeZone: house.site.timeZone,
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })}
-            {openedAt - forecast.updatedAt >= CACHE_MAX_AGE ? ' · Saved forecast' : ''}
-          </span>
-        )}
-        <span>Confidence describes model agreement. Rain ≥ 1 mm.</span>
-        <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
-          Weather data by Open-Meteo.com
-        </a>
-      </footer>
     </div>
   )
 }
@@ -121,7 +116,7 @@ export const WeatherPopup = ({ onClose }: { onClose: () => void }) => {
 const DayRow = ({ day, scale }: { day: ForecastDay; scale: [number, number] }) => {
   const summary = summarizeDay(day.models)
   const date = new Date(`${day.date}T12:00:00Z`)
-  const Icon = summary ? ICONS[summary.group] : Cloud
+  const Icon = summary ? WEATHER_ICONS[summary.group] : Cloud
   return (
     <details className="weather-day">
       <summary>

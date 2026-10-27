@@ -5,7 +5,8 @@ import { IconButton, Segmented } from './kit'
 
 type ViewDockProps = {
   camera: CameraMode
-  onCamera: (camera: CameraMode) => void
+  /** Left out at home, where the house is always seen in 3D. */
+  onCamera?: (camera: CameraMode) => void
   /** Walking is for inside a floor. */
   canWalk: boolean
   /** Near walls hidden in the 3D view; offered only there. */
@@ -19,17 +20,19 @@ type ViewDockProps = {
 export const ViewDock = ({ camera, onCamera, canWalk, cutaway, onCutaway, children }: ViewDockProps) => (
   <div className="dock">
     <div className="dock-bar float">
-      <Segmented
-        label="View"
-        value={camera}
-        onChange={onCamera}
-        options={[
-          { value: 'top', label: 'Plan', icon: <PlanIcon size={15} /> },
-          { value: 'orbit', label: '3D', icon: <Box size={15} /> },
-          ...(canWalk ? [{ value: 'walk' as const, label: 'Walk', icon: <Footprints size={15} /> }] : []),
-        ]}
-        className="views"
-      />
+      {onCamera && (
+        <Segmented
+          label="View"
+          value={camera}
+          onChange={onCamera}
+          options={[
+            { value: 'top', label: 'Plan', icon: <PlanIcon size={15} /> },
+            { value: 'orbit', label: '3D', icon: <Box size={15} /> },
+            ...(canWalk ? [{ value: 'walk' as const, label: 'Walk', icon: <Footprints size={15} /> }] : []),
+          ]}
+          className="views"
+        />
+      )}
       {camera === 'orbit' && canWalk && (
         <IconButton
           label={cutaway ? 'Show near walls' : 'Hide near walls'}
