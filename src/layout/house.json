@@ -184,20 +184,6 @@
           ]
         },
         {
-          "id": "g-wc-frame-north",
-          "from": [0.2005, 5.393],
-          "to": [2.331, 5.393],
-          "thickness": 0.1,
-          "height": 1.2
-        },
-        {
-          "id": "g-wc-frame-west",
-          "from": [0.27, 5.443],
-          "to": [0.27, 6.456],
-          "thickness": 0.14,
-          "height": 1.2
-        },
-        {
           "id": "g-shaft-s15-north",
           "from": [5.59, 2.44],
           "to": [6.0505, 2.44],
@@ -511,30 +497,10 @@
           "to": [6.0505, 2.19]
         },
         {
-          "id": "u-bath-shaft-west",
-          "from": [5.515, 2.24],
-          "to": [5.515, 3.16],
-          "height": 1.2
-        },
-        {
           "id": "u-chimney",
           "from": [5.84, 2.45],
           "to": [5.84, 2.8],
           "thickness": 0.4
-        },
-        {
-          "id": "u-basin-frame",
-          "from": [3.854, 0.3355],
-          "to": [3.854, 1.624],
-          "thickness": 0.08,
-          "height": 1.2
-        },
-        {
-          "id": "u-shower-frame",
-          "from": [5.057, 0.387],
-          "to": [6.0505, 0.387],
-          "thickness": 0.08,
-          "height": 1.2
         },
         {
           "id": "u-shaft-s15-west",
