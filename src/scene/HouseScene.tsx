@@ -1,6 +1,6 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
@@ -397,6 +397,11 @@ const CameraRig = ({ mode, floor, houseHeight, onIntroEnd }: CameraRigProps) => 
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
   const span = Math.max(max[0] - min[0], max[1] - min[1])
+  // After the fly-in, the 1st floor's view picks up where the camera landed instead of jumping.
+  const [handoff] = useState(() => intro.handoff)
+  useEffect(() => {
+    intro.handoff = undefined
+  }, [])
 
   if (mode === 'top') {
     return (
@@ -421,23 +426,24 @@ const CameraRig = ({ mode, floor, houseHeight, onIntroEnd }: CameraRigProps) => 
     )
   }
 
-  const aspect = size.width / size.height
-  const pose = orbitPose(floor, aspect, houseHeight)
+  const pose = handoff ?? orbitPose(floor, size.width / size.height, houseHeight)
   return (
     <>
       <PerspectiveCamera makeDefault position={pose.position} fov={45} near={0.1} far={200} />
       <OrbitControls makeDefault target={pose.target} maxPolarAngle={Math.PI / 2.05} />
-      {/* The fly-in lands where the 1st floor's own view starts, so switching to it doesn't jump. */}
-      <IntroFlight to={orbitPose(floor, aspect)} onEnd={onIntroEnd} />
+      <IntroFlight onEnd={onIntroEnd} />
     </>
   )
 }
 
-const INTRO_SECONDS = 1.6
+const INTRO_SECONDS = 2.2
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-/** Starts high above the house looking straight down, then swoops round and down onto `to`. */
-const IntroFlight = ({ to, onEnd }: { to: Pose; onEnd: () => void }) => {
+/**
+ * Starts high above the house looking straight down with the house square on, drops towards it,
+ * and from about halfway down swings round and tilts into the view the camera was set up with.
+ */
+const IntroFlight = ({ onEnd }: { onEnd: () => void }) => {
   // Stays mounted through re-renders; only the first camera of the session flies in.
   const flight = useRef<{ end: Spherical; start: Spherical; t: number }>(undefined)
 
@@ -447,28 +453,29 @@ const IntroFlight = ({ to, onEnd }: { to: Pose; onEnd: () => void }) => {
     if (!flight.current) {
       const pending = intro.pending
       intro.pending = false
-      const end = new Spherical().setFromVector3(to.position.clone().sub(to.target))
-      // High enough that the whole house fits from overhead.
-      const start = new Spherical(end.radius * 1.6, 0.001, end.theta)
+      const end = new Spherical().setFromVector3(camera.position.clone().sub(controls.target))
+      // The tiny angle keeps the overhead view's orientation stable.
+      const start = new Spherical(end.radius * 2.2, 0.001, 0)
       flight.current = { end, start, t: pending ? 0 : 1 }
       if (!pending) return
       controls.enabled = false
-      controls.target.copy(to.target)
     }
     const f = flight.current
     if (f.t >= 1) return
     f.t = Math.min(1, f.t + delta / INTRO_SECONDS)
-    const k = easeInOut(f.t)
+    const down = easeInOut(f.t)
+    const turn = easeInOut(Math.max(0, (f.t - 0.45) / 0.55))
     const at = new Spherical(
-      MathUtils.lerp(f.start.radius, f.end.radius, k),
-      MathUtils.lerp(f.start.phi, f.end.phi, k),
-      f.end.theta,
+      MathUtils.lerp(f.start.radius, f.end.radius, down),
+      MathUtils.lerp(f.start.phi, f.end.phi, turn),
+      MathUtils.lerp(f.start.theta, f.end.theta, turn),
     )
     camera.position.setFromSpherical(at).add(controls.target)
     camera.lookAt(controls.target)
     if (f.t >= 1) {
       controls.enabled = true
       controls.update()
+      intro.handoff = { position: camera.position.clone(), target: controls.target.clone() }
       onEnd()
     }
   })
