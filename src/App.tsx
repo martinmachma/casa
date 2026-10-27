@@ -43,6 +43,7 @@ import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
+import { intro } from './scene/intro'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -66,7 +67,8 @@ const House = ({ backend, account }: HouseProps) => {
   const planning = section === 'planning'
   const data = useHouseData(backend, !planning)
   const [floorIndex, setFloorIndex] = useState(0)
-  const [outside, setOutside] = useState(false)
+  // The opening fly-in shows the whole house, then lands on the 1st floor.
+  const [outside, setOutside] = useState(() => intro.pending)
   const [planCamera, setCamera] = useState<CameraMode>('orbit')
   // Plan and walk are planning tools; at home the house is always seen in 3D.
   const camera = planning ? planCamera : 'orbit'
@@ -488,6 +490,7 @@ const House = ({ backend, account }: HouseProps) => {
           onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}
+          onIntroEnd={() => switchFloor(0)}
           onSelect={select}
           itemActions={{
             onRotate: () => rotateSelection(15),

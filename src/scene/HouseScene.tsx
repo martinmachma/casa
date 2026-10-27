@@ -34,6 +34,7 @@ import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import type { CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
+import { intro } from './intro'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
 
@@ -75,6 +76,8 @@ type HouseSceneProps = {
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
+  /** The opening fly-in has landed on the 1st floor's view. */
+  onIntroEnd: () => void
   onSelect: (selection: Selection | undefined) => void
   /** The selected item's floating buttons. */
   itemActions: ItemActions
@@ -106,6 +109,7 @@ export const HouseScene = ({
   onPlaceDevice,
   nudge,
   viewKey,
+  onIntroEnd,
   onSelect,
   itemActions,
 }: HouseSceneProps) => {
@@ -206,6 +210,7 @@ export const HouseScene = ({
             mode={camera}
             floor={outside ? floors[0] : floor}
             houseHeight={outside ? roofTop(floors) : undefined}
+            onIntroEnd={onIntroEnd}
           />
         )}
         <CameraNudger nudge={nudge} />
@@ -366,9 +371,27 @@ type CameraRigProps = {
   floor: Floor
   /** Set from outside: the whole house this tall has to fit, seen from lower down. */
   houseHeight?: number
+  onIntroEnd: () => void
 }
 
-const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
+type Pose = { position: Vector3; target: Vector3 }
+
+/** Where the orbit camera starts for a floor, or for the whole house when it's this tall. */
+const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => {
+  const { min, max } = floorBounds(floor)
+  const cx = (min[0] + max[0]) / 2
+  const cz = (min[1] + max[1]) / 2
+  const span = Math.max(max[0] - min[0], max[1] - min[1])
+  // A portrait phone sees less sideways; step back so the whole house fits.
+  const back = span * Math.max(1, 0.75 / aspect)
+  // From outside, the whole house: look at its middle from further away and lower down.
+  const look = floor.elevation + (houseHeight ? houseHeight / 2 : 0.8)
+  const away = houseHeight ? Math.max(back, houseHeight) * 1.3 : back
+  const up = houseHeight ? look + away * 0.55 : floor.elevation + back * 1.1
+  return { position: new Vector3(cx + away * 0.8, up, cz + away * 1.25), target: new Vector3(cx, look, cz) }
+}
+
+const CameraRig = ({ mode, floor, houseHeight, onIntroEnd }: CameraRigProps) => {
   const size = useThree((s) => s.size)
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
@@ -398,44 +421,39 @@ const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
     )
   }
 
-  // A portrait phone sees less sideways; step back so the whole house fits.
-  const back = span * Math.max(1, 0.75 / (size.width / size.height))
-  // From outside, the whole house: look at its middle from further away and lower down.
-  const look = floor.elevation + (houseHeight ? houseHeight / 2 : 0.8)
-  const away = houseHeight ? Math.max(back, houseHeight) * 1.3 : back
-  const up = houseHeight ? look + away * 0.55 : floor.elevation + back * 1.1
+  const aspect = size.width / size.height
+  const pose = orbitPose(floor, aspect, houseHeight)
   return (
     <>
-      <PerspectiveCamera makeDefault position={[cx + away * 0.8, up, cz + away * 1.25]} fov={45} near={0.1} far={200} />
-      <OrbitControls makeDefault target={[cx, look, cz]} maxPolarAngle={Math.PI / 2.05} />
-      <IntroFlight />
+      <PerspectiveCamera makeDefault position={pose.position} fov={45} near={0.1} far={200} />
+      <OrbitControls makeDefault target={pose.target} maxPolarAngle={Math.PI / 2.05} />
+      {/* The fly-in lands where the 1st floor's own view starts, so switching to it doesn't jump. */}
+      <IntroFlight to={orbitPose(floor, aspect)} onEnd={onIntroEnd} />
     </>
   )
 }
 
-// The flight in plays once, when the app opens, not on every change of view.
-let introPending = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const INTRO_SECONDS = 1.6
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-/** Starts high above the house looking straight down, then swoops round and down into the view. */
-const IntroFlight = () => {
+/** Starts high above the house looking straight down, then swoops round and down onto `to`. */
+const IntroFlight = ({ to, onEnd }: { to: Pose; onEnd: () => void }) => {
+  // Stays mounted through re-renders; only the first camera of the session flies in.
   const flight = useRef<{ end: Spherical; start: Spherical; t: number }>(undefined)
-  const offset = useMemo(() => new Vector3(), [])
 
   useFrame(({ camera, controls: active }, delta) => {
     const controls = active as OrbitControlsImpl | null
     if (!controls) return
     if (!flight.current) {
-      // Stays mounted through re-renders; only the first camera of the session flies in.
-      const pending = introPending
-      introPending = false
-      const end = new Spherical().setFromVector3(offset.copy(camera.position).sub(controls.target))
-      // High enough that the whole house fits from overhead; the tiny angle keeps north up.
+      const pending = intro.pending
+      intro.pending = false
+      const end = new Spherical().setFromVector3(to.position.clone().sub(to.target))
+      // High enough that the whole house fits from overhead.
       const start = new Spherical(end.radius * 1.6, 0.001, end.theta)
       flight.current = { end, start, t: pending ? 0 : 1 }
       if (!pending) return
       controls.enabled = false
+      controls.target.copy(to.target)
     }
     const f = flight.current
     if (f.t >= 1) return
@@ -451,6 +469,7 @@ const IntroFlight = () => {
     if (f.t >= 1) {
       controls.enabled = true
       controls.update()
+      onEnd()
     }
   })
   return null
