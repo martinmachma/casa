@@ -6,7 +6,7 @@ import { AuthGate, type Account } from './auth/AuthGate'
 import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
-import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
+import { changeKind, deviceRoom } from './devices/place'
 import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
 import { pasteFurniture } from './furniture/clipboard'
@@ -37,7 +37,7 @@ import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
-import { FloorList, RoomLegend } from './ui/RoomLegend'
+import { FloorList } from './ui/FloorList'
 import { TopBar } from './ui/TopBar'
 import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
@@ -75,7 +75,6 @@ const House = ({ backend, account }: HouseProps) => {
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
-  const [hoveredRoom, setHoveredRoom] = useState<string>()
   const [todosOpen, setTodosOpen] = useState(false)
   const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
@@ -217,14 +216,12 @@ const House = ({ backend, account }: HouseProps) => {
     setFloorIndex(index)
     setOutside(false)
     setSelection(undefined)
-    setHoveredRoom(undefined)
     if (measure) setMeasure({ ...measure, picks: [] })
   }
 
   /** The outside view has no walking. */
   const goOutside = () => {
     setOutside(true)
-    setHoveredRoom(undefined)
     if (planCamera === 'walk') setCamera('orbit')
   }
 
@@ -477,13 +474,10 @@ const House = ({ backend, account }: HouseProps) => {
           data={data}
           interaction={measure ? 'measure' : interaction}
           selection={selection}
-          hoveredRoom={hoveredRoom}
-          onHoverRoom={setHoveredRoom}
           wallSnap={wallSnap}
           furnitureSnap={furnitureSnap}
           sun={sunAt}
           north={site.north}
-          roomNumbers={planning && leftOpen}
           measure={measure}
           onMeasurePick={addMeasurePick}
           measurements={measurements}
@@ -508,29 +502,14 @@ const House = ({ backend, account }: HouseProps) => {
           cutaway={cutaway}
           onCutaway={setCutaway}
         >
-          {planning && (
-            <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
-              {outside ? (
-                <FloorList
-                  floors={house.floors}
-                  onPick={switchFloor}
-                  collapsed={!leftOpen}
-                  onToggle={() => setLeftOpen(!leftOpen)}
-                />
-              ) : (
-                <RoomLegend
-                  floor={floor}
-                  regions={regions}
-                  names={data.roomNames}
-                  devices={devicesPerRoom(floorDevices, floor, regions)}
-                  hovered={hoveredRoom}
-                  selected={selection?.kind === 'room' ? selection.roomId : undefined}
-                  onHover={setHoveredRoom}
-                  onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-                  collapsed={!leftOpen}
-                  onToggle={() => setLeftOpen(!leftOpen)}
-                />
-              )}
+          {planning && outside && (
+            <DockBox label="Floors" grow>
+              <FloorList
+                floors={house.floors}
+                onPick={switchFloor}
+                collapsed={!leftOpen}
+                onToggle={() => setLeftOpen(!leftOpen)}
+              />
             </DockBox>
           )}
         </ViewDock>

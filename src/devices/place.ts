@@ -118,14 +118,3 @@ export const deviceRoom = (device: Device, floor: Floor, regions: Map<string, Ro
   const s = device.wall!.side === 'a' ? 0.05 : -0.05
   return roomAt(regions, device.x + n[0] * s, device.y + n[1] * s)
 }
-
-/** How many devices each room on the floor has. */
-export const devicesPerRoom = (devices: Device[], floor: Floor, regions: Map<string, RoomRegion>) => {
-  const counts = new Map<string, number>()
-  for (const device of devices) {
-    if (device.floor !== floor.id) continue
-    const room = deviceRoom(device, floor, regions)
-    if (room) counts.set(room, (counts.get(room) ?? 0) + 1)
-  }
-  return counts
-}

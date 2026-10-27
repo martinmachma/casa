@@ -32,7 +32,6 @@ import { floorWallRects } from '../layout/rooms'
 import { Line } from '@react-three/drei'
 import { SELECTED_OUTLINE } from './palette'
 import { RoomFloors } from './RoomFloors'
-import { RoomLabelProjector, RoomLabels } from './RoomLabels'
 import { NEAR_PACE, type CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
 import { intro } from './intro'
@@ -56,15 +55,11 @@ type HouseSceneProps = {
   /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
   interaction: Interaction
   selection: Selection | undefined
-  hoveredRoom: string | undefined
-  onHoverRoom: (roomId: string | undefined) => void
   wallSnap: boolean
   furnitureSnap: boolean
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
-  /** The room numbers over the 3D view, shown while the rooms box is open. */
-  roomNumbers: boolean
   /** The measurement in progress; undefined when not measuring. */
   measure: Measurement | undefined
   onMeasurePick: (pick: MeasurePick) => void
@@ -93,13 +88,10 @@ export const HouseScene = ({
   data,
   interaction,
   selection,
-  hoveredRoom,
-  onHoverRoom,
   wallSnap,
   furnitureSnap,
   sun,
   north,
-  roomNumbers,
   measure,
   onMeasurePick,
   measurements,
@@ -155,12 +147,10 @@ export const HouseScene = ({
     })),
   ]
 
-  const labels = useRef<(HTMLDivElement | null)[]>([])
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
   // Measuring uses its own floor and wall targets.
   const pickable = interaction === 'edit'
-  const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
   const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
   // A group moves together by however far the grabbed piece went.
@@ -243,7 +233,6 @@ export const HouseScene = ({
               regions={floorRegions(f)}
               materials={data.roomFloors}
               selectedRoom={selection?.kind === 'room' ? selection.roomId : undefined}
-              hoveredRoom={f.id === floor.id ? hoveredRoom : undefined}
               interactive={pickable && f.id === floor.id}
               onPick={(roomId) => onSelect({ kind: 'room', roomId })}
             />
@@ -299,7 +288,6 @@ export const HouseScene = ({
           />
         )}
 
-        {camera !== 'walk' && !outside && <RoomLabelProjector floor={floor} labels={labels} />}
         <AnnotationProjector items={annotations} refs={annotationRefs} />
         {gaps.map((g, i) => (
           <Line
@@ -338,16 +326,6 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {camera !== 'walk' && !outside && roomNumbers && (
-        <RoomLabels
-          floor={floor}
-          labels={labels}
-          names={data.roomNames}
-          hovered={hoveredRoom}
-          onHover={onHoverRoom}
-          onPick={pickRoom}
-        />
-      )}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       <Compass needle={needle} />
     </>

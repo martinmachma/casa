@@ -1067,44 +1067,6 @@ p {
   z-index: 10;
 }
 
-/* Room numbers pinned over the plan. */
-.room-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.92);
-  border: 1px solid rgb(31 27 23 / 0.08);
-  box-shadow: var(--shadow-sm);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-  color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: auto;
-  user-select: none;
-  cursor: default;
-  /* Shown once the scene has placed it. */
-  visibility: hidden;
-  transition:
-    background 120ms,
-    color 120ms,
-    border-color 120ms;
-}
-
-.room-labels[data-clickable] .room-label {
-  cursor: pointer;
-}
-
-.room-label[data-active] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
-  z-index: 1;
-}
-
 /* Lengths pinned in the scene: gaps to the walls, and the measured distance. */
 .annotation {
   position: absolute;
@@ -1962,15 +1924,6 @@ input[type='range'] {
   border-radius: 10px;
   color: #2f3a40;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
-}
-
-.legend-devices {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 
 /* To-do popup */

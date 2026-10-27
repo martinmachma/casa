@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Device } from '../data/types'
 import { roomRegions } from '../layout/rooms'
 import type { Floor } from '../layout/types'
-import { devicesPerRoom, placeDevice, snapToWall } from './place'
+import { deviceRoom, placeDevice, snapToWall } from './place'
 
 // A 4×3 m box (wall centre lines), 0.2 m walls, a window in the south wall, split by a wall at x = 2 with a door.
 const floor: Floor = {
@@ -55,7 +55,7 @@ describe('snapToWall', () => {
   })
 })
 
-describe('devicesPerRoom', () => {
+describe('deviceRoom', () => {
   const device = (patch: Partial<Device>): Device => ({
     id: '',
     floor: 'f',
@@ -71,8 +71,9 @@ describe('devicesPerRoom', () => {
     const west = placeDevice('switch', [1.8, 0.5], floor)!
     const east = placeDevice('socket', [2.2, 0.5], floor)!
     const light = placeDevice('light', [3, 1], floor)!
-    const counts = devicesPerRoom([device(west), device(east), device(light)], floor, roomRegions(floor))
-    expect(counts.get('west')).toBe(1)
-    expect(counts.get('east')).toBe(2)
+    const regions = roomRegions(floor)
+    expect(deviceRoom(device(west), floor, regions)).toBe('west')
+    expect(deviceRoom(device(east), floor, regions)).toBe('east')
+    expect(deviceRoom(device(light), floor, regions)).toBe('east')
   })
 })
