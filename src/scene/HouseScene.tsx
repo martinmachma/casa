@@ -225,7 +225,7 @@ export const HouseScene = ({
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
-        <HouseShadow floors={floors} roof={house.roof} />
+        <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} />
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
         {floors.slice(0, camera === 'walk' ? floors.length : floorIndex + 1).map((f, i) => (

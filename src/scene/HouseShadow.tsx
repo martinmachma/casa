@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from 'react'
 import { BoxGeometry, BufferGeometry, MeshBasicMaterial } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { floorBounds, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import { floorBounds, openingId, openingSill, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Roof } from '../layout/types'
 import { slabGeometry } from './prism'
 
 const SLAB = 0.3
+// A closed door's leaf, so the lights indoors stop at it even when its wall is cut away from view.
+const LEAF = 0.04
 
 // Draws nothing on screen; the sun's shadow pass still renders it.
 const shadowOnly = new MeshBasicMaterial({ colorWrite: false, depthWrite: false })
@@ -24,8 +26,8 @@ const box = (size: [number, number, number], at: [number, number, number], angle
   return bare(geometry)
 }
 
-/** The whole house's walls, slabs and roof as one solid, for shadows. */
-const houseSolid = (floors: Floor[], roof: Roof | undefined) => {
+/** The whole house's walls, closed doors, slabs and roof as one solid, for shadows. */
+const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: ReadonlySet<string>) => {
   const parts: BufferGeometry[] = []
   for (const floor of floors) {
     const slab = slabGeometry(floor, SLAB)
@@ -42,6 +44,13 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined) => {
         piece.translate(wall.from[0], floor.elevation, wall.from[1])
         parts.push(piece)
       }
+      wall.openings?.forEach((o, i) => {
+        if (o.type !== 'door' || openDoors.has(openingId(wall.id, i))) return
+        const sill = openingSill(o)
+        const leaf = box([o.width, o.height, LEAF], [o.offset + o.width / 2, sill + o.height / 2, 0], -wallAngle(wall))
+        leaf.translate(wall.from[0], floor.elevation, wall.from[1])
+        parts.push(leaf)
+      })
     }
   }
   const top = floors[floors.length - 1]
@@ -73,8 +82,16 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined) => {
  * The whole house casting its shadow, whichever floor is shown and whichever walls are cut away.
  * It's invisible and unpickable; the visible walls, slabs and roof leave the shadow to it.
  */
-export const HouseShadow = ({ floors, roof }: { floors: Floor[]; roof: Roof | undefined }) => {
-  const geometry = useMemo(() => houseSolid(floors, roof), [floors, roof])
+export const HouseShadow = ({
+  floors,
+  roof,
+  openDoors,
+}: {
+  floors: Floor[]
+  roof: Roof | undefined
+  openDoors: ReadonlySet<string>
+}) => {
+  const geometry = useMemo(() => houseSolid(floors, roof, openDoors), [floors, roof, openDoors])
   useEffect(() => () => geometry.dispose(), [geometry])
   return <mesh geometry={geometry} material={shadowOnly} castShadow raycast={() => null} />
 }
