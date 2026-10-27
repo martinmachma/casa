@@ -1,5 +1,6 @@
-import { Trash2 } from 'lucide-react'
+import { Lightbulb, Trash2 } from 'lucide-react'
 import type { Device, DeviceKind } from '../data/types'
+import type { LightState } from '../devices/lights'
 import { DEVICE_KINDS, KIND_ORDER } from '../devices/kinds'
 import { DeviceIcon } from './deviceIcons'
 import { NumberField } from './NumberField'
@@ -11,13 +12,25 @@ type DeviceEditorProps = {
   room: string | undefined
   onChange: (patch: Partial<Device>) => void
   onKind: (kind: DeviceKind) => void
+  /** How brightly it shines now, 0 (off) to 1; only lights use it. */
+  level: number
+  onLight: (patch: Partial<LightState>) => void
   onDelete: () => void
   onClose: () => void
 }
 
 const cm = (m: number) => Math.round(m * 100)
 
-export const DeviceEditor = ({ device, room, onChange, onKind, onDelete, onClose }: DeviceEditorProps) => (
+export const DeviceEditor = ({
+  device,
+  room,
+  onChange,
+  onKind,
+  level,
+  onLight,
+  onDelete,
+  onClose,
+}: DeviceEditorProps) => (
   <>
     <PanelHead
       eyebrow={DEVICE_KINDS[device.kind].label}
@@ -25,6 +38,35 @@ export const DeviceEditor = ({ device, room, onChange, onKind, onDelete, onClose
       sub={[room, device.wall ? `on the wall, ${cm(device.z)} cm up` : 'on the ceiling'].filter(Boolean).join(' · ')}
       onClose={onClose}
     />
+
+    {device.kind === 'light' && (
+      <Section
+        title="Light"
+        aside={<span className="muted num">{level > 0 ? `${Math.round(level * 100)} %` : 'Off'}</span>}
+      >
+        <div className="row">
+          <button className="btn btn-block" aria-pressed={level > 0} onClick={() => onLight({ on: !(level > 0) })}>
+            <Lightbulb size={16} />
+            {level > 0 ? 'Turn off' : 'Turn on'}
+          </button>
+        </div>
+        <label className="field">
+          Brightness
+          <input
+            type="range"
+            min={5}
+            max={100}
+            value={Math.round((level > 0 ? level : 1) * 100)}
+            onChange={(e) => onLight({ on: true, brightness: Number(e.target.value) / 100 })}
+          />
+        </label>
+        <p className="hint">
+          {device.entity
+            ? `Only here in the app for now; it isn't linked to ${device.entity} yet.`
+            : 'Only here in the app for now. Tap a light while looking round to switch it.'}
+        </p>
+      </Section>
+    )}
 
     <Section>
       {/* Remount when another device is selected so the fields show its values. */}

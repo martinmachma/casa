@@ -34,8 +34,8 @@ type DevicesProps = {
   floor: Floor
   devices: Device[]
   selectedId: string | undefined
-  /** How brightly the ceiling lights are lit, 0 (off) to 1. */
-  glow: number
+  /** How brightly each ceiling light is lit, 0 (off) to 1. */
+  glow: (id: string) => number
   /** Seen from straight above: wall plates get a marker on top of the wall, where they can be seen and picked. */
   plan: boolean
   /** False unless the devices tool is on. */
@@ -43,6 +43,8 @@ type DevicesProps = {
   onSelect: (id: string) => void
   onMove: (id: string, patch: Partial<Device>) => void
   onMoveEnd: () => void
+  /** Set while viewing: a tap on a light switches it. */
+  onToggle?: (id: string) => void
 }
 
 type Controls = { enabled: boolean }
@@ -58,6 +60,7 @@ export const Devices = ({
   onSelect,
   onMove,
   onMoveEnd,
+  onToggle,
 }: DevicesProps) => (
   <group>
     {devices.map((device) => (
@@ -66,18 +69,23 @@ export const Devices = ({
         device={device}
         floor={floor}
         selected={device.id === selectedId}
-        glow={glow}
+        glow={glow(device.id)}
         plan={plan}
         interactive={interactive}
         onSelect={onSelect}
         onMove={onMove}
         onMoveEnd={onMoveEnd}
+        onToggle={onToggle}
       />
     ))}
   </group>
 )
 
-type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId'> & { device: Device; selected: boolean }
+type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId' | 'glow'> & {
+  device: Device
+  selected: boolean
+  glow: number
+}
 
 const DeviceMesh = ({
   device,
@@ -89,6 +97,7 @@ const DeviceMesh = ({
   onSelect,
   onMove,
   onMoveEnd,
+  onToggle,
 }: DeviceMeshProps) => {
   const getState = useThree((s) => s.get)
   const level = floor.elevation + device.z
@@ -145,7 +154,21 @@ const DeviceMesh = ({
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'grab')),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
-    : { raycast: () => null }
+    : onToggle && device.kind === 'light'
+      ? {
+          raycast: Mesh.prototype.raycast,
+          onClick: (e: ThreeEvent<MouseEvent>) => {
+            if (e.delta > CLICK_SLOP_PX) return
+            e.stopPropagation()
+            onToggle(device.id)
+          },
+          onPointerOver: (e: ThreeEvent<PointerEvent>) => (
+            e.stopPropagation(),
+            (document.body.style.cursor = 'pointer')
+          ),
+          onPointerOut: () => (document.body.style.cursor = ''),
+        }
+      : { raycast: () => null }
 
   const material = (
     <meshStandardMaterial

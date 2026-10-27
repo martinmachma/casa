@@ -29,12 +29,12 @@ type HouseLightsProps = {
   floors: Floor[]
   devices: Device[]
   furniture: FurnitureItem[]
-  /** 0 by day, 1 at night: lights fade in through dusk. */
-  dark: number
+  /** How brightly each light (by device or furniture id) shines, 0 (off) to 1. */
+  level: (id: string) => number
 }
 
-/** The house's own lights, switched on after dark: each ceiling light and lamp is a warm point light. */
-export const HouseLights = ({ floors, devices, furniture, dark }: HouseLightsProps) => {
+/** The house's own lights: each ceiling light and lamp that's on is a warm point light. */
+export const HouseLights = ({ floors, devices, furniture, level }: HouseLightsProps) => {
   const lights = useRef<(PointLight | null)[]>([])
   const frame = useRef(0)
   const tmp = useRef(new Vector3())
@@ -42,14 +42,18 @@ export const HouseLights = ({ floors, devices, furniture, dark }: HouseLightsPro
   const bulbs: Bulb[] = []
   for (const f of floors) {
     for (const d of devices)
-      if (d.floor === f.id && d.kind === 'light')
-        bulbs.push({ id: d.id, position: [d.x, f.elevation + d.z - 0.08, d.y], intensity: CEILING_INTENSITY })
+      if (d.floor === f.id && d.kind === 'light' && level(d.id) > 0)
+        bulbs.push({
+          id: d.id,
+          position: [d.x, f.elevation + d.z - 0.08, d.y],
+          intensity: CEILING_INTENSITY * level(d.id),
+        })
     for (const item of furniture)
-      if (item.floor === f.id && isLamp(item.model))
+      if (item.floor === f.id && isLamp(item.model) && level(item.id) > 0)
         bulbs.push({
           id: item.id,
           position: [item.x, f.elevation + (item.z ?? 0) + item.height * LAMPS[item.model!], item.y],
-          intensity: LAMP_INTENSITY,
+          intensity: LAMP_INTENSITY * level(item.id),
         })
   }
 
@@ -74,7 +78,7 @@ export const HouseLights = ({ floors, devices, furniture, dark }: HouseLightsPro
     if (shadowed.length) shadowed[n % shadowed.length].shadow.needsUpdate = true
   })
 
-  if (dark <= 0) return null
+  if (!bulbs.length) return null
   return (
     <>
       {bulbs.map((b, i) => (
@@ -85,7 +89,7 @@ export const HouseLights = ({ floors, devices, furniture, dark }: HouseLightsPro
           }}
           position={b.position}
           color={BULB}
-          intensity={b.intensity * dark}
+          intensity={b.intensity}
           distance={REACH}
           decay={2}
           shadow-autoUpdate={false}

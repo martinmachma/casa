@@ -23,6 +23,8 @@ import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
+import { lightLevel, useLights } from './devices/lights'
+import { daylight } from './scene/Lights'
 import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
@@ -103,6 +105,9 @@ const House = ({ backend, account }: HouseProps) => {
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
     : undefined
+
+  const lights = useLights()
+  const dark = 1 - daylight(sunAt)
 
   const floor = house.floors[floorIndex]
   const regions = floorRegions(floor)
@@ -418,6 +423,8 @@ const House = ({ backend, account }: HouseProps) => {
             data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
           }
           onKind={(kind) => changeDeviceKind(selectedDevice, kind)}
+          level={lightLevel(lights.states[selectedDevice.id], dark)}
+          onLight={(patch) => lights.set(selectedDevice.id, patch, dark)}
           onDelete={() => deleteDevice(selectedDevice)}
           onClose={() => setSelection(undefined)}
         />
@@ -490,6 +497,8 @@ const House = ({ backend, account }: HouseProps) => {
           measurements={measurements}
           onRemoveMeasurement={(id) => setMeasurements((ms) => ms.filter((m) => m.id !== id))}
           placing={placing}
+          lights={lights.states}
+          onToggleLight={(id) => lights.toggle(id, dark)}
           onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}

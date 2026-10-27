@@ -32,6 +32,8 @@ type FurnitureBoxProps = {
   onMoveEnd: (id: string) => void
   /** A plain press let go without moving. */
   onTap: (id: string) => void
+  /** Set for a lamp while viewing: a tap switches it. */
+  onToggle?: (id: string) => void
   actions: ItemActions
 }
 
@@ -43,6 +45,8 @@ export type ItemActions = {
 }
 
 type Controls = { enabled: boolean }
+// A pointer that moved further than this between down and up was an orbit/pan, not a tap.
+const CLICK_SLOP_PX = 5
 
 /** A furniture item that can be dragged across its floor with independent snapping options. */
 export const FurnitureBox = ({
@@ -58,6 +62,7 @@ export const FurnitureBox = ({
   snapWalls,
   snapItems,
   onSelect,
+  onToggle,
   onMove,
   onMoveEnd,
   onTap,
@@ -143,7 +148,21 @@ export const FurnitureBox = ({
         ),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
-    : { raycast: () => null }
+    : onToggle
+      ? {
+          raycast: Mesh.prototype.raycast,
+          onClick: (e: ThreeEvent<MouseEvent>) => {
+            if (e.delta > CLICK_SLOP_PX) return
+            e.stopPropagation()
+            onToggle(item.id)
+          },
+          onPointerOver: (e: ThreeEvent<PointerEvent>) => (
+            e.stopPropagation(),
+            (document.body.style.cursor = 'pointer')
+          ),
+          onPointerOut: () => (document.body.style.cursor = ''),
+        }
+      : { raycast: () => null }
   // Rugs are nearly flat; keep their hit box tappable.
   const hitHeight = Math.max(item.height, 0.02)
   const shape = footprint(item.model)
