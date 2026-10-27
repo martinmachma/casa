@@ -46,13 +46,13 @@
               "type": "sliding",
               "offset": 2.358,
               "width": 1,
-              "height": 2.25
+              "height": 2.425
             },
             {
               "type": "window",
               "offset": 3.358,
               "width": 1.5,
-              "height": 2.25,
+              "height": 2.425,
               "sill": 0
             }
           ]
@@ -102,8 +102,8 @@
               "type": "window",
               "offset": 1.152,
               "width": 0.5,
-              "height": 1.25,
-              "sill": 0.9
+              "height": 2.425,
+              "sill": 0
             }
           ]
         },
