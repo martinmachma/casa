@@ -1,24 +1,33 @@
-import { useMemo } from 'react'
+import { Line } from '@react-three/drei'
+import { useEffect, useMemo } from 'react'
 import type { Outdoor as OutdoorLayout, Shed } from '../layout/types'
-import { EXTERIOR_FRAME, GROUND, LAWN, PAVING, SHED_ROOF, SHED_WOOD } from './palette'
+import { surroundingsTexture } from './groundTexture'
+import { EXTERIOR_FRAME, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
 import { prismGeometry } from './prism'
 
 const LAWN_DEPTH = 0.05
 const ROOF = 0.08
 const EAVE = 0.1
 const DOOR_HEIGHT = 1.9
-// The land around the plot, a little below the lawn so the two never flicker.
-const GROUND_SIZE = 120
+// The blurred land around the plot, a little below the lawn so the two never flicker.
+const GROUND_RADIUS = 90
 const GROUND_DROP = 0.01
 
 const noRaycast = () => null
 
-/** The garden behind the house: lawn, the paved terrace and the shed, on open ground all around. */
+/** The garden behind the house: lawn, the paved terrace and the shed, edged and set in soft blurred surroundings. */
 export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
   const lawn = useMemo(() => prismGeometry(outdoor.garden, LAWN_DEPTH), [outdoor.garden])
   const terrace = useMemo(
     () => prismGeometry(outdoor.terrace.outline, outdoor.terrace.level - outdoor.level),
     [outdoor.terrace, outdoor.level],
+  )
+  const ground = useMemo(() => surroundingsTexture(), [])
+  useEffect(() => () => ground.dispose(), [ground])
+  const edge = useMemo(
+    () =>
+      [...outdoor.garden, outdoor.garden[0]].map(([x, z]) => [x, outdoor.level + 0.005, z] as [number, number, number]),
+    [outdoor.garden, outdoor.level],
   )
   const xs = outdoor.garden.map((p) => p[0])
   const ys = outdoor.garden.map((p) => p[1])
@@ -32,12 +41,13 @@ export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
         receiveShadow
         raycast={noRaycast}
       >
-        <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
-        <meshStandardMaterial color={GROUND} roughness={1} />
+        <circleGeometry args={[GROUND_RADIUS, 64]} />
+        <meshStandardMaterial map={ground} transparent depthWrite={false} roughness={1} />
       </mesh>
       <mesh geometry={lawn} position={[0, outdoor.level, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={LAWN} roughness={1} />
       </mesh>
+      <Line points={edge} color={PLOT_EDGE} lineWidth={2} raycast={noRaycast} />
       <mesh geometry={terrace} position={[0, outdoor.terrace.level, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={PAVING} roughness={0.95} />
       </mesh>
