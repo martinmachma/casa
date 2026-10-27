@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef, type ReactNode } from 'react'
 import { Vector3, type Camera, type Group } from 'three'
-import { blocksView, wallAngle, wallOutside } from '../layout/geometry'
+import { blocksView, wallAngle, wallHeight, wallOutside } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
 // Keep the visible outline pickable when the rest of the wall is cut away.
@@ -15,7 +15,7 @@ const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: 
 }
 
 export const visibleWallHeight = (wall: Wall, floor: Floor, camera: Camera, cutaway: boolean) =>
-  isCut(wall, cutaway ? wallOutside(wall, floor) : undefined, camera, cutaway) ? STUB_HEIGHT : floor.height
+  isCut(wall, cutaway ? wallOutside(wall, floor) : undefined, camera, cutaway) ? Math.min(STUB_HEIGHT, wallHeight(wall, floor)) : wallHeight(wall, floor)
 
 /** Rendered walls and measurement targets share the same camera-dependent visibility. */
 export const CutawayWall = ({

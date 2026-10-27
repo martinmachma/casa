@@ -28,6 +28,8 @@ export type Wall = {
   to: Point
   /** Falls back to the floor's `wallThickness`. */
   thickness?: number
+  /** Falls back to the floor's `height`; lower for half-height walls such as a WC's installation frame. */
+  height?: number
   openings?: Opening[]
 }
 

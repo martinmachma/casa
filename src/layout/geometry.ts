@@ -13,6 +13,9 @@ export const wallAngle = (wall: Wall): number => Math.atan2(wall.to[1] - wall.fr
 export const wallThickness = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): number =>
   wall.thickness ?? floor.wallThickness
 
+/** How tall a wall stands: its own height, else the floor's. */
+export const wallHeight = (wall: Wall, floor: Pick<Floor, 'height'>): number => wall.height ?? floor.height
+
 export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window' ? DEFAULT_WINDOW_SILL : 0)
 
 /** Openings have no stored id; wall ids are unique and openings retain their layout order. */
@@ -67,8 +70,8 @@ export const validateLayout = (layout: HouseLayout): void => {
         if (o.offset + o.width > length + 1e-9)
           throw new Error(`${label} runs past the wall end (wall is ${length.toFixed(2)} m)`)
         if (o.offset < previousEnd - 1e-9) throw new Error(`${label} overlaps the previous opening`)
-        if (openingSill(o) + o.height > floor.height + 1e-9)
-          throw new Error(`${label} is taller than the floor height ${floor.height} m`)
+        if (openingSill(o) + o.height > wallHeight(wall, floor) + 1e-9)
+          throw new Error(`${label} is taller than the wall (${wallHeight(wall, floor)} m)`)
         previousEnd = o.offset + o.width
       }
     }

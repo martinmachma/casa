@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { BoxGeometry, BufferGeometry, MeshBasicMaterial } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { floorBounds, openingId, openingSill, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import { floorBounds, openingId, openingSill, wallAngle, wallHeight, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Roof } from '../layout/types'
 import { slabGeometry } from './prism'
 
@@ -35,7 +35,7 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: Readonly
     parts.push(bare(slab))
     for (const wall of floor.walls) {
       const thickness = wallThickness(wall, floor)
-      for (const p of wallPieces(wall, floor.height, thickness / 2)) {
+      for (const p of wallPieces(wall, wallHeight(wall, floor), thickness / 2)) {
         const piece = box(
           [p.u1 - p.u0, p.y1 - p.y0, thickness],
           [(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0],
