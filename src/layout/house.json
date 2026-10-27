@@ -386,6 +386,7 @@
         },
         {
           "id": "u-wc-frame",
+          "against": "u-east-shaft",
           "from": [5.565, 2.24],
           "to": [5.565, 3.16],
           "thickness": 0.1,

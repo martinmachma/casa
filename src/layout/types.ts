@@ -30,6 +30,8 @@ export type Wall = {
   thickness?: number
   /** Falls back to the floor's `height`; lower for half-height walls such as a WC's installation frame. */
   height?: number
+  /** The outer wall it's built against, so it cuts away with that wall. */
+  against?: string
   openings?: Opening[]
 }
 

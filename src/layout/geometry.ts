@@ -126,6 +126,8 @@ const wallNormal = (wall: Wall): Point => {
 /** For an outer wall, the unit normal pointing out of the house; undefined for walls with rooms on both sides. */
 export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
   if (wallLength(wall) === 0) return undefined
+  const backing = wall.against && floor.walls.find((w) => w.id === wall.against)
+  if (backing) return wallOutside(backing, floor)
   const { min, max } = floorBounds(floor)
   const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
   const [nx, nz] = wallNormal(wall)
