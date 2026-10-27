@@ -1,7 +1,8 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState, type RefObject } from 'react'
-import { MOUSE, TOUCH } from 'three'
+import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
@@ -407,6 +408,47 @@ const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
     <>
       <PerspectiveCamera makeDefault position={[cx + away * 0.8, up, cz + away * 1.25]} fov={45} near={0.1} far={200} />
       <OrbitControls makeDefault target={[cx, look, cz]} maxPolarAngle={Math.PI / 2.05} />
+      {introPending && <IntroFlight />}
     </>
   )
+}
+
+// The flight in plays once, when the app opens, not on every change of view.
+let introPending = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+const INTRO_SECONDS = 1.6
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
+
+/** Starts high above the house looking straight down, then swoops round and down into the view. */
+const IntroFlight = () => {
+  const flight = useRef<{ end: Spherical; start: Spherical; t: number }>(undefined)
+  const offset = useMemo(() => new Vector3(), [])
+
+  useFrame(({ camera, controls: active }, delta) => {
+    const controls = active as OrbitControlsImpl | null
+    if (!controls) return
+    if (!flight.current) {
+      introPending = false
+      const end = new Spherical().setFromVector3(offset.copy(camera.position).sub(controls.target))
+      // High enough that the whole house fits from overhead; the tiny angle keeps north up.
+      const start = new Spherical(end.radius * 1.6, 0.001, end.theta)
+      flight.current = { end, start, t: 0 }
+      controls.enabled = false
+    }
+    const f = flight.current
+    if (f.t >= 1) return
+    f.t = Math.min(1, f.t + delta / INTRO_SECONDS)
+    const k = easeInOut(f.t)
+    const at = new Spherical(
+      MathUtils.lerp(f.start.radius, f.end.radius, k),
+      MathUtils.lerp(f.start.phi, f.end.phi, k),
+      f.end.theta,
+    )
+    camera.position.setFromSpherical(at).add(controls.target)
+    camera.lookAt(controls.target)
+    if (f.t >= 1) {
+      controls.enabled = true
+      controls.update()
+    }
+  })
+  return null
 }
