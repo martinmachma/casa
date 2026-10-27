@@ -109,7 +109,10 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
       const { error } = await supabase
         .from('todos')
         .delete()
-        .in('id', todos.map((t) => t.id))
+        .in(
+          'id',
+          todos.map((t) => t.id),
+        )
       if (error) throw error
       setEditing(undefined)
       await load()

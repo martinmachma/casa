@@ -46,6 +46,9 @@ import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
+import { ROOM_VIEWS } from './rooms/roomViews'
+import { roomItems } from './rooms/roomItems'
+import { RoomOverview } from './ui/RoomOverview'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
 
@@ -106,7 +109,15 @@ const House = ({ backend, account }: HouseProps) => {
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
     : undefined
 
+  // A room on its own, from the menu: a fixed view of it with its smart items alongside.
+  const [roomView, setRoomView] = useState<string>()
+  const [popover, setPopover] = useState<string>()
+  const pinRefs = useRef(new Map<string, HTMLElement | null>())
+  const focus = ROOM_VIEWS.find((r) => r.id === roomView)
   const lights = useLights()
+  const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
+  const focusRoomRecord = focusFloor?.rooms.find((r) => r.id === focus?.room)
+  const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
   const dark = 1 - daylight(sunAt)
 
   const floor = house.floors[floorIndex]
@@ -220,7 +231,25 @@ const House = ({ backend, account }: HouseProps) => {
     select({ kind: 'furniture', ids: [created.id] })
   }
 
+  const leaveRoom = () => {
+    setRoomView(undefined)
+    setPopover(undefined)
+  }
+  const openRoom = (id: string) => {
+    const view = ROOM_VIEWS.find((r) => r.id === id)
+    const index = house.floors.findIndex((f) => f.id === view?.floor)
+    if (!view || index < 0) return
+    if (section !== 'home') changeSection('home')
+    setFloorIndex(index)
+    setOutside(false)
+    setCamera('orbit')
+    setSelection(undefined)
+    setPopover(undefined)
+    setRoomView(id)
+  }
+
   const switchFloor = (index: number) => {
+    leaveRoom()
     // The camera keeps where it is; only Reset view (a new view key) starts it afresh.
     setFloorIndex(index)
     setOutside(false)
@@ -230,12 +259,14 @@ const House = ({ backend, account }: HouseProps) => {
 
   /** The outside view has no walking. */
   const goOutside = () => {
+    leaveRoom()
     setOutside(true)
     if (planCamera === 'walk') setCamera('orbit')
   }
 
   /** Home is for looking at the house: editing and measuring stop, and the sun follows the clock. */
   const changeSection = (next: Section) => {
+    leaveRoom()
     if (next === section) return
     if (next === 'home') {
       changeInteraction('view')
@@ -322,6 +353,7 @@ const House = ({ backend, account }: HouseProps) => {
         duplicateSelection()
         return
       }
+      if (focus && e.key === 'Escape' && !typing) return popover ? setPopover(undefined) : leaveRoom()
       if (typing || e.metaKey || e.ctrlKey || e.altKey || locked) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') toggleMeasure()
@@ -343,7 +375,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   const editing = interaction !== 'view'
   // While looking round, it opens only for a picked light.
-  const rightOpen = (editing || selection?.kind === 'light') && !rightTucked
+  const rightOpen = (editing || selection?.kind === 'light') && !rightTucked && !focus
   const closeRight = () => setRightOpen(false)
   const modeBar = !locked && (
     <ModeBar
@@ -477,7 +509,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
-      <NavRail section={section} onSection={changeSection} />
+      <NavRail section={section} onSection={changeSection} rooms={ROOM_VIEWS} room={roomView} onRoom={openRoom} />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
@@ -516,7 +548,7 @@ const House = ({ backend, account }: HouseProps) => {
           onRemoveMeasurement={(id) => setMeasurements((ms) => ms.filter((m) => m.id !== id))}
           placing={placing}
           lights={lights.states}
-          onPickLight={(id) => select({ kind: 'light', id })}
+          onPickLight={(id) => (focus ? setPopover(id) : select({ kind: 'light', id }))}
           onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}
@@ -526,27 +558,46 @@ const House = ({ backend, account }: HouseProps) => {
             onDuplicate: () => duplicateSelection(),
             onDelete: deleteSelection,
           }}
+          focusRoom={focus?.room}
+          pins={focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at }))}
+          pinRefs={pinRefs}
         />
 
-        <ViewDock
-          camera={camera}
-          onCamera={setCamera}
-          canPlan={planning}
-          canWalk={!outside}
-          cutaway={cutaway}
-          onCutaway={setCutaway}
-        >
-          {planning && outside && (
-            <DockBox label="Floors" grow>
-              <FloorList
-                floors={house.floors}
-                onPick={switchFloor}
-                collapsed={!leftOpen}
-                onToggle={() => setLeftOpen(!leftOpen)}
-              />
-            </DockBox>
-          )}
-        </ViewDock>
+        {focus && focusFloor && (
+          <RoomOverview
+            title={focusRoomRecord ? roomLabel(focusRoomRecord, data.roomNames).name : focus.label}
+            area={floorRegions(focusFloor).get(focus.room)?.area}
+            items={focusItems}
+            light={(id) => lightSettings(lights.states[id], dark)}
+            onLight={(id, patch) => lights.set(id, patch, dark)}
+            open={popover}
+            onOpen={setPopover}
+            onClose={leaveRoom}
+            pinRefs={pinRefs}
+          />
+        )}
+
+        {!focus && (
+          <ViewDock
+            camera={camera}
+            onCamera={setCamera}
+            canPlan={planning}
+            canWalk={!outside}
+            cutaway={cutaway}
+            onCutaway={setCutaway}
+          >
+            {planning && outside && (
+              <DockBox label="Floors" grow>
+                <FloorList
+                  floors={house.floors}
+                  onPick={switchFloor}
+                  collapsed={!leftOpen}
+                  onToggle={() => setLeftOpen(!leftOpen)}
+                />
+              </DockBox>
+            )}
+          </ViewDock>
+        )}
 
         {modeBar}
 
@@ -566,12 +617,14 @@ const House = ({ backend, account }: HouseProps) => {
           {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
         </div>
 
-        <CameraPad
-          mode={camera}
-          onHold={(axis, value) => (nudge.current[axis] = value)}
-          onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}
-          onReset={() => setViewKey((k) => k + 1)}
-        />
+        {!focus && (
+          <CameraPad
+            mode={camera}
+            onHold={(axis, value) => (nudge.current[axis] = value)}
+            onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}
+            onReset={() => setViewKey((k) => k + 1)}
+          />
+        )}
 
         {planning && data.dirty && <SaveBar data={data} />}
 

@@ -2656,3 +2656,107 @@ input[type='range'].kelvin::-moz-range-thumb {
   align-items: center;
   gap: 2px;
 }
+
+/* A room's own view: the rest of the house blurred, cards down the right, popovers by the items. */
+.room-blur {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(235 231 225 / 0.25);
+  backdrop-filter: blur(7px) saturate(0.8);
+  -webkit-backdrop-filter: blur(7px) saturate(0.8);
+}
+
+.room-cards {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: min(300px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.room-card {
+  pointer-events: auto;
+  padding: 14px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+}
+
+.room-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.room-card-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.smart-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.smart-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.smart-item:hover,
+.smart-item[aria-pressed='true'] {
+  background: var(--line);
+}
+
+.smart-item-text {
+  display: grid;
+  font-size: 13px;
+}
+
+.smart-item-text .muted {
+  font-size: 12px;
+}
+
+.room-pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.room-popover {
+  position: absolute;
+  left: 14px;
+  top: 0;
+  transform: translateY(-50%);
+  width: 260px;
+  padding: 12px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+}
+
+@media (max-width: 820px) {
+  .room-cards {
+    top: auto;
+    max-height: 45%;
+  }
+}

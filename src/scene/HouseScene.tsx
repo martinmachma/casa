@@ -39,6 +39,7 @@ import { CameraNudger } from './CameraNudger'
 import { intro } from './intro'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
+import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
@@ -81,6 +82,11 @@ type HouseSceneProps = {
   onSelect: (selection: Selection | undefined) => void
   /** The selected item's floating buttons. */
   itemActions: ItemActions
+  /** A room seen on its own: the camera is fixed on it and the rest of the house blurred. */
+  focusRoom?: string
+  /** Elements kept over points in the focused room. */
+  pins?: Pin[]
+  pinRefs?: RefObject<Map<string, HTMLElement | null>>
 }
 
 export const HouseScene = ({
@@ -110,7 +116,12 @@ export const HouseScene = ({
   viewKey,
   onSelect,
   itemActions,
+  focusRoom,
+  pins = [],
+  pinRefs,
 }: HouseSceneProps) => {
+  const blur = useRef<HTMLDivElement>(null)
+  const noPins = useRef(new Map<string, HTMLElement | null>())
   const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
   const toggleDoor = (id: string) =>
     setOpenDoors((current) => {
@@ -204,7 +215,17 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
       >
         <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
-        {camera === 'walk' ? (
+        {focusRoom ? (
+          <RoomCamera
+            floor={floor}
+            roomId={focusRoom}
+            from={
+              lastView.mode === 'orbit'
+                ? { position: lastView.position.clone(), target: lastView.target.clone() }
+                : undefined
+            }
+          />
+        ) : camera === 'walk' ? (
           <WalkCamera
             key={viewKey}
             floor={floor}
@@ -223,7 +244,11 @@ export const HouseScene = ({
             viewKey={viewKey}
           />
         )}
-        <CameraNudger nudge={nudge} />
+        {focusRoom ? (
+          <FocusProjector floor={floor} roomId={focusRoom} mask={blur} pins={pins} pinRefs={pinRefs ?? noPins} />
+        ) : (
+          <CameraNudger nudge={nudge} />
+        )}
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
         <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
         <CompassTracker north={north} needle={needle} />
@@ -356,8 +381,9 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
+      {focusRoom && <div className="room-blur" ref={blur} />}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
-      <Compass needle={needle} />
+      {!focusRoom && <Compass needle={needle} />}
     </>
   )
 }
