@@ -39,6 +39,7 @@ import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { FloorList, RoomLegend } from './ui/RoomLegend'
 import { TopBar } from './ui/TopBar'
+import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
@@ -51,8 +52,19 @@ type HouseProps = { backend: Backend; account: Account }
 const NARROW = '(max-width: 820px)'
 const isNarrow = () => window.matchMedia(NARROW).matches
 
+const SECTION_KEY = 'casa.section'
+const savedSection = (): Section => {
+  try {
+    return localStorage.getItem(SECTION_KEY) === 'home' ? 'home' : 'planning'
+  } catch {
+    return 'planning'
+  }
+}
+
 const House = ({ backend, account }: HouseProps) => {
   const data = useHouseData(backend)
+  const [section, setSection] = useState(savedSection)
+  const planning = section === 'planning'
   const [floorIndex, setFloorIndex] = useState(0)
   const [outside, setOutside] = useState(false)
   const [camera, setCamera] = useState<CameraMode>('orbit')
@@ -205,6 +217,21 @@ const House = ({ backend, account }: HouseProps) => {
     if (camera === 'walk') setCamera('orbit')
   }
 
+  /** Home is for looking at the house: editing and measuring stop. */
+  const changeSection = (next: Section) => {
+    if (next === section) return
+    if (next === 'home') {
+      changeInteraction('view')
+      stopMeasuring()
+    }
+    setSection(next)
+    try {
+      localStorage.setItem(SECTION_KEY, next)
+    } catch {
+      // Private windows may refuse storage; the section just isn't remembered.
+    }
+  }
+
   /** Nothing stays selected across modes; measuring carries on. */
   const changeInteraction = (next: Interaction) => {
     setSelection(undefined)
@@ -243,13 +270,15 @@ const House = ({ backend, account }: HouseProps) => {
     data.redo()
   }
 
+  // Outside and at home, the house is only looked at.
+  const locked = outside || !planning
   // E toggles editing, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
       const typing = isTyping(e.target)
       const key = e.key.toLowerCase()
-      if (!typing && !outside && interaction === 'edit' && !measure && (e.metaKey || e.ctrlKey)) {
+      if (!typing && !locked && interaction === 'edit' && !measure && (e.metaKey || e.ctrlKey)) {
         if (key === 'c' && selectedItems.length) {
           e.preventDefault()
           clipboard.current = selectedItems.map(({ id: _, ...item }) => ({ ...item }))
@@ -264,18 +293,18 @@ const House = ({ backend, account }: HouseProps) => {
           return
         }
       }
-      if (!typing && !outside && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
+      if (!typing && !locked && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
         e.preventDefault()
         if (key === 'y' || e.shiftKey) redo()
         else undo()
         return
       }
-      if (!typing && !outside && selectedItems.length && (e.metaKey || e.ctrlKey) && key === 'd') {
+      if (!typing && !locked && selectedItems.length && (e.metaKey || e.ctrlKey) && key === 'd') {
         e.preventDefault()
         duplicateSelection()
         return
       }
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || locked) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') toggleMeasure()
       else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
@@ -297,7 +326,7 @@ const House = ({ backend, account }: HouseProps) => {
   const editing = interaction !== 'view'
   const rightOpen = editing && !rightTucked
   const closeRight = () => setRightOpen(false)
-  const modeBar = !outside && (
+  const modeBar = !locked && (
     <ModeBar
       interaction={interaction}
       onChange={changeInteraction}
@@ -405,17 +434,21 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
+      <NavRail
+        section={section}
+        onSection={changeSection}
+        onWeather={() => setWeatherOpen(true)}
+        onTodos={() => setTodosOpen(true)}
+        openTodos={openTodos}
+        account={account}
+      />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
         onFloor={switchFloor}
         outside={outside}
         onOutside={goOutside}
-        onTodos={() => setTodosOpen(true)}
-        openTodos={openTodos}
-        onWeather={() => setWeatherOpen(true)}
-        account={account}
-        versions={<VersionMenu data={data} />}
+        versions={planning && <VersionMenu data={data} />}
       />
 
       {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
@@ -485,7 +518,7 @@ const House = ({ backend, account }: HouseProps) => {
         {modeBar}
 
         <div className="bottom-tools">
-          {!outside && (
+          {!locked && (
             <MeasurePanel
               mode={measure?.mode}
               canClear={measurements.length > 0 || !!measure?.picks.length}

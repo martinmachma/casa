@@ -1,10 +1,13 @@
-import { Settings } from 'lucide-react'
-import { useRef } from 'react'
-import { IconButton, PanelHead } from './kit'
+import { useEffect, useRef } from 'react'
+import { PanelHead } from './kit'
 
 /** A reference to the handlers in App, CameraNudger, WalkCamera and FurnitureBox. */
-export const SettingsMenu = () => {
+/** Shown while `open`; closing it (button or Escape) calls `onClose`. */
+export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
   const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (open) dialog.current?.showModal()
+  }, [open])
   const modifier = /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? 'Cmd' : 'Ctrl'
   const sections = [
     {
@@ -77,12 +80,10 @@ export const SettingsMenu = () => {
 
   return (
     <>
-      <IconButton label="Settings" aria-haspopup="dialog" onClick={() => dialog.current?.showModal()}>
-        <Settings size={18} />
-      </IconButton>
       <dialog
         ref={dialog}
         className="settings-dialog"
+        onClose={onClose}
         aria-labelledby="settings-title"
         onKeyDown={(e) => e.stopPropagation()}
       >

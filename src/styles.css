@@ -28,6 +28,7 @@
   --ring: 0 0 0 3px rgb(200 102 74 / 0.25);
 
   --topbar: 56px;
+  --rail: 84px;
   --right: 340px;
 
   font-family:
@@ -350,11 +351,93 @@ p {
   inset: 0;
   display: grid;
   grid-template-rows: calc(var(--topbar) + env(safe-area-inset-top)) minmax(0, 1fr);
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: calc(var(--rail) + env(safe-area-inset-left)) minmax(0, 1fr);
   grid-template-areas:
-    'top'
-    'view';
+    'rail top'
+    'rail view';
   background: var(--bg);
+}
+
+/* The main menu down the left edge: sections (Home, Planning) and the dialogs everyone uses. */
+.rail {
+  grid-area: rail;
+  position: relative;
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.rail-brand {
+  width: 32px;
+  height: 32px;
+  margin: 2px 0 14px;
+}
+
+.rail-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 0 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 120ms,
+    color 120ms;
+}
+
+.rail-item:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.rail-item[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.rail-item .todo-count {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.rail-divider {
+  width: 36px;
+  height: 1px;
+  margin: 6px 0;
+  background: var(--line);
+}
+
+.rail .avatar {
+  margin-top: 6px;
+}
+
+/* Account menu opens beside the rail, upwards from the avatar. */
+.rail .menu {
+  top: auto;
+  right: auto;
+  bottom: 0;
+  left: calc(100% + 12px);
 }
 
 /* The right panel floats over the view, so opening it doesn't move the house; what sits on the right edge steps aside. */
@@ -373,32 +456,6 @@ p {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   min-width: 0;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-right: 8px;
-  min-width: 0;
-}
-
-.brand img {
-  width: 28px;
-  height: 28px;
-}
-
-.brand-name {
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.topbar-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--line);
-  flex: none;
 }
 
 .spacer {
@@ -1677,14 +1734,19 @@ input[type='range'] {
   }
 
   .app {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'top'
-      'view';
+    --rail: 60px;
   }
 
-  .brand,
-  .hide-narrow {
+  .rail {
+    padding-left: calc(6px + env(safe-area-inset-left));
+    padding-right: 6px;
+  }
+
+  .rail-item {
+    padding: 10px 0;
+  }
+
+  .rail-label {
     display: none;
   }
 
@@ -1858,8 +1920,8 @@ input[type='range'] {
   position: fixed;
   z-index: 20000000;
   top: calc(var(--topbar) + env(safe-area-inset-top) + 12px);
-  right: 12px;
-  width: min(440px, calc(100vw - 24px));
+  left: calc(var(--rail) + env(safe-area-inset-left) + 12px);
+  width: min(440px, calc(100vw - var(--rail) - 24px));
   max-height: calc(100dvh - var(--topbar) - env(safe-area-inset-top) - 24px);
   display: flex;
   flex-direction: column;
