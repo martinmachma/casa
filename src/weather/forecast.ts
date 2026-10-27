@@ -9,12 +9,15 @@ export const MODELS = [
   { id: 'chmi_aladin_cz_1km', label: 'ALADIN' },
 ] as const
 
+/** Two weeks and a day: ECMWF and GFS reach this far; ICON and ALADIN drop out sooner. */
+export const FORECAST_DAYS = 15
+
 const VARIABLES = ['temperature_2m_max', 'temperature_2m_min', 'precipitation_sum', 'weather_code'] as const
 const params = new URLSearchParams({
   latitude: String(house.site.latitude),
   longitude: String(house.site.longitude),
   timezone: house.site.timeZone,
-  forecast_days: '7',
+  forecast_days: String(FORECAST_DAYS),
   daily: VARIABLES.join(','),
   models: MODELS.map((m) => m.id).join(','),
 })
@@ -29,13 +32,14 @@ type CachedResponse = { updatedAt: number; response: unknown }
 const parseResponse = (response: unknown): ForecastDay[] => {
   if (!response || typeof response !== 'object' || !('daily' in response)) throw new Error('Missing daily forecast')
   const daily = response.daily as Record<string, unknown>
-  if (!daily || !Array.isArray(daily.time) || daily.time.length !== 7) throw new Error('Incomplete daily forecast')
+  if (!daily || !Array.isArray(daily.time) || daily.time.length !== FORECAST_DAYS)
+    throw new Error('Incomplete daily forecast')
   return daily.time.map((date: unknown, index: number) => {
     if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Invalid forecast date')
     const models = MODELS.map(({ id }) => {
       const values = VARIABLES.map((variable) => {
         const series = daily[`${variable}_${id}`]
-        if (!Array.isArray(series) || series.length !== 7) throw new Error('Incomplete model forecast')
+        if (!Array.isArray(series) || series.length !== FORECAST_DAYS) throw new Error('Incomplete model forecast')
         const value: unknown = series[index]
         if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) {
           throw new Error('Invalid model forecast')

@@ -1787,7 +1787,17 @@ input[type='range'] {
   box-shadow: var(--ring);
 }
 
+@media (max-width: 1100px) {
+  .weather-strip {
+    --per-view: 3;
+  }
+}
+
 @media (max-width: 820px) {
+  .weather-strip {
+    --per-view: 2;
+  }
+
   .views button > span {
     display: none;
   }
@@ -1993,8 +2003,9 @@ input[type='range'] {
 
 /* Stretched over most of the screen, with the house showing faintly through. */
 .weather-popup {
+  position: relative;
   width: min(1180px, 100%);
-  height: min(880px, 100%);
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2007,26 +2018,79 @@ input[type='range'] {
   animation: todo-in 160ms ease-out;
 }
 
-.weather-popup > .panel-head,
-.weather-footer {
+/* One day's model numbers, in a small dialog over the forecast. */
+.weather-detail-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(31 27 23 / 0.12);
+  animation: fade-in 120ms ease-out;
+}
+
+.weather-detail {
+  width: min(420px, 100%);
+  padding-bottom: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: todo-in 140ms ease-out;
+}
+
+.panel-sub a {
+  color: var(--accent-hover);
+}
+
+.weather-popup > .panel-head {
   flex-shrink: 0;
 }
 
-.weather-scroll {
-  flex: 1;
-  overflow-y: auto;
+/* The days slide sideways, five at a time on a wide screen; the arrows move half that. */
+.weather-strip-wrap {
+  position: relative;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
-  align-items: start;
-  gap: 12px;
-  padding: 16px;
 }
 
-.weather-scroll > .weather-status {
-  grid-column: 1 / -1;
-  border-radius: var(--radius);
+.weather-strip {
+  --per-view: 5;
+  container-type: inline-size;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 16px;
+  scrollbar-width: none;
+}
+
+.weather-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.weather-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  padding: 8px 16px 20px;
+}
+
+.weather-arrow {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-50%);
+}
+
+.weather-arrow-back {
+  right: auto;
+  left: 8px;
 }
 
 .weather-status {
@@ -2043,34 +2107,35 @@ input[type='range'] {
   color: var(--danger);
 }
 
-/* No overflow clipping: it makes the grid size an opened day as if it were still closed. */
 .weather-day {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: calc((100cqi - 32px - (var(--per-view) - 1) * 12px) / var(--per-view));
+  scroll-snap-align: start;
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface) 70%, transparent);
-}
-
-.weather-day summary {
-  display: block;
-  border-radius: inherit;
-  padding: 12px 16px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  list-style: none;
 }
 
-.weather-day summary::-webkit-details-marker {
-  display: none;
-}
-
-.weather-day summary:hover,
-.weather-day[open] {
+.weather-day:hover {
   background: var(--surface-2);
 }
 
 .weather-day-head {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.weather-day-icon {
+  margin: 14px 0 6px;
 }
 
 .weather-date {
@@ -2091,25 +2156,19 @@ input[type='range'] {
 
 .weather-temperatures {
   display: flex;
+  align-items: baseline;
   gap: 8px;
-  font-size: 16px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
+}
+
+.weather-temperatures strong {
+  font-size: 26px;
+  font-weight: 600;
 }
 
 .weather-temperatures > span {
   color: var(--muted);
-}
-
-.weather-model-count {
-  margin-left: auto;
-}
-
-.weather-expand {
-  color: var(--muted);
-}
-
-.weather-day[open] .weather-expand {
-  transform: rotate(180deg);
 }
 
 .weather-range-label {
@@ -2139,7 +2198,7 @@ input[type='range'] {
 .weather-rain,
 .weather-confidence-line {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   margin-top: 6px;
 }
@@ -2177,13 +2236,6 @@ input[type='range'] {
   font-variant-numeric: tabular-nums;
 }
 
-.weather-models caption {
-  text-align: left;
-  color: var(--muted);
-  font-size: 11px;
-  padding-bottom: 6px;
-}
-
 .weather-models th,
 .weather-models td {
   padding: 5px 0;
@@ -2203,20 +2255,6 @@ input[type='range'] {
 .weather-model-note {
   padding: 10px 16px;
   line-height: 1.6;
-}
-
-.weather-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--line);
-  font-size: 11px;
-  color: var(--ink-2);
-}
-
-.weather-footer a {
-  color: var(--accent-hover);
 }
 
 .todo-popup {
