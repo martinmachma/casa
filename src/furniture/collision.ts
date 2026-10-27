@@ -132,3 +132,52 @@ export const constrainMove = (
   const slides = [to, to.map((p, i) => ({ ...p, y: pieces[i].y })), to.map((p, i) => ({ ...p, x: pieces[i].x }))]
   return slides.find((s) => canMove(pieces, s, items, walls))
 }
+
+const unique = (values: number[]) => [...new Set(values)].sort((a, b) => a - b)
+
+/** The outer edges of a footprint, as segments in the same -0.5…0.5 coordinates, joined where they run straight on. */
+export const footprintOutline = (shape: Shape): [Point, Point][] => {
+  const us = unique(shape.flatMap(([u0, u1]) => [u0, u1]))
+  const vs = unique(shape.flatMap(([, , v0, v1]) => [v0, v1]))
+  const solid = (i: number, j: number) => {
+    if (i < 0 || j < 0 || i >= us.length - 1 || j >= vs.length - 1) return false
+    const u = (us[i] + us[i + 1]) / 2
+    const v = (vs[j] + vs[j + 1]) / 2
+    return shape.some(([u0, u1, v0, v1]) => u > u0 && u < u1 && v > v0 && v < v1)
+  }
+  const segments: [Point, Point][] = []
+  // Runs of cell edges with solid on one side only, along each grid line.
+  const trace = (
+    count: number,
+    along: number,
+    edge: (line: number, k: number) => boolean,
+    at: (line: number, k: number) => Point,
+  ) => {
+    for (let line = 0; line < count; line++) {
+      let start: number | undefined
+      for (let k = 0; k <= along; k++) {
+        const on = k < along && edge(line, k)
+        if (on && start === undefined) start = k
+        if (!on && start !== undefined) {
+          segments.push([at(line, start), at(line, k)])
+          start = undefined
+        }
+      }
+    }
+  }
+  const cols = us.length - 1
+  const rows = vs.length - 1
+  trace(
+    us.length,
+    rows,
+    (i, j) => solid(i - 1, j) !== solid(i, j),
+    (i, j) => [us[i], vs[j]],
+  )
+  trace(
+    vs.length,
+    cols,
+    (j, i) => solid(i, j - 1) !== solid(i, j),
+    (j, i) => [us[i], vs[j]],
+  )
+  return segments
+}

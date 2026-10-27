@@ -1,10 +1,11 @@
-import { Edges, Html } from '@react-three/drei'
+import { Html, Line } from '@react-three/drei'
 import { Copy, RotateCw, Trash2 } from 'lucide-react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
 import { Mesh, Plane, Vector3 } from 'three'
 import type { FurnitureItem } from '../data/types'
-import { footprint } from '../furniture/collision'
+import { footprint, footprintOutline } from '../furniture/collision'
+import type { Point } from '../layout/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
@@ -145,21 +146,39 @@ export const FurnitureBox = ({
     : { raycast: () => null }
   // Rugs are nearly flat; keep their hit box tappable.
   const hitHeight = Math.max(item.height, 0.02)
+  const shape = footprint(item.model)
+  // The footprint's outline round the bottom and the top, joined by uprights at its corners.
+  const outline = useMemo(() => {
+    const at = ([u, v]: Point, y: number): [number, number, number] => [u * item.width, y, v * item.depth]
+    const edges = footprintOutline(shape)
+    const corners = new Map(edges.flat().map((p) => [p.join(), p]))
+    return [
+      ...edges.flatMap(([a, b]) => [at(a, 0), at(b, 0), at(a, hitHeight), at(b, hitHeight)]),
+      ...[...corners.values()].flatMap((p) => [at(p, 0), at(p, hitHeight)]),
+    ]
+  }, [shape, item.width, item.depth, hitHeight])
 
   return (
     <group position={[item.x, elevation + z, item.y]} rotation={[0, -item.rotation, 0]}>
-      {/* The box is the item itself, or, for a model, its invisible hit box and selection outline. */}
-      <mesh position={[0, hitHeight / 2, 0]} castShadow={!item.model} receiveShadow={!item.model} {...handlers}>
-        <boxGeometry args={[item.width, hitHeight, item.depth]} />
-        {item.model ? (
-          <meshBasicMaterial visible={false} />
-        ) : (
-          <meshStandardMaterial color={item.color} roughness={0.8} />
-        )}
-        {selected && !colliding && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
-      </mesh>
+      {/* The boxes are the item itself, or, for a model, its invisible hit boxes, following its footprint. */}
+      {shape.map(([u0, u1, v0, v1], i) => (
+        <mesh
+          key={i}
+          position={[((u0 + u1) / 2) * item.width, hitHeight / 2, ((v0 + v1) / 2) * item.depth]}
+          castShadow={!item.model}
+          receiveShadow={!item.model}
+          {...handlers}
+        >
+          <boxGeometry args={[(u1 - u0) * item.width, hitHeight, (v1 - v0) * item.depth]} />
+          {item.model ? (
+            <meshBasicMaterial visible={false} />
+          ) : (
+            <meshStandardMaterial color={item.color} roughness={0.8} />
+          )}
+        </mesh>
+      ))}
       {colliding &&
-        footprint(item.model).map(([u0, u1, v0, v1], i) => (
+        shape.map(([u0, u1, v0, v1], i) => (
           <mesh
             key={i}
             position={[((u0 + u1) / 2) * item.width, hitHeight / 2, ((v0 + v1) / 2) * item.depth]}
@@ -167,9 +186,17 @@ export const FurnitureBox = ({
           >
             <boxGeometry args={[(u1 - u0) * item.width + 0.01, hitHeight + 0.01, (v1 - v0) * item.depth + 0.01]} />
             <meshBasicMaterial color={COLLIDING} transparent opacity={0.3} depthWrite={false} />
-            <Edges color={COLLIDING} lineWidth={selected ? 3 : 2} />
           </mesh>
         ))}
+      {(selected || colliding) && (
+        <Line
+          points={outline}
+          segments
+          color={colliding ? COLLIDING : SELECTED_OUTLINE}
+          lineWidth={colliding && selected ? 3 : 2}
+          raycast={() => null}
+        />
+      )}
       {item.model && (
         <Suspense fallback={null}>
           <FurnitureModel

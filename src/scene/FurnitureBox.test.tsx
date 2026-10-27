@@ -11,7 +11,7 @@ vi.mock('react', async (importOriginal) => ({
 vi.mock('@react-three/fiber', () => ({
   useThree: () => () => ({ controls: { enabled: true } }),
 }))
-vi.mock('@react-three/drei', () => ({ Edges: 'edges', Html: 'html' }))
+vi.mock('@react-three/drei', () => ({ Html: 'html', Line: 'line' }))
 vi.mock('./FurnitureModel', () => ({ FurnitureModel: 'model' }))
 
 const setup = (selected: boolean, pointerType = 'mouse', add = false) => {
@@ -46,7 +46,7 @@ const setup = (selected: boolean, pointerType = 'mouse', add = false) => {
     onTap,
     actions: { onRotate: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn() },
   })
-  const handlers = box.props.children[0].props
+  const handlers = box.props.children[0][0].props
   const target = { setPointerCapture: vi.fn(), releasePointerCapture: vi.fn() }
   const event = (type: string, x = 2.25, pointerId = 1) =>
     ({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canMove, colliding, constrainMove, type Solid } from './collision'
+import { canMove, colliding, constrainMove, footprintOutline, type Solid } from './collision'
 
 // A wall along x = 0, 0.2 thick.
 const walls = [{ x0: -0.1, x1: 0.1, y0: 0, y1: 4 }]
@@ -53,5 +53,15 @@ describe('collision', () => {
   it('slides along a wall when dragged diagonally into it', () => {
     const p = piece('p', 1, 1)
     expect(constrainMove([p], [{ x: 0.3, y: 2, rotation: 0 }], [p], walls)).toEqual([{ x: 1, y: 2, rotation: 0 }])
+  })
+})
+
+describe('footprintOutline', () => {
+  it('traces an L as six edges', () => {
+    const outline = footprintOutline([
+      [-0.5, 0.5, -0.5, 0],
+      [0, 0.5, 0, 0.5],
+    ])
+    expect(outline).toHaveLength(6)
   })
 })
