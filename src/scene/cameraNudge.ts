@@ -19,3 +19,6 @@ export type CameraNudge = {
 export type CameraNudgeAxis = keyof CameraNudge
 
 export const createCameraNudge = (): CameraNudge => ({ forward: 0, right: 0, zoom: 0, turn: 0, tilt: 0 })
+
+/** Closer to the orbit target than this, panning and zooming keep the pace they have here. */
+export const NEAR_PACE = 4

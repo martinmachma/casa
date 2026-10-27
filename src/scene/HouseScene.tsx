@@ -32,7 +32,7 @@ import { Line } from '@react-three/drei'
 import { SELECTED_OUTLINE } from './palette'
 import { RoomFloors } from './RoomFloors'
 import { RoomLabelProjector, RoomLabels } from './RoomLabels'
-import type { CameraNudge } from './cameraNudge'
+import { NEAR_PACE, type CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
 import { intro } from './intro'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
@@ -388,9 +388,6 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
   const up = houseHeight ? look + away * 0.55 : floor.elevation + back * 1.1
   return { position: new Vector3(cx + away * 0.8, up, cz + away * 1.25), target: new Vector3(cx, look, cz) }
 }
-
-// Closer to the target than this, panning and zooming keep the pace they have here.
-const NEAR_PACE = 4
 
 /** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
 const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }

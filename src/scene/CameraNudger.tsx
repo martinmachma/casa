@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { OrthographicCamera, PerspectiveCamera, Spherical, Vector3 } from 'three'
 import { isTyping } from '../ui/isTyping'
-import type { CameraNudge } from './cameraNudge'
+import { NEAR_PACE, type CameraNudge } from './cameraNudge'
 
 type OrbitLike = { target: Vector3; maxPolarAngle: number; update: () => void }
 
@@ -11,7 +11,7 @@ const ZOOM_RATE = 1.3
 const TURN_RATE = 1.4
 const TILT_RATE = 0.9
 const PAN_RATE = 0.9
-const MIN_DISTANCE = 1.5
+const MIN_DISTANCE = 0.5
 const MAX_DISTANCE = 60
 const MIN_POLAR = 0.05
 
@@ -66,7 +66,10 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
         camera.zoom *= factor
         camera.updateProjectionMatrix()
       } else {
-        const distance = Math.min(MAX_DISTANCE, Math.max(MIN_DISTANCE, offset.length() / factor))
+        // Close in, zoom at the pace it has NEAR_PACE out instead of slowing to a crawl.
+        const d = offset.length()
+        const pace = Math.max(d, NEAR_PACE)
+        const distance = Math.min(MAX_DISTANCE, Math.max(MIN_DISTANCE, d - pace + pace / factor))
         offset.setLength(distance)
       }
     }
@@ -86,7 +89,7 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
         camera instanceof OrthographicCamera
           ? Math.min(size.width, size.height) / camera.zoom
           : camera instanceof PerspectiveCamera
-            ? offset.length()
+            ? Math.max(offset.length(), NEAR_PACE)
             : 10
       const step = reach * PAN_RATE * dt
       const move = tmp.right.multiplyScalar(right * step).addScaledVector(tmp.forward, forward * step)
