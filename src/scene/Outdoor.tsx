@@ -2,7 +2,7 @@ import { Line } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
 import type { GardenBlock, Outdoor as OutdoorLayout, Point, Shed } from '../layout/types'
 import { surroundingsTexture } from './groundTexture'
-import { DEFAULT_WALL, EXTERIOR_FRAME, HEDGE, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
+import { COPING, DEFAULT_WALL, EXTERIOR_FRAME, HEDGE, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
 import { prismGeometry } from './prism'
 
 const LAWN_DEPTH = 0.05
@@ -74,20 +74,32 @@ const Paving = ({ outline, level, ground }: { outline: Point[]; level: number; g
   )
 }
 
-const BlockMesh = ({ block, base }: { block: GardenBlock; base: number }) => (
-  <mesh
-    position={[(block.x0 + block.x1) / 2, base + block.height / 2, (block.y0 + block.y1) / 2]}
-    castShadow
-    receiveShadow
-    raycast={noRaycast}
-  >
-    <boxGeometry args={[block.x1 - block.x0, block.height, block.y1 - block.y0]} />
-    <meshStandardMaterial
-      color={block.kind === 'green' ? HEDGE : DEFAULT_WALL}
-      roughness={block.kind === 'green' ? 1 : 0.9}
-    />
-  </mesh>
-)
+const CAP = 0.06
+const CAP_EAVE = 0.03
+
+/** A rendered wall gets a thin coping cap; a trellis is just a green panel. */
+const BlockMesh = ({ block, base }: { block: GardenBlock; base: number }) => {
+  const w = block.x1 - block.x0
+  const d = block.y1 - block.y0
+  const cx = (block.x0 + block.x1) / 2
+  const cz = (block.y0 + block.y1) / 2
+  const green = block.kind === 'green'
+  const body = green ? block.height : block.height - CAP
+  return (
+    <group position={[cx, base, cz]}>
+      <mesh position={[0, body / 2, 0]} castShadow receiveShadow raycast={noRaycast}>
+        <boxGeometry args={[w, body, d]} />
+        <meshStandardMaterial color={green ? HEDGE : DEFAULT_WALL} roughness={green ? 1 : 0.9} />
+      </mesh>
+      {!green && (
+        <mesh position={[0, body + CAP / 2, 0]} castShadow raycast={noRaycast}>
+          <boxGeometry args={[w + 2 * CAP_EAVE, CAP, d + 2 * CAP_EAVE]} />
+          <meshStandardMaterial color={COPING} roughness={0.8} />
+        </mesh>
+      )}
+    </group>
+  )
+}
 
 const ShedMesh = ({ shed, base }: { shed: Shed; base: number }) => {
   const w = shed.x1 - shed.x0
