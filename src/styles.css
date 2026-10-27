@@ -2043,8 +2043,8 @@ input[type='range'] {
   color: var(--danger);
 }
 
+/* No overflow clipping: it makes the grid size an opened day as if it were still closed. */
 .weather-day {
-  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface) 70%, transparent);
@@ -2052,6 +2052,7 @@ input[type='range'] {
 
 .weather-day summary {
   display: block;
+  border-radius: inherit;
   padding: 12px 16px;
   cursor: pointer;
   list-style: none;
@@ -2064,6 +2065,12 @@ input[type='range'] {
 .weather-day summary:hover,
 .weather-day[open] {
   background: var(--surface-2);
+}
+
+/* An opened day takes the whole row, so its model table doesn't stretch the days beside it. */
+.weather-day[open] {
+  grid-column: 1 / -1;
+  padding-bottom: 12px;
 }
 
 .weather-day-head {
