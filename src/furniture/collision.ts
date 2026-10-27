@@ -1,5 +1,6 @@
 import type { FurnitureItem } from '../data/types'
 import type { Point, Rect } from '../layout/types'
+import FOOTPRINTS from './footprints.json'
 import type { Placement } from './snap'
 
 export type Solid = Pick<FurnitureItem, 'id' | 'floor' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height' | 'z'> &
@@ -17,17 +18,31 @@ const STEP = 0.05
 
 type Box = { c: Point; axes: [Point, Point]; half: [number, number] }
 
-const boxOf = (s: Pick<Solid, 'x' | 'y' | 'width' | 'depth' | 'rotation'>): Box => {
+type Shape = number[][]
+const FULL: Shape = [[-0.5, 0.5, -0.5, 0.5]]
+
+/** A model's footprint as [u0, u1, v0, v1] rectangles in its box's own -0.5…0.5 coordinates. */
+export const footprint = (model: string | undefined): Shape =>
+  (model && (FOOTPRINTS as Record<string, Shape>)[model]) || FULL
+
+/**
+ * The piece's footprint as boxes: the parts of its model seen from above (from scripts/footprints.mjs), so the
+ * empty corner of an L-shaped sofa or desk is free; a plain box or unknown model is one box.
+ */
+const boxesOf = (s: Pick<Solid, 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'model'>): Box[] => {
   const cos = Math.cos(s.rotation)
   const sin = Math.sin(s.rotation)
-  return {
-    c: [s.x, s.y],
-    axes: [
-      [cos, sin],
-      [-sin, cos],
-    ],
-    half: [s.width / 2, s.depth / 2],
-  }
+  const u: Point = [cos, sin]
+  const v: Point = [-sin, cos]
+  return footprint(s.model).map(([u0, u1, v0, v1]) => {
+    const cu = ((u0 + u1) / 2) * s.width
+    const cv = ((v0 + v1) / 2) * s.depth
+    return {
+      c: [s.x + cu * u[0] + cv * v[0], s.y + cu * u[1] + cv * v[1]],
+      axes: [u, v],
+      half: [((u1 - u0) / 2) * s.width, ((v1 - v0) / 2) * s.depth],
+    }
+  })
 }
 
 const rectBox = (r: Rect): Box => ({
@@ -64,14 +79,15 @@ const stacked = (a: Solid, b: Solid) => {
 
 /** What a piece runs into: other pieces by id, walls as `wall:<index>`. */
 export const hits = (piece: Solid, others: Solid[], walls: Rect[]): string[] => {
-  const box = boxOf(piece)
+  const boxes = boxesOf(piece)
+  const touches = (others: Box[]) => boxes.some((a) => others.some((b) => overlaps(a, b)))
   const result: string[] = []
-  walls.forEach((w, i) => overlaps(box, rectBox(w)) && result.push(`wall:${i}`))
+  walls.forEach((w, i) => touches([rectBox(w)]) && result.push(`wall:${i}`))
   if (piece.height <= FLAT) return result
   for (const o of others) {
     if (o.id === piece.id || o.floor !== piece.floor || o.height <= FLAT || !stacked(piece, o) || tucks(piece, o))
       continue
-    if (overlaps(box, boxOf(o))) result.push(o.id)
+    if (touches(boxesOf(o))) result.push(o.id)
   }
   return result
 }

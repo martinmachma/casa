@@ -4,6 +4,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
 import { Mesh, Plane, Vector3 } from 'three'
 import type { FurnitureItem } from '../data/types'
+import { footprint } from '../furniture/collision'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
@@ -157,13 +158,18 @@ export const FurnitureBox = ({
         )}
         {selected && !colliding && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
       </mesh>
-      {colliding && (
-        <mesh position={[0, hitHeight / 2, 0]} raycast={() => null}>
-          <boxGeometry args={[item.width + 0.01, hitHeight + 0.01, item.depth + 0.01]} />
-          <meshBasicMaterial color={COLLIDING} transparent opacity={0.3} depthWrite={false} />
-          <Edges color={COLLIDING} lineWidth={selected ? 3 : 2} />
-        </mesh>
-      )}
+      {colliding &&
+        footprint(item.model).map(([u0, u1, v0, v1], i) => (
+          <mesh
+            key={i}
+            position={[((u0 + u1) / 2) * item.width, hitHeight / 2, ((v0 + v1) / 2) * item.depth]}
+            raycast={() => null}
+          >
+            <boxGeometry args={[(u1 - u0) * item.width + 0.01, hitHeight + 0.01, (v1 - v0) * item.depth + 0.01]} />
+            <meshBasicMaterial color={COLLIDING} transparent opacity={0.3} depthWrite={false} />
+            <Edges color={COLLIDING} lineWidth={selected ? 3 : 2} />
+          </mesh>
+        ))}
       {item.model && (
         <Suspense fallback={null}>
           <FurnitureModel

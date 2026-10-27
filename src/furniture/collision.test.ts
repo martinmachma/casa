@@ -30,6 +30,14 @@ describe('collision', () => {
     expect([...colliding(items, walls)].sort()).toEqual(['a', 'b', 'inWall'])
   })
 
+  it('leaves the empty corner of an L-shaped sofa free', () => {
+    const sofa = piece('sofa', 3, 2, { model: 'loungeSofaLong', width: 2.2, depth: 1.6 })
+    // The chaise runs along +x at the back (+y); the corner in front of the seat, at -x, +y, is open.
+    const table = piece('table', 2.4, 2.6, { width: 0.6, depth: 0.4, height: 0.4 })
+    expect(colliding([sofa, table], walls).size).toBe(0)
+    expect(colliding([sofa, { ...table, x: 3.6 }], walls).size).toBe(2)
+  })
+
   it('catches a turned piece by its corner', () => {
     expect(colliding([piece('t', 0.75, 1, { rotation: Math.PI / 4 })], walls).size).toBe(1)
   })
