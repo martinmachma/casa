@@ -6,7 +6,7 @@ import { Mesh, Plane, Vector3 } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import { FurnitureModel } from './FurnitureModel'
-import { SELECTED_OUTLINE } from './palette'
+import { COLLIDING, SELECTED_OUTLINE } from './palette'
 
 type FurnitureBoxProps = {
   item: FurnitureItem
@@ -14,6 +14,8 @@ type FurnitureBoxProps = {
   glow?: number
   elevation: number
   selected: boolean
+  /** Runs into a wall or another piece. */
+  colliding?: boolean
   /** Whether the rotate/duplicate/remove buttons float over this one (one item of a group carries them). */
   showActions: boolean
   /** False while another tool (measuring) owns the pointer. */
@@ -46,6 +48,7 @@ export const FurnitureBox = ({
   glow,
   elevation,
   selected,
+  colliding,
   showActions,
   interactive,
   wallSnap,
@@ -152,8 +155,15 @@ export const FurnitureBox = ({
         ) : (
           <meshStandardMaterial color={item.color} roughness={0.8} />
         )}
-        {selected && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
+        {selected && !colliding && <Edges color={SELECTED_OUTLINE} lineWidth={2} />}
       </mesh>
+      {colliding && (
+        <mesh position={[0, hitHeight / 2, 0]} raycast={() => null}>
+          <boxGeometry args={[item.width + 0.01, hitHeight + 0.01, item.depth + 0.01]} />
+          <meshBasicMaterial color={COLLIDING} transparent opacity={0.3} depthWrite={false} />
+          <Edges color={COLLIDING} lineWidth={selected ? 3 : 2} />
+        </mesh>
+      )}
       {item.model && (
         <Suspense fallback={null}>
           <FurnitureModel

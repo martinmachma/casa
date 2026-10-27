@@ -7,12 +7,13 @@ import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } fro
 import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
 import { changeKind, deviceRoom } from './devices/place'
+import { canMove } from './furniture/collision'
 import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
 import { pasteFurniture } from './furniture/clipboard'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
-import { floorRegions } from './layout/rooms'
+import { floorRegions, floorWallRects } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
 import { house } from './layout/layout'
@@ -111,6 +112,7 @@ const House = ({ backend, account }: HouseProps) => {
   const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
   const selectedDevice = selection?.kind === 'device' ? data.devices.find((d) => d.id === selection.id) : undefined
   const floorDevices = data.devices.filter((d) => d.floor === floor.id)
+  const floorItems = data.furniture.filter((f) => f.floor === floor.id)
 
   // Typing a size or dragging the colour picker undoes as one step per field.
   const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>, key?: string) =>
@@ -121,7 +123,9 @@ const House = ({ backend, account }: HouseProps) => {
     // snapping would also undo the turn (a 15° step).
     const seated = wallSnap ? snapToWalls({ ...item, rotation }, floorSnapWalls(floor)) : undefined
     const keepsTurn = seated && Math.abs(normalizeAngle(seated.rotation - rotation)) < 1e-6
-    changeItem(item, keepsTurn ? seated : { rotation })
+    const turned = keepsTurn ? seated : { x: item.x, y: item.y, rotation }
+    // A turn that would swing it into a wall or another piece doesn't happen.
+    if (canMove([item], [turned], floorItems, floorWallRects(floor))) changeItem(item, turned)
   }
   /** Picking something shows it in the right panel, opening the panel if it was tucked away. */
   const select = (next: Selection | undefined) => {
@@ -132,7 +136,10 @@ const House = ({ backend, account }: HouseProps) => {
   /** One piece turns (and re-seats against its wall); a group swings about its middle as it's arranged. */
   const rotateSelection = (degrees: number) => {
     if (selectedItem) return rotateItem(selectedItem, degrees)
-    if (selectedItems.length) data.patchFurnitures(rotateGroup(selectedItems, (degrees * Math.PI) / 180))
+    if (!selectedItems.length) return
+    const turned = rotateGroup(selectedItems, (degrees * Math.PI) / 180)
+    const to = selectedItems.map((f) => turned.get(f.id)!)
+    if (canMove(selectedItems, to, floorItems, floorWallRects(floor))) data.patchFurnitures(turned)
   }
   const deleteSelection = () => {
     data.removeFurniture(...selectedItems.map((f) => f.id))

@@ -5,6 +5,7 @@ import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
+import { colliding, constrainMove } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
@@ -127,6 +128,10 @@ export const HouseScene = ({
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
   const selectedItem = selectedIds.length === 1 ? items.find((f) => f.id === selectedIds[0]) : undefined
   const wallRects = useMemo(() => floorWallRects(floor), [floor])
+  // Measuring uses its own floor and wall targets.
+  const pickable = interaction === 'edit'
+  // While arranging, anything that runs into a wall or another piece is marked.
+  const clashes = pickable ? colliding(items, wallRects) : new Set<string>()
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = floor.elevation + 0.05
   const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
@@ -149,23 +154,33 @@ export const HouseScene = ({
 
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
-  // Measuring uses its own floor and wall targets.
-  const pickable = interaction === 'edit'
 
   const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
   // A group moves together by however far the grabbed piece went.
+  // Nothing can be pushed into a wall or another piece; the move slides along whatever is in the way.
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
     const grabbed = items.find((f) => f.id === id)
-    if (!grabbed || selectedIds.length < 2) return data.patchFurniture(id, placement, `move:${id}`)
+    if (!grabbed) return
+    if (selectedIds.length < 2) {
+      const [allowed] = constrainMove([grabbed], [placement], items, wallRects) ?? []
+      return allowed && data.patchFurniture(id, allowed, `move:${id}`)
+    }
     const dx = placement.x - grabbed.x
     const dy = placement.y - grabbed.y
     const moved = items.filter((f) => selectedIds.includes(f.id))
     const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
     const [sx, sy] = wallSnap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
-    data.patchFurnitures(
-      new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
-      `move:${selectedIds.join()}`,
+    const allowed = constrainMove(
+      moved,
+      proposed.map((f) => ({ x: f.x + sx, y: f.y + sy, rotation: f.rotation })),
+      items,
+      wallRects,
     )
+    if (allowed)
+      data.patchFurnitures(
+        new Map(moved.map((f, i) => [f.id, { x: allowed[i].x, y: allowed[i].y }])),
+        `move:${selectedIds.join()}`,
+      )
   }
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
   const pickItem = (id: string, add: boolean) => {
@@ -311,6 +326,7 @@ export const HouseScene = ({
             glow={isLamp(item.model) ? dark : 0}
             elevation={floors.find((f) => f.id === item.floor)?.elevation ?? floor.elevation}
             selected={selectedIds.includes(item.id)}
+            colliding={clashes.has(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}
             // Group snapping is applied to the shared translation in moveItem.
