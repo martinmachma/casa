@@ -7,7 +7,7 @@ export type Rect = { x0: number; x1: number; y0: number; y1: number }
 export type Opening = {
   /**
    * A passage is a gap with nothing filling it (like the way onto the stairs). A sliding door is a glazed panel that
-   * slides along the wall towards its `to` end; a door swings into side 'a', hinged at the `from` end.
+   * slides along the wall towards its `to` end; a door swings into side `swing`, hinged at its `hinge` end.
    */
   type: 'door' | 'sliding' | 'window' | 'passage'
   /** Distance from the wall's `from` point to the opening's near edge. */
@@ -16,6 +16,10 @@ export type Opening = {
   height: number
   /** Height of the bottom edge above the floor. Doors default to 0, windows to 0.9. */
   sill?: number
+  /** Doors: which end of the wall the hinge is nearer. Defaults to 'from'. */
+  hinge?: 'from' | 'to'
+  /** Doors: the side the leaf opens into. Defaults to 'a'. */
+  swing?: WallSide
 }
 
 export type Wall = {

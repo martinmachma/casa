@@ -76,7 +76,15 @@ export const OpeningFills = ({
           <group key={id}>
             <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} />
             {o.type === 'window' && <Glass inner={inner} />}
-            {o.type === 'door' && <Door inner={inner} color={exterior ? EXTERIOR_FRAME : DOOR_LEAF} {...door} />}
+            {o.type === 'door' && (
+              <Door
+                inner={inner}
+                color={exterior ? EXTERIOR_FRAME : DOOR_LEAF}
+                atEnd={o.hinge === 'to'}
+                intoB={o.swing === 'b'}
+                {...door}
+              />
+            )}
             {o.type === 'sliding' && <SlidingDoor inner={inner} {...door} />}
           </group>
         )
@@ -122,19 +130,27 @@ const useToggle = ({ open, onToggle, clickable }: DoorState, apply: (group: Grou
   return { group, handlers }
 }
 
-/** A leaf hinged at the opening's start, swinging into side 'a' (+z). */
-const Door = ({ inner, color, ...state }: { inner: Inner; color: string } & DoorState) => {
-  const { group, handlers } = useToggle(state, (g, t) => (g.rotation.y = -t * SWING))
-  const w = inner.u1 - inner.u0
+/** A leaf hinged at the opening's start (or end), swinging into side 'a' (+z) or 'b' (-z). */
+const Door = ({
+  inner,
+  color,
+  atEnd,
+  intoB,
+  ...state
+}: { inner: Inner; color: string; atEnd: boolean; intoB: boolean } & DoorState) => {
+  // The leaf reaches from the hinge along the wall; this turns it towards the side it opens into.
+  const turn = (atEnd ? 1 : -1) * (intoB ? -1 : 1) * SWING
+  const { group, handlers } = useToggle(state, (g, t) => (g.rotation.y = t * turn))
+  const w = (inner.u1 - inner.u0) * (atEnd ? -1 : 1)
   const h = inner.y1 - inner.y0
   return (
-    <group ref={group} position={[inner.u0, 0, 0]}>
+    <group ref={group} position={[atEnd ? inner.u1 : inner.u0, 0, 0]}>
       <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow {...handlers}>
-        <boxGeometry args={[w, h, LEAF]} />
+        <boxGeometry args={[Math.abs(w), h, LEAF]} />
         <meshStandardMaterial color={color} roughness={0.7} />
       </mesh>
       {/* A handle on each face, near the edge away from the hinge. */}
-      <mesh position={[w - 0.08, inner.y0 + 1.05, 0]} {...handlers}>
+      <mesh position={[w - Math.sign(w) * 0.08, inner.y0 + 1.05, 0]} {...handlers}>
         <boxGeometry args={[0.12, 0.02, LEAF + 0.08]} />
         <meshStandardMaterial color={HANDLE} metalness={0.6} roughness={0.3} />
       </mesh>
