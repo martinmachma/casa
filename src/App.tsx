@@ -197,6 +197,8 @@ const House = ({ backend, account }: HouseProps) => {
   }
 
   const addPiece = (piece: NewPiece) => {
+    // Furniture lives on a floor; from outside it goes on the one last open, shown opened up.
+    setOutside(false)
     const [x, y] = dropPoint()
     const [created] = data.addFurniture({
       ...piece,
@@ -219,11 +221,10 @@ const House = ({ backend, account }: HouseProps) => {
     if (measure) setMeasure({ ...measure, picks: [] })
   }
 
-  /** The outside view is for looking only: no editing, and no walking. */
+  /** The outside view has no walking. */
   const goOutside = () => {
     setOutside(true)
     setHoveredRoom(undefined)
-    changeInteraction('view')
     if (planCamera === 'walk') setCamera('orbit')
   }
 
@@ -282,7 +283,7 @@ const House = ({ backend, account }: HouseProps) => {
   }
 
   // Outside and at home, the house is only looked at.
-  const locked = outside || !planning
+  const locked = !planning
   // E toggles editing, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -349,11 +350,13 @@ const House = ({ backend, account }: HouseProps) => {
 
   const inspector = (() => {
     if (selection?.kind === 'wall') {
-      const wall = floor.walls.find((w) => w.id === selection.wallId)
+      // From outside, the wall can be on any floor.
+      const home = house.floors.find((f) => f.walls.some((w) => w.id === selection.wallId)) ?? floor
+      const wall = home.walls.find((w) => w.id === selection.wallId)
       return (
         <WallPanel
           side={selection.side}
-          details={wall ? wallText(wall, floor) : ''}
+          details={wall ? wallText(wall, home) : ''}
           color={wallPartColor(data.wallColors, selection.wallId, selection.side, selection.part)}
           onColor={(color) => data.setWallColor(selection.wallId, selection.side, selection.part, color)}
           onClose={() => setSelection(undefined)}

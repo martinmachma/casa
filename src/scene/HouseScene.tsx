@@ -246,7 +246,7 @@ export const HouseScene = ({
               floor={f}
               colors={data.wallColors}
               selection={selection}
-              interactive={pickable && f.id === floor.id}
+              interactive={pickable && (outside || f.id === floor.id)}
               doors={!measure && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
