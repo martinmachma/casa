@@ -473,7 +473,7 @@ const House = ({ backend, account }: HouseProps) => {
           furnitureSnap={furnitureSnap}
           sun={sunAt}
           north={site.north}
-          roomNumbers={leftOpen}
+          roomNumbers={planning && leftOpen}
           measure={measure}
           onMeasurePick={addMeasurePick}
           measurements={measurements}
@@ -497,29 +497,31 @@ const House = ({ backend, account }: HouseProps) => {
           cutaway={cutaway}
           onCutaway={setCutaway}
         >
-          <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
-            {outside ? (
-              <FloorList
-                floors={house.floors}
-                onPick={switchFloor}
-                collapsed={!leftOpen}
-                onToggle={() => setLeftOpen(!leftOpen)}
-              />
-            ) : (
-              <RoomLegend
-                floor={floor}
-                regions={regions}
-                names={data.roomNames}
-                devices={devicesPerRoom(floorDevices, floor, regions)}
-                hovered={hoveredRoom}
-                selected={selection?.kind === 'room' ? selection.roomId : undefined}
-                onHover={setHoveredRoom}
-                onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-                collapsed={!leftOpen}
-                onToggle={() => setLeftOpen(!leftOpen)}
-              />
-            )}
-          </DockBox>
+          {planning && (
+            <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
+              {outside ? (
+                <FloorList
+                  floors={house.floors}
+                  onPick={switchFloor}
+                  collapsed={!leftOpen}
+                  onToggle={() => setLeftOpen(!leftOpen)}
+                />
+              ) : (
+                <RoomLegend
+                  floor={floor}
+                  regions={regions}
+                  names={data.roomNames}
+                  devices={devicesPerRoom(floorDevices, floor, regions)}
+                  hovered={hoveredRoom}
+                  selected={selection?.kind === 'room' ? selection.roomId : undefined}
+                  onHover={setHoveredRoom}
+                  onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
+                  collapsed={!leftOpen}
+                  onToggle={() => setLeftOpen(!leftOpen)}
+                />
+              )}
+            </DockBox>
+          )}
         </ViewDock>
 
         {modeBar}
