@@ -2017,7 +2017,7 @@ input[type='range'] {
   overflow-y: auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   align-items: start;
   gap: 12px;
@@ -2065,12 +2065,6 @@ input[type='range'] {
 .weather-day summary:hover,
 .weather-day[open] {
   background: var(--surface-2);
-}
-
-/* An opened day takes the whole row, so its model table doesn't stretch the days beside it. */
-.weather-day[open] {
-  grid-column: 1 / -1;
-  padding-bottom: 12px;
 }
 
 .weather-day-head {
