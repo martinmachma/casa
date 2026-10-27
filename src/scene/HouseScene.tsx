@@ -7,12 +7,13 @@ import type { HouseData } from '../data/useHouseData'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point, WallFace } from '../layout/types'
+import type { Floor, WallFace } from '../layout/types'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { Outdoor } from './Outdoor'
-import { prismGeometry } from './prism'
+import { HouseShadow } from './HouseShadow'
+import { slabGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
 import { Roof } from './Roof'
 import { house } from '../layout/layout'
@@ -211,6 +212,7 @@ export const HouseScene = ({
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
+        <HouseShadow floors={floors} roof={house.roof} />
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
         {floors.slice(0, camera === 'walk' ? floors.length : floorIndex + 1).map((f, i) => (
@@ -343,22 +345,10 @@ export const HouseScene = ({
 }
 
 /** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */
-const slabGeometry = (floor: Floor, depth: number) => {
-  const { min, max } = floorBounds(floor)
-  const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
-  const holes = (floor.voids ?? []).map((v): Point[] => [
-    [v.x0, v.y0],
-    [v.x1, v.y0],
-    [v.x1, v.y1],
-    [v.x0, v.y1],
-  ])
-  return prismGeometry(outline, depth, holes)
-}
-
 const Slab = ({ floor, color = FLOOR_SLAB, depth = SLAB }: { floor: Floor; color?: string; depth?: number }) => {
   const geometry = useMemo(() => slabGeometry(floor, depth), [floor, depth])
   return (
-    <mesh geometry={geometry} position={[0, floor.elevation, 0]} castShadow receiveShadow>
+    <mesh geometry={geometry} position={[0, floor.elevation, 0]} receiveShadow>
       <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>
   )

@@ -78,9 +78,7 @@ export const FurnitureBox = ({
     const add = e.shiftKey || e.metaKey || e.ctrlKey
     // Only a piece already in the selection can be picked up. Modifier-clicks only change selection.
     const offset =
-      selected && !add && e.ray.intersectPlane(plane, hit)
-        ? { dx: hit.x - item.x, dy: hit.z - item.y }
-        : undefined
+      selected && !add && e.ray.intersectPlane(plane, hit) ? { dx: hit.x - item.x, dy: hit.z - item.y } : undefined
     press.current = {
       pointerId: e.pointerId,
       offset,
@@ -131,8 +129,10 @@ export const FurnitureBox = ({
         onPointerCancel: endDrag,
         // The release would otherwise click through to the floor beneath and change the selection.
         onClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
-        onPointerOver: (e: ThreeEvent<PointerEvent>) =>
-          (e.stopPropagation(), (document.body.style.cursor = selected ? 'grab' : 'pointer')),
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => (
+          e.stopPropagation(),
+          (document.body.style.cursor = selected ? 'grab' : 'pointer')
+        ),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
     : { raycast: () => null }
