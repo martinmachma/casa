@@ -7,6 +7,7 @@ import { DEVICE_KINDS } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
 import { wallAngle } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
+import { BULB } from './HouseLights'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
 
@@ -22,6 +23,8 @@ const PLATES: Record<Exclude<DeviceKind, 'light'>, [number, number, number]> = {
   other: [0.08, 0.08, 0.03],
 }
 
+// A lit light's face is far brighter than anything it lights.
+const LIT_GLOW = 4
 const LIGHT_RADIUS = 0.11
 const LIGHT_DEPTH = 0.04
 /** Taps this close to a device pick it, though the device itself is much smaller. */
@@ -31,6 +34,8 @@ type DevicesProps = {
   floor: Floor
   devices: Device[]
   selectedId: string | undefined
+  /** How brightly the ceiling lights are lit, 0 (off) to 1. */
+  glow: number
   /** Seen from straight above: wall plates get a marker on top of the wall, where they can be seen and picked. */
   plan: boolean
   /** False unless the devices tool is on. */
@@ -47,6 +52,7 @@ export const Devices = ({
   floor,
   devices,
   selectedId,
+  glow,
   plan,
   interactive,
   onSelect,
@@ -60,6 +66,7 @@ export const Devices = ({
         device={device}
         floor={floor}
         selected={device.id === selectedId}
+        glow={glow}
         plan={plan}
         interactive={interactive}
         onSelect={onSelect}
@@ -72,7 +79,17 @@ export const Devices = ({
 
 type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId'> & { device: Device; selected: boolean }
 
-const DeviceMesh = ({ device, floor, selected, plan, interactive, onSelect, onMove, onMoveEnd }: DeviceMeshProps) => {
+const DeviceMesh = ({
+  device,
+  floor,
+  selected,
+  glow,
+  plan,
+  interactive,
+  onSelect,
+  onMove,
+  onMoveEnd,
+}: DeviceMeshProps) => {
   const getState = useThree((s) => s.get)
   const level = floor.elevation + device.z
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -level), [level])
@@ -134,8 +151,8 @@ const DeviceMesh = ({ device, floor, selected, plan, interactive, onSelect, onMo
     <meshStandardMaterial
       color={color}
       roughness={0.5}
-      emissive={device.kind === 'light' ? color : '#000000'}
-      emissiveIntensity={device.kind === 'light' ? 0.35 : 0}
+      emissive={device.kind !== 'light' ? '#000000' : glow > 0 ? BULB : color}
+      emissiveIntensity={device.kind === 'light' ? Math.max(0.35, glow * LIT_GLOW) : 0}
     />
   )
   const outline = selected && <Edges color={SELECTED_OUTLINE} lineWidth={2} />

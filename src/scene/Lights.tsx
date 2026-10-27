@@ -17,6 +17,10 @@ const SUN_DISTANCE = 35
 const MOON = '#9fb0d8'
 const MOON_INTENSITY = 0.8
 
+/** 0 at night, 1 by day; studio light (no sun) counts as day. */
+export const daylight = (sun: SunPosition | undefined) =>
+  sun ? MathUtils.smoothstep(Math.sin(sun.altitude), -0.1, 0.2) : 1
+
 const mix = (a: string, b: string, t: number) => `#${new Color(a).lerp(new Color(b), t).getHexString()}`
 
 export const Lights = ({ sun, north, center }: LightsProps) => {
@@ -35,7 +39,7 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
   if (sun) {
     const [dx, dy, dz] = sunDirection(sun, north)
     const height = Math.sin(sun.altitude)
-    const day = MathUtils.smoothstep(height, -0.1, 0.2)
+    const day = daylight(sun)
     const low = 1 - MathUtils.smoothstep(height, 0.05, 0.45)
     position = [center[0] + dx * SUN_DISTANCE, center[1] + dy * SUN_DISTANCE, center[2] + dz * SUN_DISTANCE]
     sunColor = mix('#fff3df', '#ff9d52', low)

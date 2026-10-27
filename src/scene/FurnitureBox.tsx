@@ -10,6 +10,8 @@ import { SELECTED_OUTLINE } from './palette'
 
 type FurnitureBoxProps = {
   item: FurnitureItem
+  /** How brightly a lamp is lit, 0 to 1. */
+  glow?: number
   elevation: number
   selected: boolean
   /** Whether the rotate/duplicate/remove buttons float over this one (one item of a group carries them). */
@@ -41,6 +43,7 @@ type Controls = { enabled: boolean }
 /** A furniture item that can be dragged across its floor with independent snapping options. */
 export const FurnitureBox = ({
   item,
+  glow,
   elevation,
   selected,
   showActions,
@@ -159,6 +162,7 @@ export const FurnitureBox = ({
             depth={item.depth}
             height={item.height}
             fabric={item.color}
+            glow={glow}
           />
         </Suspense>
       )}

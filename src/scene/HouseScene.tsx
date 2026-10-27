@@ -20,7 +20,8 @@ import { Roof } from './Roof'
 import { house } from '../layout/layout'
 import { FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
-import { Lights } from './Lights'
+import { daylight, Lights } from './Lights'
+import { HouseLights, isLamp } from './HouseLights'
 import { MeasureTool } from './MeasureTool'
 import { Compass, CompassTracker } from './Compass'
 import { WalkCamera } from './WalkCamera'
@@ -126,6 +127,9 @@ export const HouseScene = ({
 
   const items = outside ? [] : data.furniture.filter((f) => camera === 'walk' || f.floor === floor.id)
   const devices = outside ? [] : data.devices.filter((d) => d.floor === floor.id)
+  // After dark the house's own lights come on, on every floor that's shown.
+  const dark = 1 - daylight(sun)
+  const litFloors = floors.slice(0, outside || camera === 'walk' ? floors.length : floorIndex + 1)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
@@ -212,6 +216,7 @@ export const HouseScene = ({
         )}
         <CameraNudger nudge={nudge} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
+        <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} dark={dark} />
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
@@ -265,6 +270,7 @@ export const HouseScene = ({
           floor={floor}
           devices={devices}
           selectedId={selection?.kind === 'device' ? selection.id : undefined}
+          glow={dark}
           plan={camera === 'top'}
           interactive={interaction === 'devices' && !placing}
           onSelect={(id) => onSelect({ kind: 'device', id })}
@@ -314,6 +320,7 @@ export const HouseScene = ({
           <FurnitureBox
             key={item.id}
             item={item}
+            glow={isLamp(item.model) ? dark : 0}
             elevation={floors.find((f) => f.id === item.floor)?.elevation ?? floor.elevation}
             selected={selectedIds.includes(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
