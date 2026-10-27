@@ -6,6 +6,8 @@ export type Selection =
   | { kind: 'furniture'; ids: string[] }
   | { kind: 'room'; roomId: string }
   | { kind: 'device'; id: string }
+  /** A ceiling light (device id) or lamp (furniture id) picked while looking round, to switch and set. */
+  | { kind: 'light'; id: string }
 
 export type CameraMode = 'top' | 'orbit' | 'walk'
 
@@ -14,12 +16,3 @@ export type CameraMode = 'top' | 'orbit' | 'walk'
  * drag smart-home devices.
  */
 export type Interaction = 'view' | 'edit' | 'measure' | 'devices'
-
-/** Screen-space slop keeps taps from moving furniture, regardless of camera zoom. */
-export const pastDragThreshold = (
-  start: { clientX: number; clientY: number; pointerType: string },
-  pointer: { clientX: number; clientY: number },
-) => {
-  const threshold = start.pointerType === 'touch' ? 10 : 5
-  return Math.hypot(pointer.clientX - start.clientX, pointer.clientY - start.clientY) > threshold
-}

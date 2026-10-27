@@ -55,7 +55,7 @@ export const Roof = ({ roof, floor }: { roof: RoofLayout; floor: Floor }) => {
   return (
     <group>
       {boxes.map((b, i) => (
-        <mesh key={i} position={b.at} castShadow receiveShadow raycast={noRaycast}>
+        <mesh key={i} position={b.at} receiveShadow raycast={noRaycast}>
           <boxGeometry args={b.size} />
           <meshStandardMaterial color={b.color} roughness={0.9} />
         </mesh>

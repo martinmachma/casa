@@ -1,4 +1,4 @@
-import { Lightbulb, MousePointer2, PenLine, Redo2, Undo2 } from 'lucide-react'
+import { Lightbulb, MousePointer2, PanelRightOpen, PenLine, Redo2, Undo2 } from 'lucide-react'
 import type { Interaction } from '../scene/selection'
 import { IconButton, Segmented } from './kit'
 
@@ -8,15 +8,13 @@ type ModeBarProps = {
   /** Undo and redo, shown while editing; absent when there's nothing to step to. */
   onUndo: (() => void) | undefined
   onRedo: (() => void) | undefined
+  onOpenPanel?: () => void
 }
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 
-/**
- * Top right of the 3D view: the edit toggle, and while editing, history and which tool to its left. It floats above the
- * right panel, which keeps room for it, so opening the panel doesn't move it.
- */
-export const ModeBar = ({ interaction, onChange, onUndo, onRedo }: ModeBarProps) => {
+/** Stays anchored over the view, including while the details panel opens. */
+export const ModeBar = ({ interaction, onChange, onUndo, onRedo, onOpenPanel }: ModeBarProps) => {
   const editing = interaction !== 'view'
   return (
     <div className="modebar">
@@ -29,6 +27,13 @@ export const ModeBar = ({ interaction, onChange, onUndo, onRedo }: ModeBarProps)
         <PenLine size={16} />
         <span>Edit</span>
       </button>
+      {editing && onOpenPanel && (
+        <div className="float history">
+          <IconButton label="Open details" small onClick={onOpenPanel}>
+            <PanelRightOpen size={17} />
+          </IconButton>
+        </div>
+      )}
       {editing && (
         <div className="float history" role="group" aria-label="History">
           <IconButton label={`Undo (${mod}Z)`} small disabled={!onUndo} onClick={onUndo}>

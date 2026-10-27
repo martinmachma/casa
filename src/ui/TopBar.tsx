@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import type { Floor } from '../layout/types'
 import { IconButton, Segmented } from './kit'
+import { WeatherButton } from './WeatherButton'
 
 type TopBarProps = {
   floors: Floor[]
@@ -11,12 +12,13 @@ type TopBarProps = {
   /** Looking at the whole house from outside instead of one floor. */
   outside: boolean
   onOutside: () => void
+  /** The version picker, while planning. */
+  versions?: ReactNode
+  onWeather: () => void
   /** Opens the wishes & bugs list; the badge counts open ones. */
   onTodos: () => void
   openTodos: number
   account: Account
-  /** The version picker. */
-  versions: ReactNode
 }
 
 const OUTSIDE = 'outside'
@@ -29,17 +31,13 @@ export const TopBar = ({
   onFloor,
   outside,
   onOutside,
+  versions,
+  onWeather,
   onTodos,
   openTodos,
   account,
-  versions,
 }: TopBarProps) => (
   <header className="topbar">
-    <div className="brand">
-      <img src="/favicon.svg" alt="" />
-      <span className="brand-name">Casa</span>
-    </div>
-    <span className="topbar-divider hide-narrow" />
     <Segmented
       label="Floor"
       value={outside ? OUTSIDE : floors[floorIndex].id}
@@ -52,6 +50,7 @@ export const TopBar = ({
     />
     {versions}
     <span className="spacer" />
+    <WeatherButton onClick={onWeather} />
     <IconButton label="Wishes & bugs" className="todo-open" onClick={onTodos}>
       <ListTodo size={18} />
       {openTodos > 0 && <span className="todo-count">{openTodos}</span>}

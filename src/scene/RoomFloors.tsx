@@ -41,21 +41,11 @@ type RoomFloorsProps = {
   regions: Map<string, RoomRegion>
   materials: Map<string, string>
   selectedRoom: string | undefined
-  /** Lit up softly: the room hovered in the legend or on its number. */
-  hoveredRoom: string | undefined
   interactive: boolean
   onPick: (roomId: string) => void
 }
 
-export const RoomFloors = ({
-  floor,
-  regions,
-  materials,
-  selectedRoom,
-  hoveredRoom,
-  interactive,
-  onPick,
-}: RoomFloorsProps) => (
+export const RoomFloors = ({ floor, regions, materials, selectedRoom, interactive, onPick }: RoomFloorsProps) => (
   <group position={[0, floor.elevation + LIFT, 0]}>
     {[...regions.values()].map((region) => (
       <RoomFloorMesh
@@ -63,7 +53,7 @@ export const RoomFloors = ({
         region={region}
         voids={floor.voids}
         material={materials.get(region.roomId)}
-        tint={region.roomId === selectedRoom ? 0.3 : region.roomId === hoveredRoom ? 0.18 : 0}
+        tint={region.roomId === selectedRoom ? 0.3 : 0}
         interactive={interactive}
         onPick={onPick}
       />

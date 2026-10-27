@@ -1,7 +1,9 @@
 import { Trash2 } from 'lucide-react'
 import type { Device, DeviceKind } from '../data/types'
+import type { LightState } from '../devices/lights'
 import { DEVICE_KINDS, KIND_ORDER } from '../devices/kinds'
 import { DeviceIcon } from './deviceIcons'
+import { LightControls } from './LightControls'
 import { NumberField } from './NumberField'
 import { PanelHead, Section } from './kit'
 
@@ -11,13 +13,25 @@ type DeviceEditorProps = {
   room: string | undefined
   onChange: (patch: Partial<Device>) => void
   onKind: (kind: DeviceKind) => void
+  /** How it's set now; only lights use it. */
+  light: LightState
+  onLight: (patch: Partial<LightState>) => void
   onDelete: () => void
   onClose: () => void
 }
 
 const cm = (m: number) => Math.round(m * 100)
 
-export const DeviceEditor = ({ device, room, onChange, onKind, onDelete, onClose }: DeviceEditorProps) => (
+export const DeviceEditor = ({
+  device,
+  room,
+  onChange,
+  onKind,
+  light,
+  onLight,
+  onDelete,
+  onClose,
+}: DeviceEditorProps) => (
   <>
     <PanelHead
       eyebrow={DEVICE_KINDS[device.kind].label}
@@ -25,6 +39,8 @@ export const DeviceEditor = ({ device, room, onChange, onKind, onDelete, onClose
       sub={[room, device.wall ? `on the wall, ${cm(device.z)} cm up` : 'on the ceiling'].filter(Boolean).join(' · ')}
       onClose={onClose}
     />
+
+    {device.kind === 'light' && <LightControls light={light} entity={device.entity} onChange={onLight} />}
 
     <Section>
       {/* Remount when another device is selected so the fields show its values. */}

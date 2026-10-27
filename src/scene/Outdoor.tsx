@@ -1,24 +1,33 @@
-import { useMemo } from 'react'
-import type { Outdoor as OutdoorLayout, Shed } from '../layout/types'
-import { EXTERIOR_FRAME, GROUND, LAWN, PAVING, SHED_ROOF, SHED_WOOD } from './palette'
+import { Line } from '@react-three/drei'
+import { useEffect, useMemo } from 'react'
+import type { GardenBlock, Outdoor as OutdoorLayout, Point, Shed } from '../layout/types'
+import { surroundingsTexture } from './groundTexture'
+import { COPING, DEFAULT_WALL, EXTERIOR_FRAME, HEDGE, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
 import { prismGeometry } from './prism'
 
 const LAWN_DEPTH = 0.05
 const ROOF = 0.08
 const EAVE = 0.1
 const DOOR_HEIGHT = 1.9
-// The land around the plot, a little below the lawn so the two never flicker.
-const GROUND_SIZE = 120
+// The blurred land around the plot, a little below the lawn so the two never flicker.
+const GROUND_RADIUS = 90
 const GROUND_DROP = 0.01
 
 const noRaycast = () => null
 
-/** The garden behind the house: lawn, the paved terrace and the shed, on open ground all around. */
+/** The plot: lawn, the paved terrace and front, the shed and the bits standing in the front yard, edged and set in soft blurred surroundings. */
 export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
   const lawn = useMemo(() => prismGeometry(outdoor.garden, LAWN_DEPTH), [outdoor.garden])
   const terrace = useMemo(
     () => prismGeometry(outdoor.terrace.outline, outdoor.terrace.level - outdoor.level),
     [outdoor.terrace, outdoor.level],
+  )
+  const ground = useMemo(() => surroundingsTexture(), [])
+  useEffect(() => () => ground.dispose(), [ground])
+  const edge = useMemo(
+    () =>
+      [...outdoor.garden, outdoor.garden[0]].map(([x, z]) => [x, outdoor.level + 0.005, z] as [number, number, number]),
+    [outdoor.garden, outdoor.level],
   )
   const xs = outdoor.garden.map((p) => p[0])
   const ys = outdoor.garden.map((p) => p[1])
@@ -32,18 +41,62 @@ export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
         receiveShadow
         raycast={noRaycast}
       >
-        <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
-        <meshStandardMaterial color={GROUND} roughness={1} />
+        <circleGeometry args={[GROUND_RADIUS, 64]} />
+        <meshStandardMaterial map={ground} transparent depthWrite={false} roughness={1} />
       </mesh>
       <mesh geometry={lawn} position={[0, outdoor.level, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={LAWN} roughness={1} />
       </mesh>
+      <Line points={edge} color={PLOT_EDGE} lineWidth={2} raycast={noRaycast} />
       <mesh geometry={terrace} position={[0, outdoor.terrace.level, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={PAVING} roughness={0.95} />
       </mesh>
+      {outdoor.paving?.map((p) => (
+        <Paving key={p.name} outline={p.outline} level={p.level} ground={outdoor.level} />
+      ))}
+      {outdoor.blocks?.map((b) => (
+        <BlockMesh key={b.id} block={b} base={outdoor.level} />
+      ))}
       {outdoor.sheds.map((s) => (
         <ShedMesh key={s.id} shed={s} base={outdoor.terrace.level} />
       ))}
+    </group>
+  )
+}
+
+/** Paving laid on the lawn, its top at `level`. */
+const Paving = ({ outline, level, ground }: { outline: Point[]; level: number; ground: number }) => {
+  const geometry = useMemo(() => prismGeometry(outline, level - ground), [outline, level, ground])
+  return (
+    <mesh geometry={geometry} position={[0, level, 0]} receiveShadow raycast={noRaycast}>
+      <meshStandardMaterial color={PAVING} roughness={0.95} />
+    </mesh>
+  )
+}
+
+const CAP = 0.06
+const CAP_EAVE = 0.03
+
+/** A rendered wall gets a thin coping cap; a trellis is just a green panel. */
+const BlockMesh = ({ block, base }: { block: GardenBlock; base: number }) => {
+  const w = block.x1 - block.x0
+  const d = block.y1 - block.y0
+  const cx = (block.x0 + block.x1) / 2
+  const cz = (block.y0 + block.y1) / 2
+  const green = block.kind === 'green'
+  const body = green ? block.height : block.height - CAP
+  return (
+    <group position={[cx, base, cz]}>
+      <mesh position={[0, body / 2, 0]} castShadow receiveShadow raycast={noRaycast}>
+        <boxGeometry args={[w, body, d]} />
+        <meshStandardMaterial color={green ? HEDGE : DEFAULT_WALL} roughness={green ? 1 : 0.9} />
+      </mesh>
+      {!green && (
+        <mesh position={[0, body + CAP / 2, 0]} castShadow raycast={noRaycast}>
+          <boxGeometry args={[w + 2 * CAP_EAVE, CAP, d + 2 * CAP_EAVE]} />
+          <meshStandardMaterial color={COPING} roughness={0.8} />
+        </mesh>
+      )}
     </group>
   )
 }

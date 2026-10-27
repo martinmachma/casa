@@ -13,6 +13,13 @@ type LightsProps = {
 const BACKGROUND = '#f4efe8'
 const NIGHT_SKY = '#283040'
 const SUN_DISTANCE = 35
+// After dark: a cool moonlit fill so the house still reads instead of going pitch black.
+const MOON = '#9fb0d8'
+const MOON_INTENSITY = 0.8
+
+/** 0 at night, 1 by day; studio light (no sun) counts as day. */
+export const daylight = (sun: SunPosition | undefined) =>
+  sun ? MathUtils.smoothstep(Math.sin(sun.altitude), -0.1, 0.2) : 1
 
 const mix = (a: string, b: string, t: number) => `#${new Color(a).lerp(new Color(b), t).getHexString()}`
 
@@ -27,19 +34,21 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
   let ground = '#b8a990'
   let ambient = 1.5
   let background = BACKGROUND
+  let moon = 0
 
   if (sun) {
     const [dx, dy, dz] = sunDirection(sun, north)
     const height = Math.sin(sun.altitude)
-    const day = MathUtils.smoothstep(height, -0.1, 0.2)
+    const day = daylight(sun)
     const low = 1 - MathUtils.smoothstep(height, 0.05, 0.45)
     position = [center[0] + dx * SUN_DISTANCE, center[1] + dy * SUN_DISTANCE, center[2] + dz * SUN_DISTANCE]
     sunColor = mix('#fff3df', '#ff9d52', low)
     sunIntensity = 3.2 * MathUtils.smoothstep(height, -0.02, 0.1)
     shadow = 0.85
-    sky = mix('#4a5878', '#eef3fb', day)
-    ground = mix('#2d2a28', '#b8a990', day)
-    ambient = 0.35 + 0.75 * day
+    sky = mix('#8592b8', '#eef3fb', day)
+    ground = mix('#4a4640', '#b8a990', day)
+    ambient = 0.8 + 0.3 * day
+    moon = MOON_INTENSITY * (1 - day)
     background = mix(NIGHT_SKY, BACKGROUND, day)
   }
 
@@ -48,6 +57,14 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
       <color attach="background" args={[background]} />
       <hemisphereLight args={[sky, ground, ambient]} />
       <primitive object={target} position={center} />
+      {moon > 0 && (
+        <directionalLight
+          position={[center[0] - 10, center[1] + 25, center[2] - 8]}
+          target={target}
+          color={MOON}
+          intensity={moon}
+        />
+      )}
       <directionalLight
         position={position}
         target={target}

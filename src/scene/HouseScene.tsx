@@ -1,24 +1,29 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState, type RefObject } from 'react'
-import { MOUSE, TOUCH } from 'three'
+import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
+import { colliding, constrainMove } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point, WallFace } from '../layout/types'
+import type { Floor, WallFace } from '../layout/types'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { Outdoor } from './Outdoor'
-import { prismGeometry } from './prism'
+import { HouseShadow } from './HouseShadow'
+import { slabGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
 import { Roof } from './Roof'
 import { house } from '../layout/layout'
-import { DEFAULT_WALL, FLOOR_SLAB } from './palette'
+import { FLOOR_SLAB } from './palette'
 import type { SunPosition } from '../sun/sun'
-import { Lights } from './Lights'
+import { daylight, Lights } from './Lights'
+import { HouseLights, isLamp } from './HouseLights'
+import { lightColor, lightLevel, type LightState } from '../devices/lights'
 import { MeasureTool } from './MeasureTool'
 import { Compass, CompassTracker } from './Compass'
 import { WalkCamera } from './WalkCamera'
@@ -29,17 +34,20 @@ import { floorWallRects } from '../layout/rooms'
 import { Line } from '@react-three/drei'
 import { SELECTED_OUTLINE } from './palette'
 import { RoomFloors } from './RoomFloors'
-import { RoomLabelProjector, RoomLabels } from './RoomLabels'
-import type { CameraNudge } from './cameraNudge'
+import { NEAR_PACE, type CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
+import { intro } from './intro'
+import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
 
 type HouseSceneProps = {
+  floorPointer: FloorPointer
   floors: Floor[]
   floorIndex: number
+  onWalkFloorChange: (index: number) => void
   /** The whole house from outside, roof and all; nothing inside is shown or pickable. */
   outside: boolean
   camera: CameraMode
@@ -49,14 +57,11 @@ type HouseSceneProps = {
   /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
   interaction: Interaction
   selection: Selection | undefined
-  hoveredRoom: string | undefined
-  onHoverRoom: (roomId: string | undefined) => void
-  snap: boolean
+  wallSnap: boolean
+  furnitureSnap: boolean
   /** Sun position for sunlight, or undefined for even light. */
   sun: SunPosition | undefined
   north: number
-  /** The room numbers over the 3D view, shown while the rooms box is open. */
-  roomNumbers: boolean
   /** The measurement in progress; undefined when not measuring. */
   measure: Measurement | undefined
   onMeasurePick: (pick: MeasurePick) => void
@@ -65,6 +70,10 @@ type HouseSceneProps = {
   onRemoveMeasurement: (id: string) => void
   /** The device kind the next tap places, while the devices tool is on. */
   placing: DeviceKind | undefined
+  /** Lights switched by hand, by device or lamp id; the rest come on after dark. */
+  lights: Readonly<Record<string, LightState>>
+  /** A light or lamp tapped while looking round. */
+  onPickLight: (id: string) => void
   onPlaceDevice: (device: Omit<Device, 'id' | 'name'>) => void
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
@@ -75,25 +84,27 @@ type HouseSceneProps = {
 }
 
 export const HouseScene = ({
+  floorPointer,
   floors,
   floorIndex,
+  onWalkFloorChange,
   outside,
   camera,
   cutaway,
   data,
   interaction,
   selection,
-  hoveredRoom,
-  onHoverRoom,
-  snap,
+  wallSnap,
+  furnitureSnap,
   sun,
   north,
-  roomNumbers,
   measure,
   onMeasurePick,
   measurements,
   onRemoveMeasurement,
   placing,
+  lights,
+  onPickLight,
   onPlaceDevice,
   nudge,
   viewKey,
@@ -114,13 +125,25 @@ export const HouseScene = ({
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
 
-  const items = outside ? [] : data.furniture.filter((f) => f.floor === floor.id)
+  const items = outside ? [] : data.furniture.filter((f) => camera === 'walk' || f.floor === floor.id)
   const devices = outside ? [] : data.devices.filter((d) => d.floor === floor.id)
+  // After dark the house's own lights come on, on every floor that's shown.
+  const dark = 1 - daylight(sun)
+  const level = (id: string) => lightLevel(lights[id], dark)
+  const tint = (id: string) => lightColor(lights[id])
+  // While looking round, a tap on a light or lamp picks it, to switch and set it.
+  const lightPick = interaction === 'view' ? onPickLight : undefined
+  const pickedLight = selection?.kind === 'light' ? selection.id : undefined
+  const litFloors = floors.slice(0, outside || camera === 'walk' ? floors.length : floorIndex + 1)
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
   const selectedItem = selectedIds.length === 1 ? items.find((f) => f.id === selectedIds[0]) : undefined
   const wallRects = useMemo(() => floorWallRects(floor), [floor])
+  // Measuring uses its own floor and wall targets.
+  const pickable = interaction === 'edit'
+  // While arranging, anything that runs into a wall or another piece is marked.
+  const clashes = pickable ? colliding(items, wallRects) : new Set<string>()
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = floor.elevation + 0.05
   const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
@@ -141,27 +164,35 @@ export const HouseScene = ({
     })),
   ]
 
-  const labels = useRef<(HTMLDivElement | null)[]>([])
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
-  // Measuring uses its own floor and wall targets.
-  const pickable = interaction === 'edit'
-  const pickRoom = pickable ? (roomId: string) => onSelect({ kind: 'room', roomId }) : undefined
 
   const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
   // A group moves together by however far the grabbed piece went.
+  // Nothing can be pushed into a wall or another piece; the move slides along whatever is in the way.
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
     const grabbed = items.find((f) => f.id === id)
-    if (!grabbed || selectedIds.length < 2) return data.patchFurniture(id, placement, `move:${id}`)
+    if (!grabbed) return
+    if (selectedIds.length < 2) {
+      const [allowed] = constrainMove([grabbed], [placement], items, wallRects) ?? []
+      return allowed && data.patchFurniture(id, allowed, `move:${id}`)
+    }
     const dx = placement.x - grabbed.x
     const dy = placement.y - grabbed.y
     const moved = items.filter((f) => selectedIds.includes(f.id))
     const proposed = moved.map((f) => ({ ...f, x: f.x + dx, y: f.y + dy }))
-    const [sx, sy] = snap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
-    data.patchFurnitures(
-      new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
-      `move:${selectedIds.join()}`,
+    const [sx, sy] = wallSnap ? snapGroupToWalls(proposed, snapWalls) : [0, 0]
+    const allowed = constrainMove(
+      moved,
+      proposed.map((f) => ({ x: f.x + sx, y: f.y + sy, rotation: f.rotation })),
+      items,
+      wallRects,
     )
+    if (allowed)
+      data.patchFurnitures(
+        new Map(moved.map((f, i) => [f.id, { x: allowed[i].x, y: allowed[i].y }])),
+        `move:${selectedIds.join()}`,
+      )
   }
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
   const pickItem = (id: string, add: boolean) => {
@@ -178,12 +209,15 @@ export const HouseScene = ({
       <Canvas
         shadows
         dpr={[1, 2]}
-        onPointerMissed={() => (pickable || interaction === 'devices') && onSelect(undefined)}
+        onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
       >
+        <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
         {camera === 'walk' ? (
           <WalkCamera
-            key={`${floor.id}-${viewKey}`}
+            key={viewKey}
             floor={floor}
+            floors={floors}
+            onFloorChange={onWalkFloorChange}
             furniture={data.furniture}
             nudge={nudge}
             openDoors={openDoors}
@@ -194,16 +228,19 @@ export const HouseScene = ({
             mode={camera}
             floor={outside ? floors[0] : floor}
             houseHeight={outside ? roofTop(floors) : undefined}
+            viewKey={viewKey}
           />
         )}
         <CameraNudger nudge={nudge} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
+        <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
+        <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} />
 
-        {/* Floors below the current one stay visible for context but can't be clicked. */}
-        {floors.slice(0, floorIndex + 1).map((f, i) => (
+        {/* Walking shows the connected floors, including the landing and the slab overhead. */}
+        {floors.slice(0, camera === 'walk' ? floors.length : floorIndex + 1).map((f, i) => (
           <group key={f.id}>
             {/* The ground floor's slab reaches down into the garden, so the house stands on the ground. */}
             <Slab
@@ -211,7 +248,11 @@ export const HouseScene = ({
               depth={i === 0 && house.outdoor ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1) : SLAB}
             />
             {floors[i + 1] && (
-              <Stairs floor={f} next={floors[i + 1]} cut={i === floorIndex && !outside ? f.height : undefined} />
+              <Stairs
+                floor={f}
+                next={floors[i + 1]}
+                cut={i === floorIndex && !outside && camera !== 'walk' ? f.height : undefined}
+              />
             )}
             <Railings floor={f} />
             <RoomFloors
@@ -219,7 +260,6 @@ export const HouseScene = ({
               regions={floorRegions(f)}
               materials={data.roomFloors}
               selectedRoom={selection?.kind === 'room' ? selection.roomId : undefined}
-              hoveredRoom={f.id === floor.id ? hoveredRoom : undefined}
               interactive={pickable && f.id === floor.id}
               onPick={(roomId) => onSelect({ kind: 'room', roomId })}
             />
@@ -227,7 +267,7 @@ export const HouseScene = ({
               floor={f}
               colors={data.wallColors}
               selection={selection}
-              interactive={pickable && f.id === floor.id}
+              interactive={pickable && (outside || f.id === floor.id)}
               doors={!measure && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
@@ -239,17 +279,23 @@ export const HouseScene = ({
 
         {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
 
-        {/* Walking needs a ceiling, so light comes in through the windows; the floor above's slab is one. */}
-        {camera === 'walk' && floors[floorIndex + 1] && <Slab floor={floors[floorIndex + 1]} color={DEFAULT_WALL} />}
-
         {interaction === 'devices' && placing && !outside && (
-          <DevicePlacer floor={floor} kind={placing} onPlace={onPlaceDevice} cutaway={cutaway && camera === 'orbit'} />
+          <DevicePlacer
+            floor={floor}
+            kind={placing}
+            onPlace={onPlaceDevice}
+            cutaway={cutaway && camera === 'orbit'}
+            plan={camera === 'top'}
+          />
         )}
         <Devices
           floor={floor}
           devices={devices}
-          selectedId={selection?.kind === 'device' ? selection.id : undefined}
+          selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
+          glow={level}
+          tint={tint}
           plan={camera === 'top'}
+          onPickLight={lightPick}
           interactive={interaction === 'devices' && !placing}
           onSelect={(id) => onSelect({ kind: 'device', id })}
           onMove={moveDevice}
@@ -277,7 +323,6 @@ export const HouseScene = ({
           />
         )}
 
-        {camera !== 'walk' && !outside && <RoomLabelProjector floor={floor} labels={labels} />}
         <AnnotationProjector items={annotations} refs={annotationRefs} />
         {gaps.map((g, i) => (
           <Line
@@ -298,12 +343,18 @@ export const HouseScene = ({
           <FurnitureBox
             key={item.id}
             item={item}
-            elevation={floor.elevation}
-            selected={selectedIds.includes(item.id)}
+            glow={isLamp(item.model) ? level(item.id) : 0}
+            glowColor={tint(item.id)}
+            onPickLight={isLamp(item.model) ? lightPick : undefined}
+            elevation={floors.find((f) => f.id === item.floor)?.elevation ?? floor.elevation}
+            selected={selectedIds.includes(item.id) || pickedLight === item.id}
+            colliding={clashes.has(item.id)}
             showActions={selectedIds[selectedIds.length - 1] === item.id}
             interactive={pickable}
             // Group snapping is applied to the shared translation in moveItem.
-            snapWalls={snap && selectedIds.length < 2 ? snapWalls : undefined}
+            wallSnap={wallSnap && selectedIds.length < 2}
+            furnitureSnap={furnitureSnap && selectedIds.length < 2}
+            snapWalls={wallSnap ? snapWalls : undefined}
             snapItems={items}
             onSelect={pickItem}
             onMove={moveItem}
@@ -313,16 +364,6 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {camera !== 'walk' && !outside && roomNumbers && (
-        <RoomLabels
-          floor={floor}
-          labels={labels}
-          names={data.roomNames}
-          hovered={hoveredRoom}
-          onHover={onHoverRoom}
-          onPick={pickRoom}
-        />
-      )}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       <Compass needle={needle} />
     </>
@@ -330,22 +371,10 @@ export const HouseScene = ({
 }
 
 /** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */
-const slabGeometry = (floor: Floor, depth: number) => {
-  const { min, max } = floorBounds(floor)
-  const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
-  const holes = (floor.voids ?? []).map((v): Point[] => [
-    [v.x0, v.y0],
-    [v.x1, v.y0],
-    [v.x1, v.y1],
-    [v.x0, v.y1],
-  ])
-  return prismGeometry(outline, depth, holes)
-}
-
 const Slab = ({ floor, color = FLOOR_SLAB, depth = SLAB }: { floor: Floor; color?: string; depth?: number }) => {
   const geometry = useMemo(() => slabGeometry(floor, depth), [floor, depth])
   return (
-    <mesh geometry={geometry} position={[0, floor.elevation, 0]} castShadow receiveShadow>
+    <mesh geometry={geometry} position={[0, floor.elevation, 0]} receiveShadow>
       <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>
   )
@@ -362,29 +391,75 @@ type CameraRigProps = {
   floor: Floor
   /** Set from outside: the whole house this tall has to fit, seen from lower down. */
   houseHeight?: number
+  /** Bumped by Reset view, which starts the camera afresh instead of keeping where it was. */
+  viewKey: number
 }
 
-const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
-  const size = useThree((s) => s.size)
+type Pose = { position: Vector3; target: Vector3 }
+
+/** Where the orbit camera starts for a floor, or for the whole house when it's this tall. */
+const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => {
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
   const span = Math.max(max[0] - min[0], max[1] - min[1])
+  // A portrait phone sees less sideways; step back so the whole house fits.
+  const back = span * Math.max(1, 0.75 / aspect)
+  // From outside, the whole house: look at its middle from further away and lower down.
+  const look = floor.elevation + (houseHeight ? houseHeight / 2 : 0.8)
+  const away = houseHeight ? Math.max(back, houseHeight) * 1.3 : back
+  const up = houseHeight ? look + away * 0.55 : floor.elevation + back * 1.1
+  return { position: new Vector3(cx + away * 0.8, up, cz + away * 1.25), target: new Vector3(cx, look, cz) }
+}
+
+/** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
+const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }
+
+const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
+  const size = useThree((s) => s.size)
+  // Chosen once: carried over from the previous floor's camera, or this view's own start
+  // (after Reset view, or a change between 3D and top). Resizing doesn't move it.
+  const [start] = useState(() => {
+    if (lastView.mode === mode && lastView.viewKey === viewKey)
+      return { position: lastView.position.clone(), target: lastView.target.clone(), zoom: lastView.zoom }
+    const { min, max } = floorBounds(floor)
+    const cx = (min[0] + max[0]) / 2
+    const cz = (min[1] + max[1]) / 2
+    const span = Math.max(max[0] - min[0], max[1] - min[1])
+    if (mode === 'top')
+      return {
+        // Straight down with north at the top; the tiny z offset keeps OrbitControls' math stable.
+        position: new Vector3(cx, floor.elevation + 40, cz + 0.001),
+        target: new Vector3(cx, floor.elevation, cz),
+        zoom: Math.min(size.width, size.height) / (span * 1.35),
+      }
+    return { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
+  })
+  useFrame(({ camera, controls }) => {
+    if (!controls) return
+    const orbit = controls as OrbitControlsImpl
+    // Panning and zooming scale with the distance to the target, so close in they'd crawl.
+    // Speed them up there to keep the pace they have this far out.
+    if (mode === 'orbit') {
+      const boost = Math.max(1, NEAR_PACE / camera.position.distanceTo(orbit.target))
+      orbit.panSpeed = boost
+      orbit.zoomSpeed = boost
+    }
+    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom })
+    lastView.position.copy(camera.position)
+    lastView.target.copy(orbit.target)
+  })
 
   if (mode === 'top') {
+    // The plan stays put sideways and in zoom; only its height follows the floor.
+    const position = start.position.clone().setY(floor.elevation + 40)
+    const target = start.target.clone().setY(floor.elevation)
     return (
       <>
-        {/* Straight down with north at the top; the tiny z offset keeps OrbitControls' math stable. */}
-        <OrthographicCamera
-          makeDefault
-          position={[cx, floor.elevation + 40, cz + 0.001]}
-          zoom={Math.min(size.width, size.height) / (span * 1.35)}
-          near={0.1}
-          far={200}
-        />
+        <OrthographicCamera makeDefault position={position.toArray()} zoom={start.zoom} near={0.1} far={200} />
         <OrbitControls
           makeDefault
-          target={[cx, floor.elevation, cz]}
+          target={target.toArray()}
           enableRotate={false}
           screenSpacePanning
           mouseButtons={{ LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
@@ -394,16 +469,55 @@ const CameraRig = ({ mode, floor, houseHeight }: CameraRigProps) => {
     )
   }
 
-  // A portrait phone sees less sideways; step back so the whole house fits.
-  const back = span * Math.max(1, 0.75 / (size.width / size.height))
-  // From outside, the whole house: look at its middle from further away and lower down.
-  const look = floor.elevation + (houseHeight ? houseHeight / 2 : 0.8)
-  const away = houseHeight ? Math.max(back, houseHeight) * 1.3 : back
-  const up = houseHeight ? look + away * 0.55 : floor.elevation + back * 1.1
   return (
     <>
-      <PerspectiveCamera makeDefault position={[cx + away * 0.8, up, cz + away * 1.25]} fov={45} near={0.1} far={200} />
-      <OrbitControls makeDefault target={[cx, look, cz]} maxPolarAngle={Math.PI / 2.05} />
+      <PerspectiveCamera makeDefault position={start.position.toArray()} fov={45} near={0.1} far={200} />
+      <OrbitControls makeDefault target={start.target.toArray()} maxPolarAngle={Math.PI / 2.05} minDistance={0.5} />
+      <IntroFlight />
     </>
   )
+}
+
+const INTRO_SECONDS = 2.2
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
+
+/**
+ * Starts high above the house looking straight down with the house square on, drops towards it,
+ * and from about halfway down swings round and tilts into the view the camera was set up with.
+ */
+const IntroFlight = () => {
+  // Stays mounted through re-renders; only the first camera of the session flies in.
+  const flight = useRef<{ end: Spherical; start: Spherical; t: number }>(undefined)
+
+  useFrame(({ camera, controls: active }, delta) => {
+    const controls = active as OrbitControlsImpl | null
+    if (!controls) return
+    if (!flight.current) {
+      const pending = intro.pending
+      intro.pending = false
+      const end = new Spherical().setFromVector3(camera.position.clone().sub(controls.target))
+      // The tiny angle keeps the overhead view's orientation stable.
+      const start = new Spherical(end.radius * 2.2, 0.001, 0)
+      flight.current = { end, start, t: pending ? 0 : 1 }
+      if (!pending) return
+      controls.enabled = false
+    }
+    const f = flight.current
+    if (f.t >= 1) return
+    f.t = Math.min(1, f.t + delta / INTRO_SECONDS)
+    const down = easeInOut(f.t)
+    const turn = easeInOut(Math.max(0, (f.t - 0.45) / 0.55))
+    const at = new Spherical(
+      MathUtils.lerp(f.start.radius, f.end.radius, down),
+      MathUtils.lerp(f.start.phi, f.end.phi, turn),
+      MathUtils.lerp(f.start.theta, f.end.theta, turn),
+    )
+    camera.position.setFromSpherical(at).add(controls.target)
+    camera.lookAt(controls.target)
+    if (f.t >= 1) {
+      controls.enabled = true
+      controls.update()
+    }
+  })
+  return null
 }

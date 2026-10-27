@@ -1,16 +1,19 @@
 import { TodoPopup } from './ui/TodoPopup'
+import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
 import { useEffect, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
-import type { Backend, Device, DeviceKind, FurnitureItem } from './data/types'
+import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
-import { changeKind, deviceRoom, devicesPerRoom } from './devices/place'
+import { changeKind, deviceRoom } from './devices/place'
+import { canMove } from './furniture/collision'
 import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
+import { pasteFurniture } from './furniture/clipboard'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorBounds } from './layout/geometry'
-import { floorRegions } from './layout/rooms'
+import { floorRegions, floorWallRects, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
 import { house } from './layout/layout'
@@ -20,11 +23,14 @@ import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
+import { lightSettings, useLights } from './devices/lights'
+import { LightPanel } from './ui/LightPanel'
+import { daylight } from './scene/Lights'
 import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
-import type { SunSettings } from './sun/useSun'
+import { sunNow, type SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
 import { wallText } from './measure/dimensions'
 import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } from './measure/measure'
@@ -35,8 +41,9 @@ import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
-import { FloorList, RoomLegend } from './ui/RoomLegend'
+import { FloorList } from './ui/FloorList'
 import { TopBar } from './ui/TopBar'
+import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
@@ -49,32 +56,59 @@ type HouseProps = { backend: Backend; account: Account }
 const NARROW = '(max-width: 820px)'
 const isNarrow = () => window.matchMedia(NARROW).matches
 
+const SECTION_KEY = 'casa.section'
+const savedSection = (): Section => {
+  try {
+    return localStorage.getItem(SECTION_KEY) === 'home' ? 'home' : 'planning'
+  } catch {
+    return 'planning'
+  }
+}
+
 const House = ({ backend, account }: HouseProps) => {
-  const data = useHouseData(backend)
+  const [section, setSection] = useState(savedSection)
+  const planning = section === 'planning'
+  const data = useHouseData(backend, !planning)
   const [floorIndex, setFloorIndex] = useState(0)
-  const [outside, setOutside] = useState(false)
-  const [camera, setCamera] = useState<CameraMode>('orbit')
-  const [cutaway, setCutaway] = useState(false)
+  // The app opens on the whole house.
+  const [outside, setOutside] = useState(true)
+  const [planCamera, setCamera] = useState<CameraMode>('orbit')
+  // The plan is a planning tool; at home the house is seen in 3D or walked through.
+  const camera = planning || planCamera !== 'top' ? planCamera : 'orbit'
+  const [cutaway, setCutaway] = useState(true)
   const [interaction, setInteraction] = useState<Interaction>('view')
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
-  const [hoveredRoom, setHoveredRoom] = useState<string>()
   const [todosOpen, setTodosOpen] = useState(false)
+  const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
   const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
   // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
   const [rightTucked, setRightTucked] = useState(false)
   const setRightOpen = (open: boolean) => setRightTucked(!open)
-  const [snap, setSnap] = useState(true)
+  const [wallSnap, setWallSnap] = useState(true)
+  const [furnitureSnap, setFurnitureSnap] = useState(true)
   const nudge = useRef(createCameraNudge())
+  const clipboard = useRef<NewFurnitureItem[]>([])
+  const floorPointer = useRef<(() => Point | undefined) | undefined>(undefined)
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
   const [measurements, setMeasurements] = useState<MeasuredLine[]>([])
-  const [sun, setSun] = useState<SunSettings>()
+  // Sunlight follows the clock at home; planning starts with even light.
+  const [sun, setSun] = useState<SunSettings | undefined>(() => (planning ? undefined : sunNow()))
   const { site } = house
+  // At home the sun can't be moved; it keeps up with the clock.
+  useEffect(() => {
+    if (planning) return
+    const timer = setInterval(() => setSun(sunNow()), 60 * 1000)
+    return () => clearInterval(timer)
+  }, [planning])
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
     : undefined
+
+  const lights = useLights()
+  const dark = 1 - daylight(sunAt)
 
   const floor = house.floors[floorIndex]
   const regions = floorRegions(floor)
@@ -84,6 +118,7 @@ const House = ({ backend, account }: HouseProps) => {
   const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
   const selectedDevice = selection?.kind === 'device' ? data.devices.find((d) => d.id === selection.id) : undefined
   const floorDevices = data.devices.filter((d) => d.floor === floor.id)
+  const floorItems = data.furniture.filter((f) => f.floor === floor.id)
 
   // Typing a size or dragging the colour picker undoes as one step per field.
   const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>, key?: string) =>
@@ -92,9 +127,11 @@ const House = ({ backend, account }: HouseProps) => {
     const rotation = normalizeAngle(item.rotation + (degrees * Math.PI) / 180)
     // Turning an item that sits against a wall would swing it into the wall; re-seat it, unless
     // snapping would also undo the turn (a 15° step).
-    const seated = snap ? snapToWalls({ ...item, rotation }, floorSnapWalls(floor)) : undefined
+    const seated = wallSnap ? snapToWalls({ ...item, rotation }, floorSnapWalls(floor)) : undefined
     const keepsTurn = seated && Math.abs(normalizeAngle(seated.rotation - rotation)) < 1e-6
-    changeItem(item, keepsTurn ? seated : { rotation })
+    const turned = keepsTurn ? seated : { x: item.x, y: item.y, rotation }
+    // A turn that would swing it into a wall or another piece doesn't happen.
+    if (canMove([item], [turned], floorItems, floorWallRects(floor))) changeItem(item, turned)
   }
   /** Picking something shows it in the right panel, opening the panel if it was tucked away. */
   const select = (next: Selection | undefined) => {
@@ -105,7 +142,10 @@ const House = ({ backend, account }: HouseProps) => {
   /** One piece turns (and re-seats against its wall); a group swings about its middle as it's arranged. */
   const rotateSelection = (degrees: number) => {
     if (selectedItem) return rotateItem(selectedItem, degrees)
-    if (selectedItems.length) data.patchFurnitures(rotateGroup(selectedItems, (degrees * Math.PI) / 180))
+    if (!selectedItems.length) return
+    const turned = rotateGroup(selectedItems, (degrees * Math.PI) / 180)
+    const to = selectedItems.map((f) => turned.get(f.id)!)
+    if (canMove(selectedItems, to, floorItems, floorWallRects(floor))) data.patchFurnitures(turned)
   }
   const deleteSelection = () => {
     data.removeFurniture(...selectedItems.map((f) => f.id))
@@ -169,6 +209,8 @@ const House = ({ backend, account }: HouseProps) => {
   }
 
   const addPiece = (piece: NewPiece) => {
+    // Furniture lives on a floor; from outside it goes on the one last open, shown opened up.
+    setOutside(false)
     const [x, y] = dropPoint()
     const [created] = data.addFurniture({
       ...piece,
@@ -183,19 +225,33 @@ const House = ({ backend, account }: HouseProps) => {
   }
 
   const switchFloor = (index: number) => {
+    // The camera keeps where it is; only Reset view (a new view key) starts it afresh.
     setFloorIndex(index)
     setOutside(false)
     setSelection(undefined)
-    setHoveredRoom(undefined)
     if (measure) setMeasure({ ...measure, picks: [] })
   }
 
-  /** The outside view is for looking only: no editing, and no walking. */
+  /** The outside view has no walking. */
   const goOutside = () => {
     setOutside(true)
-    setHoveredRoom(undefined)
-    changeInteraction('view')
-    if (camera === 'walk') setCamera('orbit')
+    if (planCamera === 'walk') setCamera('orbit')
+  }
+
+  /** Home is for looking at the house: editing and measuring stop, and the sun follows the clock. */
+  const changeSection = (next: Section) => {
+    if (next === section) return
+    if (next === 'home') {
+      changeInteraction('view')
+      stopMeasuring()
+    }
+    setSun(next === 'home' ? sunNow() : undefined)
+    setSection(next)
+    try {
+      localStorage.setItem(SECTION_KEY, next)
+    } catch {
+      // Private windows may refuse storage; the section just isn't remembered.
+    }
   }
 
   /** Nothing stays selected across modes; measuring carries on. */
@@ -236,24 +292,41 @@ const House = ({ backend, account }: HouseProps) => {
     data.redo()
   }
 
+  // Outside and at home, the house is only looked at.
+  const locked = !planning
   // E toggles editing, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
       const typing = isTyping(e.target)
       const key = e.key.toLowerCase()
-      if (!typing && !outside && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
+      if (!typing && !locked && interaction === 'edit' && !measure && (e.metaKey || e.ctrlKey)) {
+        if (key === 'c' && selectedItems.length) {
+          e.preventDefault()
+          clipboard.current = selectedItems.map(({ id: _, ...item }) => ({ ...item }))
+          return
+        }
+        if (key === 'v' && clipboard.current.length) {
+          e.preventDefault()
+          const at = floorPointer.current?.()
+          if (!at) return
+          const created = data.addFurniture(...pasteFurniture(clipboard.current, floor.id, at))
+          select({ kind: 'furniture', ids: created.map((f) => f.id) })
+          return
+        }
+      }
+      if (!typing && !locked && (e.metaKey || e.ctrlKey) && (key === 'z' || key === 'y')) {
         e.preventDefault()
         if (key === 'y' || e.shiftKey) redo()
         else undo()
         return
       }
-      if (!typing && !outside && selectedItems.length && (e.metaKey || e.ctrlKey) && key === 'd') {
+      if (!typing && !locked && selectedItems.length && (e.metaKey || e.ctrlKey) && key === 'd') {
         e.preventDefault()
         duplicateSelection()
         return
       }
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || outside) return
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || locked) return
       if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
       else if (key === 'm') toggleMeasure()
       else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
@@ -273,16 +346,48 @@ const House = ({ backend, account }: HouseProps) => {
   })
 
   const editing = interaction !== 'view'
-  const rightOpen = editing && !rightTucked
+  // While looking round, it opens only for a picked light.
+  const rightOpen = (editing || selection?.kind === 'light') && !rightTucked
   const closeRight = () => setRightOpen(false)
+  const modeBar = !locked && (
+    <ModeBar
+      interaction={interaction}
+      onChange={changeInteraction}
+      onUndo={data.canUndo ? undo : undefined}
+      onRedo={data.canRedo ? redo : undefined}
+      onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
+    />
+  )
 
   const inspector = (() => {
+    if (selection?.kind === 'light') {
+      const device = data.devices.find((d) => d.id === selection.id)
+      const lamp = data.furniture.find((f) => f.id === selection.id)
+      const home = house.floors.find((f) => f.id === (device ?? lamp)?.floor)
+      if (!home || !(device || lamp)) return undefined
+      const regions = floorRegions(home)
+      const roomId = device ? deviceRoom(device, home, regions) : roomAt(regions, lamp!.x, lamp!.y)
+      const room = home.rooms.find((r) => r.id === roomId)
+      return (
+        <LightPanel
+          kind={device ? 'Ceiling light' : 'Lamp'}
+          name={device?.name ?? lamp!.name}
+          room={room && roomLabel(room, data.roomNames).name}
+          entity={device?.entity}
+          light={lightSettings(lights.states[selection.id], dark)}
+          onChange={(patch) => lights.set(selection.id, patch, dark)}
+          onClose={() => setSelection(undefined)}
+        />
+      )
+    }
     if (selection?.kind === 'wall') {
-      const wall = floor.walls.find((w) => w.id === selection.wallId)
+      // From outside, the wall can be on any floor.
+      const home = house.floors.find((f) => f.walls.some((w) => w.id === selection.wallId)) ?? floor
+      const wall = home.walls.find((w) => w.id === selection.wallId)
       return (
         <WallPanel
           side={selection.side}
-          details={wall ? wallText(wall, floor) : ''}
+          details={wall ? wallText(wall, home) : ''}
           color={wallPartColor(data.wallColors, selection.wallId, selection.side, selection.part)}
           onColor={(color) => data.setWallColor(selection.wallId, selection.side, selection.part, color)}
           onClose={() => setSelection(undefined)}
@@ -340,6 +445,8 @@ const House = ({ backend, account }: HouseProps) => {
             data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
           }
           onKind={(kind) => changeDeviceKind(selectedDevice, kind)}
+          light={lightSettings(lights.states[selectedDevice.id], dark)}
+          onLight={(patch) => lights.set(selectedDevice.id, patch, dark)}
           onDelete={() => deleteDevice(selectedDevice)}
           onClose={() => setSelection(undefined)}
         />
@@ -362,11 +469,11 @@ const House = ({ backend, account }: HouseProps) => {
     if (interaction === 'edit')
       return (
         <FurniturePanel
-          items={data.furniture.filter((f) => f.floor === floor.id)}
-          snap={snap}
-          onSnap={setSnap}
+          wallSnap={wallSnap}
+          onWallSnap={setWallSnap}
+          furnitureSnap={furnitureSnap}
+          onFurnitureSnap={setFurnitureSnap}
           onAdd={addPiece}
-          onSelect={(id) => select({ kind: 'furniture', ids: [id] })}
         />
       )
     return undefined
@@ -374,41 +481,46 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
+      <NavRail section={section} onSection={changeSection} />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
         onFloor={switchFloor}
         outside={outside}
         onOutside={goOutside}
+        versions={planning && <VersionMenu data={data} />}
+        onWeather={() => setWeatherOpen(true)}
         onTodos={() => setTodosOpen(true)}
         openTodos={openTodos}
         account={account}
-        versions={<VersionMenu data={data} />}
       />
 
       {todosOpen && <TodoPopup onClose={() => setTodosOpen(false)} />}
+      {weatherOpen && <WeatherPopup onClose={() => setWeatherOpen(false)} />}
 
       <main className="viewport">
         <HouseScene
+          floorPointer={floorPointer}
           floors={house.floors}
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
+          onWalkFloorChange={setFloorIndex}
           outside={outside}
           camera={camera}
           cutaway={cutaway}
           data={data}
           interaction={measure ? 'measure' : interaction}
           selection={selection}
-          hoveredRoom={hoveredRoom}
-          onHoverRoom={setHoveredRoom}
-          snap={snap}
+          wallSnap={wallSnap}
+          furnitureSnap={furnitureSnap}
           sun={sunAt}
           north={site.north}
-          roomNumbers={leftOpen}
           measure={measure}
           onMeasurePick={addMeasurePick}
           measurements={measurements}
           onRemoveMeasurement={(id) => setMeasurements((ms) => ms.filter((m) => m.id !== id))}
           placing={placing}
+          lights={lights.states}
+          onPickLight={(id) => select({ kind: 'light', id })}
           onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}
@@ -420,43 +532,30 @@ const House = ({ backend, account }: HouseProps) => {
           }}
         />
 
-        <ViewDock camera={camera} onCamera={setCamera} canWalk={!outside} cutaway={cutaway} onCutaway={setCutaway}>
-          <DockBox label={outside ? 'Floors' : 'Rooms'} grow>
-            {outside ? (
+        <ViewDock
+          camera={camera}
+          onCamera={setCamera}
+          canPlan={planning}
+          canWalk={!outside}
+          cutaway={cutaway}
+          onCutaway={setCutaway}
+        >
+          {planning && outside && (
+            <DockBox label="Floors" grow>
               <FloorList
                 floors={house.floors}
                 onPick={switchFloor}
                 collapsed={!leftOpen}
                 onToggle={() => setLeftOpen(!leftOpen)}
               />
-            ) : (
-              <RoomLegend
-                floor={floor}
-                regions={regions}
-                names={data.roomNames}
-                devices={devicesPerRoom(floorDevices, floor, regions)}
-                hovered={hoveredRoom}
-                selected={selection?.kind === 'room' ? selection.roomId : undefined}
-                onHover={setHoveredRoom}
-                onPick={interaction === 'edit' ? (roomId) => select({ kind: 'room', roomId }) : undefined}
-                collapsed={!leftOpen}
-                onToggle={() => setLeftOpen(!leftOpen)}
-              />
-            )}
-          </DockBox>
+            </DockBox>
+          )}
         </ViewDock>
 
-        {!outside && (
-          <ModeBar
-            interaction={interaction}
-            onChange={changeInteraction}
-            onUndo={data.canUndo ? undo : undefined}
-            onRedo={data.canRedo ? redo : undefined}
-          />
-        )}
+        {modeBar}
 
         <div className="bottom-tools">
-          {!outside && (
+          {!locked && (
             <MeasurePanel
               mode={measure?.mode}
               canClear={measurements.length > 0 || !!measure?.picks.length}
@@ -468,7 +567,7 @@ const House = ({ backend, account }: HouseProps) => {
               }}
             />
           )}
-          <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+          {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
         </div>
 
         <CameraPad
@@ -478,7 +577,7 @@ const House = ({ backend, account }: HouseProps) => {
           onReset={() => setViewKey((k) => k + 1)}
         />
 
-        {data.dirty && <SaveBar data={data} />}
+        {planning && data.dirty && <SaveBar data={data} />}
 
         {data.loading && <div className="toast">Loading the house…</div>}
         {data.error && (
@@ -489,10 +588,8 @@ const House = ({ backend, account }: HouseProps) => {
       </main>
 
       <aside className="sidebar sidebar-right" aria-label="Details" inert={!rightOpen}>
-        <div className="sidebar-inner">
-          <div className="sheet-handle" onClick={closeRight} />
-          {inspector}
-        </div>
+        <div className="sheet-handle" onClick={closeRight} />
+        <div className="sidebar-inner">{inspector}</div>
       </aside>
     </div>
   )

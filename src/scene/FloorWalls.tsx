@@ -137,7 +137,6 @@ const WallMesh = ({
       <mesh
         key={i}
         position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
-        castShadow
         receiveShadow
         raycast={interactive ? raycastIfShown : noRaycast}
         onClick={interactive ? handleClick(p) : undefined}

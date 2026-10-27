@@ -46,7 +46,7 @@ const writeDraft = (backend: Backend, draft: Draft | undefined) => {
  * The house's versions and the one on screen. Edits go into an unsaved draft on this device; saving it makes a new
  * version, which anyone can then make live.
  */
-export const useHouseData = (backend: Backend) => {
+export const useHouseData = (backend: Backend, liveOnly = false) => {
   const [versions, setVersions] = useState<Version[]>([])
   const [liveId, setLiveId] = useState<string>()
   const [loading, setLoading] = useState(true)
@@ -79,10 +79,17 @@ export const useHouseData = (backend: Backend) => {
   }, [backend, draft])
 
   // A version deleted elsewhere falls back to the live one.
+  // At home only the saved live version shows; the draft waits for planning.
   const viewedId =
-    viewing === LIVE ? liveId : viewing === BARE ? undefined : versions.some((v) => v.id === viewing) ? viewing : liveId
+    liveOnly || viewing === LIVE
+      ? liveId
+      : viewing === BARE
+        ? undefined
+        : versions.some((v) => v.id === viewing)
+          ? viewing
+          : liveId
   const viewed = versions.find((v) => v.id === viewedId)
-  const state = draft?.state ?? viewed?.data ?? EMPTY_STATE
+  const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? EMPTY_STATE
 
   const wallColors = useMemo(
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
