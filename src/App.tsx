@@ -231,15 +231,24 @@ const House = ({ backend, account }: HouseProps) => {
     select({ kind: 'furniture', ids: [created.id] })
   }
 
+  // What the view was before a room was opened, to go back to it on leaving.
+  const beforeRoom = useRef<{ floorIndex: number; outside: boolean; camera: CameraMode }>(undefined)
   const leaveRoom = () => {
     setRoomView(undefined)
     setPopover(undefined)
+    const before = beforeRoom.current
+    if (!before) return
+    beforeRoom.current = undefined
+    setFloorIndex(before.floorIndex)
+    setOutside(before.outside)
+    setCamera(before.camera)
   }
   const openRoom = (id: string) => {
     const view = ROOM_VIEWS.find((r) => r.id === id)
     const index = house.floors.findIndex((f) => f.id === view?.floor)
     if (!view || index < 0) return
     if (section !== 'home') changeSection('home')
+    beforeRoom.current ??= { floorIndex, outside, camera: planCamera }
     setFloorIndex(index)
     setOutside(false)
     setCamera('orbit')

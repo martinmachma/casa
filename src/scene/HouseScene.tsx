@@ -1,7 +1,7 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState, type RefObject } from 'react'
-import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { MathUtils, MOUSE, Spherical, TOUCH, Vector3, type Group } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
@@ -132,6 +132,12 @@ export const HouseScene = ({
       return next
     })
   const floor = floors[floorIndex]
+  // Floors above the one looked at are left off. One being taken off lifts away before it goes;
+  // one being put back drops into place.
+  const shownCount = camera === 'walk' ? floors.length : floorIndex + 1
+  const [stack, setStack] = useState({ count: shownCount, kept: shownCount, before: shownCount })
+  if (stack.count !== shownCount)
+    setStack({ count: shownCount, kept: Math.max(stack.kept, shownCount), before: stack.count })
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
@@ -260,8 +266,13 @@ export const HouseScene = ({
         <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} />
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
-        {floors.slice(0, camera === 'walk' ? floors.length : floorIndex + 1).map((f, i) => (
-          <group key={f.id}>
+        {floors.slice(0, stack.kept).map((f, i) => (
+          <FloorLift
+            key={f.id}
+            shown={i < shownCount}
+            enter={i >= stack.before}
+            onGone={() => setStack((s) => ({ ...s, kept: s.count }))}
+          >
             {/* The ground floor's slab reaches down into the garden, so the house stands on the ground. */}
             <Slab
               floor={f}
@@ -294,7 +305,7 @@ export const HouseScene = ({
               cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
               onPick={pickWall}
             />
-          </group>
+          </FloorLift>
         ))}
 
         {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
@@ -388,6 +399,45 @@ export const HouseScene = ({
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       {!focusRoom && <Compass needle={needle} />}
     </>
+  )
+}
+
+const LIFT = 4
+const LIFT_SECONDS = 0.45
+const easeOut = (t: number) => 1 - (1 - t) ** 3
+
+/** A floor that drops into place when it's put on the house and lifts away before it's taken off. */
+const FloorLift = ({
+  shown,
+  enter,
+  onGone,
+  children,
+}: {
+  shown: boolean
+  /** Put on after the scene started, so it drops in rather than just being there. */
+  enter: boolean
+  onGone: () => void
+  children: ReactNode
+}) => {
+  const group = useRef<Group>(null)
+  // 0 in place, 1 lifted away.
+  const k = useRef(enter ? 1 : 0)
+  const [startY] = useState(enter ? LIFT : 0)
+  const redraw = useThree((s) => s.invalidate)
+  useEffect(() => redraw(), [shown, redraw])
+  useFrame(({ invalidate }, delta) => {
+    const target = shown ? 0 : 1
+    if (k.current === target) return
+    const step = Math.min(delta, 1 / 30) / LIFT_SECONDS
+    k.current = target ? Math.min(1, k.current + step) : Math.max(0, k.current - step)
+    if (group.current) group.current.position.y = LIFT * (1 - easeOut(1 - k.current))
+    if (k.current !== target) invalidate()
+    else if (target) onGone()
+  })
+  return (
+    <group ref={group} position-y={startY}>
+      {children}
+    </group>
   )
 }
 

@@ -10,7 +10,7 @@ type ViewDockProps = {
   canPlan: boolean
   /** Walking is for inside a floor. */
   canWalk: boolean
-  /** Near walls hidden in the 3D view; offered only there. */
+  /** Walls in front cut down in the 3D view, to see in; offered only there. */
   cutaway: boolean
   onCutaway: (cutaway: boolean) => void
   /** The floating boxes under the view switch (rooms, sunlight, measure). */
@@ -35,12 +35,7 @@ export const ViewDock = ({ camera, onCamera, canPlan, canWalk, cutaway, onCutawa
         />
       )}
       {camera === 'orbit' && canWalk && (
-        <IconButton
-          label={cutaway ? 'Show near walls' : 'Hide near walls'}
-          aria-pressed={cutaway}
-          small
-          onClick={() => onCutaway(!cutaway)}
-        >
+        <IconButton label="Cut walls" aria-pressed={cutaway} small onClick={() => onCutaway(!cutaway)}>
           <SquareBottomDashedScissors size={16} />
         </IconButton>
       )}

@@ -59,11 +59,23 @@ export const FocusProjector = ({ floor, roomId, mask, pins, pinRefs }: FocusProj
     const pose = roomPose(floor, roomId, 1)
     if (!pose) return []
     const { min, max } = pose.box
-    const ys = [floor.elevation, floor.elevation + floor.height]
-    return ys.flatMap((y) => [min, [max[0], min[1]], max, [min[0], max[1]]].map(([x, z]) => new Vector3(x, y, z)))
+    // The floor, and the top of the far (north) wall: the near walls are cut away, and their tops
+    // would reach past the camera and open the hole onto the rooms in front.
+    const low = floor.elevation
+    const high = floor.elevation + floor.height
+    return [
+      new Vector3(min[0], low, min[1]),
+      new Vector3(max[0], low, min[1]),
+      new Vector3(max[0], low, max[1]),
+      new Vector3(min[0], low, max[1]),
+      new Vector3(min[0], high, min[1]),
+      new Vector3(max[0], high, min[1]),
+    ]
   }, [floor, roomId])
   const v = useMemo(() => new Vector3(), [])
   useFrame(({ camera, size }) => {
+    // The camera may have just been moved this frame, before the render brings its matrices up to date.
+    camera.updateMatrixWorld()
     const screen = (p: Vector3): Point => {
       v.copy(p).project(camera)
       return [((v.x + 1) / 2) * size.width, ((1 - v.y) / 2) * size.height]
