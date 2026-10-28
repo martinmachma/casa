@@ -1,7 +1,15 @@
 import { useEffect, useMemo } from 'react'
 import { BoxGeometry, BufferGeometry, MeshBasicMaterial } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { floorBounds, openingId, openingSill, wallAngle, wallHeight, wallPieces, wallThickness } from '../layout/geometry'
+import {
+  floorBounds,
+  openingId,
+  openingSill,
+  wallAngle,
+  wallHeight,
+  wallPieces,
+  wallThickness,
+} from '../layout/geometry'
 import type { Floor, Roof } from '../layout/types'
 import { slabGeometry } from './prism'
 

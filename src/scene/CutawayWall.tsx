@@ -41,15 +41,24 @@ export const CutawayWall = ({
   const outside = useMemo(() => wallOutside(wall, floor), [wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall sinks to the stub's height before the stub takes over.
   const k = useRef<number>(undefined)
+  // Only switching the cut on or off animates; walls cut as the camera moves just go.
+  const animate = useRef(false)
   const redraw = useThree((s) => s.invalidate)
-  useEffect(() => redraw(), [cutaway, redraw])
+  useEffect(() => {
+    animate.current = true
+    redraw()
+  }, [cutaway, redraw])
   useFrame(({ camera, invalidate }, delta) => {
     const target = isCut(wall, outside, camera, cutaway) ? 1 : 0
     // A long idle gap (the view renders on demand) shouldn't skip the animation.
     const step = Math.min(delta, 1 / 30) / CUT_SECONDS
-    const now = k.current === undefined ? target : k.current + Math.max(-step, Math.min(step, target - k.current))
+    const now =
+      k.current === undefined || !animate.current
+        ? target
+        : k.current + Math.max(-step, Math.min(step, target - k.current))
     k.current = now
     if (now !== target) invalidate()
+    else animate.current = false
     const full = fullRef.current
     if (full) {
       full.visible = now < 1

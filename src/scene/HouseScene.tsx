@@ -1,7 +1,7 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { MathUtils, MOUSE, Spherical, TOUCH, Vector3, type Group } from 'three'
+import { MathUtils, MOUSE, Spherical, TOUCH, Vector3, type Group, type Material, type Mesh } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
@@ -132,8 +132,8 @@ export const HouseScene = ({
       return next
     })
   const floor = floors[floorIndex]
-  // Floors above the one looked at are left off. One being taken off lifts away before it goes;
-  // one being put back drops into place.
+  // Floors above the one looked at are left off. One being taken off fades out before it goes;
+  // one being put back fades in.
   const shownCount = camera === 'walk' ? floors.length : floorIndex + 1
   const [stack, setStack] = useState({ count: shownCount, kept: shownCount, before: shownCount })
   if (stack.count !== shownCount)
@@ -254,7 +254,14 @@ export const HouseScene = ({
           />
         )}
         {focusRoom ? (
-          <FocusProjector floor={floor} roomId={focusRoom} mask={blur} pins={pins} pinRefs={pinRefs ?? noPins} />
+          <FocusProjector
+            floor={floor}
+            roomId={focusRoom}
+            mask={blur}
+            cutaway={cutaway}
+            pins={pins}
+            pinRefs={pinRefs ?? noPins}
+          />
         ) : (
           <CameraNudger nudge={nudge} />
         )}
@@ -267,7 +274,7 @@ export const HouseScene = ({
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
         {floors.slice(0, stack.kept).map((f, i) => (
-          <FloorLift
+          <FloorFade
             key={f.id}
             shown={i < shownCount}
             enter={i >= stack.before}
@@ -305,7 +312,7 @@ export const HouseScene = ({
               cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
               onPick={pickWall}
             />
-          </FloorLift>
+          </FloorFade>
         ))}
 
         {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
@@ -402,43 +409,58 @@ export const HouseScene = ({
   )
 }
 
-const LIFT = 4
-const LIFT_SECONDS = 0.45
-const easeOut = (t: number) => 1 - (1 - t) ** 3
+const FADE_SECONDS = 0.35
 
-/** A floor that drops into place when it's put on the house and lifts away before it's taken off. */
-const FloorLift = ({
+type Faded = { opacity: number; transparent: boolean; depthWrite: boolean }
+
+/** Sets how much of everything in the group shows, remembering each material's own settings to go back to. */
+const fade = (group: Group, amount: number, saved: Map<Material, Faded>) => {
+  group.traverse((o) => {
+    const material = (o as Mesh).material
+    for (const m of Array.isArray(material) ? material : material ? [material] : []) {
+      if (!saved.has(m)) saved.set(m, { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite })
+      const own = saved.get(m)!
+      const solid = amount >= 1
+      if (m.transparent !== (solid ? own.transparent : true)) {
+        m.transparent = solid ? own.transparent : true
+        m.needsUpdate = true
+      }
+      m.depthWrite = solid ? own.depthWrite : false
+      m.opacity = own.opacity * amount
+    }
+  })
+  if (amount >= 1) saved.clear()
+}
+
+/** A floor that fades in when it's put on the house and fades out before it's taken off. */
+const FloorFade = ({
   shown,
   enter,
   onGone,
   children,
 }: {
   shown: boolean
-  /** Put on after the scene started, so it drops in rather than just being there. */
+  /** Put on after the scene started, so it fades in rather than just being there. */
   enter: boolean
   onGone: () => void
   children: ReactNode
 }) => {
   const group = useRef<Group>(null)
-  // 0 in place, 1 lifted away.
-  const k = useRef(enter ? 1 : 0)
-  const [startY] = useState(enter ? LIFT : 0)
+  // 1 there, 0 gone.
+  const k = useRef(enter ? 0 : 1)
+  const saved = useRef(new Map<Material, Faded>())
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [shown, redraw])
   useFrame(({ invalidate }, delta) => {
-    const target = shown ? 0 : 1
-    if (k.current === target) return
-    const step = Math.min(delta, 1 / 30) / LIFT_SECONDS
+    const target = shown ? 1 : 0
+    if (k.current === target && !saved.current.size) return
+    const step = Math.min(delta, 1 / 30) / FADE_SECONDS
     k.current = target ? Math.min(1, k.current + step) : Math.max(0, k.current - step)
-    if (group.current) group.current.position.y = LIFT * (1 - easeOut(1 - k.current))
+    if (group.current) fade(group.current, k.current, saved.current)
     if (k.current !== target) invalidate()
-    else if (target) onGone()
+    else if (!target) onGone()
   })
-  return (
-    <group ref={group} position-y={startY}>
-      {children}
-    </group>
-  )
+  return <group ref={group}>{children}</group>
 }
 
 /** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */

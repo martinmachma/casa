@@ -108,7 +108,8 @@ const WallMesh = ({
   const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
   // Cut where other walls meet either side, so each box lies in one part of each side.
   const pieces = useMemo(
-    () => splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [...joints.a, ...joints.b]),
+    () =>
+      splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [...joints.a, ...joints.b]),
     [wall, floor, thickness, joints],
   )
   const partOf = (p: WallPiece, side: WallSide) => sidePart(joints[side], (p.u0 + p.u1) / 2)

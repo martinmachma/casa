@@ -132,12 +132,19 @@ export const MeasureTool = ({ floor, items, measure, onPick, cutaway }: MeasureT
             floor={floor}
             cutaway={cutaway}
             full={target(floor.height)}
-            stub={stubPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - 0.002), STUB_HEIGHT).map((p, i) => (
-              <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={raycastIfShown} {...catcher}>
-                <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-                <meshBasicMaterial visible={false} />
-              </mesh>
-            ))}
+            stub={stubPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - 0.002), STUB_HEIGHT).map(
+              (p, i) => (
+                <mesh
+                  key={i}
+                  position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
+                  raycast={raycastIfShown}
+                  {...catcher}
+                >
+                  <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
+                  <meshBasicMaterial visible={false} />
+                </mesh>
+              ),
+            )}
           />
         )
       })}

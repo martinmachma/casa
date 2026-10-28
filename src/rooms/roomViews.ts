@@ -35,6 +35,27 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number) => {
   return { position, target, box }
 }
 
+/** A stretch of the room's outline, with the way out of the room. */
+export type RoomEdge = { from: Point; to: Point; out: Point }
+
+/** The room's outline: the sides of its floor cells that no other cell of the room shares. */
+export const roomEdges = (floor: Floor, roomId: string): RoomEdge[] => {
+  const cells = floorRegions(floor).get(roomId)?.cells ?? []
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-6
+  // The grid runs right across the floor, so a neighbouring cell spans exactly the same side.
+  const has = (test: (d: (typeof cells)[number]) => boolean) => cells.some(test)
+  return cells.flatMap((c) => {
+    const edges: RoomEdge[] = []
+    const sameX = (d: typeof c) => near(d.x0, c.x0) && near(d.x1, c.x1)
+    const sameY = (d: typeof c) => near(d.y0, c.y0) && near(d.y1, c.y1)
+    if (!has((d) => sameX(d) && near(d.y1, c.y0))) edges.push({ from: [c.x0, c.y0], to: [c.x1, c.y0], out: [0, -1] })
+    if (!has((d) => sameX(d) && near(d.y0, c.y1))) edges.push({ from: [c.x0, c.y1], to: [c.x1, c.y1], out: [0, 1] })
+    if (!has((d) => sameY(d) && near(d.x1, c.x0))) edges.push({ from: [c.x0, c.y0], to: [c.x0, c.y1], out: [-1, 0] })
+    if (!has((d) => sameY(d) && near(d.x0, c.x1))) edges.push({ from: [c.x1, c.y0], to: [c.x1, c.y1], out: [1, 0] })
+    return edges
+  })
+}
+
 /** The convex hull of screen points, for the hole the room shows through. */
 export const hull = (points: Point[]): Point[] => {
   const p = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1])
