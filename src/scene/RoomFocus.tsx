@@ -23,12 +23,13 @@ export const RoomCamera = ({
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
   const look = useMemo(() => new Vector3(), [])
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, invalidate }, delta) => {
     if (!pose) return
     t.current = Math.min(1, t.current + delta / FLIGHT_SECONDS)
     const s = start.current
     const k = ease(t.current)
     if (s && k < 1) {
+      invalidate()
       camera.position.lerpVectors(s.position, pose.position, k)
       look.lerpVectors(s.target, pose.target, k)
     } else {

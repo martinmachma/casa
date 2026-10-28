@@ -108,9 +108,10 @@ type DoorState = { open: boolean; onToggle: () => void; clickable: boolean }
 const useToggle = ({ open, onToggle, clickable }: DoorState, apply: (group: Group, amount: number) => void) => {
   const group = useRef<Group>(null)
   const amount = useRef(0)
-  useFrame((_, dt) => {
+  useFrame(({ invalidate }, dt) => {
     const target = open ? 1 : 0
     if (!group.current || amount.current === target) return
+    invalidate()
     amount.current = MathUtils.damp(amount.current, target, SPEED, dt)
     if (Math.abs(amount.current - target) < 0.001) amount.current = target
     apply(group.current, amount.current)

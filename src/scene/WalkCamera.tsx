@@ -133,7 +133,7 @@ export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, ope
     }
   }, [])
 
-  useFrame((_, delta) => {
+  useFrame(({ invalidate }, delta) => {
     const cam = camera.current
     if (!cam) return
     const dt = Math.min(delta, 0.1)
@@ -144,6 +144,7 @@ export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, ope
     const forward = n.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
     const strafe = n.right + axis(k.has('d'), k.has('a'))
     const turn = n.turn + axis(k.has('arrowright'), k.has('arrowleft'))
+    if (forward || strafe || turn || n.tilt) invalidate()
 
     p.yaw += turn * TURN_SPEED * dt
     p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch + n.tilt * LOOK_SPEED * dt))

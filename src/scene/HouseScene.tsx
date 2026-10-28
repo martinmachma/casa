@@ -10,6 +10,7 @@ import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, WallFace } from '../layout/types'
+import { InputInvalidator } from './InputInvalidator'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
@@ -212,8 +213,10 @@ export const HouseScene = ({
       <Canvas
         shadows
         dpr={[1, 2]}
+        frameloop="demand"
         onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
       >
+        <InputInvalidator />
         <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
         {focusRoom ? (
           <RoomCamera
@@ -507,7 +510,7 @@ const IntroFlight = () => {
   // Stays mounted through re-renders; only the first camera of the session flies in.
   const flight = useRef<{ end: Spherical; start: Spherical; t: number }>(undefined)
 
-  useFrame(({ camera, controls: active }, delta) => {
+  useFrame(({ camera, controls: active, invalidate }, delta) => {
     const controls = active as OrbitControlsImpl | null
     if (!controls) return
     if (!flight.current) {
@@ -523,6 +526,7 @@ const IntroFlight = () => {
     const f = flight.current
     if (f.t >= 1) return
     f.t = Math.min(1, f.t + delta / INTRO_SECONDS)
+    invalidate()
     const down = easeInOut(f.t)
     const turn = easeInOut(Math.max(0, (f.t - 0.45) / 0.55))
     const at = new Spherical(

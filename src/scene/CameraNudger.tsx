@@ -47,7 +47,7 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
     }
   }, [])
 
-  useFrame(({ camera, controls, size }, delta) => {
+  useFrame(({ camera, controls, size, invalidate }, delta) => {
     const orbit = controls as unknown as OrbitLike | null
     if (!orbit?.target) return
     const k = keys.current
@@ -56,6 +56,7 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
     const forward = nudge.current.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
     const right = nudge.current.right + axis(k.has('d') || k.has('arrowright'), k.has('a') || k.has('arrowleft'))
     if (!forward && !right && !zoom && !turn && !tilt) return
+    invalidate()
     const dt = Math.min(delta, 0.1)
     const { offset } = tmp
     offset.copy(camera.position).sub(orbit.target)
