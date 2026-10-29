@@ -35,12 +35,11 @@ import { wallText } from './measure/dimensions'
 import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } from './measure/measure'
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
-import { DockBox, ViewDock } from './ui/ViewDock'
+import { ViewDock } from './ui/ViewDock'
 import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
-import { FloorList } from './ui/FloorList'
 import { TopBar } from './ui/TopBar'
 import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
@@ -84,7 +83,6 @@ const House = ({ backend, account }: HouseProps) => {
   const [todosOpen, setTodosOpen] = useState(false)
   const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
-  const [leftOpen, setLeftOpen] = useState(() => !isNarrow())
   // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
   const [rightTucked, setRightTucked] = useState(false)
   const setRightOpen = (open: boolean) => setRightTucked(!open)
@@ -606,18 +604,7 @@ const House = ({ backend, account }: HouseProps) => {
             canWalk={!outside}
             cutaway={cutaway}
             onCutaway={setCutaway}
-          >
-            {planning && outside && (
-              <DockBox label="Floors" grow>
-                <FloorList
-                  floors={house.floors}
-                  onPick={switchFloor}
-                  collapsed={!leftOpen}
-                  onToggle={() => setLeftOpen(!leftOpen)}
-                />
-              </DockBox>
-            )}
-          </ViewDock>
+          />
         )}
 
         {modeBar}
