@@ -46,6 +46,8 @@ type DevicesProps = {
   onMoveEnd: () => void
   /** Set while looking round: a tap on a light picks it, to switch and set it. */
   onPickLight?: (id: string) => void
+  /** The light pointed at, while lights can be picked. */
+  onHoverLight?: (id: string | undefined) => void
 }
 
 type Controls = { enabled: boolean }
@@ -63,6 +65,7 @@ export const Devices = ({
   onMove,
   onMoveEnd,
   onPickLight,
+  onHoverLight,
 }: DevicesProps) => (
   <group>
     {devices.map((device) => (
@@ -79,6 +82,7 @@ export const Devices = ({
         onMove={onMove}
         onMoveEnd={onMoveEnd}
         onPickLight={onPickLight}
+        onHoverLight={onHoverLight}
       />
     ))}
   </group>
@@ -103,6 +107,7 @@ const DeviceMesh = ({
   onMove,
   onMoveEnd,
   onPickLight,
+  onHoverLight,
 }: DeviceMeshProps) => {
   const getState = useThree((s) => s.get)
   const level = floor.elevation + device.z
@@ -167,11 +172,15 @@ const DeviceMesh = ({
             e.stopPropagation()
             onPickLight(device.id)
           },
-          onPointerOver: (e: ThreeEvent<PointerEvent>) => (
-            e.stopPropagation(),
-            (document.body.style.cursor = 'pointer')
-          ),
-          onPointerOut: () => (document.body.style.cursor = ''),
+          onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation()
+            document.body.style.cursor = 'pointer'
+            onHoverLight?.(device.id)
+          },
+          onPointerOut: () => {
+            document.body.style.cursor = ''
+            onHoverLight?.(undefined)
+          },
         }
       : { raycast: () => null }
 

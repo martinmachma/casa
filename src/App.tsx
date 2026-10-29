@@ -573,6 +573,7 @@ const House = ({ backend, account }: HouseProps) => {
           pins={[...focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at }))]}
           pinRefs={pinRefs}
           highlight={hoveredItem ?? popover}
+          onHoverItem={focus ? setHoveredItem : undefined}
         />
 
         {focus && focusFloor && (

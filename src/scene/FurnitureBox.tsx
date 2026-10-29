@@ -36,6 +36,8 @@ type FurnitureBoxProps = {
   onTap: (id: string) => void
   /** Set for a lamp while looking round: a tap picks it, to switch and set it. */
   onPickLight?: (id: string) => void
+  /** The lamp pointed at, while lamps can be picked. */
+  onHoverLight?: (id: string | undefined) => void
   actions: ItemActions
 }
 
@@ -66,6 +68,7 @@ export const FurnitureBox = ({
   snapItems,
   onSelect,
   onPickLight,
+  onHoverLight,
   onMove,
   onMoveEnd,
   onTap,
@@ -159,11 +162,15 @@ export const FurnitureBox = ({
             e.stopPropagation()
             onPickLight(item.id)
           },
-          onPointerOver: (e: ThreeEvent<PointerEvent>) => (
-            e.stopPropagation(),
-            (document.body.style.cursor = 'pointer')
-          ),
-          onPointerOut: () => (document.body.style.cursor = ''),
+          onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation()
+            document.body.style.cursor = 'pointer'
+            onHoverLight?.(item.id)
+          },
+          onPointerOut: () => {
+            document.body.style.cursor = ''
+            onHoverLight?.(undefined)
+          },
         }
       : { raycast: () => null }
   // Rugs are nearly flat; keep their hit box tappable.

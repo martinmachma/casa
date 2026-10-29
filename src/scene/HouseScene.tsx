@@ -93,6 +93,8 @@ type HouseSceneProps = {
   pins?: Pin[]
   /** A smart item in the focused room picked out, everything else blurred behind it. */
   highlight?: string
+  /** A smart item pointed at in the focused room. */
+  onHoverItem?: (id: string | undefined) => void
   pinRefs?: RefObject<Map<string, HTMLElement | null>>
 }
 
@@ -126,6 +128,7 @@ export const HouseScene = ({
   focusRoom,
   pins = [],
   highlight,
+  onHoverItem,
   pinRefs,
 }: HouseSceneProps) => {
   const noPins = useRef(new Map<string, HTMLElement | null>())
@@ -340,6 +343,7 @@ export const HouseScene = ({
               tint={tint}
               plan={camera === 'top'}
               onPickLight={lightPick}
+              onHoverLight={onHoverItem}
               interactive={interaction === 'devices' && !placing}
               onSelect={(id) => onSelect({ kind: 'device', id })}
               onMove={moveDevice}
@@ -367,6 +371,7 @@ export const HouseScene = ({
                   glow={isLamp(item.model) ? level(item.id) : 0}
                   glowColor={tint(item.id)}
                   onPickLight={isLamp(item.model) ? lightPick : undefined}
+                  onHoverLight={onHoverItem}
                   elevation={f.elevation}
                   selected={selectedIds.includes(item.id) || pickedLight === item.id}
                   colliding={clashes.has(item.id)}
