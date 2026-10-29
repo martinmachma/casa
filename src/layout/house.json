@@ -162,7 +162,7 @@
         },
         {
           "id": "g-stair-wall",
-          "rooms": ["g-living"],
+          "notIn": ["g-living"],
           "from": [1.21, 4.23],
           "to": [2.385, 4.23]
         },
@@ -175,14 +175,14 @@
         },
         {
           "id": "g-storage-wc",
-          "rooms": ["g-living"],
+          "notIn": ["g-living"],
           "from": [0.113, 5.291],
           "to": [2.385, 5.291],
           "thickness": 0.15
         },
         {
           "id": "g-wc-hall",
-          "rooms": ["g-living"],
+          "notIn": ["g-living"],
           "from": [0.113, 6.538],
           "to": [2.385, 6.538],
           "openings": [

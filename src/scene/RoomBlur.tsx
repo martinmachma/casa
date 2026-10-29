@@ -135,7 +135,7 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
     // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
     let wallId: string | undefined
     for (let p: Object3D | null = m; p && !wallId; p = p.parent) wallId = p.userData.wallId
-    if (wallId && floor.walls.find((w) => w.id === wallId)?.rooms?.includes(roomId)) return true
+    if (wallId && floor.walls.find((w) => w.id === wallId)?.notIn?.includes(roomId)) return false
     // A wall along the room's outline, and whatever is set in it (doors, windows, however they're swung), stands
     // off the room's floor: it's judged only by where it is along the wall, just inside the room's face of it.
     const side = wallId ? outline.get(wallId) : undefined

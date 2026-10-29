@@ -32,8 +32,8 @@ export type Wall = {
   height?: number
   /** The wall it's built against (a shaft, a chimney breast), so it's cut away with that wall. */
   against?: string
-  /** Rooms whose views it also belongs to, though it doesn't stand on their outline. */
-  rooms?: string[]
+  /** Rooms whose views leave it out, though it stands at their edge. */
+  notIn?: string[]
   openings?: Opening[]
 }
 
