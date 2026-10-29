@@ -56,7 +56,7 @@ type HouseSceneProps = {
   floors: Floor[]
   floorIndex: number
   onWalkFloorChange: (index: number) => void
-  /** The whole house from outside, roof and all; nothing inside is shown or pickable. */
+  /** The whole house from outside, roof and all; what's inside shows through the windows but can't be picked. */
   outside: boolean
   camera: CameraMode
   /** In the 3D view, hide the walls nearest the camera so you can see inside. */
@@ -146,7 +146,9 @@ export const HouseScene = ({
   // Floors above the one looked at are left off; one taken off fades out, one put back fades in.
   const shownCount = camera === 'walk' ? floors.length : floorIndex + 1
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
-  const furnished = (f: Floor) => !outside && (camera === 'walk' || f.id === floor.id)
+  // From outside, on every floor that's shown, to be seen through the windows.
+  const furnished = (f: Floor) =>
+    camera === 'walk' || (outside ? floors.indexOf(f) < shownCount : f.id === floor.id)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   // Looking at a room, the walls between the camera and its middle are always cut, and only those.
   const focusPoint = useMemo((): Focus | undefined => {
@@ -168,7 +170,7 @@ export const HouseScene = ({
   const level = (id: string) => lightLevel(lights[id], dark)
   const tint = (id: string) => lightColor(lights[id])
   // While looking round, a tap on a light or lamp picks it, to switch and set it.
-  const lightPick = interaction === 'view' ? onPickLight : undefined
+  const lightPick = interaction === 'view' && !outside ? onPickLight : undefined
   const pickedLight = selection?.kind === 'light' ? selection.id : undefined
   const litFloors = floors.slice(0, outside || camera === 'walk' ? floors.length : floorIndex + 1)
 
@@ -364,20 +366,20 @@ export const HouseScene = ({
           <Fade key={f.id} shown={furnished(f)}>
             <Devices
               floor={f}
-              devices={data.devices.filter((d) => d.floor === f.id && f.id === floor.id)}
+              devices={data.devices.filter((d) => d.floor === f.id && (outside || f.id === floor.id))}
               selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
               glow={level}
               tint={tint}
               plan={camera === 'top'}
               onPickLight={lightPick}
               onHoverLight={onHoverItem}
-              interactive={interaction === 'devices' && !placing}
+              interactive={interaction === 'devices' && !placing && !outside}
               onSelect={(id) => onSelect({ kind: 'device', id })}
               onMove={moveDevice}
               onMoveEnd={saveItem}
             />
             {measurements
-              .filter((m) => m.floor === f.id)
+              .filter((m) => m.floor === f.id && !outside)
               .map((m) => (
                 <Line
                   key={m.id}
@@ -406,7 +408,7 @@ export const HouseScene = ({
                   selected={selectedIds.includes(item.id) || pickedLight === item.id}
                   colliding={clashes.has(item.id)}
                   showActions={selectedIds[selectedIds.length - 1] === item.id}
-                  interactive={pickable}
+                  interactive={pickable && !outside}
                   // Group snapping is applied to the shared translation in moveItem.
                   wallSnap={wallSnap && selectedIds.length < 2}
                   furnitureSnap={furnitureSnap && selectedIds.length < 2}
