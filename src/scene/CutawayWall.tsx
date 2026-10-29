@@ -26,8 +26,12 @@ const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: 
   return blocksView(wall, outside, [camera.position.x, camera.position.z], [forward.x, forward.z])
 }
 
+/** A wall built against another (a shaft, a chimney breast) is cut or left standing with it. */
+const decidingWall = (wall: Wall, floor: Floor) =>
+  (wall.against && floor.walls.find((w) => w.id === wall.against)) || wall
+
 export const visibleWallHeight = (wall: Wall, floor: Floor, camera: Camera, cutaway: boolean) =>
-  isCut(wall, cutaway ? wallOutside(wall, floor) : undefined, camera, cutaway)
+  isCut(decidingWall(wall, floor), cutaway ? wallOutside(wall, floor) : undefined, camera, cutaway)
     ? Math.min(STUB_HEIGHT, wallHeight(wall, floor))
     : wallHeight(wall, floor)
 
@@ -51,6 +55,7 @@ export const CutawayWall = ({
   const fullRef = useRef<Group>(null)
   const stubRef = useRef<Group>(null)
   const outside = useMemo(() => wallOutside(wall, floor), [wall, floor])
+  const decider = useMemo(() => decidingWall(wall, floor), [wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall fades out as the stub fades in.
   const k = useRef<number>(undefined)
   // Only switching the cut on or off animates; walls cut as the camera moves just go.
@@ -61,7 +66,7 @@ export const CutawayWall = ({
     redraw()
   }, [cutaway, focus, redraw])
   useFrame(({ camera, invalidate }, delta) => {
-    const target = isCut(wall, outside, camera, cutaway, focus) ? 1 : 0
+    const target = isCut(decider, outside, camera, cutaway, focus) ? 1 : 0
     const now = k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta)
     if (now !== target) invalidate()
     else animate.current = false

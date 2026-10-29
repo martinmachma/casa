@@ -65,6 +65,7 @@
         },
         {
           "id": "g-east-chimney",
+          "against": "g-east",
           "from": [5.913, 2.7325],
           "to": [5.913, 2.8575],
           "thickness": 0.625
@@ -166,6 +167,7 @@
         },
         {
           "id": "g-shaft-s14",
+          "against": "g-kitchen-storage",
           "from": [0.299, 3.031],
           "to": [0.701, 3.031],
           "thickness": 0.298
