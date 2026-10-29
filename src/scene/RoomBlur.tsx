@@ -5,6 +5,7 @@ import {
   Color,
   HalfFloatType,
   Mesh,
+  Object3D,
   OrthographicCamera,
   PlaneGeometry,
   Scene,
@@ -20,8 +21,9 @@ import type { Floor } from '../layout/types'
 // one layer and everything else on another, and each pass draws one of them.
 const ROOM_LAYER = 1
 const OUTSIDE_LAYER = 2
-// How far past the room's floor something may sit and still belong to it: its walls, at most.
-const MARGIN = 0.35
+// How far past the room's floor a wall may sit and still belong to it; anything else must stand on the floor.
+const WALL_MARGIN = 0.35
+const MARGIN = 0.02
 // Something counts as in the room when this much of its footprint is.
 const SAMPLES = 5
 const MOSTLY = 0.6
@@ -95,8 +97,11 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     box.copy(g.boundingBox!).applyMatrix4(m.matrixWorld).getCenter(mid)
     if (mid.y < floor.elevation - 0.1 || mid.y > floor.elevation + floor.height + 0.1) return false
     // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
+    let wall = false
+    for (let p: Object3D | null = m; p && !wall; p = p.parent) wall = !!p.userData.wall
+    const r = wall ? WALL_MARGIN : MARGIN
     const over = (x: number, z: number) =>
-      cells.some((c) => x > c.x0 - MARGIN && x < c.x1 + MARGIN && z > c.y0 - MARGIN && z < c.y1 + MARGIN)
+      cells.some((c) => x > c.x0 - r && x < c.x1 + r && z > c.y0 - r && z < c.y1 + r)
     let inside = 0
     for (let i = 0; i < SAMPLES; i++)
       for (let j = 0; j < SAMPLES; j++) {

@@ -78,7 +78,11 @@ export const CutawayWall = ({
     applyFade(stub)
   })
   return (
-    <group position={[wall.from[0], floor.elevation, wall.from[1]]} rotation={[0, -wallAngle(wall), 0]}>
+    <group
+      position={[wall.from[0], floor.elevation, wall.from[1]]}
+      rotation={[0, -wallAngle(wall), 0]}
+      userData={{ wall: true }}
+    >
       <group ref={fullRef}>{full}</group>
       <group ref={stubRef} visible={false}>
         {stub}
