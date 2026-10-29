@@ -20,9 +20,10 @@ import { wallThickness } from '../layout/geometry'
 import type { Floor } from '../layout/types'
 
 // Every mesh stays on layer 0, so picking and the other views are untouched; the room's meshes are also on
-// one layer and everything else on another, and each pass draws one of them.
+// one layer, everything else on another, and a highlighted item on a third; each pass draws one of them.
 const ROOM_LAYER = 1
 const OUTSIDE_LAYER = 2
+const ITEM_LAYER = 3
 // Slack for rounding where something stands right at the floor's edge.
 const MARGIN = 0.02
 // Something counts as in the room when this much of its footprint is.
@@ -161,12 +162,10 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
         s = { x: e[12], y: e[13], z: e[14], geometry: m.geometry, cells, inRoom: inRoom(m) }
         sorted.set(m, s)
       }
-      if (highlight ? itemOf(o) === highlight : s.inRoom) {
-        o.layers.enable(ROOM_LAYER)
-        o.layers.disable(OUTSIDE_LAYER)
-      } else {
-        o.layers.enable(OUTSIDE_LAYER)
-        o.layers.disable(ROOM_LAYER)
+      const layer = highlight && itemOf(o) === highlight ? ITEM_LAYER : s.inRoom ? ROOM_LAYER : OUTSIDE_LAYER
+      for (const l of [ROOM_LAYER, OUTSIDE_LAYER, ITEM_LAYER]) {
+        if (l === layer) o.layers.enable(l)
+        else o.layers.disable(l)
       }
     })
 
@@ -211,20 +210,32 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
       pass(a, b, 1 + k, 0)
       pass(b, a, 0, 1 + k)
     }
-    pass(a, null, 0, 0, 1)
-
-    // The room, sharp, over it.
     const autoClear = gl.autoClear
-    gl.autoClear = false
     // A colour background clears the screen whatever autoClear says.
     const background = scene.background
-    scene.background = null
-    gl.clearDepth()
-    camera.layers.set(ROOM_LAYER)
-    gl.render(scene, camera)
+    const over = (layer: number) => {
+      gl.autoClear = false
+      scene.background = null
+      gl.clearDepth()
+      camera.layers.set(layer)
+      gl.render(scene, camera)
+      scene.background = background
+      gl.autoClear = autoClear
+    }
+    if (highlight) {
+      // The room is drawn over the blurred outside and both blurred a little more, so the room still reads;
+      // then the item, sharp, over everything.
+      over(ROOM_LAYER)
+      pass(a, b, 1, 0)
+      pass(b, a, 0, 1)
+      pass(a, null, 0, 0, 1)
+      over(ITEM_LAYER)
+    } else {
+      pass(a, null, 0, 0, 1)
+      // The room, sharp, over it.
+      over(ROOM_LAYER)
+    }
     camera.layers.set(0)
-    scene.background = background
-    gl.autoClear = autoClear
     gl.shadowMap.autoUpdate = autoUpdate
   }, 1)
   return null
