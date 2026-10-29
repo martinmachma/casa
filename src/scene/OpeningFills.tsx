@@ -1,6 +1,6 @@
-import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { useRef } from 'react'
-import { Group, MathUtils } from 'three'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { Group, MathUtils, Mesh, Plane, Vector3 } from 'three'
 import { openingId, openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
 import { raycastIfShown } from './raycast'
@@ -47,6 +47,7 @@ export const OpeningFills = ({
   openings,
   exterior,
   clickable,
+  top,
   openDoors,
   onToggleDoor,
 }: {
@@ -58,9 +59,11 @@ export const OpeningFills = ({
   exterior: boolean
   /** Whether a tap on a door opens or closes it. */
   clickable: boolean
+  /** In a wall cut down to its stub: only what's below this height is drawn. */
+  top?: number
 }) => {
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME
-  return (
+  const fills = (
     <group>
       {openings.map((o, i) => {
         if (o.type === 'passage') return null
@@ -91,6 +94,26 @@ export const OpeningFills = ({
       })}
     </group>
   )
+  return top === undefined ? fills : <ClipAbove top={top}>{fills}</ClipAbove>
+}
+
+/** Draws its children only below `top`, measured from where it stands. */
+const ClipAbove = ({ top, children }: { top: number; children: ReactNode }) => {
+  const gl = useThree((s) => s.gl)
+  const group = useRef<Group>(null)
+  const plane = useMemo(() => new Plane(new Vector3(0, -1, 0), 0), [])
+  useLayoutEffect(() => {
+    gl.localClippingEnabled = true
+    const g = group.current
+    if (!g) return
+    g.updateWorldMatrix(true, false)
+    plane.constant = new Vector3().setFromMatrixPosition(g.matrixWorld).y + top
+    g.traverse((o) => {
+      const m = o as Mesh
+      if (m.isMesh) for (const mat of [m.material].flat()) mat.clippingPlanes = [plane]
+    })
+  })
+  return <group ref={group}>{children}</group>
 }
 
 type Inner = { u0: number; u1: number; y0: number; y1: number }

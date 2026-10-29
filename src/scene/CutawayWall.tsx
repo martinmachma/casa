@@ -41,10 +41,13 @@ export const CutawayWall = ({
   floor,
   cutaway,
   focus,
+  decider: other,
   full,
   stub,
 }: {
   wall: Wall
+  /** The wall whose cut this follows, if not its own (a corner block going with the room's wall it meets). */
+  decider?: Wall
   floor: Floor
   cutaway: boolean
   /** The middle of the room being looked at, if any. */
@@ -54,8 +57,8 @@ export const CutawayWall = ({
 }) => {
   const fullRef = useRef<Group>(null)
   const stubRef = useRef<Group>(null)
-  const outside = useMemo(() => wallOutside(wall, floor), [wall, floor])
-  const decider = useMemo(() => decidingWall(wall, floor), [wall, floor])
+  const outside = useMemo(() => wallOutside(other ?? wall, floor), [other, wall, floor])
+  const decider = useMemo(() => decidingWall(other ?? wall, floor), [other, wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall fades out as the stub fades in.
   const k = useRef<number>(undefined)
   // Only switching the cut on or off animates; walls cut as the camera moves just go.

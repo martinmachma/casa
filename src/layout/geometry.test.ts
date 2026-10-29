@@ -147,6 +147,6 @@ describe('cornerCuts', () => {
     const wall: Wall = { id: 'w', from: [0, 0], to: [4, 0] }
     const corner: Wall = { id: 'c', from: [4, 0], to: [4, 3], thickness: 0.3 }
     const floor = { wallThickness: 0.1, walls: [wall, corner] } as unknown as Floor
-    expect(cornerCuts(wall, floor)).toEqual([4 - 0.15])
+    expect(cornerCuts(wall, floor)).toEqual([{ at: 4 - 0.15, wall: 'c' }])
   })
 })

@@ -122,7 +122,7 @@ const WallMesh = ({
       splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [
         ...joints.a,
         ...joints.b,
-        ...corners,
+        ...corners.map((c) => c.at),
       ]),
     [wall, floor, thickness, joints],
   )
@@ -150,7 +150,17 @@ const WallMesh = ({
 
   // The block at a corner, shared with the wall met there: a room view keeps it with either wall.
   const length = wallLength(wall)
-  const isCorner = (p: WallPiece) => corners.some((c) => (c < length / 2 ? p.u1 <= c + 1e-6 : p.u0 >= c - 1e-6))
+  const cornerOf = (p: WallPiece) =>
+    corners.find((c) => (c.at < length / 2 ? p.u1 <= c.at + 1e-6 : p.u0 >= c.at - 1e-6))?.wall
+  const isCorner = (p: WallPiece) => cornerOf(p) !== undefined
+  // Looking at a room, a corner this wall shares with one of the room's own walls goes with that wall: it
+  // stands in the room's outline, so it's cut away (or left) with the walls either side of it there.
+  const handedOver = (p: WallPiece) => {
+    const other = cornerOf(p)
+    return focus && !focus.sides.has(wall.id) && other && focus.sides.has(other) ? other : undefined
+  }
+  const own = pieces.filter((p) => !handedOver(p))
+  const given = [...new Set(pieces.map(handedOver).filter((id) => id !== undefined))]
 
   const boxes = (list: WallPiece[]) =>
     list.map((p, i) => (
@@ -174,41 +184,64 @@ const WallMesh = ({
       </mesh>
     ))
 
+  const ownStub = stubPieces(own, STUB_HEIGHT)
+  const opening = (top?: number) =>
+    wall.openings && (
+      <OpeningFills
+        wallId={wall.id}
+        openings={wall.openings}
+        exterior={isExteriorWall(wall, floor)}
+        clickable={doors && top === undefined}
+        openDoors={openDoors}
+        onToggleDoor={onToggleDoor}
+        top={top}
+      />
+    )
+
   return (
-    <CutawayWall
-      wall={wall}
-      floor={floor}
-      cutaway={cutaway}
-      focus={focus}
-      full={
-        <>
-          {boxes(pieces)}
-          {selected && selected.side !== 'end' && (
-            <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
-          )}
-          {selected?.side === 'end' && <EndHighlight pieces={pieces} part={selected.part} thickness={thickness} />}
-          {wall.openings && (
-            <OpeningFills
-              wallId={wall.id}
-              openings={wall.openings}
-              exterior={isExteriorWall(wall, floor)}
-              clickable={doors}
-              openDoors={openDoors}
-              onToggleDoor={onToggleDoor}
-            />
-          )}
-        </>
-      }
-      stub={
-        <>
-          {boxes(stub)}
-          {selected && selected.side !== 'end' && (
-            <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
-          )}
-          {selected?.side === 'end' && <EndHighlight pieces={stub} part={selected.part} thickness={thickness} />}
-        </>
-      }
-    />
+    <>
+      <CutawayWall
+        wall={wall}
+        floor={floor}
+        cutaway={cutaway}
+        focus={focus}
+        full={
+          <>
+            {boxes(own)}
+            {selected && selected.side !== 'end' && (
+              <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
+            )}
+            {selected?.side === 'end' && <EndHighlight pieces={pieces} part={selected.part} thickness={thickness} />}
+            {opening()}
+          </>
+        }
+        stub={
+          <>
+            {boxes(ownStub)}
+            {selected && selected.side !== 'end' && (
+              <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
+            )}
+            {selected?.side === 'end' && <EndHighlight pieces={stub} part={selected.part} thickness={thickness} />}
+            {opening(STUB_HEIGHT)}
+          </>
+        }
+      />
+      {given.map((id) => {
+        const corner = pieces.filter((p) => handedOver(p) === id)
+        return (
+          <CutawayWall
+            key={id}
+            wall={wall}
+            floor={floor}
+            cutaway={cutaway}
+            focus={focus}
+            decider={floor.walls.find((w) => w.id === id)}
+            full={boxes(corner)}
+            stub={boxes(stubPieces(corner, STUB_HEIGHT))}
+          />
+        )
+      })}
+    </>
   )
 }
 
