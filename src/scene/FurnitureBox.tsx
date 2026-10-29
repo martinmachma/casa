@@ -181,7 +181,7 @@ export const FurnitureBox = ({
   }, [shape, item.width, item.depth, hitHeight])
 
   return (
-    <group position={[item.x, elevation + z, item.y]} rotation={[0, -item.rotation, 0]}>
+    <group position={[item.x, elevation + z, item.y]} rotation={[0, -item.rotation, 0]} userData={{ itemId: item.id }}>
       {/* The boxes are the item itself, or, for a model, its invisible hit boxes, following its footprint. */}
       {shape.map(([u0, u1, v0, v1], i) => (
         <mesh

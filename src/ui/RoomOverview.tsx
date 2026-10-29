@@ -15,6 +15,8 @@ type RoomOverviewProps = {
   onLight: (id: string, patch: Partial<LightState>) => void
   open: string | undefined
   onOpen: (id: string | undefined) => void
+  /** The item whose card is pointed at, picked out in the view like the open one. */
+  onHover: (id: string | undefined) => void
   onClose: () => void
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
@@ -38,11 +40,11 @@ export const RoomOverview = ({
   onLight,
   open,
   onOpen,
+  onHover,
   onClose,
   pinRefs,
 }: RoomOverviewProps) => {
   const picked = items.find((i) => i.id === open)
-  // An item pointed at, on its marker or its card: it stands out and the rest of the view dims.
   return (
     <>
       <div className="room-cards">
@@ -70,6 +72,8 @@ export const RoomOverview = ({
                       className="smart-item"
                       aria-pressed={open === item.id}
                       onClick={() => onOpen(open === item.id ? undefined : item.id)}
+                      onPointerEnter={() => onHover(item.id)}
+                      onPointerLeave={() => onHover(undefined)}
                     >
                       <span
                         className="device-swatch"

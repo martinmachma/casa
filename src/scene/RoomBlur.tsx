@@ -1,4 +1,4 @@
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import {
   Box3,
@@ -68,11 +68,19 @@ const makeTools = () => {
 /** Where a mesh was when it was last sorted, so only meshes that move are looked at again. */
 type Sorted = { x: number; y: number; z: number; geometry: unknown; cells: unknown; inRoom: boolean }
 
+/** The item (furniture or device) a mesh is part of, if any. */
+const itemOf = (o: Object3D) => {
+  for (let p: Object3D | null = o; p; p = p.parent) if (p.userData.itemId) return p.userData.itemId as string
+}
+
 /**
  * Draws the outside blurred, then the room's own meshes sharp over it: everything else is out of focus,
  * whatever stands where on screen. Each mesh is drawn once; shadows are only redrawn when something moves.
+ * With an item highlighted, only it stays sharp, drawn over everything else.
  */
-export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) => {
+export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: string; highlight?: string }) => {
+  const redraw = useThree((s) => s.invalidate)
+  useEffect(() => redraw(), [highlight, redraw])
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
   // Each wall along the room's outline: the way out of the room, and where its face on the room's side is.
   const outline = useMemo(() => {
@@ -153,7 +161,7 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
         s = { x: e[12], y: e[13], z: e[14], geometry: m.geometry, cells, inRoom: inRoom(m) }
         sorted.set(m, s)
       }
-      if (s.inRoom) {
+      if (highlight ? itemOf(o) === highlight : s.inRoom) {
         o.layers.enable(ROOM_LAYER)
         o.layers.disable(OUTSIDE_LAYER)
       } else {

@@ -112,6 +112,7 @@ const House = ({ backend, account }: HouseProps) => {
   // A room on its own, from the menu: a fixed view of it with its smart items alongside.
   const [roomView, setRoomView] = useState<string>()
   const [popover, setPopover] = useState<string>()
+  const [hoveredItem, setHoveredItem] = useState<string>()
   const pinRefs = useRef(new Map<string, HTMLElement | null>())
   const focus = ROOM_VIEWS.find((r) => r.id === roomView)
   const lights = useLights()
@@ -236,6 +237,7 @@ const House = ({ backend, account }: HouseProps) => {
   const leaveRoom = () => {
     setRoomView(undefined)
     setPopover(undefined)
+    setHoveredItem(undefined)
     const before = beforeRoom.current
     if (!before) return
     beforeRoom.current = undefined
@@ -568,10 +570,9 @@ const House = ({ backend, account }: HouseProps) => {
             onDelete: deleteSelection,
           }}
           focusRoom={focus?.room}
-          pins={[
-            ...focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at })),
-          ]}
+          pins={[...focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at }))]}
           pinRefs={pinRefs}
+          highlight={hoveredItem ?? popover}
         />
 
         {focus && focusFloor && (
@@ -583,6 +584,7 @@ const House = ({ backend, account }: HouseProps) => {
             onLight={(id, patch) => lights.set(id, patch, dark)}
             open={popover}
             onOpen={setPopover}
+            onHover={setHoveredItem}
             onClose={leaveRoom}
             pinRefs={pinRefs}
           />

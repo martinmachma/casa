@@ -205,7 +205,7 @@ const DeviceMesh = ({
   if (device.kind === 'light' || !wall) {
     return (
       <>
-        <group position={[device.x, level, device.y]}>
+        <group position={[device.x, level, device.y]} userData={{ itemId: device.id }}>
           <mesh position={[0, -LIGHT_DEPTH / 2, 0]} castShadow raycast={() => null}>
             {device.kind === 'light' ? (
               <cylinderGeometry args={[LIGHT_RADIUS, LIGHT_RADIUS * 0.9, LIGHT_DEPTH, 24]} />
@@ -227,7 +227,11 @@ const DeviceMesh = ({
   const out = device.wall!.side === 'a' ? 1 : -1
   return (
     <>
-      <group position={[device.x, level, device.y]} rotation={[0, -wallAngle(wall), 0]}>
+      <group
+        position={[device.x, level, device.y]}
+        rotation={[0, -wallAngle(wall), 0]}
+        userData={{ itemId: device.id }}
+      >
         <mesh position={[0, 0, (out * depth) / 2]} castShadow raycast={() => null}>
           <boxGeometry args={[w, h, depth]} />
           {material}

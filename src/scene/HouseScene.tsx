@@ -91,6 +91,8 @@ type HouseSceneProps = {
   focusRoom?: string
   /** Elements kept over points in the focused room. */
   pins?: Pin[]
+  /** A smart item in the focused room picked out, everything else blurred behind it. */
+  highlight?: string
   pinRefs?: RefObject<Map<string, HTMLElement | null>>
 }
 
@@ -123,6 +125,7 @@ export const HouseScene = ({
   itemActions,
   focusRoom,
   pins = [],
+  highlight,
   pinRefs,
 }: HouseSceneProps) => {
   const noPins = useRef(new Map<string, HTMLElement | null>())
@@ -264,7 +267,7 @@ export const HouseScene = ({
         )}
         {focusRoom ? (
           <>
-            <RoomBlur floor={floor} roomId={focusRoom} />
+            <RoomBlur floor={floor} roomId={focusRoom} highlight={highlight} />
             <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
           </>
         ) : (
