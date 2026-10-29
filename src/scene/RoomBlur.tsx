@@ -241,7 +241,8 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
     // Shadows come from everything, so they're drawn with every layer in view, but only when something has
     // moved (turning the camera doesn't change them), and with nothing but one pixel actually drawn. A target's
     // scissor only takes effect as it's set as the target.
-    if (shadows !== lastShadows.current) {
+    // The house's lights also ask for their shadows to be redrawn (see HouseLights).
+    if (shadows !== lastShadows.current || gl.shadowMap.needsUpdate) {
       lastShadows.current = shadows
       gl.shadowMap.needsUpdate = true
       camera.layers.set(0)

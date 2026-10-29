@@ -60,7 +60,11 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
         })
   }
 
-  useFrame(({ camera, controls, gl }) => {
+  // Lights whose shadows are out of date, redrawn one a frame.
+  const stale = useRef(new Set<PointLight>())
+  const moved = useRef(NaN)
+
+  useFrame(({ camera, controls, gl, scene, invalidate }) => {
     const all = lights.current.slice(0, bulbs.length).filter((l): l is PointLight => !!l)
     if (!all.length) return
     const n = frame.current++
@@ -72,13 +76,34 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       const weight = (l: PointLight) => l.intensity / Math.max(1, l.position.distanceToSquared(focus))
       const near = new Set([...all].sort((a, b) => weight(b) - weight(a)).slice(0, spare))
       for (const l of all) {
-        if (l.castShadow !== near.has(l)) l.shadow.needsUpdate = true
+        if (near.has(l) && !l.castShadow) stale.current.add(l)
         l.castShadow = near.has(l)
       }
     }
-    // The house barely changes, so each shadow is redrawn only every few frames, one light at a time.
-    const shadowed = all.filter((l) => l.castShadow)
-    if (shadowed.length) shadowed[n % shadowed.length].shadow.needsUpdate = true
+    // Anything that casts a shadow having moved (a floor sliding in, a piece being placed) puts every shadow out
+    // of date. Matrices are brought up to date in the render after this, so one more frame is asked for to see
+    // where things came to rest.
+    let sum = 0
+    let i = 0
+    scene.traverseVisible((o) => {
+      if (!o.castShadow) return
+      const e = o.matrixWorld.elements
+      i++
+      sum += i * (e[12] + 2 * e[13] + 3 * e[14] + 5 * e[0] + 7 * e[2])
+    })
+    if (sum !== moved.current) {
+      moved.current = sum
+      for (const l of all) if (l.castShadow) stale.current.add(l)
+      invalidate()
+    }
+    // One out-of-date shadow redrawn a frame, with frames asked for until none is left.
+    const next = stale.current.values().next().value
+    if (next) {
+      stale.current.delete(next)
+      next.shadow.needsUpdate = true
+      gl.shadowMap.needsUpdate = true
+      invalidate()
+    }
   })
 
   if (!bulbs.length) return null
