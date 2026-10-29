@@ -117,6 +117,15 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
     if (!g.boundingBox) g.computeBoundingBox()
     box.copy(g.boundingBox!).applyMatrix4(m.matrixWorld).getCenter(mid)
     if (mid.y < floor.elevation - 0.1 || mid.y > floor.elevation + floor.height + 0.1) return false
+    // A wall's corner block belongs to both walls that meet there: it goes with any room it touches.
+    if (m.userData.corner)
+      return cells.some(
+        (c) =>
+          box.max.x > c.x0 - MARGIN * 2 &&
+          box.min.x < c.x1 + MARGIN * 2 &&
+          box.max.z > c.y0 - MARGIN * 2 &&
+          box.min.z < c.y1 + MARGIN * 2,
+      )
     // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
     let wallId: string | undefined
     for (let p: Object3D | null = m; p && !wallId; p = p.parent) wallId = p.userData.wallId

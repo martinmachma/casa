@@ -8,6 +8,7 @@ import {
   stubPieces,
   wallHeight,
   wallJoints,
+  wallLength,
   wallPieces,
   wallThickness,
   type WallPiece,
@@ -115,12 +116,13 @@ const WallMesh = ({
   const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
   // Cut where other walls meet either side, so each box lies in one part of each side, and at corners, so the
   // corner block is a piece of its own.
+  const corners = useMemo(() => cornerCuts(wall, floor), [wall, floor])
   const pieces = useMemo(
     () =>
       splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [
         ...joints.a,
         ...joints.b,
-        ...cornerCuts(wall, floor),
+        ...corners,
       ]),
     [wall, floor, thickness, joints],
   )
@@ -146,11 +148,16 @@ const WallMesh = ({
     else if (Math.abs(n.x) > 0.5) onPick(wall.id, 'end', endPart(n.x > 0 ? p.u1 : p.u0))
   }
 
+  // The block at a corner, shared with the wall met there: a room view keeps it with either wall.
+  const length = wallLength(wall)
+  const isCorner = (p: WallPiece) => corners.some((c) => (c < length / 2 ? p.u1 <= c + 1e-6 : p.u0 >= c - 1e-6))
+
   const boxes = (list: WallPiece[]) =>
     list.map((p, i) => (
       <mesh
         key={i}
         position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
+        userData={isCorner(p) ? { corner: true } : undefined}
         receiveShadow
         raycast={interactive ? raycastIfShown : noRaycast}
         onClick={interactive ? handleClick(p) : undefined}
