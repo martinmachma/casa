@@ -76,6 +76,18 @@ export const DebugHover = () => {
       }
       invalidate()
     }
+    // A short note at the bottom of the screen, like the app's other toasts.
+    let note: HTMLDivElement | undefined
+    let noteTimer = 0
+    const notify = (text: string) => {
+      note ??= document.body.appendChild(
+        Object.assign(document.createElement('div'), { className: 'toast debug-toast' }),
+      )
+      note.textContent = text
+      note.hidden = false
+      clearTimeout(noteTimer)
+      noteTimer = window.setTimeout(() => note && (note.hidden = true), 1800)
+    }
     const ray = new Raycaster()
     const at = new Vector2()
     let frame = 0
@@ -115,10 +127,10 @@ export const DebugHover = () => {
     const press = (e: PointerEvent) => (down = new Vector2(e.clientX, e.clientY))
     const click = (e: MouseEvent) => {
       if (!pointed?.id || down.distanceTo(new Vector2(e.clientX, e.clientY)) > 4) return
-      const { id, label } = pointed
+      const { id } = pointed
       navigator.clipboard.writeText(id).then(
-        () => (tag.textContent = `${label} · copied`),
-        () => (tag.textContent = `${label} · ${id}`),
+        () => notify(`Copied ${id}`),
+        () => notify(`Couldn't copy ${id}`),
       )
     }
     gl.domElement.addEventListener('pointermove', move)
@@ -132,6 +144,8 @@ export const DebugHover = () => {
       gl.domElement.removeEventListener('pointerdown', press)
       gl.domElement.removeEventListener('click', click)
       light(undefined)
+      clearTimeout(noteTimer)
+      note?.remove()
       tint.dispose()
       tag.remove()
     }
