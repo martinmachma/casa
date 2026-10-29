@@ -1,6 +1,6 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
@@ -44,6 +44,7 @@ import { intro } from './intro'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
 import { DebugHover } from './DebugHover'
+import { reachable } from './pick'
 import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
 import { RoomBlur } from './RoomBlur'
 
@@ -241,6 +242,7 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
       >
         <InputInvalidator />
+        <PointerReach />
         <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
         {focusRoom ? (
           <RoomCamera
@@ -588,5 +590,12 @@ const IntroFlight = () => {
       controls.update()
     }
   })
+  return null
+}
+
+/** The pointer reaches only what's in front: see `reachable`. */
+const PointerReach = () => {
+  const setEvents = useThree((s) => s.setEvents)
+  useEffect(() => setEvents({ filter: (hits, state) => reachable(hits, state.scene, state.raycaster) }), [setEvents])
   return null
 }

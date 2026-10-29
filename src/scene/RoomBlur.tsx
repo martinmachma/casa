@@ -82,16 +82,9 @@ const itemOf = (o: Object3D) => {
 export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: string; highlight?: string }) => {
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [highlight, redraw])
-  // Only the room's own things take the pointer; what's around it is out of focus and out of reach.
-  const setEvents = useThree((s) => s.setEvents)
+  // What's around the room is marked as it's sorted, so the pointer passes it by (see `reachable`).
   const scene = useThree((s) => s.scene)
-  useEffect(() => {
-    setEvents({ filter: (hits) => hits.filter((h) => !h.object.userData.outside) })
-    return () => {
-      setEvents({ filter: undefined })
-      scene.traverse((o) => delete o.userData.outside)
-    }
-  }, [setEvents, scene])
+  useEffect(() => () => scene.traverse((o) => delete o.userData.outside), [scene])
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
   // Each wall along the room's outline: the way out of the room, and where its face on the room's side is.
   const outline = useMemo(() => {

@@ -1,7 +1,8 @@
 import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
-import { Mesh, MeshBasicMaterial, Raycaster, Vector2, type Intersection, type Material, type Object3D } from 'three'
+import { Mesh, MeshBasicMaterial, Raycaster, Vector2, type Material, type Object3D } from 'three'
 import { useDebug } from '../debug'
+import { shown, solidHits } from './pick'
 
 /** The item, device or wall a mesh is part of, and what a debug tag says for it. */
 const thingOf = (o: Object3D) => {
@@ -12,22 +13,6 @@ const thingOf = (o: Object3D) => {
 }
 
 const materialsOf = (m: Mesh) => [m.material as Material].flat()
-
-/**
- * Drawn solid where the ray meets it: not hidden, not an invisible hit box, not cut away there, and not faded
- * (a wall seen through as it fades out is looked past).
- */
-const seen = (h: Intersection) => {
-  const materials = materialsOf(h.object as Mesh)
-  // Catch planes that only take the pointer don't draw anything (colorWrite off).
-  if (!materials.some((m) => m.visible && m.colorWrite && (!m.transparent || m.opacity >= 0.5))) return false
-  return !materials[0].clippingPlanes?.some((p) => p.distanceToPoint(h.point) < 0)
-}
-
-const shown = (o: Object3D) => {
-  for (let p: Object3D | null = o; p; p = p.parent) if (!p.visible) return false
-  return true
-}
 
 /**
  * In debug mode, the item, device or wall under the pointer is named in a tag beside it and tinted all over, so
@@ -98,15 +83,7 @@ export const DebugHover = () => {
         at.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
         // The camera changes with the view (orbit, room, walk), so it's read as the pointer moves.
         ray.setFromCamera(at, get().camera)
-        // Outside planning most meshes don't take the pointer (their raycast is off), so each is tested directly.
-        // Whatever is drawn in front hides what's behind it, named or not (a floor, a ceiling).
-        const hits: Intersection[] = []
-        scene.traverse((o) => {
-          // In a room's view, what's around the room is drawn behind it, blurred, and can't be picked.
-          if (o instanceof Mesh && !o.userData.debugTint && shown(o) && !o.userData.outside)
-            Mesh.prototype.raycast.call(o, ray, hits)
-        })
-        const hit = hits.sort((a, b) => a.distance - b.distance).find(seen)
+        const hit = solidHits(scene, ray)[0]
         const thing = hit && thingOf(hit.object)
         pointed = thing
         light(thing?.root)
