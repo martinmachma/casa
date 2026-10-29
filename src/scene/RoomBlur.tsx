@@ -16,10 +16,15 @@ import {
 import { floorRegions } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 
-// Room meshes are also on this layer; the crisp pass draws only them.
+// Every mesh stays on layer 0, so picking and the other views are untouched; the room's meshes are also on
+// one layer and everything else on another, and each pass draws one of them.
 const ROOM_LAYER = 1
+const OUTSIDE_LAYER = 2
 // How far past the room's floor something may sit and still belong to it: its walls, at most.
 const MARGIN = 0.35
+// Something counts as in the room when this much of its footprint is.
+const SAMPLES = 5
+const MOSTLY = 0.6
 const BLUR_PASSES = 3
 const TINT = new Color('#ebe7e1')
 
@@ -46,18 +51,23 @@ const blurMaterial = () =>
   })
 
 const makeTools = () => {
-  const target = () => new WebGLRenderTarget(1, 1, { type: HalfFloatType })
+  // The outside is drawn at half size straight into `a`: it's blurred anyway, and that's a quarter of the pixels.
+  const a = new WebGLRenderTarget(1, 1, { type: HalfFloatType })
+  const b = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false })
   const quad = new Mesh(new PlaneGeometry(2, 2), blurMaterial())
   // Drawn straight to the screen whatever the camera.
   quad.frustumCulled = false
   const scene = new Scene()
   scene.add(quad)
-  return { full: target(), a: target(), b: target(), quad, scene, camera: new OrthographicCamera() }
+  return { a, b, quad, scene, camera: new OrthographicCamera() }
 }
 
+/** Where a mesh was when it was last sorted, so only meshes that move are looked at again. */
+type Sorted = { x: number; y: number; z: number; geometry: unknown; cells: unknown; inRoom: boolean }
+
 /**
- * Draws the house blurred, then the room's own meshes sharp over it: everything else is out of focus,
- * whatever stands where on screen.
+ * Draws the outside blurred, then the room's own meshes sharp over it: everything else is out of focus,
+ * whatever stands where on screen. Each mesh is drawn once; shadows are only redrawn when something moves.
  */
 export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) => {
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
@@ -66,7 +76,6 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     () => () => {
       const t = kit.current
       if (!t) return
-      t.full.dispose()
       t.a.dispose()
       t.b.dispose()
       t.quad.geometry.dispose()
@@ -74,37 +83,69 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     },
     [],
   )
+  const sorted = useMemo(() => new WeakMap<Mesh, Sorted>(), [])
+  const lastShadows = useRef(NaN)
   const box = useMemo(() => new Box3(), [])
   const mid = useMemo(() => new Vector3(), [])
   const size = useMemo(() => new Vector2(), [])
 
   const inRoom = (m: Mesh) => {
     const g = m.geometry
-    if (!g) return false
     if (!g.boundingBox) g.computeBoundingBox()
     box.copy(g.boundingBox!).applyMatrix4(m.matrixWorld).getCenter(mid)
     if (mid.y < floor.elevation - 0.1 || mid.y > floor.elevation + floor.height + 0.1) return false
-    return cells.some(
-      (c) => mid.x > c.x0 - MARGIN && mid.x < c.x1 + MARGIN && mid.z > c.y0 - MARGIN && mid.z < c.y1 + MARGIN,
-    )
+    // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
+    const over = (x: number, z: number) =>
+      cells.some((c) => x > c.x0 - MARGIN && x < c.x1 + MARGIN && z > c.y0 - MARGIN && z < c.y1 + MARGIN)
+    let inside = 0
+    for (let i = 0; i < SAMPLES; i++)
+      for (let j = 0; j < SAMPLES; j++) {
+        const x = box.min.x + ((i + 0.5) / SAMPLES) * (box.max.x - box.min.x)
+        const z = box.min.z + ((j + 0.5) / SAMPLES) * (box.max.z - box.min.z)
+        if (over(x, z)) inside++
+      }
+    return inside >= SAMPLES * SAMPLES * MOSTLY
   }
 
   useFrame(({ gl, scene, camera }) => {
     const tools = (kit.current ??= makeTools())
     scene.updateMatrixWorld()
-    scene.traverse((o) => {
-      if ((o as Mesh).isMesh) {
-        if (inRoom(o as Mesh)) o.layers.enable(ROOM_LAYER)
-        else o.layers.disable(ROOM_LAYER)
-      } else o.layers.enableAll()
+    // Sort the meshes, and sum up where everything is, to tell when the shadows need redrawing.
+    let shadows = 0
+    let i = 0
+    scene.traverseVisible((o) => {
+      const e = o.matrixWorld.elements
+      i++
+      shadows += i * (e[12] + 2 * e[13] + 3 * e[14] + 5 * e[0] + 7 * e[2])
+      // Lines and sprites are sorted like meshes; lights and groups belong to both passes.
+      const m = o as Mesh
+      if (!m.geometry) {
+        o.layers.enableAll()
+        return
+      }
+      const material = m.material
+      if (material && !Array.isArray(material)) shadows += i * 11 * material.opacity
+      let s = sorted.get(m)
+      if (!s || s.x !== e[12] || s.y !== e[13] || s.z !== e[14] || s.geometry !== m.geometry || s.cells !== cells) {
+        s = { x: e[12], y: e[13], z: e[14], geometry: m.geometry, cells, inRoom: inRoom(m) }
+        sorted.set(m, s)
+      }
+      if (s.inRoom) {
+        o.layers.enable(ROOM_LAYER)
+        o.layers.disable(OUTSIDE_LAYER)
+      } else {
+        o.layers.enable(OUTSIDE_LAYER)
+        o.layers.disable(ROOM_LAYER)
+      }
     })
 
     gl.getDrawingBufferSize(size)
-    const { full, a, b, quad, camera: flat } = tools
-    if (full.width !== size.x || full.height !== size.y) {
-      full.setSize(size.x, size.y)
-      a.setSize(size.x / 2, size.y / 2)
-      b.setSize(size.x / 2, size.y / 2)
+    const { a, b, quad, camera: flat } = tools
+    const w = Math.max(1, Math.round(size.x / 2))
+    const h = Math.max(1, Math.round(size.y / 2))
+    if (a.width !== w || a.height !== h) {
+      a.setSize(w, h)
+      b.setSize(w, h)
     }
     const material = quad.material
     const pass = (from: WebGLRenderTarget, to: WebGLRenderTarget | null, x: number, y: number, tint = 0) => {
@@ -115,23 +156,35 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
       gl.render(tools.scene, flat)
     }
 
-    // Everything, for the background (and the shadows, which the sharp pass reuses).
-    camera.layers.set(0)
-    gl.setRenderTarget(full)
-    gl.render(scene, camera)
-    pass(full, a, 1, 0)
-    pass(a, b, 0, 1)
-    for (let i = 1; i < BLUR_PASSES; i++) {
-      pass(b, a, 1 + i, 0)
-      pass(a, b, 0, 1 + i)
+    const autoUpdate = gl.shadowMap.autoUpdate
+    gl.shadowMap.autoUpdate = false
+    // Shadows come from everything, so they're drawn with every layer in view, but only when something has
+    // moved (turning the camera doesn't change them), and with nothing but one pixel actually drawn. A target's
+    // scissor only takes effect as it's set as the target.
+    if (shadows !== lastShadows.current) {
+      lastShadows.current = shadows
+      gl.shadowMap.needsUpdate = true
+      camera.layers.set(0)
+      a.scissor.set(0, 0, 1, 1)
+      a.scissorTest = true
+      gl.setRenderTarget(a)
+      gl.render(scene, camera)
+      a.scissorTest = false
     }
-    pass(b, null, 0, 0, 1)
+    gl.setRenderTarget(a)
+
+    // The outside, blurred.
+    camera.layers.set(OUTSIDE_LAYER)
+    gl.render(scene, camera)
+    for (let k = 0; k < BLUR_PASSES; k++) {
+      pass(a, b, 1 + k, 0)
+      pass(b, a, 0, 1 + k)
+    }
+    pass(a, null, 0, 0, 1)
 
     // The room, sharp, over it.
     const autoClear = gl.autoClear
-    const shadows = gl.shadowMap.autoUpdate
     gl.autoClear = false
-    gl.shadowMap.autoUpdate = false
     // A colour background clears the screen whatever autoClear says.
     const background = scene.background
     scene.background = null
@@ -141,7 +194,7 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     camera.layers.set(0)
     scene.background = background
     gl.autoClear = autoClear
-    gl.shadowMap.autoUpdate = shadows
+    gl.shadowMap.autoUpdate = autoUpdate
   }, 1)
   return null
 }
