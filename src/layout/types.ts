@@ -42,6 +42,8 @@ export type Room = {
   name: string
   /** Where the name is drawn in the plan. */
   label: Point
+  /** Its view looks in through its door, rather than from wherever shows it best. */
+  view?: 'door'
 }
 
 export type Floor = {

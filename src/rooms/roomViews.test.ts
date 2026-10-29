@@ -24,7 +24,8 @@ describe('roomPose', () => {
   it('keeps every room floor in view, from above but not straight down', () => {
     for (const aspect of [1.8, 0.5])
       for (const floor of house.floors)
-        for (const room of floor.rooms) {
+        // A room seen from its door shows what's ahead of it, not all of its floor.
+        for (const room of floor.rooms.filter((r) => r.view !== 'door')) {
           const pose = roomPose(floor, room.id, aspect)!
           const camera = new PerspectiveCamera(45, aspect)
           camera.position.copy(pose.position)

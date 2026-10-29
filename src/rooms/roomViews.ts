@@ -74,6 +74,14 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
     .filter((s) => !long || (s.out[1] !== 0) === across)
     .flatMap((s) => [-0.35, 0.35].map((turn) => ({ ...s, yaw: Math.atan2(s.out[0], s.out[1]) + turn })))
     .map((v) => ({ ...v, cost: hidden(v.yaw) + 0.1 * v.beyond }))
+  // A room seen from its door: standing in the doorway, looking in at eye height.
+  const door = floor.rooms.find((r) => r.id === roomId)?.view === 'door' ? roomDoor(floor, roomId) : undefined
+  if (door) {
+    const [x, z] = door.at
+    const position = new Vector3(x + door.out[0] * 1.8, floor.elevation + 1.7, z + door.out[1] * 1.8)
+    const target = new Vector3(x - door.out[0] * 1.5, floor.elevation + 0.7, z - door.out[1] * 1.5)
+    return { position, target, box }
+  }
   const { yaw } = views.reduce((a, b) => (b.cost < a.cost - 0.05 ? b : a))
   const pitch = Math.min(0.95, Math.max(0.68, 1.05 - 0.06 * Math.min(width, depth)))
   const look = new Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch))
@@ -138,6 +146,18 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
   place(distance)
   const position = camera.position.clone()
   return { position, target, box }
+}
+
+/** The middle of the room's door in plan, and the way out through it, if it has one. */
+const roomDoor = (floor: Floor, roomId: string): { at: Point; out: Point } | undefined => {
+  for (const [id, out] of roomWallSides(floor, roomId)) {
+    const wall = floor.walls.find((w) => w.id === id)
+    const door = wall?.openings?.find((o) => o.type === 'door')
+    if (!wall || !door) continue
+    const length = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
+    const t = (door.offset + door.width / 2) / length
+    return { at: [wall.from[0] + (wall.to[0] - wall.from[0]) * t, wall.from[1] + (wall.to[1] - wall.from[1]) * t], out }
+  }
 }
 
 /** A stretch of the room's outline, with the way out of the room. */
