@@ -2853,6 +2853,12 @@ input[type='range'].kelvin::-moz-range-thumb {
   user-select: text;
 }
 
+.debug-hover {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+}
+
 .settings-toggle {
   display: flex;
   gap: 8px;

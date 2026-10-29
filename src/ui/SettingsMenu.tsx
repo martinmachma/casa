@@ -98,7 +98,7 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
           <h2>Debug</h2>
           <label className="settings-toggle">
             <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} />
-            Show item and device ids in the scene
+            Name items, devices and walls under the pointer
           </label>
           <h2 id="shortcuts-title">Shortcuts</h2>
           <p className="settings-intro">

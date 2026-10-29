@@ -43,6 +43,7 @@ import { CameraNudger } from './CameraNudger'
 import { intro } from './intro'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
+import { DebugHover } from './DebugHover'
 import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
 import { RoomBlur } from './RoomBlur'
 
@@ -152,6 +153,7 @@ export const HouseScene = ({
     if (!box || !focusRoom) return undefined
     return {
       center: [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2],
+      box: roomBox(floor, focusRoom, 0)!,
       sides: roomWallSides(floor, focusRoom),
     }
   }, [floor, focusRoom])
@@ -269,6 +271,7 @@ export const HouseScene = ({
             viewKey={viewKey}
           />
         )}
+        <DebugHover />
         {focusRoom ? (
           <>
             <RoomBlur floor={floor} roomId={focusRoom} highlight={highlight} />

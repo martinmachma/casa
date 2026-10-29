@@ -14,7 +14,7 @@ const subscribe = (listener: () => void) => {
   }
 }
 
-/** Debug mode, `?debug` in the URL: labels on every item and device, to point at one when reporting a problem. */
+/** Debug mode, `?debug` in the URL: the item, device or wall under the pointer is named, to point at one when reporting a problem. */
 export const useDebug = () => useSyncExternalStore(subscribe, read)
 
 export const setDebug = (on: boolean) => {

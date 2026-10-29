@@ -10,8 +10,6 @@ import { snapFurniture, type SnapWall } from '../furniture/snap'
 import type { Floor } from '../layout/types'
 import { FurnitureModel } from './FurnitureModel'
 import { useItemCut } from './ItemCut'
-import { useDebug } from '../debug'
-import { DebugLabel } from './DebugLabel'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
 
 type FurnitureBoxProps = {
@@ -94,7 +92,6 @@ export const FurnitureBox = ({
   }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
   const group = useRef<Group>(null)
-  const debug = useDebug()
   useItemCut(group, item, floor, cutaway)
 
   // Stops the camera from orbiting/panning along with a drag.
@@ -204,7 +201,7 @@ export const FurnitureBox = ({
       ref={group}
       position={[item.x, elevation + z, item.y]}
       rotation={[0, -item.rotation, 0]}
-      userData={{ itemId: item.id }}
+      userData={{ itemId: item.id, debug: `${item.name} · ${item.id.slice(0, 4)}` }}
     >
       {/* The boxes are the item itself, or, for a model, its invisible hit boxes, following its footprint. */}
       {shape.map(([u0, u1, v0, v1], i) => (
@@ -256,7 +253,6 @@ export const FurnitureBox = ({
           />
         </Suspense>
       )}
-      {debug && <DebugLabel y={hitHeight} text={`${item.name} · ${item.id.slice(0, 4)}`} />}
       {showActions && interactive && (
         <Html position={[0, hitHeight, 0]} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
           <div className="float item-actions" onPointerDown={(e) => e.stopPropagation()}>

@@ -9,8 +9,19 @@ import type { Floor, Point, Wall } from '../layout/types'
 export const STUB_HEIGHT = 0.3
 const forward = new Vector3()
 
-/** A room being looked at: its middle, and the walls along its outline with the way out across each. */
-export type Focus = { center: Point; sides: Map<string, Point> }
+/**
+ * A room being looked at: its middle, its floor's extent, and the walls along its outline with the way out across
+ * each.
+ */
+export type Focus = { center: Point; box: { min: Point; max: Point }; sides: Map<string, Point> }
+
+/** A wall wholly past the room's floor on the camera's side, in either direction, stands between them. */
+const beyond = (wall: Wall, eye: Point, { min, max }: Focus['box']) =>
+  [0, 1].some((a) => {
+    const lo = Math.min(wall.from[a], wall.to[a])
+    const hi = Math.max(wall.from[a], wall.to[a])
+    return (eye[a] > max[a] && lo >= max[a]) || (eye[a] < min[a] && hi <= min[a])
+  })
 
 const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean, focus?: Focus) => {
   if (!cutaway) return false
@@ -20,7 +31,7 @@ const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: 
     const out = focus.sides.get(wall.id)
     const eye: Point = [camera.position.x, camera.position.z]
     if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0
-    return separates(wall, eye, focus.center)
+    return separates(wall, eye, focus.center) || beyond(wall, eye, focus.box)
   }
   camera.getWorldDirection(forward)
   return blocksView(wall, outside, [camera.position.x, camera.position.z], [forward.x, forward.z])

@@ -82,6 +82,16 @@ const itemOf = (o: Object3D) => {
 export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: string; highlight?: string }) => {
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [highlight, redraw])
+  // Only the room's own things take the pointer; what's around it is out of focus and out of reach.
+  const setEvents = useThree((s) => s.setEvents)
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    setEvents({ filter: (hits) => hits.filter((h) => !h.object.userData.outside) })
+    return () => {
+      setEvents({ filter: undefined })
+      scene.traverse((o) => delete o.userData.outside)
+    }
+  }, [setEvents, scene])
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
   // Each wall along the room's outline: the way out of the room, and where its face on the room's side is.
   const outline = useMemo(() => {
@@ -191,6 +201,7 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
         sorted.set(m, s)
       }
       const layer = highlight && itemOf(o) === highlight ? ITEM_LAYER : s.inRoom ? ROOM_LAYER : OUTSIDE_LAYER
+      o.userData.outside = layer === OUTSIDE_LAYER
       for (const l of [ROOM_LAYER, OUTSIDE_LAYER, ITEM_LAYER]) {
         if (l === layer) o.layers.enable(l)
         else o.layers.disable(l)
