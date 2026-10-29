@@ -57,22 +57,6 @@ export const roomEdges = (floor: Floor, roomId: string): RoomEdge[] => {
   })
 }
 
-/** The convex hull of screen points, for the hole the room shows through. */
-export const hull = (points: Point[]): Point[] => {
-  const p = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1])
-  if (p.length < 3) return p
-  const cross = (o: Point, a: Point, b: Point) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-  const half = (list: Point[]) => {
-    const out: Point[] = []
-    for (const q of list) {
-      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop()
-      out.push(q)
-    }
-    out.pop()
-    return out
-  }
-  return [...half(p), ...half([...p].reverse())]
-}
 
 /** The walls along the room's outline, each with the way out of the room across it. */
 export const roomWallSides = (floor: Floor, roomId: string): Map<string, Point> => {

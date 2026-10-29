@@ -44,6 +44,7 @@ import { intro } from './intro'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import type { CameraMode, Interaction, Selection } from './selection'
 import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
+import { RoomBlur } from './RoomBlur'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
@@ -124,7 +125,6 @@ export const HouseScene = ({
   pins = [],
   pinRefs,
 }: HouseSceneProps) => {
-  const blur = useRef<HTMLDivElement>(null)
   const noPins = useRef(new Map<string, HTMLElement | null>())
   const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
   const toggleDoor = (id: string) =>
@@ -263,14 +263,10 @@ export const HouseScene = ({
           />
         )}
         {focusRoom ? (
-          <FocusProjector
-            floor={floor}
-            roomId={focusRoom}
-            mask={blur}
-            cutaway
-            pins={pins}
-            pinRefs={pinRefs ?? noPins}
-          />
+          <>
+            <RoomBlur floor={floor} roomId={focusRoom} />
+            <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
+          </>
         ) : (
           <CameraNudger nudge={nudge} />
         )}
@@ -413,7 +409,6 @@ export const HouseScene = ({
           />
         ))}
       </Canvas>
-      {focusRoom && <div className="room-blur" ref={blur} />}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       {!focusRoom && <Compass needle={needle} />}
     </>

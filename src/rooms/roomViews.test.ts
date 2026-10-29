@@ -2,22 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { house } from '../layout/layout'
 import { floorRegions } from '../layout/rooms'
 import type { Point } from '../layout/types'
-import { hull, roomEdges } from './roomViews'
-
-describe('hull', () => {
-  it('keeps the outer corners and drops the points inside', () => {
-    const h = hull([
-      [0, 0],
-      [2, 0],
-      [1, 1],
-      [2, 2],
-      [0, 2],
-      [1, 0.5],
-    ])
-    expect(h).toHaveLength(4)
-    expect(h).not.toContainEqual([1, 1])
-  })
-})
+import { roomEdges } from './roomViews'
 
 describe('roomEdges', () => {
   it('traces the outline of the living room and nothing inside it', () => {

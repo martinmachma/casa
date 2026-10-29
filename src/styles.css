@@ -2701,19 +2701,6 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 /* A room's own view: the rest of the house blurred, cards down the right, popovers by the items. */
-.room-blur {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: rgb(235 231 225 / 0.25);
-  backdrop-filter: blur(7px) saturate(0.8);
-  -webkit-backdrop-filter: blur(7px) saturate(0.8);
-  mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
-}
-
-/* A marker over each smart item in a room's view; pointed at, it grows and the rest of the view dims. */
-
 
 
 
