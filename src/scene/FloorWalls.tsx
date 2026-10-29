@@ -191,7 +191,7 @@ const WallMesh = ({
         wallId={wall.id}
         openings={wall.openings}
         exterior={isExteriorWall(wall, floor)}
-        clickable={doors && top === undefined}
+        clickable={doors}
         openDoors={openDoors}
         onToggleDoor={onToggleDoor}
         top={top}
