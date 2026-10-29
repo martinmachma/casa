@@ -22,9 +22,7 @@ import type { Floor } from '../layout/types'
 // one layer and everything else on another, and each pass draws one of them.
 const ROOM_LAYER = 1
 const OUTSIDE_LAYER = 2
-// How far past the room's floor a wall along its outline may sit and still belong to it; anything else,
-// other walls included, must stand on the floor.
-const WALL_MARGIN = 0.35
+// Slack for rounding where something stands right at the floor's edge.
 const MARGIN = 0.02
 // Something counts as in the room when this much of its footprint is.
 const SAMPLES = 5
@@ -102,9 +100,15 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
     let wallId: string | undefined
     for (let p: Object3D | null = m; p && !wallId; p = p.parent) wallId = p.userData.wallId
-    const r = wallId && outline.has(wallId) ? WALL_MARGIN : MARGIN
+    // A wall along the room's outline stands just off its floor: it's judged moved one thickness into the
+    // room, so the stretch beside the room counts and the rest of the wall doesn't.
+    const out = wallId ? outline.get(wallId) : undefined
+    const dx = out ? -out[0] * (box.max.x - box.min.x) : 0
+    const dz = out ? -out[1] * (box.max.z - box.min.z) : 0
     const over = (x: number, z: number) =>
-      cells.some((c) => x > c.x0 - r && x < c.x1 + r && z > c.y0 - r && z < c.y1 + r)
+      cells.some(
+        (c) => x + dx > c.x0 - MARGIN && x + dx < c.x1 + MARGIN && z + dz > c.y0 - MARGIN && z + dz < c.y1 + MARGIN,
+      )
     let inside = 0
     for (let i = 0; i < SAMPLES; i++)
       for (let j = 0; j < SAMPLES; j++) {
