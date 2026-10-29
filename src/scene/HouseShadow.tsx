@@ -14,6 +14,8 @@ import type { Floor, Roof } from '../layout/types'
 import { slabGeometry } from './prism'
 
 const SLAB = 0.3
+// The parapet's thickness, as the roof draws it.
+const PARAPET = 0.2
 // A closed door's leaf, so the lights indoors stop at it even when its wall is cut away from view.
 const LEAF = 0.04
 
@@ -37,8 +39,10 @@ const box = (size: [number, number, number], at: [number, number, number], angle
 /** The whole house's walls, closed doors, slabs and roof as one solid, for shadows. */
 const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: ReadonlySet<string>) => {
   const parts: BufferGeometry[] = []
-  for (const floor of floors) {
-    const slab = slabGeometry(floor, SLAB)
+  floors.forEach((floor, i) => {
+    // Down to the walls below, like the visible slab, so no light slips between the floors.
+    const below = floors[i - 1]
+    const slab = slabGeometry(floor, below ? Math.max(SLAB, floor.elevation - below.elevation - below.height) : SLAB)
     slab.translate(0, floor.elevation, 0)
     parts.push(bare(slab))
     for (const wall of floor.walls) {
@@ -60,16 +64,29 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: Readonly
         parts.push(leaf)
       })
     }
-  }
+  })
   const top = floors[floors.length - 1]
   if (top) {
-    // The roof slab and its parapet, as one block (same outline from the sun's side).
+    // The roof slab, and the parapet round it apart: a shadow is cast by a solid's far side, so with the parapet
+    // in one block with the slab, its inner faces would stand inside that block and catch the lights below.
     const { min, max } = floorBounds(top)
-    const height = SLAB + (roof?.parapet ?? 0)
     const y = top.elevation + top.height
-    parts.push(
-      box([max[0] - min[0], height, max[1] - min[1]], [(min[0] + max[0]) / 2, y + height / 2, (min[1] + max[1]) / 2]),
-    )
+    const w = max[0] - min[0]
+    const d = max[1] - min[1]
+    const cx = (min[0] + max[0]) / 2
+    const cz = (min[1] + max[1]) / 2
+    parts.push(box([w, SLAB, d], [cx, y + SLAB / 2, cz]))
+    const rim = roof?.parapet ?? 0
+    if (rim > 0) {
+      const ry = y + SLAB + rim / 2
+      parts.push(
+        box([PARAPET, rim, d], [min[0] + PARAPET / 2, ry, cz]),
+        box([PARAPET, rim, d], [max[0] - PARAPET / 2, ry, cz]),
+        box([w - 2 * PARAPET, rim, PARAPET], [cx, ry, min[1] + PARAPET / 2]),
+        box([w - 2 * PARAPET, rim, PARAPET], [cx, ry, max[1] - PARAPET / 2]),
+      )
+    }
+    const height = SLAB + rim
     const chimney = roof?.chimney
     if (chimney) {
       const stack = height + 0.6

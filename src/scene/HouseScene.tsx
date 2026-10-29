@@ -292,10 +292,17 @@ export const HouseScene = ({
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
         {floors.map((f, i) => (
           <Fade key={f.id} shown={i < shownCount}>
-            {/* The ground floor's slab reaches down into the garden, so the house stands on the ground. */}
+            {/* The ground floor's slab reaches down into the garden, so the house stands on the ground; an upper
+                one down to the walls below, so there's no slit between the floors. */}
             <Slab
               floor={f}
-              depth={i === 0 && house.outdoor ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1) : SLAB}
+              depth={
+                i === 0
+                  ? house.outdoor
+                    ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1)
+                    : SLAB
+                  : Math.max(SLAB, f.elevation - floors[i - 1].elevation - floors[i - 1].height)
+              }
             />
             {floors[i + 1] && (
               <Stairs

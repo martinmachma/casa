@@ -8,9 +8,10 @@ const CEILING_INTENSITY = 7
 const LAMP_INTENSITY = 2.5
 // Light falls off with the square of the distance; past this it's cut off so far rooms cost nothing.
 const REACH = 9
-// Point-light shadows are six renders each and use a texture unit, so only the lights nearest the camera cast them
-// (enough that walls stop light from spilling into the next room). The rest light without shadows.
-const SHADOWED = 6
+// Point-light shadows are six renders each and use a texture unit, so only as many lights as the GPU has units to
+// spare cast them (without one, light goes through walls, floors and the roof). Units kept for the sun's shadow and
+// the materials' own textures:
+const KEEP_UNITS = 4
 const SHADOW_MAP = 512
 // Frames between choosing which lights cast shadows.
 const RESHUFFLE = 30
@@ -59,17 +60,17 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
         })
   }
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, controls, gl }) => {
     const all = lights.current.slice(0, bulbs.length).filter((l): l is PointLight => !!l)
     if (!all.length) return
     const n = frame.current++
     if (n % RESHUFFLE === 0) {
-      const eye = camera.getWorldPosition(tmp.current)
-      const near = new Set(
-        [...all]
-          .sort((a, b) => a.position.distanceToSquared(eye) - b.position.distanceToSquared(eye))
-          .slice(0, SHADOWED),
-      )
+      // Nearest what's looked at, not the eye: turning round the house mustn't change which lights cast shadows.
+      const target = (controls as { target?: Vector3 } | null)?.target
+      const focus = target ?? camera.getWorldPosition(tmp.current)
+      const spare = Math.max(0, gl.capabilities.maxTextures - KEEP_UNITS)
+      const weight = (l: PointLight) => l.intensity / Math.max(1, l.position.distanceToSquared(focus))
+      const near = new Set([...all].sort((a, b) => weight(b) - weight(a)).slice(0, spare))
       for (const l of all) {
         if (l.castShadow !== near.has(l)) l.shadow.needsUpdate = true
         l.castShadow = near.has(l)
