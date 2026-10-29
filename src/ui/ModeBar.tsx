@@ -1,8 +1,12 @@
-import { Lightbulb, MousePointer2, PanelRightOpen, PenLine, Redo2, Undo2 } from 'lucide-react'
+import { Lightbulb, MousePointer2, PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
 import type { Interaction } from '../scene/selection'
 import { IconButton, Segmented } from './kit'
 
 type ModeBarProps = {
+  /** Planning is editing: the house can be changed only while it's on. */
+  planning: boolean
+  onPlanning: (planning: boolean) => void
+  /** The tool in use while planning. */
   interaction: Interaction
   onChange: (interaction: Interaction) => void
   /** Undo and redo, shown while editing; absent when there's nothing to step to. */
@@ -14,18 +18,18 @@ type ModeBarProps = {
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 
 /** Stays anchored over the view, including while the details panel opens. */
-export const ModeBar = ({ interaction, onChange, onUndo, onRedo, onOpenPanel }: ModeBarProps) => {
-  const editing = interaction !== 'view'
+export const ModeBar = ({ planning, onPlanning, interaction, onChange, onUndo, onRedo, onOpenPanel }: ModeBarProps) => {
+  const editing = planning
   return (
     <div className="modebar">
       <button
         className="float edit-toggle"
-        aria-pressed={editing}
-        title={editing ? 'Stop editing (E)' : 'Edit (E)'}
-        onClick={() => onChange(editing ? 'view' : 'edit')}
+        aria-pressed={planning}
+        title={planning ? 'Stop planning (E)' : 'Planning (E)'}
+        onClick={() => onPlanning(!planning)}
       >
-        <PenLine size={16} />
-        <span>Edit</span>
+        <PencilRuler size={16} />
+        <span>Planning</span>
       </button>
       {editing && onOpenPanel && (
         <div className="float history">

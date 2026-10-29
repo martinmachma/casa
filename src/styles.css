@@ -2636,7 +2636,8 @@ input[type='range'].kelvin::-moz-range-thumb {
 .room-cards {
   position: absolute;
   z-index: 2;
-  top: 12px;
+  /* Under the Planning button. */
+  top: 64px;
   right: 12px;
   bottom: 12px;
   width: min(300px, calc(100% - 24px));

@@ -77,7 +77,9 @@ const House = ({ backend, account }: HouseProps) => {
   // The plan is a planning tool; at home the house is seen in 3D or walked through.
   const camera = planning || planCamera !== 'top' ? planCamera : 'orbit'
   const [cutaway, setCutaway] = useState(true)
-  const [interaction, setInteraction] = useState<Interaction>('view')
+  // The tool in use while planning; at home the house is only looked at.
+  const [tool, setTool] = useState<Exclude<Interaction, 'view' | 'measure'>>('edit')
+  const interaction: Interaction = planning ? tool : 'view'
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
   const [todosOpen, setTodosOpen] = useState(false)
@@ -247,7 +249,6 @@ const House = ({ backend, account }: HouseProps) => {
     const view = rooms.find((r) => r.id === id)
     const index = house.floors.findIndex((f) => f.id === view?.floor)
     if (!view || index < 0) return
-    if (section !== 'home') changeSection('home')
     beforeRoom.current ??= { floorIndex, outside, camera: planCamera }
     setFloorIndex(index)
     setOutside(false)
@@ -273,14 +274,15 @@ const House = ({ backend, account }: HouseProps) => {
     if (planCamera === 'walk') setCamera('orbit')
   }
 
-  /** Home is for looking at the house: editing and measuring stop, and the sun follows the clock. */
+  /** Planning is editing, in a room or not; home is for looking: editing and measuring stop, and the sun follows the clock. */
   const changeSection = (next: Section) => {
-    leaveRoom()
     if (next === section) return
+    setSelection(undefined)
+    setPlacing(undefined)
     if (next === 'home') {
-      changeInteraction('view')
       stopMeasuring()
-    }
+      setRightTucked(false)
+    } else setTool('edit')
     setSun(next === 'home' ? sunNow() : undefined)
     setSection(next)
     try {
@@ -290,12 +292,13 @@ const House = ({ backend, account }: HouseProps) => {
     }
   }
 
-  /** Nothing stays selected across modes; measuring carries on. */
+  /** Nothing stays selected across tools; measuring carries on. */
   const changeInteraction = (next: Interaction) => {
+    if (next === 'view' || next === 'measure') return changeSection('home')
+    if (!planning) changeSection('planning')
     setSelection(undefined)
     setPlacing(undefined)
-    setInteraction(next)
-    if (next === 'view') setRightTucked(false)
+    setTool(next)
     if (next === 'devices') setRightOpen(true)
   }
   /** Measuring works in any mode; while it's on, taps measure instead of selecting. */
@@ -330,7 +333,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   // Outside and at home, the house is only looked at.
   const locked = !planning
-  // E toggles editing, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
+  // E toggles planning, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
@@ -362,10 +365,13 @@ const House = ({ backend, account }: HouseProps) => {
         duplicateSelection()
         return
       }
-      if (focus && e.key === 'Escape' && !typing) return popover ? setPopover(undefined) : leaveRoom()
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || locked) return
-      if (key === 'e') changeInteraction(interaction === 'view' ? 'edit' : 'view')
-      else if (key === 'm') toggleMeasure()
+      // Esc first steps back out of what's being done in the room, then out of the room.
+      if (focus && e.key === 'Escape' && !typing && !selection && !placing && !measure)
+        return popover ? setPopover(undefined) : leaveRoom()
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return
+      if (key === 'e') return changeSection(planning ? 'home' : 'planning')
+      if (locked) return
+      if (key === 'm') toggleMeasure()
       else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
       else if (selectedItems.length && key === 'r') rotateSelection(e.shiftKey ? -15 : 15)
       else if (selectedItems.length && (e.key === 'Delete' || e.key === 'Backspace')) deleteSelection()
@@ -382,12 +388,14 @@ const House = ({ backend, account }: HouseProps) => {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const editing = interaction !== 'view'
-  // While looking round, it opens only for a picked light.
-  const rightOpen = (editing || selection?.kind === 'light') && !rightTucked && !focus
+  const editing = planning
+  // While looking round, it opens only for a picked light (in a room, its card does that).
+  const rightOpen = (editing || (selection?.kind === 'light' && !focus)) && !rightTucked
   const closeRight = () => setRightOpen(false)
-  const modeBar = !locked && (
+  const modeBar = (
     <ModeBar
+      planning={planning}
+      onPlanning={(on) => changeSection(on ? 'planning' : 'home')}
       interaction={interaction}
       onChange={changeInteraction}
       onUndo={data.canUndo ? undo : undefined}
@@ -519,8 +527,7 @@ const House = ({ backend, account }: HouseProps) => {
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
       <NavRail
-        section={section}
-        onSection={changeSection}
+        onHome={leaveRoom}
         floors={house.floors}
         rooms={rooms}
         room={roomView}
@@ -581,7 +588,8 @@ const House = ({ backend, account }: HouseProps) => {
           onHoverItem={focus ? setHoveredItem : undefined}
         />
 
-        {focus && focusFloor && (
+        {/* While planning, the editor takes the room's place on the right. */}
+        {focus && focusFloor && !rightOpen && (
           <RoomOverview
             title={focus.label}
             area={floorRegions(focusFloor).get(focus.room)?.area}

@@ -5,7 +5,6 @@ import {
   DoorOpen,
   Footprints,
   LayoutDashboard,
-  PencilRuler,
   Settings,
   Sofa,
   Square,
@@ -20,8 +19,8 @@ import { SettingsMenu } from './SettingsMenu'
 export type Section = 'home' | 'planning'
 
 type NavRailProps = {
-  section: Section
-  onSection: (section: Section) => void
+  /** Back to the whole house, out of any room. */
+  onHome: () => void
   floors: Floor[]
   rooms: RoomView[]
   /** The room being looked at on its own, if any. */
@@ -63,7 +62,7 @@ const ROOM_ICONS: [RegExp, ReactNode][] = [
 const roomIcon = (planName: string) => ROOM_ICONS.find(([test]) => test.test(planName))?.[1] ?? <Square size={20} />
 
 /** The main menu: icons down the left edge that widen to show their names on hover. */
-export const NavRail = ({ section, onSection, floors, rooms, room, onRoom }: NavRailProps) => {
+export const NavRail = ({ onHome, floors, rooms, room, onRoom }: NavRailProps) => {
   const [settingsOpen, setSettingsOpen] = useState(false)
   return (
     <nav className="rail" aria-label="Main">
@@ -74,14 +73,8 @@ export const NavRail = ({ section, onSection, floors, rooms, room, onRoom }: Nav
       <RailItem
         icon={<LayoutDashboard size={20} />}
         label="Home"
-        current={section === 'home' && !room}
-        onClick={() => onSection('home')}
-      />
-      <RailItem
-        icon={<PencilRuler size={20} />}
-        label="Planning"
-        current={section === 'planning'}
-        onClick={() => onSection('planning')}
+        current={!room}
+        onClick={onHome}
       />
       {/* Each floor's rooms in a group of their own; scrolls when they don't all fit. */}
       <div className="rail-rooms">
