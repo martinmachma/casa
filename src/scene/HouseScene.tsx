@@ -9,8 +9,9 @@ import { colliding } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point, WallFace } from '../layout/types'
-import { roomBox } from '../rooms/roomViews'
+import type { Floor, WallFace } from '../layout/types'
+import { roomBox, roomWallSides } from '../rooms/roomViews'
+import type { Focus } from './CutawayWall'
 import { InputInvalidator } from './InputInvalidator'
 import { Fade } from './Fade'
 import { DevicePlacer, Devices } from './Devices'
@@ -140,9 +141,13 @@ export const HouseScene = ({
   const furnished = (f: Floor) => !outside && (camera === 'walk' || f.id === floor.id)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   // Looking at a room, the walls between the camera and its middle are always cut, and only those.
-  const focusPoint = useMemo((): Point | undefined => {
+  const focusPoint = useMemo((): Focus | undefined => {
     const box = focusRoom ? roomBox(floor, focusRoom) : undefined
-    return box && [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2]
+    if (!box || !focusRoom) return undefined
+    return {
+      center: [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2],
+      sides: roomWallSides(floor, focusRoom),
+    }
   }, [floor, focusRoom])
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2

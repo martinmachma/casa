@@ -1,4 +1,5 @@
 import { Vector3 } from 'three'
+import { wallThickness } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, Point } from '../layout/types'
 
@@ -71,4 +72,22 @@ export const hull = (points: Point[]): Point[] => {
     return out
   }
   return [...half(p), ...half([...p].reverse())]
+}
+
+/** The walls along the room's outline, each with the way out of the room across it. */
+export const roomWallSides = (floor: Floor, roomId: string): Map<string, Point> => {
+  const sides = new Map<string, Point>()
+  for (const { from, to, out } of roomEdges(floor, roomId)) {
+    const axis = out[0] ? 0 : 1
+    const lo = Math.min(from[1 - axis], to[1 - axis])
+    const hi = Math.max(from[1 - axis], to[1 - axis])
+    for (const w of floor.walls) {
+      if (Math.abs(w.from[axis] - w.to[axis]) > 1e-6) continue
+      const t = wallThickness(w, floor)
+      const span = [Math.min(w.from[1 - axis], w.to[1 - axis]), Math.max(w.from[1 - axis], w.to[1 - axis])]
+      if (Math.abs(w.from[axis] - (from[axis] + (out[axis] * t) / 2)) < 0.02 && span[0] < hi && span[1] > lo)
+        sides.set(w.id, out)
+    }
+  }
+  return sides
 }

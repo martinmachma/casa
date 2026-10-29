@@ -9,10 +9,19 @@ import type { Floor, Point, Wall } from '../layout/types'
 export const STUB_HEIGHT = 0.3
 const forward = new Vector3()
 
-const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean, focus?: Point) => {
+/** A room being looked at: its middle, and the walls along its outline with the way out across each. */
+export type Focus = { center: Point; sides: Map<string, Point> }
+
+const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean, focus?: Focus) => {
   if (!cutaway) return false
-  // Looking at one room, only walls between the camera and it go; the far ones stay up.
-  if (focus) return separates(wall, [camera.position.x, camera.position.z], focus)
+  // Looking at one room, only walls between the camera and it go: its own walls seen from outside, and
+  // walls beyond it in the way. Walls inside it and its far walls stay up.
+  if (focus) {
+    const out = focus.sides.get(wall.id)
+    const eye: Point = [camera.position.x, camera.position.z]
+    if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0
+    return separates(wall, eye, focus.center)
+  }
   camera.getWorldDirection(forward)
   return blocksView(wall, outside, [camera.position.x, camera.position.z], [forward.x, forward.z])
 }
@@ -35,7 +44,7 @@ export const CutawayWall = ({
   floor: Floor
   cutaway: boolean
   /** The middle of the room being looked at, if any. */
-  focus?: Point
+  focus?: Focus
   full: ReactNode
   stub: ReactNode
 }) => {

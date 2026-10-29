@@ -11,13 +11,13 @@ import {
   wallThickness,
   type WallPiece,
 } from '../layout/geometry'
-import type { Floor, Point, Wall, WallFace, WallSide } from '../layout/types'
+import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
 import { wallPartColor } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
 import { raycastIfShown } from './raycast'
 import type { Selection } from './selection'
-import { CutawayWall, STUB_HEIGHT } from './CutawayWall'
+import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 
 // Walls overlap at corners by just under half their thickness, so end caps never sit flush
 // with the neighbouring wall's face (which would z-fight).
@@ -42,7 +42,7 @@ type FloorWallsProps = {
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
-  focus?: Point
+  focus?: Focus
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
@@ -82,7 +82,7 @@ export const FloorWalls = ({
 
 type WallMeshProps = {
   cutaway: boolean
-  focus?: Point
+  focus?: Focus
   wall: Wall
   floor: Floor
   colors: Map<string, string>
