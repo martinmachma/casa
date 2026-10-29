@@ -226,8 +226,8 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
       // The room is drawn over the blurred outside and both blurred a little more, so the room still reads;
       // then the item, sharp, over everything.
       over(ROOM_LAYER)
-      pass(a, b, 1, 0)
-      pass(b, a, 0, 1)
+      pass(a, b, 0.5, 0)
+      pass(b, a, 0, 0.5)
       pass(a, null, 0, 0, 1)
       over(ITEM_LAYER)
     } else {
