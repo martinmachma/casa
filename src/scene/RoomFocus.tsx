@@ -1,7 +1,8 @@
-import { PerspectiveCamera } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, type RefObject } from 'react'
-import { Vector3 } from 'three'
+import { useMemo, useRef, useState, type RefObject } from 'react'
+import { Spherical, Vector3 } from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Floor, Point } from '../layout/types'
 import { wallThickness } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
@@ -11,7 +12,7 @@ import { STUB_HEIGHT } from './CutawayWall'
 const FLIGHT_SECONDS = 1.1
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-/** A fixed camera on the room: it glides in from where the camera was, then stays put. */
+/** The room's camera: it glides in from where the camera was, then turns a little round the room but never away from it. */
 export const RoomCamera = ({
   floor,
   roomId,
@@ -26,22 +27,42 @@ export const RoomCamera = ({
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
   const look = useMemo(() => new Vector3(), [])
+  const controls = useRef<OrbitControlsImpl>(null)
+  const [flying, setFlying] = useState(!!from)
+  const reach = pose ? pose.position.distanceTo(pose.target) : 1
+  // Seen from the south, a little above: up to about 40° round either way, steeper or flatter, nearer or further.
+  const pitch = pose ? new Spherical().setFromVector3(pose.position.clone().sub(pose.target)).phi : 0.6
   useFrame(({ camera, invalidate }, delta) => {
-    if (!pose) return
+    if (!pose || !flying) return
     t.current = Math.min(1, t.current + delta / FLIGHT_SECONDS)
     const s = start.current
     const k = ease(t.current)
-    if (s && k < 1) {
-      invalidate()
-      camera.position.lerpVectors(s.position, pose.position, k)
-      look.lerpVectors(s.target, pose.target, k)
-    } else {
-      camera.position.copy(pose.position)
-      look.copy(pose.target)
-    }
+    invalidate()
+    camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
+    look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
+    if (k >= 1) setFlying(false)
   })
-  return <PerspectiveCamera makeDefault fov={45} near={0.1} far={200} position={pose?.position.toArray()} />
+  return (
+    <>
+      <PerspectiveCamera makeDefault fov={45} near={0.1} far={200} position={pose?.position.toArray()} />
+      {pose && (
+        <OrbitControls
+          ref={controls}
+          makeDefault
+          enabled={!flying}
+          target={pose.target.toArray()}
+          enablePan={false}
+          minAzimuthAngle={-0.7}
+          maxAzimuthAngle={0.7}
+          minPolarAngle={Math.max(0.15, pitch - 0.4)}
+          maxPolarAngle={Math.min(1.25, pitch + 0.35)}
+          minDistance={reach * 0.7}
+          maxDistance={reach * 1.25}
+        />
+      )}
+    </>
+  )
 }
 
 /** A point in the room to pin a DOM element to, such as a smart item's popover. */
@@ -62,11 +83,8 @@ type FocusProjectorProps = {
 export const FocusProjector = ({ floor, roomId, mask, cutaway, pins, pinRefs }: FocusProjectorProps) => {
   // The room as solids: its floor cells, and a box for the wall along each side of its outline.
   // On screen each solid is the hull of its corners, and the room is all of them together.
-  const solids = useMemo(() => {
-    const pose = roomPose(floor, roomId, 1)
-    if (!pose) return []
+  const room = useMemo(() => {
     const low = floor.elevation
-    const eye = pose.position
     const cells = floorRegions(floor).get(roomId)?.cells ?? []
     const floors = cells.map((c) =>
       [
@@ -78,18 +96,27 @@ export const FocusProjector = ({ floor, roomId, mask, cutaway, pins, pinRefs }: 
     )
     const walls = roomEdges(floor, roomId).map(({ from, to, out }) => {
       const t = edgeThickness(floor, from, to, out)
-      // Seen from outside, the wall stands between the camera and the room: cut down to its stub.
-      const facing = (eye.x - from[0]) * out[0] + (eye.z - from[1]) * out[1] > 0
-      const high = low + (cutaway && facing ? Math.min(STUB_HEIGHT, floor.height) : floor.height)
       // Run on past the ends by the thickness, to close the corners.
       const along = [Math.abs(out[1]) * t, Math.abs(out[0]) * t]
       const a: Point = [Math.min(from[0], to[0]) - along[0], Math.min(from[1], to[1]) - along[1]]
       const b: Point = [Math.max(from[0], to[0]) + along[0], Math.max(from[1], to[1]) + along[1]]
       const foot: Point[] = [a, b, [b[0] + out[0] * t, b[1] + out[1] * t], [a[0] + out[0] * t, a[1] + out[1] * t]]
+      return { from, out, foot }
+    })
+    return { floors, walls }
+  }, [floor, roomId])
+  // The room as solids: its floor cells, and a box for the wall along each side of its outline.
+  // On screen each solid is the hull of its corners, and the room is all of them together.
+  const solids = (eye: Vector3) => {
+    const low = floor.elevation
+    const walls = room.walls.map(({ from, out, foot }) => {
+      // Seen from outside, the wall stands between the camera and the room: cut down to its stub.
+      const facing = (eye.x - from[0]) * out[0] + (eye.z - from[1]) * out[1] > 0
+      const high = low + (cutaway && facing ? Math.min(STUB_HEIGHT, floor.height) : floor.height)
       return [low, high].flatMap((y) => foot.map(([x, z]) => new Vector3(x, y, z)))
     })
-    return [...floors, ...walls]
-  }, [floor, roomId, cutaway])
+    return [...room.floors, ...walls]
+  }
   const v = useMemo(() => new Vector3(), [])
   const shown = useRef('')
   useFrame(({ camera, size }) => {
@@ -100,9 +127,9 @@ export const FocusProjector = ({ floor, roomId, mask, cutaway, pins, pinRefs }: 
       return [((v.x + 1) / 2) * size.width, ((1 - v.y) / 2) * size.height]
     }
     const el = mask.current
-    if (el && solids.length) {
+    if (el && room.floors.length) {
       const r = (n: number) => n.toFixed(1)
-      const holes = solids
+      const holes = solids(camera.position)
         .map(
           (solid) =>
             `M${hull(solid.map(screen))

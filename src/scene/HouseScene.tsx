@@ -1,7 +1,7 @@
 import { OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { MathUtils, MOUSE, Spherical, TOUCH, Vector3, type Group, type Material, type Mesh } from 'three'
+import { useMemo, useRef, useState, type RefObject } from 'react'
+import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
@@ -11,6 +11,7 @@ import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, WallFace } from '../layout/types'
 import { InputInvalidator } from './InputInvalidator'
+import { Fade } from './Fade'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
@@ -132,19 +133,16 @@ export const HouseScene = ({
       return next
     })
   const floor = floors[floorIndex]
-  // Floors above the one looked at are left off. One being taken off fades out before it goes;
-  // one being put back fades in.
+  // Floors above the one looked at are left off; one taken off fades out, one put back fades in.
   const shownCount = camera === 'walk' ? floors.length : floorIndex + 1
-  const [stack, setStack] = useState({ count: shownCount, kept: shownCount, before: shownCount })
-  if (stack.count !== shownCount)
-    setStack({ count: shownCount, kept: Math.max(stack.kept, shownCount), before: stack.count })
+  // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
+  const furnished = (f: Floor) => !outside && (camera === 'walk' || f.id === floor.id)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
 
   const items = outside ? [] : data.furniture.filter((f) => camera === 'walk' || f.floor === floor.id)
-  const devices = outside ? [] : data.devices.filter((d) => d.floor === floor.id)
   // After dark the house's own lights come on, on every floor that's shown.
   const dark = 1 - daylight(sun)
   const level = (id: string) => lightLevel(lights[id], dark)
@@ -273,13 +271,8 @@ export const HouseScene = ({
         <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} />
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
-        {floors.slice(0, stack.kept).map((f, i) => (
-          <FloorFade
-            key={f.id}
-            shown={i < shownCount}
-            enter={i >= stack.before}
-            onGone={() => setStack((s) => ({ ...s, kept: s.count }))}
-          >
+        {floors.map((f, i) => (
+          <Fade key={f.id} shown={i < shownCount}>
             {/* The ground floor's slab reaches down into the garden, so the house stands on the ground. */}
             <Slab
               floor={f}
@@ -312,10 +305,10 @@ export const HouseScene = ({
               cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
               onPick={pickWall}
             />
-          </FloorFade>
+          </Fade>
         ))}
 
-        {outside && house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
+        <Fade shown={outside}>{house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}</Fade>
 
         {interaction === 'devices' && placing && !outside && (
           <DevicePlacer
@@ -326,30 +319,61 @@ export const HouseScene = ({
             plan={camera === 'top'}
           />
         )}
-        <Devices
-          floor={floor}
-          devices={devices}
-          selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
-          glow={level}
-          tint={tint}
-          plan={camera === 'top'}
-          onPickLight={lightPick}
-          interactive={interaction === 'devices' && !placing}
-          onSelect={(id) => onSelect({ kind: 'device', id })}
-          onMove={moveDevice}
-          onMoveEnd={saveItem}
-        />
-
-        {lines.map((m) => (
-          <Line
-            key={m.id}
-            points={[
-              [m.from[0], lineY, m.from[1]],
-              [m.to[0], lineY, m.to[1]],
-            ]}
-            color={SELECTED_OUTLINE}
-            lineWidth={3}
-          />
+        {floors.map((f) => (
+          <Fade key={f.id} shown={furnished(f)}>
+            <Devices
+              floor={f}
+              devices={data.devices.filter((d) => d.floor === f.id && f.id === floor.id)}
+              selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
+              glow={level}
+              tint={tint}
+              plan={camera === 'top'}
+              onPickLight={lightPick}
+              interactive={interaction === 'devices' && !placing}
+              onSelect={(id) => onSelect({ kind: 'device', id })}
+              onMove={moveDevice}
+              onMoveEnd={saveItem}
+            />
+            {measurements
+              .filter((m) => m.floor === f.id)
+              .map((m) => (
+                <Line
+                  key={m.id}
+                  points={[
+                    [m.from[0], f.elevation + 0.03, m.from[1]],
+                    [m.to[0], f.elevation + 0.03, m.to[1]],
+                  ]}
+                  color={SELECTED_OUTLINE}
+                  lineWidth={3}
+                />
+              ))}
+            {data.furniture
+              .filter((item) => item.floor === f.id)
+              .map((item) => (
+                <FurnitureBox
+                  key={item.id}
+                  item={item}
+                  glow={isLamp(item.model) ? level(item.id) : 0}
+                  glowColor={tint(item.id)}
+                  onPickLight={isLamp(item.model) ? lightPick : undefined}
+                  elevation={f.elevation}
+                  selected={selectedIds.includes(item.id) || pickedLight === item.id}
+                  colliding={clashes.has(item.id)}
+                  showActions={selectedIds[selectedIds.length - 1] === item.id}
+                  interactive={pickable}
+                  // Group snapping is applied to the shared translation in moveItem.
+                  wallSnap={wallSnap && selectedIds.length < 2}
+                  furnitureSnap={furnitureSnap && selectedIds.length < 2}
+                  snapWalls={wallSnap ? snapWalls : undefined}
+                  snapItems={items}
+                  onSelect={pickItem}
+                  onMove={moveItem}
+                  onMoveEnd={saveItem}
+                  onTap={(id) => selectedIds.length > 1 && onSelect({ kind: 'furniture', ids: [id] })}
+                  actions={itemActions}
+                />
+              ))}
+          </Fade>
         ))}
         {measure && (
           <MeasureTool
@@ -376,91 +400,12 @@ export const HouseScene = ({
             gapSize={0.05}
           />
         ))}
-
-        {items.map((item) => (
-          <FurnitureBox
-            key={item.id}
-            item={item}
-            glow={isLamp(item.model) ? level(item.id) : 0}
-            glowColor={tint(item.id)}
-            onPickLight={isLamp(item.model) ? lightPick : undefined}
-            elevation={floors.find((f) => f.id === item.floor)?.elevation ?? floor.elevation}
-            selected={selectedIds.includes(item.id) || pickedLight === item.id}
-            colliding={clashes.has(item.id)}
-            showActions={selectedIds[selectedIds.length - 1] === item.id}
-            interactive={pickable}
-            // Group snapping is applied to the shared translation in moveItem.
-            wallSnap={wallSnap && selectedIds.length < 2}
-            furnitureSnap={furnitureSnap && selectedIds.length < 2}
-            snapWalls={wallSnap ? snapWalls : undefined}
-            snapItems={items}
-            onSelect={pickItem}
-            onMove={moveItem}
-            onMoveEnd={saveItem}
-            onTap={(id) => selectedIds.length > 1 && onSelect({ kind: 'furniture', ids: [id] })}
-            actions={itemActions}
-          />
-        ))}
       </Canvas>
       {focusRoom && <div className="room-blur" ref={blur} />}
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       {!focusRoom && <Compass needle={needle} />}
     </>
   )
-}
-
-const FADE_SECONDS = 0.35
-
-type Faded = { opacity: number; transparent: boolean; depthWrite: boolean }
-
-/** Sets how much of everything in the group shows, remembering each material's own settings to go back to. */
-const fade = (group: Group, amount: number, saved: Map<Material, Faded>) => {
-  group.traverse((o) => {
-    const material = (o as Mesh).material
-    for (const m of Array.isArray(material) ? material : material ? [material] : []) {
-      if (!saved.has(m)) saved.set(m, { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite })
-      const own = saved.get(m)!
-      const solid = amount >= 1
-      if (m.transparent !== (solid ? own.transparent : true)) {
-        m.transparent = solid ? own.transparent : true
-        m.needsUpdate = true
-      }
-      m.depthWrite = solid ? own.depthWrite : false
-      m.opacity = own.opacity * amount
-    }
-  })
-  if (amount >= 1) saved.clear()
-}
-
-/** A floor that fades in when it's put on the house and fades out before it's taken off. */
-const FloorFade = ({
-  shown,
-  enter,
-  onGone,
-  children,
-}: {
-  shown: boolean
-  /** Put on after the scene started, so it fades in rather than just being there. */
-  enter: boolean
-  onGone: () => void
-  children: ReactNode
-}) => {
-  const group = useRef<Group>(null)
-  // 1 there, 0 gone.
-  const k = useRef(enter ? 0 : 1)
-  const saved = useRef(new Map<Material, Faded>())
-  const redraw = useThree((s) => s.invalidate)
-  useEffect(() => redraw(), [shown, redraw])
-  useFrame(({ invalidate }, delta) => {
-    const target = shown ? 1 : 0
-    if (k.current === target && !saved.current.size) return
-    const step = Math.min(delta, 1 / 30) / FADE_SECONDS
-    k.current = target ? Math.min(1, k.current + step) : Math.max(0, k.current - step)
-    if (group.current) fade(group.current, k.current, saved.current)
-    if (k.current !== target) invalidate()
-    else if (!target) onGone()
-  })
-  return <group ref={group}>{children}</group>
 }
 
 /** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */

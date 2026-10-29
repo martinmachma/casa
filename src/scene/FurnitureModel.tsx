@@ -50,8 +50,9 @@ export const FurnitureModel = ({
       const tint = (m: Material) => {
         const fabric = FABRIC.has(m.name)
         const shade = m.name === SHADE && isLamp(model)
-        if (!(fabric || shade) || !(m instanceof MeshStandardMaterial)) return m
+        // Every piece has its own materials, so one can fade without the others.
         const copy = m.clone()
+        if (!(fabric || shade) || !(m instanceof MeshStandardMaterial)) return copy
         copy.userData.fabric = fabric
         copy.userData.shade = shade
         return copy

@@ -568,7 +568,10 @@ const House = ({ backend, account }: HouseProps) => {
             onDelete: deleteSelection,
           }}
           focusRoom={focus?.room}
-          pins={focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at }))}
+          pins={[
+            ...focusItems.map((i) => ({ key: `beacon:${i.id}`, at: i.at })),
+            ...focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at })),
+          ]}
           pinRefs={pinRefs}
         />
 

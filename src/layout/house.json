@@ -60,6 +60,18 @@
         {
           "id": "g-east",
           "from": [6.138, 0.168],
+          "to": [6.138, 2.42],
+          "thickness": 0.175
+        },
+        {
+          "id": "g-east-chimney",
+          "from": [5.913, 2.42],
+          "to": [5.913, 3.17],
+          "thickness": 0.625
+        },
+        {
+          "id": "g-east-south",
+          "from": [6.138, 3.17],
           "to": [6.138, 7.782],
           "thickness": 0.175
         },
@@ -159,12 +171,6 @@
           "thickness": 0.298
         },
         {
-          "id": "g-chimney",
-          "from": [5.84, 2.45],
-          "to": [5.84, 2.8],
-          "thickness": 0.4
-        },
-        {
           "id": "g-storage-wc",
           "from": [0.113, 5.291],
           "to": [2.385, 5.291],
@@ -182,24 +188,6 @@
               "height": 1.97
             }
           ]
-        },
-        {
-          "id": "g-shaft-s15-north",
-          "from": [5.59, 2.44],
-          "to": [6.0505, 2.44],
-          "thickness": 0.05
-        },
-        {
-          "id": "g-shaft-s15-west",
-          "from": [5.615, 2.44],
-          "to": [5.615, 3.15],
-          "thickness": 0.05
-        },
-        {
-          "id": "g-shaft-s15-south",
-          "from": [5.59, 3.15],
-          "to": [6.0505, 3.15],
-          "thickness": 0.05
         }
       ],
       "stairs": {

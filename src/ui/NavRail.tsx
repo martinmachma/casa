@@ -51,21 +51,28 @@ export const NavRail = ({ section, onSection, rooms, room, onRoom }: NavRailProp
         current={section === 'home' && !room}
         onClick={() => onSection('home')}
       />
-      {rooms.map((r) => (
-        <RailItem
-          key={r.id}
-          icon={<Sofa size={20} />}
-          label={r.label}
-          current={room === r.id}
-          onClick={() => onRoom(r.id)}
-        />
-      ))}
       <RailItem
         icon={<PencilRuler size={20} />}
         label="Planning"
         current={section === 'planning'}
         onClick={() => onSection('planning')}
       />
+      {rooms.length > 0 && (
+        <div className="rail-group" role="group" aria-label="Rooms">
+          <div className="rail-group-title" aria-hidden>
+            <span className="rail-label">Rooms</span>
+          </div>
+          {rooms.map((r) => (
+            <RailItem
+              key={r.id}
+              icon={<Sofa size={20} />}
+              label={r.label}
+              current={room === r.id}
+              onClick={() => onRoom(r.id)}
+            />
+          ))}
+        </div>
+      )}
       <span className="spacer" />
       <RailItem icon={<Settings size={20} />} label="Settings" onClick={() => setSettingsOpen(true)} dialog />
       <SettingsMenu open={settingsOpen} onClose={() => setSettingsOpen(false)} />

@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import type { RefObject } from 'react'
+import { useState, type RefObject } from 'react'
 import { DEVICE_KINDS } from '../devices/kinds'
 import type { LightState } from '../devices/lights'
 import type { SmartItem } from '../rooms/roomItems'
@@ -42,6 +42,8 @@ export const RoomOverview = ({
   pinRefs,
 }: RoomOverviewProps) => {
   const picked = items.find((i) => i.id === open)
+  // An item pointed at, on its marker or its card: it stands out and the rest of the view dims.
+  const [hovered, setHovered] = useState<string>()
   return (
     <>
       <div className="room-cards">
@@ -68,6 +70,8 @@ export const RoomOverview = ({
                     <button
                       className="smart-item"
                       aria-pressed={open === item.id}
+                      onPointerEnter={() => setHovered(item.id)}
+                      onPointerLeave={() => setHovered(undefined)}
                       onClick={() => onOpen(open === item.id ? undefined : item.id)}
                     >
                       <span
@@ -95,6 +99,33 @@ export const RoomOverview = ({
       </div>
 
       <div className="overlay">
+        {/* Every item gets a marker over it, seen through whatever stands in front. */}
+        {items.map((item) => {
+          const s = item.kind === 'light' ? light(item.id) : undefined
+          return (
+            <div
+              key={item.id}
+              className="room-beacon-pin"
+              data-hover={hovered === item.id || undefined}
+              ref={(el) => {
+                pinRefs.current.set(`beacon:${item.id}`, el)
+              }}
+            >
+              <button
+                className="room-beacon"
+                aria-label={item.name}
+                aria-pressed={open === item.id}
+                data-on={s?.on || undefined}
+                style={{ '--beacon': DEVICE_KINDS[item.kind].color } as React.CSSProperties}
+                onPointerEnter={() => setHovered(item.id)}
+                onPointerLeave={() => setHovered(undefined)}
+                onClick={() => onOpen(open === item.id ? undefined : item.id)}
+              >
+                <DeviceIcon kind={item.kind} size={14} />
+              </button>
+            </div>
+          )
+        })}
         {picked && (
           <div
             className="room-pin"

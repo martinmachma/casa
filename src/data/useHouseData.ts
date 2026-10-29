@@ -193,10 +193,11 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     try {
       const created = await backend.saveVersion(name, draft.state, draft.basedOn)
       if (makeLive) await backend.setLive(created.id)
+      // The new version is loaded before the draft goes, so the old one never shows in between.
+      await reload()
       clearDraft()
       writeDraft(backend, undefined)
       setViewing(makeLive ? LIVE : created.id)
-      await reload()
     } catch (e) {
       fail(e)
     }
