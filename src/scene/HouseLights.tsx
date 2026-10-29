@@ -4,9 +4,12 @@ import { PointLight, Vector3 } from 'three'
 import type { Device, FurnitureItem } from '../data/types'
 import type { Floor } from '../layout/types'
 
-const CEILING_INTENSITY = 7
-const LAMP_INTENSITY = 2.5
-// Light falls off with the square of the distance; past this it's cut off so far rooms cost nothing.
+// Light falls off more gently than in nature (squared): there's no light bounced off the walls, so it's what
+// keeps a room's far side from going dark. Intensities are set for the same brightness 1.5 m away.
+const DECAY = 1
+const CEILING_INTENSITY = 7 / 1.5
+const LAMP_INTENSITY = 2.5 / 1.5
+// Past this, light is cut off so far rooms cost nothing.
 const REACH = 9
 // Point-light shadows are six renders each and use a texture unit, so only as many lights as the GPU has units to
 // spare cast them (without one, light goes through walls, floors and the roof). Units kept for the sun's shadow and
@@ -122,7 +125,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
           color={b.color}
           intensity={b.intensity}
           distance={REACH}
-          decay={2}
+          decay={DECAY}
           shadow-autoUpdate={false}
           shadow-mapSize={[SHADOW_MAP, SHADOW_MAP]}
           shadow-camera-near={0.05}
