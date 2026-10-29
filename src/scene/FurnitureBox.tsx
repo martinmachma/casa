@@ -2,7 +2,7 @@ import { Html, Line } from '@react-three/drei'
 import { Copy, RotateCw, Trash2 } from 'lucide-react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
-import { Mesh, Plane, Vector3, type Group } from 'three'
+import { FrontSide, Mesh, Plane, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { footprint, footprintOutline } from '../furniture/collision'
 import type { Point } from '../layout/types'
@@ -216,7 +216,7 @@ export const FurnitureBox = ({
           {item.model ? (
             <meshBasicMaterial visible={false} />
           ) : (
-            <meshStandardMaterial color={item.color} roughness={0.8} />
+            <meshStandardMaterial color={item.color} roughness={0.8} shadowSide={FrontSide} />
           )}
         </mesh>
       ))}

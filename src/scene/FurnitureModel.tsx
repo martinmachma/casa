@@ -1,6 +1,6 @@
 import { useGLTF } from '@react-three/drei'
 import { useLayoutEffect, useMemo } from 'react'
-import { Box3, Mesh, MeshStandardMaterial, Vector3, type Material } from 'three'
+import { Box3, FrontSide, Mesh, MeshStandardMaterial, Vector3, type Material } from 'three'
 import { modelUrl } from '../furniture/catalog'
 import { isLamp } from './HouseLights'
 import { lightColor } from '../devices/lights'
@@ -52,6 +52,9 @@ export const FurnitureModel = ({
         const shade = m.name === SHADE && isLamp(model)
         // Every piece has its own materials, so one can fade without the others.
         const copy = m.clone()
+        // Shadows are cast by the faces towards the light: by default it's those facing away, here the underside,
+        // which sits so close to the floor that the floor right by the piece came out lit.
+        copy.shadowSide = FrontSide
         if (!(fabric || shade) || !(m instanceof MeshStandardMaterial)) return copy
         copy.userData.fabric = fabric
         copy.userData.shade = shade
