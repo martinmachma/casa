@@ -248,6 +248,7 @@ export const HouseScene = ({
           <RoomCamera
             floor={floor}
             roomId={focusRoom}
+            furniture={data.furniture}
             from={
               lastView.mode === 'orbit'
                 ? { position: lastView.position.clone(), target: lastView.target.clone() }

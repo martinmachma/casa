@@ -1,5 +1,6 @@
-import { Vector3 } from 'three'
-import { wallThickness } from '../layout/geometry'
+import { PerspectiveCamera, Vector3 } from 'three'
+import type { FurnitureItem } from '../data/types'
+import { floorBounds, wallThickness } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import { roomLabel } from '../layout/roomName'
 import type { Floor, HouseLayout, Point } from '../layout/types'
@@ -29,21 +30,113 @@ export const roomBox = (floor: Floor, roomId: string, margin = 0.15): { min: Poi
   }
 }
 
-/** Looking north into the room from above its south side, steeply enough to see over the cut-away front wall. */
-export const roomPose = (floor: Floor, roomId: string, aspect: number) => {
+const UP = new Vector3(0, 1, 0)
+
+/**
+ * A three-quarter view into the room from outside it, looking across its narrow side so its length runs along the
+ * screen, from the side where its tall furniture is least in the way (else the one nearest the house's outside), and from just high enough to see over what stands in it (higher
+ * for a small room, whose walls are close). The camera is set back just far enough for the whole floor, the furniture
+ * on it and the far walls to fit, and on a wide screen the room sits left of the cards on the right.
+ */
+export const roomPose = (floor: Floor, roomId: string, aspect: number, items: FurnitureItem[] = []) => {
   const box = roomBox(floor, roomId)
   if (!box) return undefined
-  const cx = (box.min[0] + box.max[0]) / 2
-  const cz = (box.min[1] + box.max[1]) / 2
-  const width = box.max[0] - box.min[0]
-  const depth = box.max[1] - box.min[1]
-  // Far enough that the room fills the view (45° fov) with a little room left for the cards on the right.
-  const fit = Math.max(depth, width / Math.min(aspect, 1.6)) * 1.55
-  const pitch = 1.0
-  // On a wide screen the cards take the right side, so the room sits a little left of the middle.
-  const aside = aspect > 1.2 ? width * 0.12 : 0
-  const target = new Vector3(cx + aside, floor.elevation + 0.6, cz)
-  const position = target.clone().add(new Vector3(0, Math.sin(pitch) * fit, Math.cos(pitch) * fit))
+  const [x0, z0] = box.min
+  const [x1, z1] = box.max
+  const cx = (x0 + x1) / 2
+  const cz = (z0 + z1) / 2
+  const width = x1 - x0
+  const depth = z1 - z0
+  // Each side the camera could look from, as the way out of the room on that side, and how far the house goes on.
+  const bounds = floorBounds(floor)
+  const sides: { out: Point; beyond: number }[] = [
+    { out: [0, 1], beyond: bounds.max[1] - z1 },
+    { out: [1, 0], beyond: bounds.max[0] - x1 },
+    { out: [-1, 0], beyond: x0 - bounds.min[0] },
+    { out: [0, -1], beyond: z0 - bounds.min[1] },
+  ]
+  // On a wide screen the long side faces the camera, on a tall one the short side.
+  const across = (width >= depth) === aspect >= 1
+  const long = Math.max(width, depth) / Math.min(width, depth) > 1.25
+  // Pieces tall enough to hide the room when they stand on the camera's side of it.
+  const tall = items.filter(
+    (i) => i.floor === floor.id && (i.z ?? 0) + i.height > 1.2 && i.x > x0 && i.x < x1 && i.y > z0 && i.y < z1,
+  )
+  // How much of the room the tall pieces hide from a camera looking along `yaw`: more for higher ones nearer to it.
+  const hidden = (yaw: number) =>
+    tall.reduce((sum, i) => {
+      const toward = ((i.x - cx) * Math.sin(yaw) + (i.y - cz) * Math.cos(yaw)) / (Math.max(width, depth) / 2)
+      return sum + Math.max(0, toward) * ((i.z ?? 0) + i.height - 1) * Math.max(i.width, i.depth)
+    }, 0)
+  // Turned a little off square, so two walls and the floor between them give the room its depth; whichever way
+  // round hides least, outside the house rather than across it where they hide the same.
+  const views = sides
+    .filter((s) => !long || (s.out[1] !== 0) === across)
+    .flatMap((s) => [-0.35, 0.35].map((turn) => ({ ...s, yaw: Math.atan2(s.out[0], s.out[1]) + turn })))
+    .map((v) => ({ ...v, cost: hidden(v.yaw) + 0.1 * v.beyond }))
+  const { yaw } = views.reduce((a, b) => (b.cost < a.cost - 0.05 ? b : a))
+  const pitch = Math.min(0.95, Math.max(0.68, 1.05 - 0.06 * Math.min(width, depth)))
+  const look = new Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch))
+
+  const floorY = floor.elevation
+  const corners = [
+    [x0, z0],
+    [x1, z0],
+    [x0, z1],
+    [x1, z1],
+  ]
+  // The floor, what stands on it, and the far walls up to near the ceiling.
+  const points = corners.flatMap(([x, z]) => {
+    const far = (x - cx) * look.x + (z - cz) * look.z < 0
+    return [
+      new Vector3(x, floorY, z),
+      new Vector3(x, floorY + (far ? floor.height * 0.75 : 1), z),
+    ]
+  })
+  // The part of the screen the room may take (NDC); the cards take the right of a wide screen.
+  const wide = aspect > 1.2
+  const frame = { x0: -0.96, x1: wide ? 0.5 : 0.96, y0: -0.9, y1: 0.84 }
+  const camera = new PerspectiveCamera(45, aspect, 0.1, 200)
+  const target = new Vector3(cx, floorY + 0.6, cz)
+  const right = new Vector3()
+  const place = (distance: number) => {
+    camera.position.copy(target).addScaledVector(look, distance)
+    camera.up.copy(UP)
+    camera.lookAt(target)
+    camera.updateMatrixWorld()
+    const ndc = points.map((p) => p.clone().project(camera))
+    return {
+      x0: Math.min(...ndc.map((p) => p.x)),
+      x1: Math.max(...ndc.map((p) => p.x)),
+      y0: Math.min(...ndc.map((p) => p.y)),
+      y1: Math.max(...ndc.map((p) => p.y)),
+    }
+  }
+  const fits = (d: number) => {
+    const r = place(d)
+    return r.x1 - r.x0 <= frame.x1 - frame.x0 && r.y1 - r.y0 <= frame.y1 - frame.y0
+  }
+  let lo = 0.5
+  let hi = 60
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2
+    if (fits(mid)) hi = mid
+    else lo = mid
+  }
+  const distance = hi
+  // Slide the view (camera and target together) until the room's picture sits in the middle of its part of the screen.
+  for (let i = 0; i < 4; i++) {
+    const r = place(distance)
+    const dx = (frame.x0 + frame.x1) / 2 - (r.x0 + r.x1) / 2
+    const dy = (frame.y0 + frame.y1) / 2 - (r.y0 + r.y1) / 2
+    // Half the screen's height across, at the target's distance.
+    const half = Math.tan((camera.fov * Math.PI) / 360) * distance
+    right.setFromMatrixColumn(camera.matrixWorld, 0)
+    const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
+    target.addScaledVector(right, -dx * half * aspect).addScaledVector(up, -dy * half)
+  }
+  place(distance)
+  const position = camera.position.clone()
   return { position, target, box }
 }
 

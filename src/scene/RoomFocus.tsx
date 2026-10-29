@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState, type RefObject } from 'react'
 import { Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import type { FurnitureItem } from '../data/types'
 import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 
@@ -13,14 +14,23 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 export const RoomCamera = ({
   floor,
   roomId,
+  furniture,
   from,
 }: {
   floor: Floor
   roomId: string
+  /** Its tall pieces are kept out of the foreground. */
+  furniture: FurnitureItem[]
   from?: { position: Vector3; target: Vector3 }
 }) => {
   const size = useThree((s) => s.size)
-  const pose = useMemo(() => roomPose(floor, roomId, size.width / size.height), [floor, roomId, size])
+  // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
+  const [placed, setPlaced] = useState({ roomId, furniture })
+  if (placed.roomId !== roomId) setPlaced({ roomId, furniture })
+  const pose = useMemo(
+    () => roomPose(floor, roomId, size.width / size.height, placed.furniture),
+    [floor, roomId, size, placed.furniture],
+  )
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
