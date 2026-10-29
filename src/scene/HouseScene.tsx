@@ -273,7 +273,7 @@ export const HouseScene = ({
             viewKey={viewKey}
           />
         )}
-        <DebugHover />
+        <DebugHover copies={interaction === 'view'} />
         {focusRoom ? (
           <>
             <RoomBlur floor={floor} roomId={focusRoom} highlight={highlight} />

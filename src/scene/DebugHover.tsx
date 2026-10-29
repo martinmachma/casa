@@ -16,9 +16,10 @@ const materialsOf = (m: Mesh) => [m.material as Material].flat()
 
 /**
  * In debug mode, the item, device or wall under the pointer is named in a tag beside it and tinted all over, so
- * it's clear what's being pointed at. Clicking it copies its id.
+ * it's clear what's being pointed at. Clicking it copies its id, unless `copies` is off (while editing, where clicks
+ * select and move things).
  */
-export const DebugHover = () => {
+export const DebugHover = ({ copies }: { copies: boolean }) => {
   const debug = useDebug()
   const { gl, scene, get, invalidate } = useThree()
   useEffect(() => {
@@ -103,7 +104,7 @@ export const DebugHover = () => {
     let down = new Vector2()
     const press = (e: PointerEvent) => (down = new Vector2(e.clientX, e.clientY))
     const click = (e: MouseEvent) => {
-      if (!pointed?.id || down.distanceTo(new Vector2(e.clientX, e.clientY)) > 4) return
+      if (!copies || !pointed?.id || down.distanceTo(new Vector2(e.clientX, e.clientY)) > 4) return
       const { id } = pointed
       navigator.clipboard.writeText(id).then(
         () => notify(`Copied ${id}`),
@@ -126,6 +127,6 @@ export const DebugHover = () => {
       tint.dispose()
       tag.remove()
     }
-  }, [debug, gl, scene, get, invalidate])
+  }, [debug, copies, gl, scene, get, invalidate])
   return null
 }
