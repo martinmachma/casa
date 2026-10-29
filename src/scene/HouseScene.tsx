@@ -296,7 +296,15 @@ export const HouseScene = ({
               <Stairs
                 floor={f}
                 next={floors[i + 1]}
-                cut={i === floorIndex && !outside && camera !== 'walk' ? f.height : undefined}
+                // A room the stairs open onto shows them whole, up to the floor they reach.
+                cut={
+                  i === floorIndex &&
+                  !outside &&
+                  camera !== 'walk' &&
+                  !(focusRoom && f.stairs?.rooms?.includes(focusRoom))
+                    ? f.height
+                    : undefined
+                }
               />
             )}
             <Railings floor={f} />
