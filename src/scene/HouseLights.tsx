@@ -22,7 +22,7 @@ const LAMPS: Record<string, number> = { lampRoundFloor: 0.88, lampSquareTable: 0
 
 export const isLamp = (model: string | undefined) => model !== undefined && model in LAMPS
 
-type Bulb = { id: string; position: [number, number, number]; intensity: number; color: string }
+type Bulb = { id: string; downlight: boolean; position: [number, number, number]; intensity: number; color: string }
 
 type HouseLightsProps = {
   /** The floors on show; lights on any other floor stay dark. */
@@ -46,6 +46,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       if (d.floor === f.id && d.kind === 'light' && level(d.id) > 0)
         bulbs.push({
           id: d.id,
+          downlight: true,
           position: [d.x, f.elevation + d.z - 0.08, d.y],
           intensity: CEILING_INTENSITY * level(d.id),
           color: tint(d.id),
@@ -54,6 +55,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       if (item.floor === f.id && isLamp(item.model) && level(item.id) > 0)
         bulbs.push({
           id: item.id,
+          downlight: false,
           position: [item.x, f.elevation + (item.z ?? 0) + item.height * LAMPS[item.model!], item.y],
           intensity: LAMP_INTENSITY * level(item.id),
           color: tint(item.id),
@@ -81,6 +83,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       {bulbs.map((b, i) => (
         <pointLight
           key={b.id}
+          userData={{ downlight: b.downlight }}
           ref={(l) => {
             lights.current[i] = l
           }}

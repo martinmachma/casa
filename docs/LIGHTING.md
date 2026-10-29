@@ -21,6 +21,24 @@ A hemisphere light supplies indirect sky/ground fill. The date/time calculation 
 
 Box, extruded-prism and floor winding/normals were inspected and are consistent with their intended faces. The room-floor finish intentionally sits 3 mm above its slab to avoid z-fighting. Overlapping wall boxes are retained for solid junctions; nearest-surface shadow depth avoids relying on their internal back faces. No new libraries, engine replacement, model edits, camera changes or sun/date calculation changes were needed.
 
+## Landing follow-up
+
+The landing screenshot exposed a separate problem: the broad diagonal band came from downstairs ceiling
+fixtures sending light upward through the real stair opening. Isolating the upper-floor sources removed the
+band, so this was neither an AO mark nor a missing stairwell slab. Three.js point lights model bare bulbs
+emitting in all directions ([PointLight documentation](https://threejs.org/docs/pages/PointLight.html)).
+
+Ceiling fixtures now use a downward cosine emission lobe, matching the downward-facing diffuser. Cube maps
+still handle physical occlusion and retain their resolution. This removes direct uplight from downstairs
+ceiling fittings without closing the stairwell, disabling lower-floor lighting, or changing exposure. The
+on-axis intensity and sun simulation are unchanged. Floor/table lamps retain their existing emission.
+
+Emission flags follow the renderer's light ordering and visibility so a shadowed ceiling fitting cannot
+accidentally give a nearby lamp its angular profile. Transparent and fading standard materials use the same
+emission rule, with screen-space AO disabled for transparent surfaces. The landing was rechecked in logged-in
+Chrome with all floors active after a clean reload. The suite now has 220 passing tests, including emitter
+ordering/visibility checks; production build and scoped lint pass (existing HouseLights refresh warning only).
+
 ## Validation
 
 - Geometry tests cover both faces of an upper slab, the foot of a wall, open windows, roof/coping height, full transform and geometry invalidation, and shadow-camera coverage at low/high solar altitudes while preserving sun direction.

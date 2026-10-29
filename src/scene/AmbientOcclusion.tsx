@@ -21,6 +21,7 @@ import {
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 import { SSAOShader } from 'three/examples/jsm/shaders/SSAOShader.js'
 import { receiverPlaneShadows, receiverPlaneShadowKey } from './shadowShader'
+import { ceilingLightMask, fixtureLighting } from './lightEmission'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
 const RADIUS = 0.2
@@ -118,6 +119,7 @@ export const AmbientOcclusion = () => {
   const patchedRef = useRef(new Map<Material, Patched>())
   const viewport = useMemo(() => new Vector4(), [])
   const viewportSize = useMemo(() => ({ value: new Vector2(1, 1) }), [])
+  const ceilingMask = useRef({ value: [] as number[] })
   const drawingSize = useMemo(() => new Vector2(), [])
   useEffect(() => {
     const normals = normalsRef.current
@@ -140,6 +142,7 @@ export const AmbientOcclusion = () => {
   useFrame(({ gl, scene, camera }) => {
     const normals = normalsRef.current
     const patched = patchedRef.current
+    ceilingMask.current.value = ceilingLightMask(scene, camera)
     gl.getDrawingBufferSize(drawingSize)
     const scale = Math.min(0.5, 960 / Math.max(drawingSize.x, drawingSize.y))
     const w = Math.max(1, Math.round(drawingSize.x * scale))
@@ -151,6 +154,43 @@ export const AmbientOcclusion = () => {
     scene.traverseVisible((o) => {
       if (o instanceof Mesh) {
         const materials = [o.material].flat()
+        for (const m of materials) {
+          active.add(m)
+          if (m instanceof MeshStandardMaterial && patched.get(m)?.wrapped !== m.onBeforeCompile) {
+            const compile = m.onBeforeCompile
+            const key = m.customProgramCacheKey
+            const render = patched.get(m)?.render ?? m.onBeforeRender
+            const programKey = key.call(m)
+            const aoAmount = { value: m.transparent ? 0 : STRENGTH }
+            const wrapped: Material['onBeforeCompile'] = (shader, renderer) => {
+              compile.call(m, shader, renderer)
+              shader.uniforms.casaAO = { value: tools.blur.texture }
+              shader.uniforms.casaViewport = viewportSize
+              shader.uniforms.casaCeilingLights = ceilingMask.current
+              shader.uniforms.casaAOAmount = aoAmount
+              shader.fragmentShader =
+                'uniform sampler2D casaAO; uniform vec2 casaViewport; uniform float casaAOAmount;\n#if NUM_POINT_LIGHTS > 0\nuniform float casaCeilingLights[NUM_POINT_LIGHTS];\n#endif\n' +
+                shader.fragmentShader
+                  .replace('#include <shadowmap_pars_fragment>', receiverPlaneShadows)
+                  .replace('#include <lights_fragment_begin>', fixtureLighting)
+                  .replace(
+                    '#include <aomap_fragment>',
+                    `#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= mix(1.0, texture2D(casaAO, gl_FragCoord.xy / casaViewport).r, casaAOAmount);`,
+                  )
+            }
+            const beforeRender: Material['onBeforeRender'] = (...args) => {
+              render.apply(m, args)
+              aoAmount.value = m.transparent ? 0 : STRENGTH
+              gl.getCurrentViewport(viewport)
+              viewportSize.value.set(viewport.z, viewport.w)
+            }
+            patched.set(m, { compile, key, render, wrapped, beforeRender })
+            m.onBeforeCompile = wrapped
+            m.customProgramCacheKey = () => programKey + '-casa-downlight-ao-' + receiverPlaneShadowKey
+            m.onBeforeRender = beforeRender
+            m.needsUpdate = true
+          }
+        }
         if (o.userData.shadowOnly || materials.some((m) => !m.colorWrite || !m.depthWrite || m.transparent)) {
           hidden.push(o)
           return
@@ -167,35 +207,7 @@ export const AmbientOcclusion = () => {
           normal.side = m.side
           normal.visible = m.visible
           normal.clippingPlanes = m.clippingPlanes
-          if (m instanceof MeshStandardMaterial && patched.get(m)?.wrapped !== m.onBeforeCompile) {
-            const compile = m.onBeforeCompile
-            const key = m.customProgramCacheKey
-            const render = patched.get(m)?.render ?? m.onBeforeRender
-            const programKey = key.call(m)
-            const wrapped: Material['onBeforeCompile'] = (shader, renderer) => {
-              compile.call(m, shader, renderer)
-              shader.uniforms.casaAO = { value: tools.blur.texture }
-              shader.uniforms.casaViewport = viewportSize
-              shader.fragmentShader =
-                'uniform sampler2D casaAO; uniform vec2 casaViewport;\n' +
-                shader.fragmentShader
-                  .replace('#include <shadowmap_pars_fragment>', receiverPlaneShadows)
-                  .replace(
-                    '#include <aomap_fragment>',
-                    `#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= mix(1.0, texture2D(casaAO, gl_FragCoord.xy / casaViewport).r, ${STRENGTH});`,
-                  )
-            }
-            const beforeRender: Material['onBeforeRender'] = (...args) => {
-              render.apply(m, args)
-              gl.getCurrentViewport(viewport)
-              viewportSize.value.set(viewport.z, viewport.w)
-            }
-            patched.set(m, { compile, key, render, wrapped, beforeRender })
-            m.onBeforeCompile = wrapped
-            m.customProgramCacheKey = () => programKey + '-casa-ao-' + receiverPlaneShadowKey
-            m.onBeforeRender = beforeRender
-            m.needsUpdate = true
-          }
+
           return normal
         })
         o.material = Array.isArray(o.material) ? depthMaterials : depthMaterials[0]
