@@ -16,6 +16,7 @@ import {
 } from 'three'
 import { floorRegions } from '../layout/rooms'
 import { roomWallSides } from '../rooms/roomViews'
+import { wallThickness } from '../layout/geometry'
 import type { Floor } from '../layout/types'
 
 // Every mesh stays on layer 0, so picking and the other views are untouched; the room's meshes are also on
@@ -73,7 +74,16 @@ type Sorted = { x: number; y: number; z: number; geometry: unknown; cells: unkno
  */
 export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) => {
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
-  const outline = useMemo(() => roomWallSides(floor, roomId), [floor, roomId])
+  // Each wall along the room's outline: the way out of the room, and where its face on the room's side is.
+  const outline = useMemo(() => {
+    const faces = new Map<string, { out: [number, number]; face: number }>()
+    for (const [id, out] of roomWallSides(floor, roomId)) {
+      const wall = floor.walls.find((w) => w.id === id)!
+      const axis = out[0] ? 0 : 1
+      faces.set(id, { out: [out[0], out[1]], face: wall.from[axis] - (out[axis] * wallThickness(wall, floor)) / 2 })
+    }
+    return faces
+  }, [floor, roomId])
   const kit = useRef<ReturnType<typeof makeTools>>(undefined)
   useEffect(
     () => () => {
@@ -100,15 +110,16 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
     let wallId: string | undefined
     for (let p: Object3D | null = m; p && !wallId; p = p.parent) wallId = p.userData.wallId
-    // A wall along the room's outline stands just off its floor: it's judged moved one thickness into the
-    // room, so the stretch beside the room counts and the rest of the wall doesn't.
-    const out = wallId ? outline.get(wallId) : undefined
-    const dx = out ? -out[0] * (box.max.x - box.min.x) : 0
-    const dz = out ? -out[1] * (box.max.z - box.min.z) : 0
-    const over = (x: number, z: number) =>
-      cells.some(
-        (c) => x + dx > c.x0 - MARGIN && x + dx < c.x1 + MARGIN && z + dz > c.y0 - MARGIN && z + dz < c.y1 + MARGIN,
-      )
+    // A wall along the room's outline, and whatever is set in it (doors, windows, however they're swung), stands
+    // off the room's floor: it's judged only by where it is along the wall, just inside the room's face of it.
+    const side = wallId ? outline.get(wallId) : undefined
+    const inX = side?.out[0] ? side.face - side.out[0] * MARGIN * 2 : undefined
+    const inZ = side?.out[1] ? side.face - side.out[1] * MARGIN * 2 : undefined
+    const over = (x: number, z: number) => {
+      const px = inX ?? x
+      const pz = inZ ?? z
+      return cells.some((c) => px > c.x0 - MARGIN && px < c.x1 + MARGIN && pz > c.y0 - MARGIN && pz < c.y1 + MARGIN)
+    }
     let inside = 0
     for (let i = 0; i < SAMPLES; i++)
       for (let j = 0; j < SAMPLES; j++) {
