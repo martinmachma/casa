@@ -103,11 +103,15 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
   // Each wall along the room's outline: the way out of the room, and where its face on the room's side is.
   const outline = useMemo(() => {
-    const faces = new Map<string, { out: [number, number]; face: number }>()
+    const faces = new Map<string, { out: [number, number]; face: number; span: [number, number] }>()
     for (const [id, out] of roomWallSides(floor, roomId)) {
       const wall = floor.walls.find((w) => w.id === id)!
       const axis = out[0] ? 0 : 1
-      faces.set(id, { out: [out[0], out[1]], face: wall.from[axis] - (out[axis] * wallThickness(wall, floor)) / 2 })
+      faces.set(id, {
+        out: [out[0], out[1]],
+        face: wall.from[axis] - (out[axis] * wallThickness(wall, floor)) / 2,
+        span: [Math.min(wall.from[1 - axis], wall.to[1 - axis]), Math.max(wall.from[1 - axis], wall.to[1 - axis])],
+      })
     }
     return faces
   }, [floor, roomId])
@@ -169,6 +173,15 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
         const lo = Math.min(from[1 - k], to[1 - k])
         const hi = Math.max(from[1 - k], to[1 - k])
         if (Math.abs(near - from[k]) > MARGIN * 1.5 || box.max[across] <= lo || box.min[across] >= hi) continue
+        // Unless the room's own wall stands there: then it runs off behind that wall, outside the room.
+        const behind = [...outline.values()].some(
+          (o) =>
+            o.out[k] === out[k] &&
+            Math.abs(o.face - from[k]) < MARGIN &&
+            o.span[0] <= box.min[across] + MARGIN &&
+            o.span[1] >= box.max[across] - MARGIN,
+        )
+        if (behind) break
         if (out[0]) inX = from[0] - out[0] * MARGIN * 2
         else inZ = from[1] - out[1] * MARGIN * 2
         break

@@ -491,12 +491,14 @@
         },
         {
           "id": "u-shaft-s14",
+          "against": "u-205-south",
           "from": [0.2005, 3.01],
           "to": [0.6155, 3.01],
           "thickness": 0.3
         },
         {
           "id": "u-shaft-s15",
+          "against": "u-middle",
           "from": [2.1515, 5.441],
           "to": [2.6015, 5.441],
           "thickness": 0.15

@@ -241,7 +241,7 @@ export const sidePart = (joints: number[], u: number): number => joints.filter((
 /** Pieces cut at the given distances along the wall, so no piece spans one of them. */
 export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
   pieces.flatMap((p) => {
-    const inside = cuts.filter((c) => c > p.u0 && c < p.u1)
+    const inside = cuts.filter((c) => c > p.u0 && c < p.u1).sort((a, b) => a - b)
     const edges = [p.u0, ...inside, p.u1]
     return edges.slice(1).map((u1, i) => ({ ...p, u0: edges[i], u1 }))
   })

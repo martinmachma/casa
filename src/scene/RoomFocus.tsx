@@ -16,12 +16,15 @@ export const RoomCamera = ({
   roomId,
   furniture,
   from,
+  onView,
 }: {
   floor: Floor
   roomId: string
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
   from?: { position: Vector3; target: Vector3 }
+  /** Where it is and looks each frame, for the house's camera to carry on from after the room. */
+  onView?: (position: Vector3, target: Vector3) => void
 }) => {
   const size = useThree((s) => s.size)
   // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
@@ -42,6 +45,7 @@ export const RoomCamera = ({
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
   useFrame(({ camera, invalidate }, delta) => {
     if (!pose) return
+    onView?.(camera.position, t.current < 1 || !controls.current ? look : controls.current.target)
     if (heading.current !== pose) {
       const wasFlying = t.current < 1
       start.current = {

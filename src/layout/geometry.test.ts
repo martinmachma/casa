@@ -4,6 +4,7 @@ import {
   cornerCuts,
   floorBounds,
   sidePart,
+  splitPieces,
   validateLayout,
   wallJoints,
   wallOutside,
@@ -157,5 +158,12 @@ describe('cornerCuts', () => {
     const corner: Wall = { id: 'c', from: [4, 0], to: [4, 3], thickness: 0.3 }
     const floor = { wallThickness: 0.1, walls: [wall, corner] } as unknown as Floor
     expect(cornerCuts(wall, floor)).toEqual([{ at: 4 - 0.15, wall: 'c' }])
+  })
+})
+
+describe('splitPieces', () => {
+  it('cuts in order along the wall, whatever order the cuts come in', () => {
+    const pieces = splitPieces([{ u0: 0, u1: 6, y0: 0, y1: 2.6 }], [2, 0.1, 5.9])
+    expect(pieces.map((p) => [p.u0, p.u1])).toEqual([[0, 0.1], [0.1, 2], [2, 5.9], [5.9, 6]])
   })
 })

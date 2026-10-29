@@ -254,6 +254,11 @@ export const HouseScene = ({
                 ? { position: lastView.position.clone(), target: lastView.target.clone() }
                 : undefined
             }
+            onView={(position, target) => {
+              Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1 })
+              lastView.position.copy(position)
+              lastView.target.copy(target)
+            }}
           />
         ) : camera === 'walk' ? (
           <WalkCamera
