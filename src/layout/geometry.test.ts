@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { blocksView, cornerCuts, floorBounds, sidePart, validateLayout, wallJoints, wallOutside, wallPieces } from './geometry'
+import {
+  blocksView,
+  cornerCuts,
+  floorBounds,
+  sidePart,
+  validateLayout,
+  wallJoints,
+  wallOutside,
+  wallPieces,
+} from './geometry'
 import { house } from './layout'
 import type { Floor, HouseLayout, Point, Wall } from './types'
 

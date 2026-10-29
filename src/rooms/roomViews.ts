@@ -68,7 +68,6 @@ export const roomEdges = (floor: Floor, roomId: string): RoomEdge[] => {
   })
 }
 
-
 /** The walls along the room's outline, each with the way out of the room across it. */
 export const roomWallSides = (floor: Floor, roomId: string): Map<string, Point> => {
   const sides = new Map<string, Point>()

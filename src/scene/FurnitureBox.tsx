@@ -11,6 +11,8 @@ import type { Floor } from '../layout/types'
 import type { Focus } from './CutawayWall'
 import { FurnitureModel } from './FurnitureModel'
 import { useItemCut } from './ItemCut'
+import { useDebug } from '../debug'
+import { DebugLabel } from './DebugLabel'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
 
 type FurnitureBoxProps = {
@@ -95,6 +97,7 @@ export const FurnitureBox = ({
   }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
   const group = useRef<Group>(null)
+  const debug = useDebug()
   useItemCut(group, item, floor, cutaway, focus)
 
   // Stops the camera from orbiting/panning along with a drag.
@@ -256,6 +259,7 @@ export const FurnitureBox = ({
           />
         </Suspense>
       )}
+      {debug && <DebugLabel y={hitHeight} text={`${item.name} · ${item.id.slice(0, 4)}`} />}
       {showActions && interactive && (
         <Html position={[0, hitHeight, 0]} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
           <div className="float item-actions" onPointerDown={(e) => e.stopPropagation()}>

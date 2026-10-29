@@ -3,8 +3,9 @@ import { useMemo, type RefObject } from 'react'
 import { DoubleSide, Mesh, Plane, Vector3, type Group, type Material } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { backingWall, floorSnapWalls } from '../furniture/snap'
-import { wallOutside } from '../layout/geometry'
-import type { Floor } from '../layout/types'
+import { inTheWay } from '../furniture/cut'
+import { floorBounds, wallOutside } from '../layout/geometry'
+import type { Floor, Point } from '../layout/types'
 import { wallCut, type Focus } from './CutawayWall'
 
 /** Anything reaching higher than this above its floor is cut down with the walls… */
@@ -34,8 +35,9 @@ const capCut = (m: Material) => {
 }
 
 /**
- * Cuts the top off a piece that reaches above ITEM_CUT_ABOVE (tall, or hung up high) while walls are cut: one
- * standing against a wall goes with that wall, one standing free goes whenever walls are cut.
+ * Cuts the top off a piece that reaches above ITEM_CUT_ABOVE (tall, or hung up high) while walls are cut and it's
+ * in the way: one against a wall goes with that wall, seen from behind it; one standing free goes when it's on the
+ * camera's side of what's looked at (the room, or the floor's middle).
  */
 export const useItemCut = (
   group: RefObject<Group | null>,
@@ -53,12 +55,18 @@ export const useItemCut = (
     const wall = i === undefined ? undefined : floor.walls[i]
     return wall && { wall, outside: wallOutside(wall, floor) }
   }, [floor, reaches, item])
+  const center = useMemo((): Point | undefined => {
+    if (!floor) return undefined
+    const { min, max } = floorBounds(floor)
+    return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
+  }, [floor])
 
   useFrame(({ camera }) => {
     const cut =
       !!floor &&
       cutaway &&
       reaches &&
+      inTheWay([item.x, item.y], backing?.wall, [camera.position.x, camera.position.z], focus?.center ?? center!) &&
       (!backing || wallCut(backing.wall, floor, backing.outside, camera, cutaway, focus))
     const constant = cut ? floor!.elevation + ITEM_CUT_AT : UNCUT
     if (cut) gl.localClippingEnabled = true

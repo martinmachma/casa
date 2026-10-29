@@ -9,6 +9,8 @@ import { wallAngle } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
+import { useDebug } from '../debug'
+import { DebugLabel } from './DebugLabel'
 
 const CLICK_SLOP_PX = 5
 
@@ -110,6 +112,7 @@ const DeviceMesh = ({
   onHoverLight,
 }: DeviceMeshProps) => {
   const getState = useThree((s) => s.get)
+  const debug = useDebug() && device.id !== 'placing'
   const level = floor.elevation + device.z
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -level), [level])
   const drag = useRef<{ dx: number; dy: number; moved: boolean }>(undefined)
@@ -225,6 +228,7 @@ const DeviceMesh = ({
             {outline}
           </mesh>
           {hitSphere}
+          {debug && <DebugLabel y={0.15} text={`${device.name} · ${device.id.slice(0, 4)}`} />}
         </group>
         {marker}
       </>
@@ -247,6 +251,7 @@ const DeviceMesh = ({
           {outline}
         </mesh>
         {hitSphere}
+        {debug && <DebugLabel y={0.15} text={`${device.name} · ${device.id.slice(0, 4)}`} />}
       </group>
       {marker}
     </>
