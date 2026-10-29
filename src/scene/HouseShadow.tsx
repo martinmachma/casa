@@ -1,116 +1,10 @@
 import { useEffect, useMemo } from 'react'
-import { BoxGeometry, BufferGeometry, MeshBasicMaterial } from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import {
-  floorBounds,
-  openingId,
-  openingSill,
-  wallAngle,
-  wallHeight,
-  wallPieces,
-  wallThickness,
-} from '../layout/geometry'
+import { FrontSide, MeshBasicMaterial } from 'three'
 import type { Floor, Roof } from '../layout/types'
-import { slabGeometry } from './prism'
+import { houseSolid } from './houseGeometry'
 
-const SLAB = 0.3
-// The parapet's thickness, as the roof draws it.
-const PARAPET = 0.2
-// The slab's top sits this far under the floor, and the walls reach down into it. A shadow is cast by a solid's
-// far side, so with the slab's top level with the floor, a light on the floor below would light the floor and the
-// foot of every wall above.
-const SINK = 0.12
-// A closed door's leaf, so the lights indoors stop at it even when its wall is cut away from view.
-const LEAF = 0.04
-
-// Draws nothing on screen; the sun's shadow pass still renders it.
-const shadowOnly = new MeshBasicMaterial({ colorWrite: false, depthWrite: false })
-
-/** Plain positions only, so boxes and slabs can share one merged geometry. */
-const bare = (geometry: BufferGeometry) => {
-  const flat = geometry.index ? geometry.toNonIndexed() : geometry
-  for (const name of Object.keys(flat.attributes)) if (name !== 'position') flat.deleteAttribute(name)
-  return flat
-}
-
-const box = (size: [number, number, number], at: [number, number, number], angle = 0) => {
-  const geometry = new BoxGeometry(...size)
-  geometry.translate(...at)
-  geometry.rotateY(angle)
-  return bare(geometry)
-}
-
-/** The whole house's walls, closed doors, slabs and roof as one solid, for shadows. */
-const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: ReadonlySet<string>) => {
-  const parts: BufferGeometry[] = []
-  floors.forEach((floor, i) => {
-    // Down to the walls below, like the visible slab, so no light slips between the floors.
-    const below = floors[i - 1]
-    // Only its top is sunk: its underside stays where it was, above the lights on the floor below.
-    const depth = below ? Math.max(SLAB, floor.elevation - below.elevation - below.height) : SLAB
-    const slab = slabGeometry(floor, depth - SINK)
-    slab.translate(0, floor.elevation - SINK, 0)
-    parts.push(bare(slab))
-    for (const wall of floor.walls) {
-      const thickness = wallThickness(wall, floor)
-      for (const p of wallPieces(wall, wallHeight(wall, floor), thickness / 2)) {
-        const y0 = p.y0 > 0 ? p.y0 : -SINK
-        const piece = box(
-          [p.u1 - p.u0, p.y1 - y0, thickness],
-          [(p.u0 + p.u1) / 2, (y0 + p.y1) / 2, 0],
-          -wallAngle(wall),
-        )
-        piece.translate(wall.from[0], floor.elevation, wall.from[1])
-        parts.push(piece)
-      }
-      wall.openings?.forEach((o, i) => {
-        if (o.type !== 'door' || openDoors.has(openingId(wall.id, i))) return
-        const sill = openingSill(o)
-        const leaf = box([o.width, o.height, LEAF], [o.offset + o.width / 2, sill + o.height / 2, 0], -wallAngle(wall))
-        leaf.translate(wall.from[0], floor.elevation, wall.from[1])
-        parts.push(leaf)
-      })
-    }
-  })
-  const top = floors[floors.length - 1]
-  if (top) {
-    // The roof slab, and the parapet round it apart: a shadow is cast by a solid's far side, so with the parapet
-    // in one block with the slab, its inner faces would stand inside that block and catch the lights below.
-    const { min, max } = floorBounds(top)
-    const y = top.elevation + top.height
-    const w = max[0] - min[0]
-    const d = max[1] - min[1]
-    const cx = (min[0] + max[0]) / 2
-    const cz = (min[1] + max[1]) / 2
-    // Sunk under the roof's surface, and the parapet down into it, like the floors.
-    parts.push(box([w, SLAB - SINK, d], [cx, y + (SLAB - SINK) / 2, cz]))
-    const rim = roof?.parapet ?? 0
-    if (rim > 0) {
-      const ry = y + SLAB + (rim - SINK) / 2
-      const high = rim + SINK
-      parts.push(
-        box([PARAPET, high, d], [min[0] + PARAPET / 2, ry, cz]),
-        box([PARAPET, high, d], [max[0] - PARAPET / 2, ry, cz]),
-        box([w - 2 * PARAPET, high, PARAPET], [cx, ry, min[1] + PARAPET / 2]),
-        box([w - 2 * PARAPET, high, PARAPET], [cx, ry, max[1] - PARAPET / 2]),
-      )
-    }
-    const height = SLAB + rim
-    const chimney = roof?.chimney
-    if (chimney) {
-      const stack = height + 0.6
-      parts.push(
-        box(
-          [chimney.x1 - chimney.x0, stack, chimney.y1 - chimney.y0],
-          [(chimney.x0 + chimney.x1) / 2, y + stack / 2, (chimney.y0 + chimney.y1) / 2],
-        ),
-      )
-    }
-  }
-  const merged = mergeGeometries(parts)
-  for (const part of parts) part.dispose()
-  return merged
-}
+// Render the nearest solid surface into shadows, without drawing or covering anything on screen.
+const shadowOnly = new MeshBasicMaterial({ colorWrite: false, depthWrite: false, shadowSide: FrontSide })
 
 /**
  * The whole house casting its shadow, whichever floor is shown and whichever walls are cut away.
@@ -120,12 +14,19 @@ export const HouseShadow = ({
   floors,
   roof,
   openDoors,
+  groundLevel,
 }: {
   floors: Floor[]
   roof: Roof | undefined
+  groundLevel?: number
   openDoors: ReadonlySet<string>
 }) => {
-  const geometry = useMemo(() => houseSolid(floors, roof, openDoors), [floors, roof, openDoors])
+  const geometry = useMemo(
+    () => houseSolid(floors, roof, openDoors, groundLevel),
+    [floors, roof, openDoors, groundLevel],
+  )
   useEffect(() => () => geometry.dispose(), [geometry])
-  return <mesh geometry={geometry} material={shadowOnly} castShadow raycast={() => null} />
+  return (
+    <mesh geometry={geometry} material={shadowOnly} userData={{ shadowOnly: true }} castShadow raycast={() => null} />
+  )
 }

@@ -1,6 +1,6 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
-import { Group, MathUtils, Mesh, Plane, Vector3 } from 'three'
+import { FrontSide, Group, MathUtils, Mesh, Plane, Vector3 } from 'three'
 import { openingId, openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
 import { raycastIfShown } from './raycast'
@@ -37,7 +37,7 @@ const Boxes = ({ boxes }: { boxes: Box[] }) =>
   boxes.map((b, k) => (
     <mesh key={k} position={b.at} castShadow raycast={noRaycast}>
       <boxGeometry args={b.size} />
-      <meshStandardMaterial color={b.color} roughness={0.6} />
+      <meshStandardMaterial shadowSide={FrontSide} color={b.color} roughness={0.6} />
     </mesh>
   ))
 
@@ -121,7 +121,14 @@ type Inner = { u0: number; u1: number; y0: number; y1: number }
 const Glass = ({ inner, z = 0 }: { inner: Inner; z?: number }) => (
   <mesh position={[(inner.u0 + inner.u1) / 2, (inner.y0 + inner.y1) / 2, z]} raycast={noRaycast}>
     <boxGeometry args={[inner.u1 - inner.u0, inner.y1 - inner.y0, 0.012]} />
-    <meshStandardMaterial color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
+    <meshStandardMaterial
+      shadowSide={FrontSide}
+      color={GLASS}
+      transparent
+      opacity={0.28}
+      roughness={0.05}
+      depthWrite={false}
+    />
   </mesh>
 )
 
@@ -171,12 +178,12 @@ const Door = ({
     <group ref={group} position={[atEnd ? inner.u1 : inner.u0, 0, 0]}>
       <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow {...handlers}>
         <boxGeometry args={[Math.abs(w), h, LEAF]} />
-        <meshStandardMaterial color={color} roughness={0.7} />
+        <meshStandardMaterial shadowSide={FrontSide} color={color} roughness={0.7} />
       </mesh>
       {/* A handle on each face, near the edge away from the hinge. */}
       <mesh position={[w - Math.sign(w) * 0.08, inner.y0 + 1.05, 0]} {...handlers}>
         <boxGeometry args={[0.12, 0.02, LEAF + 0.08]} />
-        <meshStandardMaterial color={HANDLE} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial shadowSide={FrontSide} color={HANDLE} metalness={0.6} roughness={0.3} />
       </mesh>
     </group>
   )
@@ -197,17 +204,24 @@ const SlidingDoor = ({ inner, ...state }: { inner: Inner } & DoorState) => {
       {boxes.map((b, k) => (
         <mesh key={k} position={b.at} castShadow {...handlers}>
           <boxGeometry args={b.size} />
-          <meshStandardMaterial color={b.color} roughness={0.6} />
+          <meshStandardMaterial shadowSide={FrontSide} color={b.color} roughness={0.6} />
         </mesh>
       ))}
       {/* The glass takes taps too, so the whole panel opens it. */}
       <mesh position={[w / 2, (panel.y0 + panel.y1) / 2, 0]} {...handlers}>
         <boxGeometry args={[panel.u1 - panel.u0, panel.y1 - panel.y0, 0.012]} />
-        <meshStandardMaterial color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
+        <meshStandardMaterial
+          shadowSide={FrontSide}
+          color={GLASS}
+          transparent
+          opacity={0.28}
+          roughness={0.05}
+          depthWrite={false}
+        />
       </mesh>
       <mesh position={[0.03, inner.y0 + 1.05, LEAF / 2 + 0.01]} {...handlers}>
         <boxGeometry args={[0.02, 0.3, 0.02]} />
-        <meshStandardMaterial color={HANDLE} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial shadowSide={FrontSide} color={HANDLE} metalness={0.6} roughness={0.3} />
       </mesh>
     </group>
   )

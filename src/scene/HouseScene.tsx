@@ -47,6 +47,8 @@ import { DebugHover } from './DebugHover'
 import { reachable } from './pick'
 import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
 import { RoomBlur } from './RoomBlur'
+import { ShadowUpdates } from './ShadowUpdates'
+import { AmbientOcclusion } from './AmbientOcclusion'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
@@ -147,8 +149,7 @@ export const HouseScene = ({
   const shownCount = camera === 'walk' ? floors.length : floorIndex + 1
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
   // From outside, on every floor that's shown, to be seen through the windows.
-  const furnished = (f: Floor) =>
-    camera === 'walk' || (outside ? floors.indexOf(f) < shownCount : f.id === floor.id)
+  const furnished = (f: Floor) => camera === 'walk' || (outside ? floors.indexOf(f) < shownCount : f.id === floor.id)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
   // Looking at a room, the walls between the camera and its middle are always cut, and only those.
   const focusPoint = useMemo((): Focus | undefined => {
@@ -238,7 +239,7 @@ export const HouseScene = ({
   return (
     <>
       <Canvas
-        shadows
+        shadows="percentage"
         dpr={[1, 2]}
         frameloop="demand"
         onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
@@ -295,7 +296,7 @@ export const HouseScene = ({
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
-        <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} />
+        <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} groundLevel={house.outdoor?.level} />
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
         {floors.map((f, i) => (
@@ -448,6 +449,8 @@ export const HouseScene = ({
             gapSize={0.05}
           />
         ))}
+        <ShadowUpdates />
+        <AmbientOcclusion />
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       {!focusRoom && <Compass needle={needle} />}

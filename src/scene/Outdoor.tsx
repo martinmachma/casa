@@ -1,4 +1,5 @@
 import { Line } from '@react-three/drei'
+import { FrontSide } from 'three'
 import { useEffect, useMemo } from 'react'
 import type { GardenBlock, Outdoor as OutdoorLayout, Point, Shed } from '../layout/types'
 import { surroundingsTexture } from './groundTexture'
@@ -39,17 +40,18 @@ export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
         position={[cx, outdoor.level - GROUND_DROP, cz]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
+        userData={{ shadowGround: true }}
         raycast={noRaycast}
       >
         <circleGeometry args={[GROUND_RADIUS, 64]} />
-        <meshStandardMaterial map={ground} transparent depthWrite={false} roughness={1} />
+        <meshStandardMaterial shadowSide={FrontSide} map={ground} transparent depthWrite={false} roughness={1} />
       </mesh>
       <mesh geometry={lawn} position={[0, outdoor.level, 0]} receiveShadow raycast={noRaycast}>
-        <meshStandardMaterial color={LAWN} roughness={1} />
+        <meshStandardMaterial shadowSide={FrontSide} color={LAWN} roughness={1} />
       </mesh>
       <Line points={edge} color={PLOT_EDGE} lineWidth={2} raycast={noRaycast} />
       <mesh geometry={terrace} position={[0, outdoor.terrace.level, 0]} receiveShadow raycast={noRaycast}>
-        <meshStandardMaterial color={PAVING} roughness={0.95} />
+        <meshStandardMaterial shadowSide={FrontSide} color={PAVING} roughness={0.95} />
       </mesh>
       {outdoor.paving?.map((p) => (
         <Paving key={p.name} outline={p.outline} level={p.level} ground={outdoor.level} />
@@ -69,7 +71,7 @@ const Paving = ({ outline, level, ground }: { outline: Point[]; level: number; g
   const geometry = useMemo(() => prismGeometry(outline, level - ground), [outline, level, ground])
   return (
     <mesh geometry={geometry} position={[0, level, 0]} receiveShadow raycast={noRaycast}>
-      <meshStandardMaterial color={PAVING} roughness={0.95} />
+      <meshStandardMaterial shadowSide={FrontSide} color={PAVING} roughness={0.95} />
     </mesh>
   )
 }
@@ -89,12 +91,12 @@ const BlockMesh = ({ block, base }: { block: GardenBlock; base: number }) => {
     <group position={[cx, base, cz]}>
       <mesh position={[0, body / 2, 0]} castShadow receiveShadow raycast={noRaycast}>
         <boxGeometry args={[w, body, d]} />
-        <meshStandardMaterial color={green ? HEDGE : DEFAULT_WALL} roughness={green ? 1 : 0.9} />
+        <meshStandardMaterial shadowSide={FrontSide} color={green ? HEDGE : DEFAULT_WALL} roughness={green ? 1 : 0.9} />
       </mesh>
       {!green && (
         <mesh position={[0, body + CAP / 2, 0]} castShadow raycast={noRaycast}>
           <boxGeometry args={[w + 2 * CAP_EAVE, CAP, d + 2 * CAP_EAVE]} />
-          <meshStandardMaterial color={COPING} roughness={0.8} />
+          <meshStandardMaterial shadowSide={FrontSide} color={COPING} roughness={0.8} />
         </mesh>
       )}
     </group>
@@ -111,16 +113,16 @@ const ShedMesh = ({ shed, base }: { shed: Shed; base: number }) => {
     <group position={[0, base, 0]}>
       <mesh position={[cx, shed.height / 2, cz]} castShadow receiveShadow raycast={noRaycast}>
         <boxGeometry args={[w, shed.height, d]} />
-        <meshStandardMaterial color={SHED_WOOD} roughness={0.85} />
+        <meshStandardMaterial shadowSide={FrontSide} color={SHED_WOOD} roughness={0.85} />
       </mesh>
       <mesh position={[cx, shed.height + ROOF / 2, cz]} castShadow raycast={noRaycast}>
         <boxGeometry args={[w + 2 * EAVE, ROOF, d + 2 * EAVE]} />
-        <meshStandardMaterial color={SHED_ROOF} roughness={0.8} />
+        <meshStandardMaterial shadowSide={FrontSide} color={SHED_ROOF} roughness={0.8} />
       </mesh>
       {door && (
         <mesh position={door.at} rotation={[0, door.turn, 0]} raycast={noRaycast}>
           <boxGeometry args={[door.width, DOOR_HEIGHT, 0.02]} />
-          <meshStandardMaterial color={EXTERIOR_FRAME} roughness={0.7} />
+          <meshStandardMaterial shadowSide={FrontSide} color={EXTERIOR_FRAME} roughness={0.7} />
         </mesh>
       )}
     </group>

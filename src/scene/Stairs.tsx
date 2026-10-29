@@ -1,3 +1,4 @@
+import { FrontSide } from 'three'
 import { useMemo } from 'react'
 import type { Floor } from '../layout/types'
 import { RAILING, STAIR_WOOD } from './palette'
@@ -40,7 +41,7 @@ export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
           raycast={noRaycast}
           userData={{ rooms: floor.stairs?.rooms }}
         >
-          <meshStandardMaterial color={STAIR_WOOD} roughness={0.7} />
+          <meshStandardMaterial shadowSide={FrontSide} color={STAIR_WOOD} roughness={0.7} />
         </mesh>
       ))}
     </group>
@@ -63,11 +64,17 @@ export const Railings = ({ floor }: { floor: Floor }) => (
           >
             <mesh position={[0, RAIL_HEIGHT - RAIL_BAR / 2, 0]} castShadow raycast={noRaycast}>
               <boxGeometry args={[length, RAIL_BAR, RAIL_BAR]} />
-              <meshStandardMaterial color={RAILING} metalness={0.4} roughness={0.4} />
+              <meshStandardMaterial shadowSide={FrontSide} color={RAILING} metalness={0.4} roughness={0.4} />
             </mesh>
             <mesh position={[0, (RAIL_HEIGHT - RAIL_BAR) / 2, 0]} raycast={noRaycast}>
               <boxGeometry args={[length, RAIL_HEIGHT - RAIL_BAR, 0.012]} />
-              <meshStandardMaterial color="#cfe0e6" transparent opacity={0.3} depthWrite={false} />
+              <meshStandardMaterial
+                shadowSide={FrontSide}
+                color="#cfe0e6"
+                transparent
+                opacity={0.3}
+                depthWrite={false}
+              />
             </mesh>
           </group>
         )

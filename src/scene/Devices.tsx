@@ -1,7 +1,7 @@
 import { Edges } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
-import { Mesh, Plane, Vector3 } from 'three'
+import { FrontSide, Mesh, Plane, Vector3 } from 'three'
 import type { Device, DeviceKind } from '../data/types'
 import { DEVICE_KINDS } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
@@ -186,6 +186,7 @@ const DeviceMesh = ({
 
   const material = (
     <meshStandardMaterial
+      shadowSide={FrontSide}
       color={color}
       roughness={0.5}
       emissive={device.kind !== 'light' ? '#000000' : glow > 0 ? tint : color}
