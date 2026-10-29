@@ -15,13 +15,15 @@ import {
   WebGLRenderTarget,
 } from 'three'
 import { floorRegions } from '../layout/rooms'
+import { roomWallSides } from '../rooms/roomViews'
 import type { Floor } from '../layout/types'
 
 // Every mesh stays on layer 0, so picking and the other views are untouched; the room's meshes are also on
 // one layer and everything else on another, and each pass draws one of them.
 const ROOM_LAYER = 1
 const OUTSIDE_LAYER = 2
-// How far past the room's floor a wall may sit and still belong to it; anything else must stand on the floor.
+// How far past the room's floor a wall along its outline may sit and still belong to it; anything else,
+// other walls included, must stand on the floor.
 const WALL_MARGIN = 0.35
 const MARGIN = 0.02
 // Something counts as in the room when this much of its footprint is.
@@ -73,6 +75,7 @@ type Sorted = { x: number; y: number; z: number; geometry: unknown; cells: unkno
  */
 export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) => {
   const cells = useMemo(() => floorRegions(floor).get(roomId)?.cells ?? [], [floor, roomId])
+  const outline = useMemo(() => roomWallSides(floor, roomId), [floor, roomId])
   const kit = useRef<ReturnType<typeof makeTools>>(undefined)
   useEffect(
     () => () => {
@@ -97,9 +100,9 @@ export const RoomBlur = ({ floor, roomId }: { floor: Floor; roomId: string }) =>
     box.copy(g.boundingBox!).applyMatrix4(m.matrixWorld).getCenter(mid)
     if (mid.y < floor.elevation - 0.1 || mid.y > floor.elevation + floor.height + 0.1) return false
     // Mostly over the room's floor (or its walls): sampled on a grid, as a room needn't be a rectangle.
-    let wall = false
-    for (let p: Object3D | null = m; p && !wall; p = p.parent) wall = !!p.userData.wall
-    const r = wall ? WALL_MARGIN : MARGIN
+    let wallId: string | undefined
+    for (let p: Object3D | null = m; p && !wallId; p = p.parent) wallId = p.userData.wallId
+    const r = wallId && outline.has(wallId) ? WALL_MARGIN : MARGIN
     const over = (x: number, z: number) =>
       cells.some((c) => x > c.x0 - r && x < c.x1 + r && z > c.y0 - r && z < c.y1 + r)
     let inside = 0

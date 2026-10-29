@@ -81,7 +81,7 @@ export const CutawayWall = ({
     <group
       position={[wall.from[0], floor.elevation, wall.from[1]]}
       rotation={[0, -wallAngle(wall), 0]}
-      userData={{ wall: true }}
+      userData={{ wallId: wall.id }}
     >
       <group ref={fullRef}>{full}</group>
       <group ref={stubRef} visible={false}>
