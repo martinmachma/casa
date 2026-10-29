@@ -6,7 +6,7 @@ import { backingWall, floorSnapWalls } from '../furniture/snap'
 import { inTheWay } from '../furniture/cut'
 import { floorBounds, wallOutside } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
-import { wallCut, type Focus } from './CutawayWall'
+import { wallCut } from './CutawayWall'
 
 /** Anything reaching higher than this above its floor is cut down with the walls… */
 export const ITEM_CUT_ABOVE = 1.2
@@ -37,14 +37,13 @@ const capCut = (m: Material) => {
 /**
  * Cuts the top off a piece that reaches above ITEM_CUT_ABOVE (tall, or hung up high) while walls are cut and it's
  * in the way: one against a wall goes with that wall, seen from behind it; one standing free goes when it's on the
- * camera's side of what's looked at (the room, or the floor's middle).
+ * camera's side of what's looked at (the floor's middle).
  */
 export const useItemCut = (
   group: RefObject<Group | null>,
   item: FurnitureItem,
   floor: Floor | undefined,
   cutaway: boolean,
-  focus?: Focus,
 ) => {
   const gl = useThree((s) => s.gl)
   const plane = useMemo(() => new Plane(new Vector3(0, -1, 0), UNCUT), [])
@@ -66,8 +65,8 @@ export const useItemCut = (
       !!floor &&
       cutaway &&
       reaches &&
-      inTheWay([item.x, item.y], backing?.wall, [camera.position.x, camera.position.z], focus?.center ?? center!) &&
-      (!backing || wallCut(backing.wall, floor, backing.outside, camera, cutaway, focus))
+      inTheWay([item.x, item.y], backing?.wall, [camera.position.x, camera.position.z], center!) &&
+      (!backing || wallCut(backing.wall, floor, backing.outside, camera, cutaway))
     const constant = cut ? floor!.elevation + ITEM_CUT_AT : UNCUT
     if (cut) gl.localClippingEnabled = true
     plane.constant = constant

@@ -8,7 +8,6 @@ import { footprint, footprintOutline } from '../furniture/collision'
 import type { Point } from '../layout/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import type { Floor } from '../layout/types'
-import type { Focus } from './CutawayWall'
 import { FurnitureModel } from './FurnitureModel'
 import { useItemCut } from './ItemCut'
 import { useDebug } from '../debug'
@@ -22,10 +21,9 @@ type FurnitureBoxProps = {
   /** The colour a lamp gives off. */
   glowColor?: string
   elevation: number
-  /** The floor it stands on, and whether its walls are cut (and round which room): a tall piece is cut with them. */
+  /** The floor it stands on, and whether its walls are cut ): a tall piece is cut with them. */
   floor?: Floor
   cutaway?: boolean
-  focus?: Focus
   selected: boolean
   /** Runs into a wall or another piece. */
   colliding?: boolean
@@ -69,7 +67,6 @@ export const FurnitureBox = ({
   elevation,
   floor,
   cutaway = false,
-  focus,
   selected,
   colliding,
   showActions,
@@ -98,7 +95,7 @@ export const FurnitureBox = ({
   const hit = useMemo(() => new Vector3(), [])
   const group = useRef<Group>(null)
   const debug = useDebug()
-  useItemCut(group, item, floor, cutaway, focus)
+  useItemCut(group, item, floor, cutaway)
 
   // Stops the camera from orbiting/panning along with a drag.
   const setControlsEnabled = (enabled: boolean) => {

@@ -375,8 +375,8 @@ export const HouseScene = ({
                   onHoverLight={onHoverItem}
                   elevation={f.elevation}
                   floor={f}
-                  cutaway={cutWalls && f.id === floor.id}
-                  focus={focusPoint}
+                  // Looking at one room, only its walls are cut; its furniture is what's being looked at.
+                  cutaway={cutWalls && !focusRoom && f.id === floor.id}
                   selected={selectedIds.includes(item.id) || pickedLight === item.id}
                   colliding={clashes.has(item.id)}
                   showActions={selectedIds[selectedIds.length - 1] === item.id}
