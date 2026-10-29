@@ -2,12 +2,15 @@ import { Html, Line } from '@react-three/drei'
 import { Copy, RotateCw, Trash2 } from 'lucide-react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
-import { Mesh, Plane, Vector3 } from 'three'
+import { Mesh, Plane, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { footprint, footprintOutline } from '../furniture/collision'
 import type { Point } from '../layout/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
+import type { Floor } from '../layout/types'
+import type { Focus } from './CutawayWall'
 import { FurnitureModel } from './FurnitureModel'
+import { useItemCut } from './ItemCut'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
 
 type FurnitureBoxProps = {
@@ -17,6 +20,10 @@ type FurnitureBoxProps = {
   /** The colour a lamp gives off. */
   glowColor?: string
   elevation: number
+  /** The floor it stands on, and whether its walls are cut (and round which room): a tall piece is cut with them. */
+  floor?: Floor
+  cutaway?: boolean
+  focus?: Focus
   selected: boolean
   /** Runs into a wall or another piece. */
   colliding?: boolean
@@ -58,6 +65,9 @@ export const FurnitureBox = ({
   glow,
   glowColor,
   elevation,
+  floor,
+  cutaway = false,
+  focus,
   selected,
   colliding,
   showActions,
@@ -84,6 +94,8 @@ export const FurnitureBox = ({
     add: boolean
   }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
+  const group = useRef<Group>(null)
+  useItemCut(group, item, floor, cutaway, focus)
 
   // Stops the camera from orbiting/panning along with a drag.
   const setControlsEnabled = (enabled: boolean) => {
@@ -188,7 +200,12 @@ export const FurnitureBox = ({
   }, [shape, item.width, item.depth, hitHeight])
 
   return (
-    <group position={[item.x, elevation + z, item.y]} rotation={[0, -item.rotation, 0]} userData={{ itemId: item.id }}>
+    <group
+      ref={group}
+      position={[item.x, elevation + z, item.y]}
+      rotation={[0, -item.rotation, 0]}
+      userData={{ itemId: item.id }}
+    >
       {/* The boxes are the item itself, or, for a model, its invisible hit boxes, following its footprint. */}
       {shape.map(([u0, u1, v0, v1], i) => (
         <mesh

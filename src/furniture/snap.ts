@@ -178,3 +178,15 @@ export const snapFurniture = (
   }
   return best
 }
+
+/** The wall a footprint stands against: the nearest face within `reach` metres, its index in `walls`. */
+export const backingWall = (f: Footprint, walls: SnapWall[], reach = 0.1): number | undefined => {
+  let best: { i: number; gap: number } | undefined
+  walls.forEach((w, i) => {
+    if (w.from[0] === w.to[0] && w.from[1] === w.to[1]) return
+    const hit = gapTo(f, frameOf(w), 0)
+    if (!hit || hit.gap > reach || (best && Math.abs(hit.gap) >= best.gap)) return
+    best = { i, gap: Math.abs(hit.gap) }
+  })
+  return best?.i
+}

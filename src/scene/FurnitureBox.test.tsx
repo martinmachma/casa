@@ -13,6 +13,7 @@ vi.mock('@react-three/fiber', () => ({
 }))
 vi.mock('@react-three/drei', () => ({ Html: 'html', Line: 'line' }))
 vi.mock('./FurnitureModel', () => ({ FurnitureModel: 'model' }))
+vi.mock('./ItemCut', () => ({ useItemCut: () => {} }))
 
 const setup = (selected: boolean, pointerType = 'mouse', add = false) => {
   const onSelect = vi.fn()

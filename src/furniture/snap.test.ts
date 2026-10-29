@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { snapFurniture, snapGroupToWalls, snapToWalls, type SnapWall } from './snap'
+import { backingWall, snapFurniture, snapGroupToWalls, snapToWalls, type SnapWall } from './snap'
 
 // A 4×4 room, walls 0.2 thick on their centre lines.
 const room: SnapWall[] = [
@@ -202,5 +202,13 @@ describe('snapFurniture', () => {
       const wall = snapToWalls(item, room)
       expect(snapFurniture(item, room, [other])).toEqual(item.x === 0.65 ? wall : { ...wall, x: other.x - 1 })
     }
+  })
+})
+
+describe('backingWall', () => {
+  it('finds the wall an item stands against, and none for one in the middle of the room', () => {
+    expect(backingWall({ ...box, x: 2, y: 0.38 }, room)).toBe(0)
+    expect(backingWall({ ...box, x: 3.65, y: 2, rotation: Math.PI / 2 }, room)).toBe(1)
+    expect(backingWall({ ...box, x: 2, y: 2 }, room)).toBeUndefined()
   })
 })

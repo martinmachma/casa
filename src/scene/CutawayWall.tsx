@@ -30,6 +30,16 @@ const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: 
 const decidingWall = (wall: Wall, floor: Floor) =>
   (wall.against && floor.walls.find((w) => w.id === wall.against)) || wall
 
+/** Whether a wall is cut down now, seen by `camera` (its outside worked out once by the caller). */
+export const wallCut = (
+  wall: Wall,
+  floor: Floor,
+  outside: Point | undefined,
+  camera: Camera,
+  cutaway: boolean,
+  focus?: Focus,
+) => isCut(decidingWall(wall, floor), outside, camera, cutaway, focus)
+
 export const visibleWallHeight = (wall: Wall, floor: Floor, camera: Camera, cutaway: boolean) =>
   isCut(decidingWall(wall, floor), cutaway ? wallOutside(wall, floor) : undefined, camera, cutaway)
     ? Math.min(STUB_HEIGHT, wallHeight(wall, floor))

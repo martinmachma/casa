@@ -175,6 +175,7 @@ export const HouseScene = ({
   const wallRects = useMemo(() => floorWallRects(floor), [floor])
   // Measuring uses its own floor and wall targets.
   const pickable = interaction === 'edit'
+  const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside
   // While arranging, anything that runs into a wall or another piece is marked.
   const clashes = pickable ? colliding(items, wallRects) : new Set<string>()
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
@@ -315,7 +316,7 @@ export const HouseScene = ({
               doors={!measure && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
-              cutaway={(cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside && f.id === floor.id}
+              cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
               onPick={pickWall}
             />
@@ -373,6 +374,9 @@ export const HouseScene = ({
                   onPickLight={isLamp(item.model) ? lightPick : undefined}
                   onHoverLight={onHoverItem}
                   elevation={f.elevation}
+                  floor={f}
+                  cutaway={cutWalls && f.id === floor.id}
+                  focus={focusPoint}
                   selected={selectedIds.includes(item.id) || pickedLight === item.id}
                   colliding={clashes.has(item.id)}
                   showActions={selectedIds[selectedIds.length - 1] === item.id}
