@@ -46,7 +46,9 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: Readonly
   floors.forEach((floor, i) => {
     // Down to the walls below, like the visible slab, so no light slips between the floors.
     const below = floors[i - 1]
-    const slab = slabGeometry(floor, below ? Math.max(SLAB, floor.elevation - below.elevation - below.height) : SLAB)
+    // Only its top is sunk: its underside stays where it was, above the lights on the floor below.
+    const depth = below ? Math.max(SLAB, floor.elevation - below.elevation - below.height) : SLAB
+    const slab = slabGeometry(floor, depth - SINK)
     slab.translate(0, floor.elevation - SINK, 0)
     parts.push(bare(slab))
     for (const wall of floor.walls) {
@@ -81,7 +83,7 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: Readonly
     const cx = (min[0] + max[0]) / 2
     const cz = (min[1] + max[1]) / 2
     // Sunk under the roof's surface, and the parapet down into it, like the floors.
-    parts.push(box([w, SLAB, d], [cx, y + SLAB / 2 - SINK, cz]))
+    parts.push(box([w, SLAB - SINK, d], [cx, y + (SLAB - SINK) / 2, cz]))
     const rim = roof?.parapet ?? 0
     if (rim > 0) {
       const ry = y + SLAB + (rim - SINK) / 2
