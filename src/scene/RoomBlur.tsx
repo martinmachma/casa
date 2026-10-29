@@ -15,7 +15,7 @@ import {
   WebGLRenderTarget,
 } from 'three'
 import { floorRegions } from '../layout/rooms'
-import { roomWallSides } from '../rooms/roomViews'
+import { roomEdges, roomWallSides } from '../rooms/roomViews'
 import { wallThickness } from '../layout/geometry'
 import type { Floor } from '../layout/types'
 
@@ -29,6 +29,8 @@ const MARGIN = 0.02
 // Something counts as in the room when this much of its footprint is.
 const SAMPLES = 5
 const MOSTLY = 0.6
+// A wall piece judged along the room's outline needs less: a corner piece runs on past the room into the next wall.
+const ALONG = 0.25
 const BLUR_PASSES = 3
 const TINT = new Color('#ebe7e1')
 
@@ -93,6 +95,7 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
     }
     return faces
   }, [floor, roomId])
+  const edges = useMemo(() => roomEdges(floor, roomId), [floor, roomId])
   const kit = useRef<ReturnType<typeof makeTools>>(undefined)
   useEffect(
     () => () => {
@@ -122,8 +125,23 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
     // A wall along the room's outline, and whatever is set in it (doors, windows, however they're swung), stands
     // off the room's floor: it's judged only by where it is along the wall, just inside the room's face of it.
     const side = wallId ? outline.get(wallId) : undefined
-    const inX = side?.out[0] ? side.face - side.out[0] * MARGIN * 2 : undefined
-    const inZ = side?.out[1] ? side.face - side.out[1] * MARGIN * 2 : undefined
+    let inX = side?.out[0] ? side.face - side.out[0] * MARGIN * 2 : undefined
+    let inZ = side?.out[1] ? side.face - side.out[1] * MARGIN * 2 : undefined
+    // Another wall's end can stand flush in the room's outline (a wall running off from the room's corner):
+    // that piece is judged just inside the room, where its end face is.
+    if (wallId && !side)
+      for (const { from, to, out } of edges) {
+        const axis = out[0] ? 'x' : 'z'
+        const across = out[0] ? 'z' : 'x'
+        const k = out[0] ? 0 : 1
+        const near = out[k] > 0 ? box.min[axis] : box.max[axis]
+        const lo = Math.min(from[1 - k], to[1 - k])
+        const hi = Math.max(from[1 - k], to[1 - k])
+        if (Math.abs(near - from[k]) > MARGIN * 1.5 || box.max[across] <= lo || box.min[across] >= hi) continue
+        if (out[0]) inX = from[0] - out[0] * MARGIN * 2
+        else inZ = from[1] - out[1] * MARGIN * 2
+        break
+      }
     const over = (x: number, z: number) => {
       const px = inX ?? x
       const pz = inZ ?? z
@@ -136,7 +154,7 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
         const z = box.min.z + ((j + 0.5) / SAMPLES) * (box.max.z - box.min.z)
         if (over(x, z)) inside++
       }
-    return inside >= SAMPLES * SAMPLES * MOSTLY
+    return inside >= SAMPLES * SAMPLES * ((inX ?? inZ) !== undefined ? ALONG : MOSTLY)
   }
 
   useFrame(({ gl, scene, camera }) => {
