@@ -194,7 +194,7 @@
       ],
       "stairs": {
         "name": "Stairs to the first floor",
-        "rooms": ["g-living", "u-hall"],
+        "rooms": ["g-living", "g-storage", "u-hall"],
         "steps": [
           [
             [2.116, 4.28],
