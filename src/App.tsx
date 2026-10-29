@@ -1,7 +1,7 @@
 import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthGate, type Account } from './auth/AuthGate'
 import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
@@ -46,7 +46,7 @@ import { NavRail, type Section } from './ui/NavRail'
 import { SaveBar } from './ui/SaveBar'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
-import { ROOM_VIEWS } from './rooms/roomViews'
+import { roomViews } from './rooms/roomViews'
 import { roomItems } from './rooms/roomItems'
 import { RoomOverview } from './ui/RoomOverview'
 
@@ -114,10 +114,10 @@ const House = ({ backend, account }: HouseProps) => {
   const [popover, setPopover] = useState<string>()
   const [hoveredItem, setHoveredItem] = useState<string>()
   const pinRefs = useRef(new Map<string, HTMLElement | null>())
-  const focus = ROOM_VIEWS.find((r) => r.id === roomView)
+  const rooms = useMemo(() => roomViews(house, data.roomNames), [data.roomNames])
+  const focus = rooms.find((r) => r.id === roomView)
   const lights = useLights()
   const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
-  const focusRoomRecord = focusFloor?.rooms.find((r) => r.id === focus?.room)
   const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
   const dark = 1 - daylight(sunAt)
 
@@ -246,7 +246,7 @@ const House = ({ backend, account }: HouseProps) => {
     setCamera(before.camera)
   }
   const openRoom = (id: string) => {
-    const view = ROOM_VIEWS.find((r) => r.id === id)
+    const view = rooms.find((r) => r.id === id)
     const index = house.floors.findIndex((f) => f.id === view?.floor)
     if (!view || index < 0) return
     if (section !== 'home') changeSection('home')
@@ -520,7 +520,14 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
-      <NavRail section={section} onSection={changeSection} rooms={ROOM_VIEWS} room={roomView} onRoom={openRoom} />
+      <NavRail
+        section={section}
+        onSection={changeSection}
+        floors={house.floors}
+        rooms={rooms}
+        room={roomView}
+        onRoom={openRoom}
+      />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
@@ -578,7 +585,7 @@ const House = ({ backend, account }: HouseProps) => {
 
         {focus && focusFloor && (
           <RoomOverview
-            title={focusRoomRecord ? roomLabel(focusRoomRecord, data.roomNames).name : focus.label}
+            title={focus.label}
             area={floorRegions(focusFloor).get(focus.room)?.area}
             items={focusItems}
             light={(id) => lightSettings(lights.states[id], dark)}

@@ -1,12 +1,23 @@
 import { Vector3 } from 'three'
 import { wallThickness } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, Point } from '../layout/types'
+import { roomLabel } from '../layout/roomName'
+import type { Floor, HouseLayout, Point } from '../layout/types'
 
 /** A room with its own place in the menu: a fixed view of it, the rest of the house blurred. */
-export type RoomView = { id: string; label: string; floor: string; room: string }
+export type RoomView = { id: string; label: string; planName: string; floor: string; room: string }
 
-export const ROOM_VIEWS: RoomView[] = [{ id: 'living', label: 'Living room', floor: 'ground', room: 'g-living' }]
+/** Every room of every floor, under the name we gave it (or the plan's); names used twice get their plan number. */
+export const roomViews = (house: HouseLayout, names: Map<string, string>): RoomView[] => {
+  const views = house.floors.flatMap((floor) =>
+    floor.rooms.map((room) => {
+      const { name, number, planName } = roomLabel(room, names)
+      return { id: room.id, label: name, number, planName, floor: floor.id, room: room.id }
+    }),
+  )
+  const twice = (label: string) => views.filter((v) => v.label === label).length > 1
+  return views.map(({ number, ...v }) => (number && twice(v.label) ? { ...v, label: `${v.label} ${number}` } : v))
+}
 
 /** The room's floor area as a box, walls included around it. */
 export const roomBox = (floor: Floor, roomId: string, margin = 0.15): { min: Point; max: Point } | undefined => {

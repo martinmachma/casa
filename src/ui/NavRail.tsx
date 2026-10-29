@@ -1,5 +1,18 @@
-import { LayoutDashboard, PencilRuler, Settings, Sofa } from 'lucide-react'
+import {
+  Archive,
+  Bath,
+  BedDouble,
+  DoorOpen,
+  Footprints,
+  LayoutDashboard,
+  PencilRuler,
+  Settings,
+  Sofa,
+  Square,
+  Toilet,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import type { Floor } from '../layout/types'
 import type { RoomView } from '../rooms/roomViews'
 import { SettingsMenu } from './SettingsMenu'
 
@@ -9,6 +22,7 @@ export type Section = 'home' | 'planning'
 type NavRailProps = {
   section: Section
   onSection: (section: Section) => void
+  floors: Floor[]
   rooms: RoomView[]
   /** The room being looked at on its own, if any. */
   room: string | undefined
@@ -36,8 +50,20 @@ const RailItem = ({ icon, label, current, onClick, dialog }: RailItemProps) => (
   </button>
 )
 
+// A room's icon, from what the plan calls it.
+const ROOM_ICONS: [RegExp, ReactNode][] = [
+  [/living|kitchen|lounge/i, <Sofa size={20} />],
+  [/bed/i, <BedDouble size={20} />],
+  [/bath|shower/i, <Bath size={20} />],
+  [/wc|toilet/i, <Toilet size={20} />],
+  [/stair/i, <Footprints size={20} />],
+  [/hall|landing|entr/i, <DoorOpen size={20} />],
+  [/storage|boiler|utility/i, <Archive size={20} />],
+]
+const roomIcon = (planName: string) => ROOM_ICONS.find(([test]) => test.test(planName))?.[1] ?? <Square size={20} />
+
 /** The main menu: icons down the left edge that widen to show their names on hover. */
-export const NavRail = ({ section, onSection, rooms, room, onRoom }: NavRailProps) => {
+export const NavRail = ({ section, onSection, floors, rooms, room, onRoom }: NavRailProps) => {
   const [settingsOpen, setSettingsOpen] = useState(false)
   return (
     <nav className="rail" aria-label="Main">
@@ -57,23 +83,30 @@ export const NavRail = ({ section, onSection, rooms, room, onRoom }: NavRailProp
         current={section === 'planning'}
         onClick={() => onSection('planning')}
       />
-      {rooms.length > 0 && (
-        <div className="rail-group" role="group" aria-label="Rooms">
-          <div className="rail-group-title" aria-hidden>
-            <span className="rail-label">Rooms</span>
-          </div>
-          {rooms.map((r) => (
-            <RailItem
-              key={r.id}
-              icon={<Sofa size={20} />}
-              label={r.label}
-              current={room === r.id}
-              onClick={() => onRoom(r.id)}
-            />
-          ))}
-        </div>
-      )}
-      <span className="spacer" />
+      {/* Each floor's rooms in a group of their own; scrolls when they don't all fit. */}
+      <div className="rail-rooms">
+        {floors.map((floor) => {
+          const own = rooms.filter((r) => r.floor === floor.id)
+          return (
+            own.length > 0 && (
+              <div key={floor.id} className="rail-group" role="group" aria-label={floor.name}>
+                <div className="rail-group-title" aria-hidden>
+                  <span className="rail-label">{floor.name}</span>
+                </div>
+                {own.map((r) => (
+                  <RailItem
+                    key={r.id}
+                    icon={roomIcon(r.planName)}
+                    label={r.label}
+                    current={room === r.id}
+                    onClick={() => onRoom(r.id)}
+                  />
+                ))}
+              </div>
+            )
+          )
+        })}
+      </div>
       <RailItem icon={<Settings size={20} />} label="Settings" onClick={() => setSettingsOpen(true)} dialog />
       <SettingsMenu open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </nav>
