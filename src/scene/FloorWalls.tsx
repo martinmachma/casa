@@ -1,6 +1,7 @@
 import { type ThreeEvent } from '@react-three/fiber'
 import { useMemo } from 'react'
 import {
+  cornerCuts,
   isExteriorWall,
   sidePart,
   splitPieces,
@@ -112,10 +113,15 @@ const WallMesh = ({
 }: WallMeshProps) => {
   const thickness = wallThickness(wall, floor)
   const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
-  // Cut where other walls meet either side, so each box lies in one part of each side.
+  // Cut where other walls meet either side, so each box lies in one part of each side, and at corners, so the
+  // corner block is a piece of its own.
   const pieces = useMemo(
     () =>
-      splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [...joints.a, ...joints.b]),
+      splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [
+        ...joints.a,
+        ...joints.b,
+        ...cornerCuts(wall, floor),
+      ]),
     [wall, floor, thickness, joints],
   )
   const partOf = (p: WallPiece, side: WallSide) => sidePart(joints[side], (p.u0 + p.u1) / 2)

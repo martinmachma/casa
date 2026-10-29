@@ -215,6 +215,24 @@ export const wallJoints = (wall: Wall, floor: Floor): Record<WallSide, number[]>
   return joints
 }
 
+/**
+ * Where a wall meets another at a corner, the distance along it of the other wall's inner face: the block
+ * past it is the corner itself, shared by both walls, and is cut off as a piece of its own.
+ */
+export const cornerCuts = (wall: Wall, floor: Floor): number[] => {
+  const length = wallLength(wall)
+  const near = (p: Point, q: Point) => Math.hypot(p[0] - q[0], p[1] - q[1]) < JOINT_SLACK
+  return floor.walls.flatMap((other) => {
+    if (other.id === wall.id) return []
+    const half = wallThickness(other, floor) / 2
+    const ends = [other.from, other.to]
+    return [
+      ...(ends.some((e) => near(e, wall.from)) ? [half] : []),
+      ...(ends.some((e) => near(e, wall.to)) ? [length - half] : []),
+    ].filter((u) => u > 0 && u < length)
+  })
+}
+
 /** Which part of a side, counted from `from`, the point `u` along the wall falls in. */
 export const sidePart = (joints: number[], u: number): number => joints.filter((j) => j < u).length
 

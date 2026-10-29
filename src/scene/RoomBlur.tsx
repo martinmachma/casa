@@ -29,8 +29,6 @@ const MARGIN = 0.02
 // Something counts as in the room when this much of its footprint is.
 const SAMPLES = 5
 const MOSTLY = 0.6
-// A wall piece judged along the room's outline needs less: a corner piece runs on past the room into the next wall.
-const ALONG = 0.25
 const BLUR_PASSES = 3
 const TINT = new Color('#ebe7e1')
 
@@ -154,7 +152,7 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
         const z = box.min.z + ((j + 0.5) / SAMPLES) * (box.max.z - box.min.z)
         if (over(x, z)) inside++
       }
-    return inside >= SAMPLES * SAMPLES * ((inX ?? inZ) !== undefined ? ALONG : MOSTLY)
+    return inside >= SAMPLES * SAMPLES * MOSTLY
   }
 
   useFrame(({ gl, scene, camera }) => {

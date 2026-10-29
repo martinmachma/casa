@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blocksView, floorBounds, sidePart, validateLayout, wallJoints, wallOutside, wallPieces } from './geometry'
+import { blocksView, cornerCuts, floorBounds, sidePart, validateLayout, wallJoints, wallOutside, wallPieces } from './geometry'
 import { house } from './layout'
 import type { Floor, HouseLayout, Point, Wall } from './types'
 
@@ -139,5 +139,14 @@ describe('wallJoints', () => {
     expect(joints).toEqual({ a: [1.5], b: [] })
     expect(sidePart(joints.a, 1)).toBe(0)
     expect(sidePart(joints.a, 3)).toBe(1)
+  })
+})
+
+describe('cornerCuts', () => {
+  it("cuts a wall at the other wall's inner face where they meet at a corner", () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [4, 0] }
+    const corner: Wall = { id: 'c', from: [4, 0], to: [4, 3], thickness: 0.3 }
+    const floor = { wallThickness: 0.1, walls: [wall, corner] } as unknown as Floor
+    expect(cornerCuts(wall, floor)).toEqual([4 - 0.15])
   })
 })
