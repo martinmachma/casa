@@ -159,6 +159,14 @@ export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, v
   return Math.abs(nx * view[0] + nz * view[1]) / v > CUTAWAY_FACING
 }
 
+/** Whether the wall's line runs between the camera and a point it looks at, so it stands in the way. */
+export const separates = (wall: Wall, eye: Point, focus: Point): boolean => {
+  if (wallLength(wall) === 0) return false
+  const [nx, nz] = wallNormal(wall)
+  const side = (p: Point) => nx * (p[0] - wall.from[0]) + nz * (p[1] - wall.from[1])
+  return side(eye) * side(focus) < 0
+}
+
 /** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */
 export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
   pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))

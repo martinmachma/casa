@@ -569,7 +569,6 @@ const House = ({ backend, account }: HouseProps) => {
           }}
           focusRoom={focus?.room}
           pins={[
-            ...focusItems.map((i) => ({ key: `beacon:${i.id}`, at: i.at })),
             ...focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at })),
           ]}
           pinRefs={pinRefs}

@@ -1,7 +1,7 @@
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState, type RefObject } from 'react'
-import { Spherical, Vector3 } from 'three'
+import { Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Floor, Point } from '../layout/types'
 import { wallThickness } from '../layout/geometry'
@@ -12,7 +12,7 @@ import { STUB_HEIGHT } from './CutawayWall'
 const FLIGHT_SECONDS = 1.1
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-/** The room's camera: it glides in from where the camera was, then turns a little round the room but never away from it. */
+/** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
 export const RoomCamera = ({
   floor,
   roomId,
@@ -30,8 +30,6 @@ export const RoomCamera = ({
   const controls = useRef<OrbitControlsImpl>(null)
   const [flying, setFlying] = useState(!!from)
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
-  // Seen from the south, a little above: up to about 40° round either way, steeper or flatter, nearer or further.
-  const pitch = pose ? new Spherical().setFromVector3(pose.position.clone().sub(pose.target)).phi : 0.6
   useFrame(({ camera, invalidate }, delta) => {
     if (!pose || !flying) return
     t.current = Math.min(1, t.current + delta / FLIGHT_SECONDS)
@@ -53,12 +51,10 @@ export const RoomCamera = ({
           enabled={!flying}
           target={pose.target.toArray()}
           enablePan={false}
-          minAzimuthAngle={-0.7}
-          maxAzimuthAngle={0.7}
-          minPolarAngle={Math.max(0.15, pitch - 0.4)}
-          maxPolarAngle={Math.min(1.25, pitch + 0.35)}
-          minDistance={reach * 0.7}
-          maxDistance={reach * 1.25}
+          minPolarAngle={0.15}
+          maxPolarAngle={1.3}
+          minDistance={reach * 0.5}
+          maxDistance={reach * 1.5}
         />
       )}
     </>

@@ -11,7 +11,7 @@ import {
   wallThickness,
   type WallPiece,
 } from '../layout/geometry'
-import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
+import type { Floor, Point, Wall, WallFace, WallSide } from '../layout/types'
 import { wallPartColor } from '../data/types'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
@@ -41,6 +41,8 @@ type FloorWallsProps = {
   onToggleDoor: (id: string) => void
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
+  /** The middle of the room being looked at: only walls between it and the camera are cut. */
+  focus?: Point
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
@@ -53,6 +55,7 @@ export const FloorWalls = ({
   openDoors,
   onToggleDoor,
   cutaway,
+  focus,
   onPick,
 }: FloorWallsProps) => {
   return (
@@ -61,6 +64,7 @@ export const FloorWalls = ({
         <WallMesh
           key={wall.id}
           cutaway={cutaway}
+          focus={focus}
           wall={wall}
           floor={floor}
           colors={colors}
@@ -78,6 +82,7 @@ export const FloorWalls = ({
 
 type WallMeshProps = {
   cutaway: boolean
+  focus?: Point
   wall: Wall
   floor: Floor
   colors: Map<string, string>
@@ -94,6 +99,7 @@ const noRaycast = () => null
 
 const WallMesh = ({
   cutaway,
+  focus,
   wall,
   floor,
   colors,
@@ -160,6 +166,7 @@ const WallMesh = ({
       wall={wall}
       floor={floor}
       cutaway={cutaway}
+      focus={focus}
       full={
         <>
           {boxes(pieces)}

@@ -9,7 +9,8 @@ import { colliding } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
-import type { Floor, WallFace } from '../layout/types'
+import type { Floor, Point, WallFace } from '../layout/types'
+import { roomBox } from '../rooms/roomViews'
 import { InputInvalidator } from './InputInvalidator'
 import { Fade } from './Fade'
 import { DevicePlacer, Devices } from './Devices'
@@ -138,6 +139,11 @@ export const HouseScene = ({
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
   const furnished = (f: Floor) => !outside && (camera === 'walk' || f.id === floor.id)
   const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
+  // Looking at a room, the walls between the camera and its middle are always cut, and only those.
+  const focusPoint = useMemo((): Point | undefined => {
+    const box = focusRoom ? roomBox(floor, focusRoom) : undefined
+    return box && [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2]
+  }, [floor, focusRoom])
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
@@ -256,7 +262,7 @@ export const HouseScene = ({
             floor={floor}
             roomId={focusRoom}
             mask={blur}
-            cutaway={cutaway}
+            cutaway
             pins={pins}
             pinRefs={pinRefs ?? noPins}
           />
@@ -302,7 +308,8 @@ export const HouseScene = ({
               doors={!measure && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
-              cutaway={cutaway && camera === 'orbit' && !outside && f.id === floor.id}
+              cutaway={(cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside && f.id === floor.id}
+              focus={focusPoint}
               onPick={pickWall}
             />
           </Fade>

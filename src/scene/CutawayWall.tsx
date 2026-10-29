@@ -2,15 +2,17 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep } from './Fade'
-import { blocksView, wallAngle, wallHeight, wallOutside } from '../layout/geometry'
+import { blocksView, separates, wallAngle, wallHeight, wallOutside } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
 // Keep the visible outline pickable when the rest of the wall is cut away.
 export const STUB_HEIGHT = 0.3
 const forward = new Vector3()
 
-const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean) => {
+const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean, focus?: Point) => {
   if (!cutaway) return false
+  // Looking at one room, only walls between the camera and it go; the far ones stay up.
+  if (focus) return separates(wall, [camera.position.x, camera.position.z], focus)
   camera.getWorldDirection(forward)
   return blocksView(wall, outside, [camera.position.x, camera.position.z], [forward.x, forward.z])
 }
@@ -25,12 +27,15 @@ export const CutawayWall = ({
   wall,
   floor,
   cutaway,
+  focus,
   full,
   stub,
 }: {
   wall: Wall
   floor: Floor
   cutaway: boolean
+  /** The middle of the room being looked at, if any. */
+  focus?: Point
   full: ReactNode
   stub: ReactNode
 }) => {
@@ -45,9 +50,9 @@ export const CutawayWall = ({
   useEffect(() => {
     animate.current = true
     redraw()
-  }, [cutaway, redraw])
+  }, [cutaway, focus, redraw])
   useFrame(({ camera, invalidate }, delta) => {
-    const target = isCut(wall, outside, camera, cutaway) ? 1 : 0
+    const target = isCut(wall, outside, camera, cutaway, focus) ? 1 : 0
     const now = k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta)
     if (now !== target) invalidate()
     else animate.current = false
