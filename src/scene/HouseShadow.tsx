@@ -16,6 +16,10 @@ import { slabGeometry } from './prism'
 const SLAB = 0.3
 // The parapet's thickness, as the roof draws it.
 const PARAPET = 0.2
+// The slab's top sits this far under the floor, and the walls reach down into it. A shadow is cast by a solid's
+// far side, so with the slab's top level with the floor, a light on the floor below would light the floor and the
+// foot of every wall above.
+const SINK = 0.12
 // A closed door's leaf, so the lights indoors stop at it even when its wall is cut away from view.
 const LEAF = 0.04
 
@@ -43,14 +47,15 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: Readonly
     // Down to the walls below, like the visible slab, so no light slips between the floors.
     const below = floors[i - 1]
     const slab = slabGeometry(floor, below ? Math.max(SLAB, floor.elevation - below.elevation - below.height) : SLAB)
-    slab.translate(0, floor.elevation, 0)
+    slab.translate(0, floor.elevation - SINK, 0)
     parts.push(bare(slab))
     for (const wall of floor.walls) {
       const thickness = wallThickness(wall, floor)
       for (const p of wallPieces(wall, wallHeight(wall, floor), thickness / 2)) {
+        const y0 = p.y0 > 0 ? p.y0 : -SINK
         const piece = box(
-          [p.u1 - p.u0, p.y1 - p.y0, thickness],
-          [(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0],
+          [p.u1 - p.u0, p.y1 - y0, thickness],
+          [(p.u0 + p.u1) / 2, (y0 + p.y1) / 2, 0],
           -wallAngle(wall),
         )
         piece.translate(wall.from[0], floor.elevation, wall.from[1])
@@ -75,15 +80,17 @@ const houseSolid = (floors: Floor[], roof: Roof | undefined, openDoors: Readonly
     const d = max[1] - min[1]
     const cx = (min[0] + max[0]) / 2
     const cz = (min[1] + max[1]) / 2
-    parts.push(box([w, SLAB, d], [cx, y + SLAB / 2, cz]))
+    // Sunk under the roof's surface, and the parapet down into it, like the floors.
+    parts.push(box([w, SLAB, d], [cx, y + SLAB / 2 - SINK, cz]))
     const rim = roof?.parapet ?? 0
     if (rim > 0) {
-      const ry = y + SLAB + rim / 2
+      const ry = y + SLAB + (rim - SINK) / 2
+      const high = rim + SINK
       parts.push(
-        box([PARAPET, rim, d], [min[0] + PARAPET / 2, ry, cz]),
-        box([PARAPET, rim, d], [max[0] - PARAPET / 2, ry, cz]),
-        box([w - 2 * PARAPET, rim, PARAPET], [cx, ry, min[1] + PARAPET / 2]),
-        box([w - 2 * PARAPET, rim, PARAPET], [cx, ry, max[1] - PARAPET / 2]),
+        box([PARAPET, high, d], [min[0] + PARAPET / 2, ry, cz]),
+        box([PARAPET, high, d], [max[0] - PARAPET / 2, ry, cz]),
+        box([w - 2 * PARAPET, high, PARAPET], [cx, ry, min[1] + PARAPET / 2]),
+        box([w - 2 * PARAPET, high, PARAPET], [cx, ry, max[1] - PARAPET / 2]),
       )
     }
     const height = SLAB + rim

@@ -80,7 +80,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
         l.castShadow = near.has(l)
       }
     }
-    // Anything that casts a shadow having moved (a floor sliding in, a piece being placed) puts every shadow out
+    // Anything that casts a shadow having moved or changed shape (a floor sliding in, a piece being placed) puts every shadow out
     // of date. Matrices are brought up to date in the render after this, so one more frame is asked for to see
     // where things came to rest.
     let sum = 0
@@ -90,6 +90,9 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       const e = o.matrixWorld.elements
       i++
       sum += i * (e[12] + 2 * e[13] + 3 * e[14] + 5 * e[0] + 7 * e[2])
+      // A new shape in place of an old one (a door opened, a wall moved) changes the shadows too.
+      const geometry = (o as { geometry?: { id: number } }).geometry
+      if (geometry) sum += i * 11 * geometry.id
     })
     if (sum !== moved.current) {
       moved.current = sum
