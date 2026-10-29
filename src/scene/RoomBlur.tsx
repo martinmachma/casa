@@ -31,6 +31,7 @@ const SAMPLES = 5
 const MOSTLY = 0.6
 const BLUR_PASSES = 3
 const TINT = new Color('#ebe7e1')
+const DIM = 0.35
 
 const blurMaterial = () =>
   new ShaderMaterial({
@@ -63,7 +64,21 @@ const makeTools = () => {
   quad.frustumCulled = false
   const scene = new Scene()
   scene.add(quad)
-  return { a, b, quad, scene, camera: new OrthographicCamera() }
+  // A dark wash over the whole picture, to set a highlighted item off from everything else.
+  const dim = new Mesh(
+    new PlaneGeometry(2, 2),
+    new ShaderMaterial({
+      vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, ${DIM}); }`,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  )
+  dim.frustumCulled = false
+  const dimScene = new Scene()
+  dimScene.add(dim)
+  return { a, b, quad, scene, dim, dimScene, camera: new OrthographicCamera() }
 }
 
 /** Where a mesh was when it was last sorted, so only meshes that move are looked at again. */
@@ -77,7 +92,7 @@ const itemOf = (o: Object3D) => {
 /**
  * Draws the outside blurred, then the room's own meshes sharp over it: everything else is out of focus,
  * whatever stands where on screen. Each mesh is drawn once; shadows are only redrawn when something moves.
- * With an item highlighted, only it stays sharp, drawn over everything else.
+ * With an item highlighted, everything else is dimmed and it's drawn over it.
  */
 export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: string; highlight?: string }) => {
   const redraw = useThree((s) => s.invalidate)
@@ -106,6 +121,8 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
       t.b.dispose()
       t.quad.geometry.dispose()
       t.quad.material.dispose()
+      t.dim.geometry.dispose()
+      t.dim.material.dispose()
     },
     [],
   )
@@ -255,18 +272,15 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
       scene.background = background
       gl.autoClear = autoClear
     }
+    pass(a, null, 0, 0, 1)
+    // The room, sharp, over it.
+    over(ROOM_LAYER)
     if (highlight) {
-      // The room is drawn over the blurred outside and both blurred a little more, so the room still reads;
-      // then the item, sharp, over everything.
-      over(ROOM_LAYER)
-      pass(a, b, 0.5, 0)
-      pass(b, a, 0, 0.5)
-      pass(a, null, 0, 0, 1)
+      // Everything dimmed, then the item, sharp, over it.
+      gl.autoClear = false
+      gl.render(tools.dimScene, flat)
+      gl.autoClear = autoClear
       over(ITEM_LAYER)
-    } else {
-      pass(a, null, 0, 0, 1)
-      // The room, sharp, over it.
-      over(ROOM_LAYER)
     }
     camera.layers.set(0)
     gl.shadowMap.autoUpdate = autoUpdate
