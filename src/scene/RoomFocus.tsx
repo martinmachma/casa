@@ -21,15 +21,30 @@ export const RoomCamera = ({
 }) => {
   const size = useThree((s) => s.size)
   const pose = useMemo(() => roomPose(floor, roomId, size.width / size.height), [floor, roomId, size])
+  const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
+  // The pose the camera is flying to or resting at; another room picked flies over from wherever it is now.
+  const heading = useRef(pose)
   const look = useMemo(() => new Vector3(), [])
   const controls = useRef<OrbitControlsImpl>(null)
   const [flying, setFlying] = useState(!!from)
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
   useFrame(({ camera, invalidate }, delta) => {
-    if (!pose || !flying) return
-    t.current = Math.min(1, t.current + delta / FLIGHT_SECONDS)
+    if (!pose) return
+    if (heading.current !== pose) {
+      const wasFlying = t.current < 1
+      start.current = {
+        position: camera.position.clone(),
+        target: (wasFlying || !controls.current ? look : controls.current.target).clone(),
+      }
+      heading.current = pose
+      t.current = 0
+      setFlying(true)
+    }
+    if (t.current >= 1) return
+    // The first frame after the view sat still carries all the time it sat, which would skip the flight.
+    t.current = Math.min(1, t.current + Math.min(delta, 1 / 30) / FLIGHT_SECONDS)
     const s = start.current
     const k = ease(t.current)
     invalidate()
@@ -40,7 +55,7 @@ export const RoomCamera = ({
   })
   return (
     <>
-      <PerspectiveCamera makeDefault fov={45} near={0.1} far={200} position={pose?.position.toArray()} />
+      <PerspectiveCamera makeDefault fov={45} near={0.1} far={200} position={firstPosition} />
       {pose && (
         <OrbitControls
           ref={controls}
