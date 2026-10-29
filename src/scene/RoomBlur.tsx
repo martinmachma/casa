@@ -116,6 +116,9 @@ export const RoomBlur = ({ floor, roomId, highlight }: { floor: Floor; roomId: s
     const g = m.geometry
     if (!g.boundingBox) g.computeBoundingBox()
     box.copy(g.boundingBox!).applyMatrix4(m.matrixWorld).getCenter(mid)
+    // Stairs belong to the rooms they're open onto, on the floor they rise from and the one they reach.
+    const rooms = m.userData.rooms as string[] | undefined
+    if (rooms) return rooms.includes(roomId)
     if (mid.y < floor.elevation - 0.1 || mid.y > floor.elevation + floor.height + 0.1) return false
     // A wall's corner block belongs to both walls that meet there: it goes with any room it touches.
     if (m.userData.corner)

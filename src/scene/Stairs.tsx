@@ -38,6 +38,7 @@ export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
           castShadow
           receiveShadow
           raycast={noRaycast}
+          userData={{ rooms: floor.stairs?.rooms }}
         >
           <meshStandardMaterial color={STAIR_WOOD} roughness={0.7} />
         </mesh>

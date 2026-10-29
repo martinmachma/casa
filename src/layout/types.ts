@@ -66,6 +66,8 @@ export type Floor = {
 export type Stairs = {
   name: string
   steps: Point[][]
+  /** The rooms (on either floor) whose views the stairs belong to, as they're open onto them. */
+  rooms?: string[]
 }
 
 /** A small building in the garden: a box with a door on one side. */
