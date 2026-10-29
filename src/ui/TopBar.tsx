@@ -72,11 +72,13 @@ const AccountMenu = ({ account }: { account: Account }) => {
 
   return (
     <div className="menu-anchor" ref={ref}>
-      <button className="avatar" onClick={() => setOpen(!open)} aria-label="Account" aria-expanded={open}>
-        {account.label.charAt(0).toUpperCase()}
+      <button className="account" onClick={() => setOpen(!open)} aria-label="Account" aria-expanded={open}>
+        <span className="avatar">{(account.nickname ?? account.label).charAt(0).toUpperCase()}</span>
+        {account.nickname && <span className="account-name">{account.nickname}</span>}
       </button>
       {open && (
         <div className="menu" role="menu">
+          {account.nickname && <div className="menu-name">{account.nickname}</div>}
           <div className="menu-label">{account.label}</div>
           <button role="menuitem" onClick={account.signOut}>
             <LogOut size={16} />

@@ -5,7 +5,8 @@ import type { Backend } from '../data/types'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { signInWithGoogle, signOut, useAccess } from './useAccess'
 
-export type Account = { label: string; signOut: () => void }
+/** `label` is the email (or the demo); `nickname`, if set, is what's shown by the avatar. */
+export type Account = { label: string; nickname?: string; signOut: () => void }
 
 type AuthGateProps = {
   children: (backend: Backend, account: Account) => ReactNode
@@ -20,7 +21,8 @@ export const AuthGate = ({ children }: AuthGateProps) => {
   const [error, setError] = useState<string>()
 
   if (demo) return children(localBackend, { label: 'Demo (this browser only)', signOut: () => setDemo(false) })
-  if (access.status === 'allowed') return children(supabaseBackend, { label: access.email, signOut })
+  if (access.status === 'allowed')
+    return children(supabaseBackend, { label: access.email, nickname: access.nickname, signOut })
 
   const signIn = async () => {
     setError(undefined)

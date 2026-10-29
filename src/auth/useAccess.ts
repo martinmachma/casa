@@ -6,13 +6,15 @@ export type Access =
   | { status: 'loading' }
   | { status: 'signed-out' }
   | { status: 'denied'; email: string }
-  | { status: 'allowed'; email: string }
+  | { status: 'allowed'; email: string; nickname?: string }
   | { status: 'error'; message: string }
 
 /** The signed-in user and whether their email is on house.allowed_emails. */
 export const useAccess = (): Access => {
   const [session, setSession] = useState<Session | null | undefined>(isSupabaseConfigured ? undefined : null)
-  const [allowed, setAllowed] = useState<{ userId: string; ok: boolean } | { userId: string; error: string }>()
+  const [allowed, setAllowed] = useState<
+    { userId: string; ok: boolean; nickname?: string } | { userId: string; error: string }
+  >()
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -25,9 +27,11 @@ export const useAccess = (): Access => {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    supabase.rpc('is_allowed').then(({ data, error }) => {
+    Promise.all([supabase.rpc('is_allowed'), supabase.rpc('my_nickname')]).then(([{ data, error }, nickname]) => {
       if (cancelled) return
-      setAllowed(error ? { userId, error: error.message } : { userId, ok: data === true })
+      setAllowed(
+        error ? { userId, error: error.message } : { userId, ok: data === true, nickname: nickname.data ?? undefined },
+      )
     })
     return () => {
       cancelled = true
@@ -39,7 +43,7 @@ export const useAccess = (): Access => {
   const email = session.user.email ?? ''
   if (!allowed || allowed.userId !== session.user.id) return { status: 'loading' }
   if ('error' in allowed) return { status: 'error', message: allowed.error }
-  return allowed.ok ? { status: 'allowed', email } : { status: 'denied', email }
+  return allowed.ok ? { status: 'allowed', email, nickname: allowed.nickname } : { status: 'denied', email }
 }
 
 export const signInWithGoogle = () =>

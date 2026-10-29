@@ -587,7 +587,34 @@ p {
   color: var(--accent-hover);
   font-weight: 650;
   font-size: 13px;
+}
+
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
   cursor: pointer;
+}
+
+.account:has(.avatar:only-child) {
+  padding: 0;
+}
+
+.menu-name {
+  padding: 8px 10px 0;
+  font-weight: 600;
+}
+
+.menu-name + .menu-label {
+  padding-top: 2px;
 }
 
 .menu-anchor {
