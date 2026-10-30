@@ -479,11 +479,12 @@ p {
 .account {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px 0 0;
+  gap: 10px;
+  height: 44px;
+  padding: 0 6px 0 12px;
   border: 0;
-  border-radius: 999px;
-  background: none;
+  border-radius: var(--radius);
+  background: transparent;
   color: var(--ink);
   font: inherit;
   font-size: 14px;
@@ -491,8 +492,12 @@ p {
   cursor: pointer;
 }
 
+.account:hover {
+  background: var(--surface-3);
+}
+
 .account:has(.avatar:only-child) {
-  padding: 0;
+  padding: 0 6px;
 }
 
 .menu-name {
@@ -2195,8 +2200,8 @@ input[type='range'].kelvin::-moz-range-thumb {
 
 .account > .todo-count {
   position: absolute;
-  top: -2px;
-  left: 20px;
+  top: 4px;
+  right: 2px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

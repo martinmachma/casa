@@ -52,13 +52,13 @@ const AccountMenu = ({ account, onTodos, openTodos }: AccountMenuProps) => {
   return (
     <div className="menu-anchor" ref={ref}>
       <button className="account" onClick={() => setOpen(!open)} aria-label="Account" aria-expanded={open}>
+        {account.nickname && <span className="account-name">{account.nickname}</span>}
         <span className="avatar">{(account.nickname ?? account.label).charAt(0).toUpperCase()}</span>
         {openTodos > 0 && (
           <span className="todo-count" aria-label={`${openTodos} open wishes & bugs`}>
             {openTodos}
           </span>
         )}
-        {account.nickname && <span className="account-name">{account.nickname}</span>}
       </button>
       {open && (
         <div className="menu" role="menu">
