@@ -2635,13 +2635,15 @@ input[type='range'].kelvin::-moz-range-thumb {
 
 .bottom-tools {
   position: absolute;
-  left: 50%;
+  /* Centred in the part of the view the right panel leaves visible. */
+  left: calc(50% - var(--right-inset, 0px) / 2);
   translate: -50% 0;
+  transition: left 200ms ease;
   bottom: max(14px, env(safe-area-inset-bottom));
   display: flex;
   justify-content: center;
   gap: 8px;
-  width: min(680px, calc(100% - 32px));
+  width: min(680px, calc(100% - 32px - var(--right-inset, 0px)));
   pointer-events: none;
   z-index: 5;
 }
