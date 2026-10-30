@@ -218,6 +218,10 @@ export const AmbientOcclusion = () => {
           normal.side = m.side
           normal.visible = m.visible && !m.userData.section
           normal.clippingPlanes = m.clippingPlanes
+          // The normal/depth pass must resolve flush wall sides and end caps like the visible pass.
+          normal.polygonOffset = m.polygonOffset
+          normal.polygonOffsetFactor = m.polygonOffsetFactor
+          normal.polygonOffsetUnits = m.polygonOffsetUnits
 
           return normal
         })

@@ -190,8 +190,23 @@ const WallMesh = ({
         onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
       >
         <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-        <meshStandardMaterial roughness={1} attach="material-0" color={endColor(p.u1)} />
-        <meshStandardMaterial roughness={1} attach="material-1" color={endColor(p.u0)} />
+        {/* At a flush passage return, a wall side can share the end cap's plane. Keep the side in front. */}
+        <meshStandardMaterial
+          roughness={1}
+          attach="material-0"
+          color={endColor(p.u1)}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+        />
+        <meshStandardMaterial
+          roughness={1}
+          attach="material-1"
+          color={endColor(p.u0)}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+        />
         <meshStandardMaterial
           attach="material-2"
           color={WALL_CAP}
