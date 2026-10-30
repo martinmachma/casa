@@ -1293,6 +1293,7 @@ html[data-room-drag] * {
   border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
   pointer-events: none;
   rotate: -1.5deg;
   scale: 1.04;

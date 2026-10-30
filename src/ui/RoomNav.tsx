@@ -79,22 +79,47 @@ export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
     return () => delete document.documentElement.dataset.roomDrag
   }, [drag])
 
-  // The others slide into their new places as the dragged room moves past them.
-  const places = useRef(new Map<string, { x: number; y: number }>())
+  // The rooms slide into their new places as the dragged one moves past them, and a room turning from a row into a
+  // small link (or back) grows or shrinks into its new size; so does the one in hand.
+  type Box = { x: number; y: number; w: number; h: number }
+  const places = useRef(new Map<string, Box>())
+  const ghostSize = useRef<{ w: number; h: number }>(undefined)
   useLayoutEffect(() => {
-    const next = new Map<string, { x: number; y: number }>()
+    const next = new Map<string, Box>()
     navRef.current?.querySelectorAll<HTMLElement>('[data-room]').forEach((el) => {
       const id = el.dataset.room!
-      const at = { x: el.offsetLeft, y: el.offsetTop }
+      const at = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }
       const was = places.current.get(id)
-      if (drag && was && id !== drag.id && (was.x !== at.x || was.y !== at.y))
-        el.animate([{ transform: `translate(${was.x - at.x}px, ${was.y - at.y}px)` }, { transform: 'none' }], {
-          duration: 160,
-          easing: 'ease-out',
-        })
+      if (drag && was && (was.x !== at.x || was.y !== at.y || was.w !== at.w || was.h !== at.h))
+        el.animate(
+          [
+            {
+              transformOrigin: 'top left',
+              transform: `translate(${was.x - at.x}px, ${was.y - at.y}px) scale(${was.w / at.w}, ${was.h / at.h})`,
+            },
+            { transformOrigin: 'top left', transform: 'none' },
+          ],
+          { duration: 180, easing: 'ease-out' },
+        )
       next.set(id, at)
     })
     places.current = next
+
+    const ghost = ghostRef.current
+    const size = ghost ? { w: ghost.offsetWidth, h: ghost.offsetHeight } : undefined
+    const had = ghostSize.current
+    if (ghost && size && had && (had.w !== size.w || had.h !== size.h))
+      ghost.animate(
+        [
+          { width: `${had.w}px`, height: `${had.h}px` },
+          { width: `${size.w}px`, height: `${size.h}px` },
+        ],
+        {
+          duration: 180,
+          easing: 'ease-out',
+        },
+      )
+    ghostSize.current = size
   })
 
   /**
