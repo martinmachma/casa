@@ -305,7 +305,7 @@
       "id": "upper",
       "name": "First floor",
       "elevation": 3.01,
-      "height": 2.65,
+      "height": 2.545,
       "wallThickness": 0.1,
       "rooms": [
         {
