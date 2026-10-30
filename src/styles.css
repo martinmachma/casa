@@ -1082,9 +1082,9 @@ p {
   position: absolute;
   top: 14px;
   left: 14px;
-  bottom: 150px;
+  bottom: max(14px, env(safe-area-inset-bottom));
   z-index: 6;
-  width: 248px;
+  max-width: calc(100% - 28px);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1092,8 +1092,17 @@ p {
   pointer-events: none;
 }
 
-.dock > * {
+.dock > *,
+.dock-bars > * {
   pointer-events: auto;
+}
+
+/* The floor and view switches side by side, wrapping when there's no room. */
+.dock-bars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
 }
 
 .dock-bar {
@@ -1126,6 +1135,7 @@ p {
   width: 212px;
   max-width: 100%;
   min-height: 0;
+  margin-top: auto;
   box-sizing: border-box;
   padding: 10px 6px;
   overflow-y: auto;
@@ -2125,7 +2135,8 @@ input[type='range'].kelvin::-moz-range-thumb {
   .dock {
     top: 10px;
     left: 10px;
-    width: min(240px, calc(100% - 120px));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    max-width: calc(100% - 120px);
   }
 
   .version-button {
