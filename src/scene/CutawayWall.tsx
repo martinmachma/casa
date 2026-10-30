@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep } from './Fade'
-import { blocksView, separates, wallAngle, wallHeight, wallOutside } from '../layout/geometry'
+import { blocksView, separates, wallAngle, wallHeight, wallOutside, wallOwner } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
 // Keep the visible outline pickable when the rest of the wall is cut away.
@@ -38,8 +38,10 @@ const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: 
 }
 
 /** A wall built against another (a shaft, a chimney breast) is cut or left standing with it. */
-const decidingWall = (wall: Wall, floor: Floor) =>
-  (wall.against && floor.walls.find((w) => w.id === wall.against)) || wall
+const decidingWall = (wall: Wall, floor: Floor) => {
+  const owner = wallOwner(wall, floor)
+  return (owner.against && floor.walls.find((w) => w.id === owner.against)) || owner
+}
 
 /** Whether a wall is cut down now, seen by `camera` (its outside worked out once by the caller). */
 export const wallCut = (
@@ -110,7 +112,7 @@ export const CutawayWall = ({
     <group
       position={[wall.from[0], floor.elevation, wall.from[1]]}
       rotation={[0, -wallAngle(wall), 0]}
-      userData={{ wallId: wall.id }}
+      userData={{ wallId: wallOwner(wall, floor).id }}
     >
       <group ref={fullRef}>{full}</group>
       <group ref={stubRef} visible={false}>

@@ -32,6 +32,8 @@ export type Wall = {
   height?: number
   /** The wall it's built against (a shaft, a chimney breast), so it's cut away with that wall. */
   against?: string
+  /** A parallel structural projection owned by this wall for picking, painting and cutaway. Its footprint stays here. */
+  partOf?: string
   /** Rooms whose views leave it out, though it stands at their edge. */
   notIn?: string[]
   openings?: Opening[]

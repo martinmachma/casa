@@ -13,6 +13,20 @@ export const wallAngle = (wall: Wall): number => Math.atan2(wall.to[1] - wall.fr
 export const wallThickness = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): number =>
   wall.thickness ?? floor.wallThickness
 
+/** The selectable/paintable wall a structural projection belongs to. Physical footprints remain separate. */
+export const wallOwner = (wall: Wall, floor: Pick<Floor, 'walls'>): Wall =>
+  (wall.partOf && floor.walls.find((w) => w.id === wall.partOf)) || wall
+
+/** Distance along the owner's axis where this member starts (members run parallel in the same direction). */
+export const wallOwnerOffset = (wall: Wall, owner: Wall): number => {
+  const length = wallLength(owner)
+  return (
+    ((wall.from[0] - owner.from[0]) * (owner.to[0] - owner.from[0]) +
+      (wall.from[1] - owner.from[1]) * (owner.to[1] - owner.from[1])) /
+    length
+  )
+}
+
 /** How tall a wall stands: its own height, else the floor's. */
 export const wallHeight = (wall: Wall, floor: Pick<Floor, 'height'>): number => wall.height ?? floor.height
 
@@ -61,6 +75,13 @@ export const validateLayout = (layout: HouseLayout): void => {
     for (const wall of floor.walls) {
       claim(wall.id, 'wall')
       const length = wallLength(wall)
+      if (wall.partOf) {
+        const owner = wallOwner(wall, floor)
+        if (owner === wall || owner.partOf) throw new Error(`Bad owner for wall "${wall.id}"`)
+        const angle = wallAngle(wall) - wallAngle(owner)
+        if (Math.abs(Math.sin(angle)) > 1e-6 || Math.cos(angle) < 0)
+          throw new Error(`Wall "${wall.id}" must run in its owner's direction`)
+      }
       if (length === 0) throw new Error(`Wall "${wall.id}" has zero length`)
       const openings = [...(wall.openings ?? [])].sort((p, q) => p.offset - q.offset)
       let previousEnd = 0
@@ -126,7 +147,8 @@ const wallNormal = (wall: Wall): Point => {
 /** For an outer wall, the unit normal pointing out of the house; undefined for walls with rooms on both sides. */
 export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
   if (wallLength(wall) === 0) return undefined
-  const backing = wall.against && floor.walls.find((w) => w.id === wall.against)
+  const parent = wall.partOf ?? wall.against
+  const backing = parent && floor.walls.find((w) => w.id === parent)
   if (backing) return wallOutside(backing, floor)
   const { min, max } = floorBounds(floor)
   const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]

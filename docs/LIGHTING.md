@@ -39,6 +39,32 @@ emission rule, with screen-space AO disabled for transparent surfaces. The landi
 Chrome with all floors active after a clean reload. The suite now has 220 passing tests, including emitter
 ordering/visibility checks; production build and scoped lint pass (existing HouseLights refresh warning only).
 
+## Cutaway surfaces and shaft ownership follow-up
+
+The dark blocks on the landing's shortened walls were the physical shadow map being evaluated on an
+artificial section. The complete house deliberately remains in that map: removing it would let sunlight
+through the cut walls. The stub's new horizontal face lies inside that complete volume, and the outer
+faces beside doors and overlapping wall ends saw discontinuous occlusion. Disabling shadow reception on
+only the stubs confirmed the cause; disabling AO did not remove the rectangular differences.
+
+Cutaway wall remnants and clipped door/frame remnants now use unlit section materials with the existing
+surface colours. Exposed wall tops use the existing cap colour in the same way. These artificial surfaces
+also stay out of the AO depth/normal pass. Full wall faces, floors, furniture and the physical house shadow
+proxy retain their lighting, occlusion and shadows; no ambient intensity, bias, exposure or sun calculation
+was changed. The section is intentionally independent of time of day, rather than a falsely lit piece of
+the interior. This also saves lighting/shadow work on those displayed outlines.
+
+`u-shaft-s15` is now a structural member of `u-middle`: picking, painting, debug identity, room sorting and
+cutaway use its parent wall. The measured projecting footprint remains in the scene, snapping/collision
+geometry and physical shadow proxy. Parent paint uses the parent's along-wall coordinates; legacy member
+paint remains a fallback. Other wall identities and stored paint-part numbering are retained.
+
+Browser comparisons covered the focused landing and several orbit angles on the furnished upper floor,
+cut/uncut transitions, night, studio light and simulated 13:05 sunlight.
+222 tests pass, including a ray test through the merged wall's stepped physical profile and ownership/paint
+coordinates, plus invalid compound-wall definitions. The production build passes. Scoped lint retains the
+existing renderer-mutation errors in OpeningFills' clipping hook and existing CutawayWall refresh warnings.
+
 ## Validation
 
 - Geometry tests cover both faces of an upper slab, the foot of a wall, open windows, roof/coping height, full transform and geometry invalidation, and shadow-camera coverage at low/high solar altitudes while preserving sun direction.

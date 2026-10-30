@@ -9,6 +9,8 @@ import {
   wallHeight,
   wallJoints,
   wallLength,
+  wallOwner,
+  wallOwnerOffset,
   wallPieces,
   wallThickness,
   type WallPiece,
@@ -70,7 +72,9 @@ export const FloorWalls = ({
           wall={wall}
           floor={floor}
           colors={colors}
-          selected={selection?.kind === 'wall' && selection.wallId === wall.id ? selection : undefined}
+          selected={
+            selection?.kind === 'wall' && selection.wallId === wallOwner(wall, floor).id ? selection : undefined
+          }
           interactive={interactive}
           doors={doors}
           openDoors={openDoors}
@@ -112,24 +116,33 @@ const WallMesh = ({
   onToggleDoor,
   onPick,
 }: WallMeshProps) => {
+  const owner = wallOwner(wall, floor)
+  const offset = wallOwnerOffset(wall, owner)
   const thickness = wallThickness(wall, floor)
-  const joints = useMemo(() => wallJoints(wall, floor), [wall, floor])
+  const ownJoints = useMemo(() => wallJoints(wall, floor), [wall, floor])
+  const joints = useMemo(() => {
+    const joints = wallJoints(owner, floor)
+    return { a: joints.a.map((u) => u - offset), b: joints.b.map((u) => u - offset) }
+  }, [owner, floor, offset])
   // Cut where other walls meet either side, so each box lies in one part of each side, and at corners, so the
   // corner block is a piece of its own.
   const corners = useMemo(() => cornerCuts(wall, floor), [wall, floor])
   const pieces = useMemo(
     () =>
       splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [
-        ...joints.a,
-        ...joints.b,
-        ...corners.map((c) => c.at),
+        ...new Set([...joints.a, ...joints.b, ...ownJoints.a, ...ownJoints.b, ...corners.map((c) => c.at)]),
       ]),
-    [wall, floor, thickness, joints],
+    [wall, floor, thickness, joints, ownJoints, corners],
   )
   const partOf = (p: WallPiece, side: WallSide) => sidePart(joints[side], (p.u0 + p.u1) / 2)
   const colorOf = (p: WallPiece, side: WallSide) =>
-    wallPartColor(colors, wall.id, side, partOf(p, side)) ?? DEFAULT_WALL
-  const endColor = (u: number) => wallPartColor(colors, wall.id, 'end', endPart(u)) ?? WALL_CAP
+    wallPartColor(colors, owner.id, side, partOf(p, side)) ??
+    wallPartColor(colors, wall.id, side, sidePart(ownJoints[side], (p.u0 + p.u1) / 2)) ??
+    DEFAULT_WALL
+  const endColor = (u: number) =>
+    wallPartColor(colors, owner.id, 'end', endPart(u + offset)) ??
+    wallPartColor(colors, wall.id, 'end', endPart(u)) ??
+    WALL_CAP
   const inSelection = (list: WallPiece[]) => {
     const side = selected?.side
     if (!side || side === 'end') return []
@@ -143,9 +156,9 @@ const WallMesh = ({
     const n = e.face?.normal
     if (!n) return
     e.stopPropagation()
-    if (n.z > 0.5) onPick(wall.id, 'a', partOf(p, 'a'))
-    else if (n.z < -0.5) onPick(wall.id, 'b', partOf(p, 'b'))
-    else if (Math.abs(n.x) > 0.5) onPick(wall.id, 'end', endPart(n.x > 0 ? p.u1 : p.u0))
+    if (n.z > 0.5) onPick(owner.id, 'a', partOf(p, 'a'))
+    else if (n.z < -0.5) onPick(owner.id, 'b', partOf(p, 'b'))
+    else if (Math.abs(n.x) > 0.5) onPick(owner.id, 'end', endPart((n.x > 0 ? p.u1 : p.u0) + offset))
   }
 
   // The block at a corner, shared with the wall met there: a room view keeps it with either wall.
@@ -162,27 +175,31 @@ const WallMesh = ({
   const own = pieces.filter((p) => !handedOver(p))
   const given = [...new Set(pieces.map(handedOver).filter((id) => id !== undefined))]
 
-  const boxes = (list: WallPiece[]) =>
-    list.map((p, i) => (
+  // A cutaway stub is an editing outline, not a physical surface inside the full shadow caster.
+  // Draw its own colours flat; the hidden complete wall still blocks light in the actual room.
+  const boxes = (list: WallPiece[], section = false) => {
+    const FaceMaterial = section ? 'meshBasicMaterial' : 'meshStandardMaterial'
+    return list.map((p, i) => (
       <mesh
         key={i}
         position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
-        userData={isCorner(p) ? { corner: true } : undefined}
-        receiveShadow
+        userData={{ corner: isCorner(p), section }}
+        receiveShadow={!section}
         raycast={interactive ? raycastIfShown : noRaycast}
         onClick={interactive ? handleClick(p) : undefined}
         onPointerOver={interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined}
         onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
       >
         <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-        <meshStandardMaterial attach="material-0" color={endColor(p.u1)} />
-        <meshStandardMaterial attach="material-1" color={endColor(p.u0)} />
-        <meshStandardMaterial attach="material-2" color={WALL_CAP} />
-        <meshStandardMaterial attach="material-3" color={WALL_CAP} />
-        <meshStandardMaterial attach="material-4" color={colorOf(p, 'a')} />
-        <meshStandardMaterial attach="material-5" color={colorOf(p, 'b')} />
+        <FaceMaterial attach="material-0" color={endColor(p.u1)} />
+        <FaceMaterial attach="material-1" color={endColor(p.u0)} />
+        <meshBasicMaterial attach="material-2" color={WALL_CAP} userData={{ section: true }} />
+        <FaceMaterial attach="material-3" color={WALL_CAP} />
+        <FaceMaterial attach="material-4" color={colorOf(p, 'a')} />
+        <FaceMaterial attach="material-5" color={colorOf(p, 'b')} />
       </mesh>
     ))
+  }
 
   const ownStub = stubPieces(own, STUB_HEIGHT)
   const opening = (top?: number) =>
@@ -211,17 +228,21 @@ const WallMesh = ({
             {selected && selected.side !== 'end' && (
               <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
             )}
-            {selected?.side === 'end' && <EndHighlight pieces={pieces} part={selected.part} thickness={thickness} />}
+            {selected?.side === 'end' && (
+              <EndHighlight pieces={pieces} part={selected.part} offset={offset} thickness={thickness} />
+            )}
             {opening()}
           </>
         }
         stub={
           <>
-            {boxes(ownStub)}
+            {boxes(ownStub, true)}
             {selected && selected.side !== 'end' && (
               <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
             )}
-            {selected?.side === 'end' && <EndHighlight pieces={stub} part={selected.part} thickness={thickness} />}
+            {selected?.side === 'end' && (
+              <EndHighlight pieces={stub} part={selected.part} offset={offset} thickness={thickness} />
+            )}
             {opening(STUB_HEIGHT)}
           </>
         }
@@ -237,7 +258,7 @@ const WallMesh = ({
             focus={focus}
             decider={floor.walls.find((w) => w.id === id)}
             full={boxes(corner)}
-            stub={boxes(stubPieces(corner, STUB_HEIGHT))}
+            stub={boxes(stubPieces(corner, STUB_HEIGHT), true)}
           />
         )
       })}
@@ -265,11 +286,21 @@ const SideHighlight = ({ pieces, side, thickness }: { pieces: WallPiece[]; side:
 }
 
 /** A picked wall end washed like a side: every piece's end face at that point along the wall. */
-const EndHighlight = ({ pieces, part, thickness }: { pieces: WallPiece[]; part: number; thickness: number }) => (
+const EndHighlight = ({
+  pieces,
+  part,
+  thickness,
+  offset = 0,
+}: {
+  pieces: WallPiece[]
+  part: number
+  thickness: number
+  offset?: number
+}) => (
   <>
     {pieces.flatMap((p, i) =>
       ([p.u0, p.u1] as const)
-        .filter((u) => endPart(u) === part)
+        .filter((u) => endPart(u + offset) === part)
         .map((u) => (
           <mesh
             key={`${i}:${u}`}

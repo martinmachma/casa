@@ -191,7 +191,12 @@ export const AmbientOcclusion = () => {
             m.needsUpdate = true
           }
         }
-        if (o.userData.shadowOnly || materials.some((m) => !m.colorWrite || !m.depthWrite || m.transparent)) {
+        if (
+          o.userData.shadowOnly ||
+          o.userData.section ||
+          materials.some((m) => !m.colorWrite || !m.depthWrite || m.transparent) ||
+          materials.every((m) => m.userData.section)
+        ) {
           hidden.push(o)
           return
         }
@@ -205,7 +210,7 @@ export const AmbientOcclusion = () => {
           }
           if (normal.side !== m.side || normal.clippingPlanes !== m.clippingPlanes) normal.needsUpdate = true
           normal.side = m.side
-          normal.visible = m.visible
+          normal.visible = m.visible && !m.userData.section
           normal.clippingPlanes = m.clippingPlanes
 
           return normal

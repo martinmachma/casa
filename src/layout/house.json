@@ -498,7 +498,7 @@
         },
         {
           "id": "u-shaft-s15",
-          "against": "u-middle",
+          "partOf": "u-middle",
           "from": [2.1515, 5.441],
           "to": [2.6015, 5.441],
           "thickness": 0.15

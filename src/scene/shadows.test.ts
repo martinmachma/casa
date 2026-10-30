@@ -14,6 +14,8 @@ import {
 import { casterSignature, fitSunShadow } from './shadows'
 import { houseSolid } from './houseGeometry'
 import type { Floor } from '../layout/types'
+import { house } from '../layout/layout'
+import { sidePart, wallJoints, wallOwner, wallOwnerOffset } from '../layout/geometry'
 
 const floor: Floor = {
   id: 'ground',
@@ -36,6 +38,26 @@ const floor: Floor = {
 }
 
 describe('physical shadow geometry', () => {
+  it('merges the shaft into its parent wall without losing its depth or changing paint coordinates', () => {
+    const upper = house.floors[1]
+    const shaft = upper.walls.find((w) => w.id === 'u-shaft-s15')!
+    const owner = wallOwner(shaft, upper)
+    expect(owner.id).toBe('u-middle')
+    const offset = wallOwnerOffset(shaft, owner)
+    const along = offset + (shaft.to[0] - shaft.from[0]) / 2
+    expect(along).toBeCloseTo(2.2635)
+    expect(sidePart(wallJoints(owner, upper).a, along)).toBe(1)
+    const geometry = houseSolid(house.floors, house.roof, new Set(), house.outdoor?.level)
+    const material = new MeshBasicMaterial({ side: FrontSide })
+    const mesh = new Mesh(geometry, material)
+    const southFace = (x: number) =>
+      new Raycaster(new Vector3(x, upper.elevation + 1, 6), new Vector3(0, 0, -1)).intersectObject(mesh)[0].point.z
+    expect(southFace(2.3)).toBeCloseTo(5.516)
+    expect(southFace(1)).toBeCloseTo(5.366)
+    geometry.dispose()
+    material.dispose()
+  })
+
   it('uses the visible slab surfaces and blocks light at the wall foot while leaving windows open', () => {
     const geometry = houseSolid([floor, { ...floor, id: 'upper', elevation: 2.9 }], { parapet: 0.4 }, new Set())
     const material = new MeshBasicMaterial({ side: FrontSide })

@@ -73,6 +73,13 @@ describe('validateLayout', () => {
     }
   })
 
+  it('rejects dangling compound members and members turned away from their parent', () => {
+    const layout = layoutWith({ ...wall([]), partOf: 'missing' })
+    expect(() => validateLayout(layout)).toThrow(/owner/)
+    layout.floors[0].walls.push({ id: 'missing', from: [1, 0], to: [1, 2] })
+    expect(() => validateLayout(layout)).toThrow(/direction/)
+  })
+
   it('rejects an opening past the wall end', () => {
     expect(() => validateLayout(layoutWith(wall([{ type: 'door', offset: 4.5, width: 1, height: 2 }])))).toThrow(
       /past the wall end/,
@@ -164,6 +171,11 @@ describe('cornerCuts', () => {
 describe('splitPieces', () => {
   it('cuts in order along the wall, whatever order the cuts come in', () => {
     const pieces = splitPieces([{ u0: 0, u1: 6, y0: 0, y1: 2.6 }], [2, 0.1, 5.9])
-    expect(pieces.map((p) => [p.u0, p.u1])).toEqual([[0, 0.1], [0.1, 2], [2, 5.9], [5.9, 6]])
+    expect(pieces.map((p) => [p.u0, p.u1])).toEqual([
+      [0, 0.1],
+      [0.1, 2],
+      [2, 5.9],
+      [5.9, 6],
+    ])
   })
 })

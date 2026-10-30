@@ -19,6 +19,45 @@ const CLICK_SLOP_PX = 5
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
+/** Cutaway remnants describe a section; physical light/shadow calculations apply only to the complete fill. */
+const FillMaterial = ({
+  section,
+  color,
+  transparent,
+  opacity,
+  depthWrite,
+  roughness,
+  metalness,
+}: {
+  section?: boolean
+  color: string
+  transparent?: boolean
+  opacity?: number
+  depthWrite?: boolean
+  roughness?: number
+  metalness?: number
+}) =>
+  section ? (
+    <meshBasicMaterial
+      shadowSide={FrontSide}
+      color={color}
+      transparent={transparent}
+      opacity={opacity}
+      depthWrite={depthWrite}
+      userData={{ section: true }}
+    />
+  ) : (
+    <meshStandardMaterial
+      shadowSide={FrontSide}
+      color={color}
+      transparent={transparent}
+      opacity={opacity}
+      depthWrite={depthWrite}
+      roughness={roughness}
+      metalness={metalness}
+    />
+  )
+
 type Box = { at: [number, number, number]; size: [number, number, number]; color: string }
 
 /** A frame around the opening: two jambs and a head, plus a sill bar for windows. */
@@ -33,11 +72,11 @@ const frame = (u0: number, u1: number, y0: number, y1: number, color: string, bo
   return boxes
 }
 
-const Boxes = ({ boxes }: { boxes: Box[] }) =>
+const Boxes = ({ boxes, section }: { boxes: Box[]; section?: boolean }) =>
   boxes.map((b, k) => (
     <mesh key={k} position={b.at} castShadow raycast={noRaycast}>
       <boxGeometry args={b.size} />
-      <meshStandardMaterial shadowSide={FrontSide} color={b.color} roughness={0.6} />
+      <FillMaterial section={section} color={b.color} roughness={0.6} />
     </mesh>
   ))
 
@@ -62,13 +101,14 @@ export const OpeningFills = ({
   /** In a wall cut down to its stub: only what's below this height is drawn. */
   top?: number
 }) => {
+  const section = top !== undefined
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME
   const fills = (
     <group>
       {openings.map((o, i) => {
         if (o.type === 'passage') return null
         const id = openingId(wallId, i)
-        const door = { open: openDoors.has(id), onToggle: () => onToggleDoor(id), clickable }
+        const door = { section, open: openDoors.has(id), onToggle: () => onToggleDoor(id), clickable }
         const u0 = o.offset
         const u1 = o.offset + o.width
         const y0 = openingSill(o)
@@ -77,8 +117,8 @@ export const OpeningFills = ({
         const inner = { u0: u0 + FRAME, u1: u1 - FRAME, y0: window ? y0 + FRAME : y0, y1: y1 - FRAME }
         return (
           <group key={id}>
-            <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} />
-            {o.type === 'window' && <Glass inner={inner} />}
+            <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} section={section} />
+            {o.type === 'window' && <Glass inner={inner} section={section} />}
             {o.type === 'door' && (
               <Door
                 inner={inner}
@@ -118,22 +158,15 @@ const ClipAbove = ({ top, children }: { top: number; children: ReactNode }) => {
 
 type Inner = { u0: number; u1: number; y0: number; y1: number }
 
-const Glass = ({ inner, z = 0 }: { inner: Inner; z?: number }) => (
+const Glass = ({ inner, z = 0, section }: { inner: Inner; z?: number; section?: boolean }) => (
   <mesh position={[(inner.u0 + inner.u1) / 2, (inner.y0 + inner.y1) / 2, z]} raycast={noRaycast}>
     <boxGeometry args={[inner.u1 - inner.u0, inner.y1 - inner.y0, 0.012]} />
-    <meshStandardMaterial
-      shadowSide={FrontSide}
-      color={GLASS}
-      transparent
-      opacity={0.28}
-      roughness={0.05}
-      depthWrite={false}
-    />
+    <FillMaterial section={section} color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
   </mesh>
 )
 
 /** Open or closed on a tap, and how far it has got (0 closed to 1 open), eased each frame. */
-type DoorState = { open: boolean; onToggle: () => void; clickable: boolean }
+type DoorState = { open: boolean; onToggle: () => void; clickable: boolean; section?: boolean }
 
 const useToggle = ({ open, onToggle, clickable }: DoorState, apply: (group: Group, amount: number) => void) => {
   const group = useRef<Group>(null)
@@ -167,6 +200,7 @@ const Door = ({
   color,
   atEnd,
   intoB,
+  section,
   ...state
 }: { inner: Inner; color: string; atEnd: boolean; intoB: boolean } & DoorState) => {
   // The leaf reaches from the hinge along the wall; this turns it towards the side it opens into.
@@ -176,21 +210,21 @@ const Door = ({
   const h = inner.y1 - inner.y0
   return (
     <group ref={group} position={[atEnd ? inner.u1 : inner.u0, 0, 0]}>
-      <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow {...handlers}>
+      <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow={!section} {...handlers}>
         <boxGeometry args={[Math.abs(w), h, LEAF]} />
-        <meshStandardMaterial shadowSide={FrontSide} color={color} roughness={0.7} />
+        <FillMaterial section={section} color={color} roughness={0.7} />
       </mesh>
       {/* A handle on each face, near the edge away from the hinge. */}
       <mesh position={[w - Math.sign(w) * 0.08, inner.y0 + 1.05, 0]} {...handlers}>
         <boxGeometry args={[0.12, 0.02, LEAF + 0.08]} />
-        <meshStandardMaterial shadowSide={FrontSide} color={HANDLE} metalness={0.6} roughness={0.3} />
+        <FillMaterial section={section} color={HANDLE} metalness={0.6} roughness={0.3} />
       </mesh>
     </group>
   )
 }
 
 /** A glazed panel just inside the frame, sliding along the wall towards its end (+u), over whatever is next to it. */
-const SlidingDoor = ({ inner, ...state }: { inner: Inner } & DoorState) => {
+const SlidingDoor = ({ inner, section, ...state }: { inner: Inner } & DoorState) => {
   const w = inner.u1 - inner.u0
   const z = FRAME_DEPTH / 2 + LEAF / 2 + 0.005
   const { group, handlers } = useToggle(state, (g, t) => (g.position.x = inner.u0 + t * (w - FRAME)))
@@ -204,24 +238,17 @@ const SlidingDoor = ({ inner, ...state }: { inner: Inner } & DoorState) => {
       {boxes.map((b, k) => (
         <mesh key={k} position={b.at} castShadow {...handlers}>
           <boxGeometry args={b.size} />
-          <meshStandardMaterial shadowSide={FrontSide} color={b.color} roughness={0.6} />
+          <FillMaterial section={section} color={b.color} roughness={0.6} />
         </mesh>
       ))}
       {/* The glass takes taps too, so the whole panel opens it. */}
       <mesh position={[w / 2, (panel.y0 + panel.y1) / 2, 0]} {...handlers}>
         <boxGeometry args={[panel.u1 - panel.u0, panel.y1 - panel.y0, 0.012]} />
-        <meshStandardMaterial
-          shadowSide={FrontSide}
-          color={GLASS}
-          transparent
-          opacity={0.28}
-          roughness={0.05}
-          depthWrite={false}
-        />
+        <FillMaterial section={section} color={GLASS} transparent opacity={0.28} roughness={0.05} depthWrite={false} />
       </mesh>
       <mesh position={[0.03, inner.y0 + 1.05, LEAF / 2 + 0.01]} {...handlers}>
         <boxGeometry args={[0.02, 0.3, 0.02]} />
-        <meshStandardMaterial shadowSide={FrontSide} color={HANDLE} metalness={0.6} roughness={0.3} />
+        <FillMaterial section={section} color={HANDLE} metalness={0.6} roughness={0.3} />
       </mesh>
     </group>
   )
