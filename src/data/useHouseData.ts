@@ -65,7 +65,11 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
   const [viewing, setViewing] = useState<Viewing>(LIVE)
-  const [history, setHistory] = useState<History>(() => ({ draft: readDraft(backend), past: [], future: [] }))
+  // Edits kept from an earlier visit lose their steps, but one undo still takes them back to the saved version.
+  const [history, setHistory] = useState<History>(() => {
+    const draft = readDraft(backend)
+    return { draft, past: draft ? [undefined] : [], future: [] }
+  })
   const { draft } = history
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? e.message : String(e)), [])
