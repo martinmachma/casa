@@ -4,25 +4,6 @@ import type { RoomView } from './roomViews'
 export type RoomOrder = { main: string[]; minor: string[] }
 export type RoomZone = keyof RoomOrder
 
-const KEY = 'casa.roomOrder'
-
-export const readRoomOrder = (): RoomOrder | undefined => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null')
-    return Array.isArray(saved?.main) && Array.isArray(saved?.minor) ? saved : undefined
-  } catch {
-    return undefined
-  }
-}
-
-export const saveRoomOrder = (order: RoomOrder) => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(order))
-  } catch {
-    // Remembering is a nicety.
-  }
-}
-
 /**
  * The rooms in the order they were put in; rooms the order doesn't know (new ones, or none saved yet) follow in plan
  * order, big or small as the plan has them, and ids of rooms that are gone are dropped.

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { RoomOrder } from '../rooms/roomOrder'
 import type { Backend, HouseState, Version } from './types'
 
 type VersionRow = {
@@ -72,6 +73,15 @@ export const supabaseBackend: Backend = {
         .update({ version_id: id ?? null })
         .eq('id', true),
     )
+  },
+
+  loadRoomOrder: async () => {
+    const row = check(await supabase.from('room_orders').select('main, minor').maybeSingle()) as RoomOrder | null
+    return row ?? undefined
+  },
+
+  saveRoomOrder: async ({ main, minor }) => {
+    check(await supabase.from('room_orders').upsert({ main, minor, updated_at: new Date().toISOString() }))
   },
 
   // Needs the tables in the `supabase_realtime` publication (see the migrations).

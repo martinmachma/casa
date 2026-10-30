@@ -1,3 +1,4 @@
+import type { RoomOrder } from '../rooms/roomOrder'
 import type { WallFace, WallSide } from '../layout/types'
 
 /**
@@ -92,6 +93,9 @@ export type Backend = {
   renameVersion: (id: string, name: string) => Promise<void>
   deleteVersion: (id: string) => Promise<void>
   setLive: (id: string | undefined) => Promise<void>
+  /** The signed-in person's order of the room menu; undefined until they first arrange it. */
+  loadRoomOrder: () => Promise<RoomOrder | undefined>
+  saveRoomOrder: (order: RoomOrder) => Promise<void>
   /** Calls `onChange` whenever versions or the live one may have changed elsewhere. Returns the unsubscribe. */
   subscribe: (onChange: () => void) => () => void
 }

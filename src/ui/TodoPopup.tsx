@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { useRealtime } from '../lib/useRealtime'
+
+const NO_TODOS: Todo[] = []
 
 type Todo = { id: string; text: string; done: boolean; author: string | null; created_at: string }
 
 /** A floating, draggable list of wishes and bugs for the app, kept in house.todos. */
 export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
-  const [todos, setTodos] = useState<Todo[]>([])
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<{ id: string; text: string }>()
   const [error, setError] = useState<string>()
@@ -17,22 +20,26 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
   const [pos, setPos] = useState({ x: 300, y: 120 })
   const drag = useRef<{ dx: number; dy: number } | undefined>(undefined)
 
-  const load = async () => {
-    const { data, error } = await supabase.from('todos').select('*').order('created_at', { ascending: false })
-    if (error) setError(error.message)
-    else setTodos(data as Todo[])
-  }
-
-  useEffect(() => {
-    void Promise.resolve().then(load)
-    const channel = supabase
-      .channel('todos')
-      .on('postgres_changes', { event: '*', schema: 'house', table: 'todos' }, load)
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
+  useRealtime('todos', 'todos', ['todos'])
+  const client = useQueryClient()
+  const list = useQuery({
+    queryKey: ['todos', 'list'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('todos').select('*').order('created_at', { ascending: false })
+      if (error) throw new Error(error.message)
+      return data as Todo[]
+    },
+  })
+  const todos = list.data ?? NO_TODOS
+  const change = useMutation({
+    mutationFn: async (query: PromiseLike<{ error: { message: string } | null }>) => {
+      const { error } = await query
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['todos'] }),
+    onError: (e) => setError(e.message),
+  })
+  const shownError = error ?? list.error?.message
 
   useEffect(() => {
     const cancelClear = (event: Event) => {
@@ -46,11 +53,7 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
     }
   }, [])
 
-  const run = async (query: PromiseLike<{ error: { message: string } | null }>) => {
-    const { error } = await query
-    if (error) setError(error.message)
-    else load()
-  }
+  const run = (query: PromiseLike<{ error: { message: string } | null }>) => change.mutate(query)
 
   const add = () => {
     const text = draft.trim()
@@ -106,18 +109,18 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
     setClearArmed(false)
     setError(undefined)
     try {
-      const { error } = await supabase
-        .from('todos')
-        .delete()
-        .in(
-          'id',
-          todos.map((t) => t.id),
-        )
-      if (error) throw error
+      await change.mutateAsync(
+        supabase
+          .from('todos')
+          .delete()
+          .in(
+            'id',
+            todos.map((t) => t.id),
+          ),
+      )
       setEditing(undefined)
-      await load()
-    } catch (e) {
-      setError(e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Could not clear list')
+    } catch {
+      // Shown by the mutation.
     } finally {
       clearPending.current = false
       setClearing(false)
@@ -230,9 +233,9 @@ export const TodoPopup = ({ onClose }: { onClose: () => void }) => {
           </button>
         </div>
       </form>
-      {error && (
+      {shownError && (
         <p className="todo-error" onClick={() => setError(undefined)}>
-          {error}
+          {shownError}
         </p>
       )}
       <div className="todo-scroll">

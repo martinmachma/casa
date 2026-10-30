@@ -47,6 +47,7 @@ import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
 import { roomItems } from './rooms/roomItems'
 import { RoomNav } from './ui/RoomNav'
+import { useRoomOrder } from './rooms/useRoomOrder'
 import { RoomOverview } from './ui/RoomOverview'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
@@ -90,6 +91,7 @@ const House = ({ backend, account }: HouseProps) => {
   const [todosOpen, setTodosOpen] = useState(false)
   const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
+  const roomOrder = useRoomOrder(backend)
   // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
   const [rightTucked, setRightTucked] = useState(false)
   const setRightOpen = (open: boolean) => setRightTucked(!open)
@@ -600,7 +602,15 @@ const House = ({ backend, account }: HouseProps) => {
           onCutaway={setCutaway}
           inRoom={!!focus}
         >
-          {camera !== 'walk' && <RoomNav rooms={rooms} room={roomView} onRoom={openRoom} />}
+          {camera !== 'walk' && roomOrder.ready && (
+            <RoomNav
+              rooms={rooms}
+              room={roomView}
+              onRoom={openRoom}
+              saved={roomOrder.order}
+              onSave={roomOrder.save}
+            />
+          )}
         </ViewDock>
 
         {modeBar}

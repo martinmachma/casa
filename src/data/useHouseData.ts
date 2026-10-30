@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { WallFace } from '../layout/types'
 import type { Backend, Device, FurnitureItem, HouseState, NewDevice, NewFurnitureItem, Version } from './types'
@@ -20,6 +21,7 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 const HISTORY_LIMIT = 100
 
 const NO_DEVICES: Device[] = []
+const NO_VERSIONS: Version[] = []
 
 /** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
 export const sameJson = (a: unknown, b: unknown): boolean => {
@@ -60,10 +62,13 @@ const writeDraft = (backend: Backend, draft: Draft | undefined) => {
  * version, which anyone can then make live.
  */
 export const useHouseData = (backend: Backend, liveOnly = false) => {
-  const [versions, setVersions] = useState<Version[]>([])
-  const [liveId, setLiveId] = useState<string>()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>()
+  const client = useQueryClient()
+  const queryKey = useMemo(() => ['versions', backend.kind], [backend.kind])
+  const query = useQuery({ queryKey, queryFn: backend.loadVersions })
+  const versions = query.data?.versions ?? NO_VERSIONS
+  const liveId = query.data?.liveId
+  const [failed, setError] = useState<string>()
+  const error = failed ?? query.error?.message
   const [viewing, setViewing] = useState<Viewing>(LIVE)
   // Edits kept from an earlier visit lose their steps, but one undo still takes them back to the saved version.
   const [history, setHistory] = useState<History>(() => {
@@ -74,21 +79,16 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? e.message : String(e)), [])
 
-  const reload = useCallback(
-    () =>
-      backend
-        .loadVersions()
-        .then((r) => {
-          setVersions(r.versions)
-          setLiveId(r.liveId)
-        })
-        .catch(fail)
-        .finally(() => setLoading(false)),
-    [backend, fail],
-  )
+  const reload = useCallback(() => client.invalidateQueries({ queryKey }), [client, queryKey])
 
-  useEffect(() => backend.subscribe(reload), [backend, reload])
-  useEffect(() => void reload(), [reload])
+  useEffect(() => backend.subscribe(() => void reload()), [backend, reload])
+
+  // A change to the versions, after which they're loaded again.
+  const change = useMutation({
+    mutationFn: (action: () => Promise<void>) => action(),
+    onSuccess: reload,
+    onError: fail,
+  })
 
   useEffect(() => {
     const t = setTimeout(() => writeDraft(backend, draft), 300)
@@ -221,20 +221,25 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
 
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
 
-  /** Saves the draft as a new version and shows it; optionally makes it live straight away. */
-  const saveDraft = async (name: string, makeLive: boolean) => {
-    if (!draft) return
-    try {
+  const save = useMutation({
+    mutationFn: async ({ name, makeLive, draft }: { name: string; makeLive: boolean; draft: Draft }) => {
       const created = await backend.saveVersion(name, draft.state, draft.basedOn)
       if (makeLive) await backend.setLive(created.id)
       // The new version is loaded before the draft goes, so the old one never shows in between.
       await reload()
+      return created
+    },
+    onSuccess: (created, { makeLive }) => {
       clearDraft()
       writeDraft(backend, undefined)
       setViewing(makeLive ? LIVE : created.id)
-    } catch (e) {
-      fail(e)
-    }
+    },
+    onError: fail,
+  })
+
+  /** Saves the draft as a new version and shows it; optionally makes it live straight away. */
+  const saveDraft = async (name: string, makeLive: boolean) => {
+    if (draft) await save.mutateAsync({ name, makeLive, draft }).catch(() => {})
   }
 
   const discardDraft = () => {
@@ -242,12 +247,13 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     writeDraft(backend, undefined)
   }
 
-  const run = (action: Promise<void>) => action.then(reload).catch(fail)
-
   return {
-    loading,
+    loading: query.isPending,
     error,
-    clearError: () => setError(undefined),
+    clearError: () => {
+      setError(undefined)
+      if (query.isError) void query.refetch()
+    },
     versions,
     liveId,
     viewing,
@@ -263,9 +269,9 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     redo,
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
-    makeLive: (id: string | undefined) => run(backend.setLive(id)),
-    renameVersion: (id: string, name: string) => run(backend.renameVersion(id, name)),
-    deleteVersion: (id: string) => run(backend.deleteVersion(id)),
+    makeLive: (id: string | undefined) => change.mutate(() => backend.setLive(id)),
+    renameVersion: (id: string, name: string) => change.mutate(() => backend.renameVersion(id, name)),
+    deleteVersion: (id: string) => change.mutate(() => backend.deleteVersion(id)),
     wallColors,
     setWallColor,
     roomFloors,

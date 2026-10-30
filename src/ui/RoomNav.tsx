@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { arrangeRooms, moveRoom, readRoomOrder, saveRoomOrder, type RoomZone } from '../rooms/roomOrder'
+import { arrangeRooms, moveRoom, type RoomOrder, type RoomZone } from '../rooms/roomOrder'
 import type { RoomView } from '../rooms/roomViews'
 
 type RoomNavProps = {
@@ -22,6 +22,9 @@ type RoomNavProps = {
   /** The room being looked at on its own, if any. */
   room: string | undefined
   onRoom: (id: string) => void
+  /** This person's saved order, if they've arranged the rooms. */
+  saved: RoomOrder | undefined
+  onSave: (order: RoomOrder) => void
 }
 
 // A room's icon, from what the plan calls it.
@@ -50,9 +53,10 @@ type Drag = { id: string; zone: RoomZone; x: number; y: number; offsetX: number;
  * editing (the pencil, or a long press) everything shakes where it is and can be dragged: up and down the list, or
  * between the list and the small links to make a room big or small.
  */
-export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
-  const [saved, setSaved] = useState(readRoomOrder)
-  const order = useMemo(() => arrangeRooms(rooms, saved), [rooms, saved])
+export const RoomNav = ({ rooms, room, onRoom, saved, onSave }: RoomNavProps) => {
+  // The order while a room is being dragged, saved once it's dropped.
+  const [moving, setMoving] = useState<RoomOrder>()
+  const order = useMemo(() => arrangeRooms(rooms, moving ?? saved), [rooms, moving, saved])
   const byId = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms])
   const [editing, setEditing] = useState(false)
   const [drag, setDrag] = useState<Drag>()
@@ -76,7 +80,9 @@ export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
   useEffect(() => {
     if (!drag) return
     document.documentElement.dataset.roomDrag = ''
-    return () => delete document.documentElement.dataset.roomDrag
+    return () => {
+      delete document.documentElement.dataset.roomDrag
+    }
   }, [drag])
 
   // The rooms slide into their new places as the dragged one moves past them, and a room turning from a row into a
@@ -192,7 +198,7 @@ export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
       const next = moveRoom(now, id, to.zone, to.index)
       if (next.main.join() !== now.main.join() || next.minor.join() !== now.minor.join()) {
         orderRef.current = next
-        setSaved(next)
+        setMoving(next)
         setDrag((d) => d && { ...d, zone: to.zone })
       }
     }
@@ -203,7 +209,8 @@ export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
       if (dragging) {
-        saveRoomOrder(orderRef.current)
+        onSave(orderRef.current)
+        setMoving(undefined)
         setDrag(undefined)
       }
     }

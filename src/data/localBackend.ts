@@ -1,3 +1,4 @@
+import type { RoomOrder } from '../rooms/roomOrder'
 import type { Backend, Version } from './types'
 
 // The demo keeps everything in this browser's localStorage.
@@ -25,6 +26,8 @@ const write = (key: string, value: unknown) => {
 // Other tabs of the demo hear about changes through a BroadcastChannel (it never echoes to the sender).
 const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('casa.demo')
 const announce = () => channel?.postMessage('changed')
+
+let demoRoomOrder: RoomOrder | undefined
 
 const versions = () => read<Version[]>(VERSIONS_KEY, [])
 
@@ -71,6 +74,12 @@ export const localBackend: Backend = {
   setLive: async (id) => {
     write(LIVE_KEY, id)
     announce()
+  },
+
+  // The demo has no one signed in, so the room order lasts until the page is reloaded.
+  loadRoomOrder: async () => demoRoomOrder,
+  saveRoomOrder: async (order) => {
+    demoRoomOrder = order
   },
 
   subscribe: (onChange) => {
