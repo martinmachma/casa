@@ -352,7 +352,7 @@ export const HouseScene = ({
               colors={data.wallColors}
               selection={selection}
               interactive={pickable && (outside || f.id === floor.id)}
-              doors={!measure && (outside || f.id === floor.id)}
+              doors={!measure && !placingPiece && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
               cutaway={cutWalls && f.id === floor.id}
