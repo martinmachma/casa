@@ -21,6 +21,19 @@ const HISTORY_LIMIT = 100
 
 const NO_DEVICES: Device[] = []
 
+/** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
+export const sameJson = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const ka = Object.keys(a).filter((k) => (a as Record<string, unknown>)[k] !== undefined)
+  const kb = Object.keys(b).filter((k) => (b as Record<string, unknown>)[k] !== undefined)
+  return (
+    ka.length === kb.length &&
+    ka.every((k) => sameJson((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+  )
+}
+
 const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
 
 // Unsaved edits survive a reload, on this device only.
@@ -82,16 +95,18 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const dirty = useMemo(() => {
     if (!draft) return false
     const base = versions.find((v) => v.id === draft.basedOn)?.data ?? EMPTY_STATE
-    return JSON.stringify(draft.state) !== JSON.stringify(base)
+    return !sameJson(draft.state, base)
   }, [draft, versions])
 
-  // Ask before leaving with edits that aren't saved as a version.
+  // Ask before leaving with edits that aren't saved as a version. Away from planning the draft is out of sight
+  // (and it's kept on this device anyway), so leaving is quiet.
+  const warnOnLeave = dirty && !liveOnly
   useEffect(() => {
-    if (!dirty) return
+    if (!warnOnLeave) return
     const warn = (e: BeforeUnloadEvent) => e.preventDefault()
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  }, [warnOnLeave])
 
   // A version deleted elsewhere falls back to the live one.
   // At home only the saved live version shows; the draft waits for planning.
