@@ -401,6 +401,31 @@ const House = ({ backend, account }: HouseProps) => {
       onRedo={data.canRedo ? redo : undefined}
       save={<SaveButton data={data} />}
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
+      tools={
+        <>
+          {!locked && (
+            <MeasurePanel
+              mode={measure?.mode}
+              canClear={measurements.length > 0 || !!measure?.picks.length}
+              onToggle={toggleMeasure}
+              onMode={(mode) => setMeasure({ mode, picks: [] })}
+              onClear={() => {
+                setMeasurements([])
+                if (measure) setMeasure({ ...measure, picks: [] })
+              }}
+            />
+          )}
+          {planning && (
+            <SnapMenu
+              wallSnap={wallSnap}
+              onWallSnap={setWallSnap}
+              furnitureSnap={furnitureSnap}
+              onFurnitureSnap={setFurnitureSnap}
+            />
+          )}
+          {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
+        </>
+      }
     />
   )
 
@@ -603,41 +628,11 @@ const House = ({ backend, account }: HouseProps) => {
           inRoom={!!focus}
         >
           {camera !== 'walk' && roomOrder.ready && (
-            <RoomNav
-              rooms={rooms}
-              room={roomView}
-              onRoom={openRoom}
-              saved={roomOrder.order}
-              onSave={roomOrder.save}
-            />
+            <RoomNav rooms={rooms} room={roomView} onRoom={openRoom} saved={roomOrder.order} onSave={roomOrder.save} />
           )}
         </ViewDock>
 
         {modeBar}
-
-        <div className="bottom-tools">
-          {!locked && (
-            <MeasurePanel
-              mode={measure?.mode}
-              canClear={measurements.length > 0 || !!measure?.picks.length}
-              onToggle={toggleMeasure}
-              onMode={(mode) => setMeasure({ mode, picks: [] })}
-              onClear={() => {
-                setMeasurements([])
-                if (measure) setMeasure({ ...measure, picks: [] })
-              }}
-            />
-          )}
-          {planning && (
-            <SnapMenu
-              wallSnap={wallSnap}
-              onWallSnap={setWallSnap}
-              furnitureSnap={furnitureSnap}
-              onFurnitureSnap={setFurnitureSnap}
-            />
-          )}
-          {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
-        </div>
 
         {/* Drags and pinches move the 3D view; walking on a touch screen needs the buttons. */}
         {!focus && camera === 'walk' && (
