@@ -47,15 +47,18 @@ through the cut walls. The stub's new horizontal face lies inside that complete 
 faces beside doors and overlapping wall ends saw discontinuous occlusion. Disabling shadow reception on
 only the stubs confirmed the cause; disabling AO did not remove the rectangular differences.
 
-Cutaway wall remnants and clipped door/frame remnants use matte section materials with the existing
-surface colours. Exposed wall tops use the existing cap colour in the same way. These artificial surfaces
-stay out of the AO depth/normal pass and receive only the existing indirect illumination. The first flat,
-unlit treatment kept the full paint brightness at night and looked highlighted; sections now follow the
-scene's hemisphere colour/intensity and their face normals. Direct-light and specular highlight loops are
-omitted for section materials, so the misleading shadow comparisons and bright light spots cannot appear.
-Full wall faces, floors, furniture and the physical house shadow proxy retain their lighting, occlusion and
-shadows; no ambient intensity, paint colour, bias, exposure or sun calculation was changed. Night and even
-studio lighting were rechecked in Chrome after this refinement.
+Only the artificial horizontal cut faces use matte section shading with the existing cap colour and
+indirect hemisphere illumination. They do not receive shadow-map or screen-space AO marks. The first flat,
+unlit treatment looked highlighted at night; using the existing ambient lighting gives the caps subdued
+colour and face shading. Applying that treatment to entire stubs was too broad: vertical sides and end
+faces of shortened walls now retain direct lighting, physical shadow reception and contact occlusion, as
+do the remaining faces of clipped doors/frames. Physical sills and low-wall ledges also retain shadows.
+Frames receive shadows consistently with door leaves.
+
+The complete house remains in the physical shadow pass, so solid walls still block sunlight when visually
+cut away. No ambient intensity, paint colour, bias, exposure, geometry or sun calculation was changed.
+Night and even studio lighting were rechecked in Chrome during the refinements; the final upper-floor
+orbit check confirms shadowed vertical faces and uninterrupted horizontal caps.
 
 `u-shaft-s15` is now a structural member of `u-middle`: picking, painting, debug identity, room sorting and
 cutaway use its parent wall. The measured projecting footprint remains in the scene, snapping/collision

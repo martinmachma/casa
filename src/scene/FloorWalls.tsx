@@ -175,27 +175,32 @@ const WallMesh = ({
   const own = pieces.filter((p) => !handedOver(p))
   const given = [...new Set(pieces.map(handedOver).filter((id) => id !== undefined))]
 
-  // A cutaway stub is an editing outline, not a physical surface inside the full shadow caster.
-  // Shade its own colours with ambient light; the hidden complete wall still blocks light in the room.
-  const boxes = (list: WallPiece[], section = false) => {
+  // Only the horizontal section face is artificial. The vertical faces keep their real lighting/shadows,
+  // including on shortened walls; the complete hidden wall still blocks light in the physical scene.
+  const boxes = (list: WallPiece[], cut = false) => {
     return list.map((p, i) => (
       <mesh
         key={i}
         position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
-        userData={{ corner: isCorner(p), section }}
-        receiveShadow={!section}
+        userData={{ corner: isCorner(p) }}
+        receiveShadow
         raycast={interactive ? raycastIfShown : noRaycast}
         onClick={interactive ? handleClick(p) : undefined}
         onPointerOver={interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined}
         onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
       >
         <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-0" color={endColor(p.u1)} />
-        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-1" color={endColor(p.u0)} />
-        <meshStandardMaterial attach="material-2" color={WALL_CAP} roughness={1} userData={{ section: true }} />
-        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-3" color={WALL_CAP} />
-        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-4" color={colorOf(p, 'a')} />
-        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-5" color={colorOf(p, 'b')} />
+        <meshStandardMaterial roughness={1} attach="material-0" color={endColor(p.u1)} />
+        <meshStandardMaterial roughness={1} attach="material-1" color={endColor(p.u0)} />
+        <meshStandardMaterial
+          attach="material-2"
+          color={WALL_CAP}
+          roughness={1}
+          userData={{ section: (cut && p.y1 === STUB_HEIGHT) || p.y1 >= floor.height }}
+        />
+        <meshStandardMaterial roughness={1} attach="material-3" color={WALL_CAP} />
+        <meshStandardMaterial roughness={1} attach="material-4" color={colorOf(p, 'a')} />
+        <meshStandardMaterial roughness={1} attach="material-5" color={colorOf(p, 'b')} />
       </mesh>
     ))
   }

@@ -19,7 +19,7 @@ const CLICK_SLOP_PX = 5
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-/** Cutaway remnants describe a section; physical light/shadow calculations apply only to the complete fill. */
+/** Clipped fills retain physical shading on their remaining faces, just like shortened wall sides. */
 const FillMaterial = ({
   section,
   color,
@@ -45,7 +45,6 @@ const FillMaterial = ({
     depthWrite={depthWrite}
     roughness={section ? 1 : roughness}
     metalness={section ? 0 : metalness}
-    userData={{ section }}
   />
 )
 
@@ -65,7 +64,7 @@ const frame = (u0: number, u1: number, y0: number, y1: number, color: string, bo
 
 const Boxes = ({ boxes, section }: { boxes: Box[]; section?: boolean }) =>
   boxes.map((b, k) => (
-    <mesh key={k} position={b.at} castShadow raycast={noRaycast}>
+    <mesh key={k} position={b.at} castShadow receiveShadow raycast={noRaycast}>
       <boxGeometry args={b.size} />
       <FillMaterial section={section} color={b.color} roughness={0.6} />
     </mesh>
@@ -201,7 +200,7 @@ const Door = ({
   const h = inner.y1 - inner.y0
   return (
     <group ref={group} position={[atEnd ? inner.u1 : inner.u0, 0, 0]}>
-      <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow={!section} {...handlers}>
+      <mesh position={[w / 2, inner.y0 + h / 2, 0]} castShadow receiveShadow {...handlers}>
         <boxGeometry args={[Math.abs(w), h, LEAF]} />
         <FillMaterial section={section} color={color} roughness={0.7} />
       </mesh>
@@ -227,7 +226,7 @@ const SlidingDoor = ({ inner, section, ...state }: { inner: Inner } & DoorState)
   return (
     <group ref={group} position={[inner.u0, 0, z]}>
       {boxes.map((b, k) => (
-        <mesh key={k} position={b.at} castShadow {...handlers}>
+        <mesh key={k} position={b.at} castShadow receiveShadow {...handlers}>
           <boxGeometry args={b.size} />
           <FillMaterial section={section} color={b.color} roughness={0.6} />
         </mesh>

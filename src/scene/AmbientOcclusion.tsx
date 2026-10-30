@@ -163,8 +163,8 @@ export const AmbientOcclusion = () => {
             const programKey = key.call(m)
             const section = m.userData.section === true
             const aoAmount = { value: m.transparent || section ? 0 : STRENGTH }
-            // Section surfaces sit inside the complete house's shadow volume. Use only the existing
-            // indirect illumination: face shading and day/night colour, without false shadows or highlights.
+            // Only artificial horizontal cut faces use indirect illumination. Vertical wall faces,
+            // including shortened walls, keep direct light and their normal physical shadow comparisons.
             const lighting = section
               ? '#undef RE_Direct\n#undef RE_Direct_RectArea\n' + fixtureLighting
               : fixtureLighting
@@ -200,7 +200,6 @@ export const AmbientOcclusion = () => {
         }
         if (
           o.userData.shadowOnly ||
-          o.userData.section ||
           materials.some((m) => !m.colorWrite || !m.depthWrite || m.transparent) ||
           materials.every((m) => m.userData.section)
         ) {
