@@ -8,12 +8,26 @@ import {
   validateLayout,
   wallJoints,
   wallOutside,
+  wallPaintParts,
   wallPieces,
 } from './geometry'
 import { house } from './layout'
 import type { Floor, HouseLayout, Point, Wall } from './types'
 
 const wall = (openings: Wall['openings']): Wall => ({ id: 'w', from: [0, 0], to: [5, 0], openings })
+
+it('paints a shaft with its room while preserving saved part numbers beyond the next partition', () => {
+  const floor = house.floors[1]
+  const wall = floor.walls.find((w) => w.id === 'u-middle')!
+  const joints = wallJoints(wall, floor)
+  const parts = wallPaintParts(wall, floor)
+  const partAt = (u: number) => parts.a[sidePart(joints.a, u)]
+  expect(partAt(1)).toBe(0)
+  expect(partAt(2.2635)).toBe(0) // shaft front
+  expect(partAt(3)).toBe(0)
+  expect(partAt(4)).toBe(sidePart(joints.a, 4)) // the other room keeps its saved paint key
+  expect(parts.b).toEqual([0, 1])
+})
 
 describe('wallPieces', () => {
   it('is one full piece without openings', () => {

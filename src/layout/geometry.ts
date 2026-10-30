@@ -238,6 +238,24 @@ export const wallJoints = (wall: Wall, floor: Floor): Record<WallSide, number[]>
 }
 
 /**
+ * A shaft belonging to a wall does not divide that wall into separately painted rooms. Keep the old
+ * part numbers after real partitions, so saved paint on the rest of the wall does not move to another room.
+ */
+export const wallPaintParts = (wall: Wall, floor: Floor): Record<WallSide, number[]> => {
+  const legacy = wallJoints(wall, floor)
+  const room = wallJoints(wall, {
+    ...floor,
+    walls: floor.walls.filter((other) => other.partOf !== wall.id),
+  })
+  const parts = (side: WallSide) => {
+    const ids = [0]
+    legacy[side].forEach((at, i) => ids.push(room[side].includes(at) ? i + 1 : ids[i]))
+    return ids
+  }
+  return { a: parts('a'), b: parts('b') }
+}
+
+/**
  * Where a wall meets another at a corner, the distance along it of the other wall's inner face: the block
  * past it is the corner itself, shared by both walls, and is cut off as a piece of its own.
  */

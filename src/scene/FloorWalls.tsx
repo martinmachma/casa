@@ -11,6 +11,7 @@ import {
   wallLength,
   wallOwner,
   wallOwnerOffset,
+  wallPaintParts,
   wallPieces,
   wallThickness,
   type WallPiece,
@@ -120,6 +121,7 @@ const WallMesh = ({
   const offset = wallOwnerOffset(wall, owner)
   const thickness = wallThickness(wall, floor)
   const ownJoints = useMemo(() => wallJoints(wall, floor), [wall, floor])
+  const paintParts = useMemo(() => wallPaintParts(owner, floor), [owner, floor])
   const joints = useMemo(() => {
     const joints = wallJoints(owner, floor)
     return { a: joints.a.map((u) => u - offset), b: joints.b.map((u) => u - offset) }
@@ -134,11 +136,9 @@ const WallMesh = ({
       ]),
     [wall, floor, thickness, joints, ownJoints, corners],
   )
-  const partOf = (p: WallPiece, side: WallSide) => sidePart(joints[side], (p.u0 + p.u1) / 2)
+  const partOf = (p: WallPiece, side: WallSide) => paintParts[side][sidePart(joints[side], (p.u0 + p.u1) / 2)]
   const colorOf = (p: WallPiece, side: WallSide) =>
-    wallPartColor(colors, owner.id, side, partOf(p, side)) ??
-    wallPartColor(colors, wall.id, side, sidePart(ownJoints[side], (p.u0 + p.u1) / 2)) ??
-    DEFAULT_WALL
+    wallPartColor(colors, owner.id, side, partOf(p, side)) ?? DEFAULT_WALL
   const endColor = (u: number) =>
     wallPartColor(colors, owner.id, 'end', endPart(u + offset)) ??
     wallPartColor(colors, wall.id, 'end', endPart(u)) ??

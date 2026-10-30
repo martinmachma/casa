@@ -1,38 +1,19 @@
-import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, type RefObject } from 'react'
-import { DoubleSide, Mesh, Plane, Vector3, type Group, type Material } from 'three'
+import { useFrame } from '@react-three/fiber'
+import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
+import { BufferGeometry, Matrix4, Mesh, MeshStandardMaterial, Plane, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { backingWall, floorSnapWalls } from '../furniture/snap'
 import { inTheWay } from '../furniture/cut'
 import { floorBounds, wallOutside } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { wallCut } from './CutawayWall'
+import { itemSection, type SectionSource } from './itemSection'
 
 /** Anything reaching higher than this above its floor is cut down with the walls… */
 export const ITEM_CUT_ABOVE = 1.2
 /** …to this height, a little lower, so a piece only just over the line isn't trimmed by a sliver. */
 export const ITEM_CUT_AT = 1.0
 const UNCUT = 1e6
-// How much darker than the piece itself its cut face is.
-const CUT_FACE = 0.55
-
-/**
- * Seen through the cut, a piece's inside faces are painted flat in its own colour, darkened: the cut reads as a
- * solid section, level all round, rather than a hollow shell.
- */
-const capCut = (m: Material) => {
-  m.userData.cut = { value: false }
-  m.userData.side = m.side
-  m.onBeforeCompile = (shader) => {
-    shader.uniforms.cut = m.userData.cut
-    shader.fragmentShader = `uniform bool cut;\n${shader.fragmentShader}`.replace(
-      '#include <dithering_fragment>',
-      `#include <dithering_fragment>
-      if (cut && !gl_FrontFacing) gl_FragColor = linearToOutputTexel(vec4(diffuseColor.rgb * ${CUT_FACE}, 1.0));`,
-    )
-  }
-  m.customProgramCacheKey = () => 'item-cut'
-}
 
 /**
  * Cuts the top off a piece that reaches above ITEM_CUT_ABOVE (tall, or hung up high) while walls are cut and it's
@@ -45,8 +26,31 @@ export const useItemCut = (
   floor: Floor | undefined,
   cutaway: boolean,
 ) => {
-  const gl = useThree((s) => s.gl)
   const plane = useMemo(() => new Plane(new Vector3(0, -1, 0), UNCUT), [])
+  const sectionRef = useRef<{
+    cap: Mesh<BufferGeometry, MeshStandardMaterial>
+    sources: SectionSource[]
+    height: number
+    signature: string
+    inverse: Matrix4
+  }>(undefined)
+  useLayoutEffect(() => {
+    const cap = new Mesh(new BufferGeometry(), new MeshStandardMaterial({ vertexColors: true, roughness: 1 }))
+    cap.material.userData.section = true
+    cap.visible = false
+    cap.raycast = () => {}
+    // Avoid sharing a depth with an existing shelf exactly at the cut height.
+    cap.position.y = 0.0001
+    sectionRef.current = { cap, sources: [], height: NaN, signature: '', inverse: new Matrix4() }
+    const section = sectionRef.current!
+    const root = group.current
+    root?.add(section.cap)
+    return () => {
+      root?.remove(section.cap)
+      section.cap.geometry.dispose()
+      section.cap.material.dispose()
+    }
+  }, [group])
   const reaches = (item.z ?? 0) + item.height > ITEM_CUT_ABOVE
   const backing = useMemo(() => {
     if (!floor || !reaches) return undefined
@@ -60,7 +64,9 @@ export const useItemCut = (
     return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
   }, [floor])
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, gl }) => {
+    const section = sectionRef.current
+    if (!section) return
     const cut =
       !!floor &&
       cutaway &&
@@ -69,25 +75,53 @@ export const useItemCut = (
       (!backing || wallCut(backing.wall, floor, backing.outside, camera, cutaway))
     const constant = cut ? floor!.elevation + ITEM_CUT_AT : UNCUT
     if (cut) gl.localClippingEnabled = true
-    plane.constant = constant
+    plane.setComponents(0, -1, 0, constant)
     // The model loads later than the piece, so its materials are picked up as they come.
-    group.current?.traverse((o) => {
-      if (!(o instanceof Mesh) || o.type !== 'Mesh') return
-      for (const m of [o.material as Material].flat()) {
+    const root = group.current
+    section.cap.visible = cut
+    if (!root) return
+    if (cut) {
+      root.updateWorldMatrix(true, true)
+      section.inverse.copy(root.matrixWorld).invert()
+    }
+    const sources: SectionSource[] = []
+    root.traverse((o) => {
+      if (!(o instanceof Mesh) || o.type !== 'Mesh' || o === section.cap) return
+      let opaque = false
+      for (const m of [o.material].flat()) {
         if (!m.visible) continue
+        opaque ||= !m.transparent
         if (m.clippingPlanes?.[0] !== plane) {
           m.clippingPlanes = [plane]
-          capCut(m)
-          m.needsUpdate = true
-        }
-        // The inside faces only need drawing while there's a cut to see them through.
-        m.userData.cut.value = cut
-        const side = cut ? DoubleSide : m.userData.side
-        if (m.side !== side) {
-          m.side = side
           m.needsUpdate = true
         }
       }
+      if (cut && opaque)
+        sources.push({ mesh: o, matrix: new Matrix4().multiplyMatrices(section.inverse, o.matrixWorld) })
     })
+    if (!cut) return
+    const height = constant - root.position.y
+    const signature = sources
+      .map(
+        ({ mesh }) =>
+          mesh.geometry.uuid +
+          [mesh.material]
+            .flat()
+            .map((m) => (m instanceof MeshStandardMaterial ? m.color.getHexString() : ''))
+            .join(),
+      )
+      .join(';')
+    if (
+      height !== section.height ||
+      signature !== section.signature ||
+      sources.length !== section.sources.length ||
+      sources.some((s, i) => s.mesh !== section.sources[i].mesh || !s.matrix.equals(section.sources[i].matrix))
+    ) {
+      section.cap.geometry.dispose()
+      section.cap.geometry = itemSection(sources, height)
+      section.sources = sources
+      section.height = height
+      section.signature = signature
+    }
   })
 }
