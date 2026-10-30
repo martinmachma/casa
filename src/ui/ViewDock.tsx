@@ -1,8 +1,8 @@
-import { Box, Footprints, House, Map as PlanIcon, SquareBottomDashedScissors } from 'lucide-react'
+import { Box, Footprints, House, Map as PlanIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Floor } from '../layout/types'
 import type { CameraMode } from '../scene/selection'
-import { IconButton, Segmented } from './kit'
+import { Segmented } from './kit'
 
 type ViewDockProps = {
   floors: Floor[]
@@ -15,10 +15,6 @@ type ViewDockProps = {
   onCamera: (camera: CameraMode) => void
   /** The plan view is for planning; at home there's only 3D and walking. */
   canPlan: boolean
-  /** Walls in front cut down in the 3D view, to see in; offered only there, and not yet from outside. */
-  canCut: boolean
-  cutaway: boolean
-  onCutaway: (cutaway: boolean) => void
   /** In a room the floor and camera are the room's own, so the switches only show where you are. */
   inRoom: boolean
   /** The rooms, under the switches. */
@@ -39,9 +35,6 @@ export const ViewDock = ({
   camera,
   onCamera,
   canPlan,
-  canCut,
-  cutaway,
-  onCutaway,
   inRoom,
   children,
 }: ViewDockProps) => (
@@ -72,17 +65,6 @@ export const ViewDock = ({
         disabled={inRoom}
         className="views"
       />
-      {camera === 'orbit' && canCut && (
-        <IconButton
-          label="Cut walls"
-          aria-pressed={cutaway}
-          small
-          disabled={inRoom}
-          onClick={() => onCutaway(!cutaway)}
-        >
-          <SquareBottomDashedScissors size={16} />
-        </IconButton>
-      )}
     </div>
     {children}
   </div>

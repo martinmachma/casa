@@ -1,3 +1,5 @@
+import { SquareBottomDashedScissors } from 'lucide-react'
+import { IconButton } from './ui/kit'
 import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
@@ -403,6 +405,20 @@ const House = ({ backend, account }: HouseProps) => {
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
       tools={
         <>
+          {/* Walls in front cut down in the 3D view, to see in; not yet from outside. */}
+          {camera === 'orbit' && !outside && (
+            <div className="toolbar float">
+              <IconButton
+                label="Cut walls"
+                aria-pressed={cutaway}
+                small
+                disabled={!!focus}
+                onClick={() => setCutaway(!cutaway)}
+              >
+                <SquareBottomDashedScissors size={17} />
+              </IconButton>
+            </div>
+          )}
           {!locked && (
             <MeasurePanel
               mode={measure?.mode}
@@ -622,9 +638,6 @@ const House = ({ backend, account }: HouseProps) => {
           camera={camera}
           onCamera={setCamera}
           canPlan={planning}
-          canCut={!outside}
-          cutaway={cutaway}
-          onCutaway={setCutaway}
           inRoom={!!focus}
         >
           {camera !== 'walk' && roomOrder.ready && (
