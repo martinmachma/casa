@@ -275,14 +275,15 @@ export const HouseScene = ({
           />
         ) : camera === 'walk' ? (
           <WalkCamera
-            key={viewKey}
-            // From outside, the walk starts on the ground floor.
-            floor={outside ? floors[0] : floor}
+            key={`${viewKey}-${outside}`}
+            floor={floor}
             floors={floors}
             onFloorChange={onWalkFloorChange}
             furniture={data.furniture}
             nudge={nudge}
             openDoors={openDoors}
+            outdoor={house.outdoor}
+            outside={outside}
           />
         ) : (
           <CameraRig
