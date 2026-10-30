@@ -47,12 +47,15 @@ through the cut walls. The stub's new horizontal face lies inside that complete 
 faces beside doors and overlapping wall ends saw discontinuous occlusion. Disabling shadow reception on
 only the stubs confirmed the cause; disabling AO did not remove the rectangular differences.
 
-Cutaway wall remnants and clipped door/frame remnants now use unlit section materials with the existing
+Cutaway wall remnants and clipped door/frame remnants use matte section materials with the existing
 surface colours. Exposed wall tops use the existing cap colour in the same way. These artificial surfaces
-also stay out of the AO depth/normal pass. Full wall faces, floors, furniture and the physical house shadow
-proxy retain their lighting, occlusion and shadows; no ambient intensity, bias, exposure or sun calculation
-was changed. The section is intentionally independent of time of day, rather than a falsely lit piece of
-the interior. This also saves lighting/shadow work on those displayed outlines.
+stay out of the AO depth/normal pass and receive only the existing indirect illumination. The first flat,
+unlit treatment kept the full paint brightness at night and looked highlighted; sections now follow the
+scene's hemisphere colour/intensity and their face normals. Direct-light and specular highlight loops are
+omitted for section materials, so the misleading shadow comparisons and bright light spots cannot appear.
+Full wall faces, floors, furniture and the physical house shadow proxy retain their lighting, occlusion and
+shadows; no ambient intensity, paint colour, bias, exposure or sun calculation was changed. Night and even
+studio lighting were rechecked in Chrome after this refinement.
 
 `u-shaft-s15` is now a structural member of `u-middle`: picking, painting, debug identity, room sorting and
 cutaway use its parent wall. The measured projecting footprint remains in the scene, snapping/collision

@@ -176,9 +176,8 @@ const WallMesh = ({
   const given = [...new Set(pieces.map(handedOver).filter((id) => id !== undefined))]
 
   // A cutaway stub is an editing outline, not a physical surface inside the full shadow caster.
-  // Draw its own colours flat; the hidden complete wall still blocks light in the actual room.
+  // Shade its own colours with ambient light; the hidden complete wall still blocks light in the room.
   const boxes = (list: WallPiece[], section = false) => {
-    const FaceMaterial = section ? 'meshBasicMaterial' : 'meshStandardMaterial'
     return list.map((p, i) => (
       <mesh
         key={i}
@@ -191,12 +190,12 @@ const WallMesh = ({
         onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
       >
         <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-        <FaceMaterial attach="material-0" color={endColor(p.u1)} />
-        <FaceMaterial attach="material-1" color={endColor(p.u0)} />
-        <meshBasicMaterial attach="material-2" color={WALL_CAP} userData={{ section: true }} />
-        <FaceMaterial attach="material-3" color={WALL_CAP} />
-        <FaceMaterial attach="material-4" color={colorOf(p, 'a')} />
-        <FaceMaterial attach="material-5" color={colorOf(p, 'b')} />
+        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-0" color={endColor(p.u1)} />
+        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-1" color={endColor(p.u0)} />
+        <meshStandardMaterial attach="material-2" color={WALL_CAP} roughness={1} userData={{ section: true }} />
+        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-3" color={WALL_CAP} />
+        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-4" color={colorOf(p, 'a')} />
+        <meshStandardMaterial userData={{ section }} roughness={1} attach="material-5" color={colorOf(p, 'b')} />
       </mesh>
     ))
   }

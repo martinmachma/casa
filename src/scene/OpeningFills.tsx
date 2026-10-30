@@ -36,27 +36,18 @@ const FillMaterial = ({
   depthWrite?: boolean
   roughness?: number
   metalness?: number
-}) =>
-  section ? (
-    <meshBasicMaterial
-      shadowSide={FrontSide}
-      color={color}
-      transparent={transparent}
-      opacity={opacity}
-      depthWrite={depthWrite}
-      userData={{ section: true }}
-    />
-  ) : (
-    <meshStandardMaterial
-      shadowSide={FrontSide}
-      color={color}
-      transparent={transparent}
-      opacity={opacity}
-      depthWrite={depthWrite}
-      roughness={roughness}
-      metalness={metalness}
-    />
-  )
+}) => (
+  <meshStandardMaterial
+    shadowSide={FrontSide}
+    color={color}
+    transparent={transparent}
+    opacity={opacity}
+    depthWrite={depthWrite}
+    roughness={section ? 1 : roughness}
+    metalness={section ? 0 : metalness}
+    userData={{ section }}
+  />
+)
 
 type Box = { at: [number, number, number]; size: [number, number, number]; color: string }
 

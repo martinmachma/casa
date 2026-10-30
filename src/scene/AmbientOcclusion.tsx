@@ -161,7 +161,13 @@ export const AmbientOcclusion = () => {
             const key = m.customProgramCacheKey
             const render = patched.get(m)?.render ?? m.onBeforeRender
             const programKey = key.call(m)
-            const aoAmount = { value: m.transparent ? 0 : STRENGTH }
+            const section = m.userData.section === true
+            const aoAmount = { value: m.transparent || section ? 0 : STRENGTH }
+            // Section surfaces sit inside the complete house's shadow volume. Use only the existing
+            // indirect illumination: face shading and day/night colour, without false shadows or highlights.
+            const lighting = section
+              ? '#undef RE_Direct\n#undef RE_Direct_RectArea\n' + fixtureLighting
+              : fixtureLighting
             const wrapped: Material['onBeforeCompile'] = (shader, renderer) => {
               compile.call(m, shader, renderer)
               shader.uniforms.casaAO = { value: tools.blur.texture }
@@ -172,7 +178,7 @@ export const AmbientOcclusion = () => {
                 'uniform sampler2D casaAO; uniform vec2 casaViewport; uniform float casaAOAmount;\n#if NUM_POINT_LIGHTS > 0\nuniform float casaCeilingLights[NUM_POINT_LIGHTS];\n#endif\n' +
                 shader.fragmentShader
                   .replace('#include <shadowmap_pars_fragment>', receiverPlaneShadows)
-                  .replace('#include <lights_fragment_begin>', fixtureLighting)
+                  .replace('#include <lights_fragment_begin>', lighting)
                   .replace(
                     '#include <aomap_fragment>',
                     `#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= mix(1.0, texture2D(casaAO, gl_FragCoord.xy / casaViewport).r, casaAOAmount);`,
@@ -180,13 +186,14 @@ export const AmbientOcclusion = () => {
             }
             const beforeRender: Material['onBeforeRender'] = (...args) => {
               render.apply(m, args)
-              aoAmount.value = m.transparent ? 0 : STRENGTH
+              aoAmount.value = m.transparent || section ? 0 : STRENGTH
               gl.getCurrentViewport(viewport)
               viewportSize.value.set(viewport.z, viewport.w)
             }
             patched.set(m, { compile, key, render, wrapped, beforeRender })
             m.onBeforeCompile = wrapped
-            m.customProgramCacheKey = () => programKey + '-casa-downlight-ao-' + receiverPlaneShadowKey
+            m.customProgramCacheKey = () =>
+              programKey + '-casa-ambient-section-' + section + '-' + receiverPlaneShadowKey
             m.onBeforeRender = beforeRender
             m.needsUpdate = true
           }
