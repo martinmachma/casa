@@ -405,20 +405,6 @@ const House = ({ backend, account }: HouseProps) => {
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
       tools={
         <>
-          {/* Walls in front cut down in the 3D view, to see in; not yet from outside. */}
-          {camera === 'orbit' && !outside && (
-            <div className="toolbar float">
-              <IconButton
-                label="Cut walls"
-                aria-pressed={cutaway}
-                small
-                disabled={!!focus}
-                onClick={() => setCutaway(!cutaway)}
-              >
-                <SquareBottomDashedScissors size={17} />
-              </IconButton>
-            </div>
-          )}
           {!locked && (
             <MeasurePanel
               mode={measure?.mode}
@@ -440,6 +426,20 @@ const House = ({ backend, account }: HouseProps) => {
             />
           )}
           {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
+          {/* Walls in front cut down in the 3D view, to see in; not yet from outside. */}
+          {camera === 'orbit' && !outside && (
+            <div className="toolbar float">
+              <IconButton
+                label="Cut walls"
+                aria-pressed={cutaway}
+                small
+                disabled={!!focus}
+                onClick={() => setCutaway(!cutaway)}
+              >
+                <SquareBottomDashedScissors size={17} />
+              </IconButton>
+            </div>
+          )}
         </>
       }
     />
