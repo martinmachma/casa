@@ -40,13 +40,13 @@ import { WallPanel } from './ui/WallPanel'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { TopBar } from './ui/TopBar'
-import { NavRail, type Section } from './ui/NavRail'
 import { SaveButton } from './ui/SaveVersion'
 import { SnapMenu } from './ui/SnapMenu'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
 import { roomItems } from './rooms/roomItems'
+import { RoomNav } from './ui/RoomNav'
 import { RoomOverview } from './ui/RoomOverview'
 
 export const App = () => <AuthGate>{(backend, account) => <House backend={backend} account={account} />}</AuthGate>
@@ -58,6 +58,9 @@ const NARROW = '(max-width: 820px)'
 const isNarrow = () => window.matchMedia(NARROW).matches
 
 const SECTION_KEY = 'casa.section'
+/** Home is for living in the house; planning is the editor. */
+type Section = 'home' | 'planning'
+
 const savedSection = (): Section => {
   try {
     return localStorage.getItem(SECTION_KEY) === 'home' ? 'home' : 'planning'
@@ -512,8 +515,9 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
-      <NavRail onHome={leaveRoom} rooms={rooms} room={roomView} onRoom={openRoom} />
       <TopBar
+        onHome={leaveRoom}
+        inRoom={!!focus}
         floors={house.floors}
         floorIndex={floorIndex}
         onFloor={switchFloor}
@@ -586,16 +590,17 @@ const House = ({ backend, account }: HouseProps) => {
           />
         )}
 
-        {!focus && (
-          <ViewDock
-            camera={camera}
-            onCamera={setCamera}
-            canPlan={planning}
-            canCut={!outside}
-            cutaway={cutaway}
-            onCutaway={setCutaway}
-          />
-        )}
+        <ViewDock
+          camera={camera}
+          onCamera={setCamera}
+          canPlan={planning}
+          canCut={!outside}
+          cutaway={cutaway}
+          onCutaway={setCutaway}
+          inRoom={!!focus}
+        >
+          {camera !== 'walk' && <RoomNav rooms={rooms} room={roomView} onRoom={openRoom} />}
+        </ViewDock>
 
         {modeBar}
 

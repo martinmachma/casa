@@ -28,7 +28,6 @@
   --ring: 0 0 0 3px rgb(200 102 74 / 0.25);
 
   --topbar: 56px;
-  --rail: 64px;
   --right: 340px;
 
   font-family:
@@ -351,62 +350,22 @@ p {
   inset: 0;
   display: grid;
   grid-template-rows: calc(var(--topbar) + env(safe-area-inset-top)) minmax(0, 1fr);
-  grid-template-columns: calc(var(--rail) + env(safe-area-inset-left)) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
-    'rail top'
-    'rail view';
+    'top'
+    'view';
   background: var(--bg);
 }
 
-/* The main menu down the left edge: icons that widen over the view to show their names on hover. */
-.rail {
-  grid-area: rail;
-  position: relative;
-  z-index: 26;
-  width: calc(var(--rail) + env(safe-area-inset-left));
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: calc(10px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom))
-    calc(10px + env(safe-area-inset-left));
-  overflow: hidden;
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-  transition:
-    width 160ms ease,
-    box-shadow 160ms ease;
-}
-
-@media (hover: hover) {
-  .rail:hover,
-  .rail:has(:focus-visible) {
-    width: calc(260px + env(safe-area-inset-left));
-    box-shadow: var(--shadow-lg);
-    transition-delay: 120ms;
-  }
-
-  .rail:hover .rail-label,
-  .rail:has(:focus-visible) .rail-label {
-    opacity: 1;
-    transition-delay: 120ms;
-  }
-}
-
-.rail-label {
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 120ms;
-}
-
-/* The house's name, which is also the way back to the whole house. */
-.rail-brand {
+/* The house's name at the left of the top bar, which is also the way back to the whole house. */
+.brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 44px;
+  gap: 10px;
+  height: 40px;
   flex: none;
-  margin-bottom: 10px;
-  padding: 0 8px;
+  margin-right: 4px;
+  padding: 0 10px 0 6px;
   border: 0;
   border-radius: var(--radius);
   background: transparent;
@@ -414,279 +373,18 @@ p {
   font: inherit;
   font-weight: 650;
   font-size: 15px;
-  text-align: left;
   cursor: pointer;
   transition: background 120ms;
 }
 
-.rail-brand:hover {
+.brand:hover {
   background: var(--surface-3);
 }
 
-.rail-brand img {
+.brand img {
   width: 28px;
   height: 28px;
   flex: none;
-}
-
-.rail-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 44px;
-  flex: none;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--ink-2);
-  font-size: 14px;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 120ms,
-    color 120ms;
-}
-
-.rail-item svg {
-  flex: none;
-}
-
-.rail-item:hover {
-  background: var(--surface-3);
-  color: var(--ink);
-}
-
-/* The rooms take what height is left, scrolling (without a bar) when they don't fit. They lay themselves out by the
-   width they're given, so the tiles form as the rail widens. */
-.rail-rooms {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  container-type: inline-size;
-}
-
-/* The rooms lived in: tinted squares while the rail is narrow, tiles two to a row when it's wide. */
-.rail-tiles {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
-}
-
-.rail-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  padding: 0;
-  border: 1px solid var(--surface-3);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 120ms,
-    color 120ms,
-    border-color 120ms;
-}
-
-.rail-tile svg {
-  flex: none;
-}
-
-.rail-tile .rail-label {
-  display: none;
-}
-
-.rail-tile:hover {
-  background: var(--surface-3);
-  color: var(--ink);
-}
-
-.rail-brand[aria-current='page'],
-.rail-item[aria-current='page'],
-.rail-tile[aria-current='page'],
-.rail-other[aria-current='page'] {
-  background: var(--accent-soft);
-  color: var(--accent-hover);
-}
-
-.rail-item[aria-current='page'],
-.rail-tile[aria-current='page'] {
-  border-color: rgb(200 102 74 / 0.3);
-  font-weight: 600;
-}
-
-/* Halls, storage and the like: small icons while narrow, a run of plain names when wide. */
-.rail-others {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rail-others-list {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.rail-other {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition:
-    background 120ms,
-    color 120ms;
-}
-
-.rail-other .rail-label {
-  display: none;
-}
-
-.rail-other:hover {
-  background: var(--surface-3);
-  color: var(--ink);
-}
-
-.rail-group-title {
-  position: relative;
-  height: 18px;
-  padding: 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* A short rule in place of the heading while the rail is narrow. */
-.rail-group-title::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 8px;
-  width: 16px;
-  height: 2px;
-  margin-left: -8px;
-  border-radius: 1px;
-  background: var(--line);
-}
-
-@container (min-width: 200px) {
-  .rail-tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .rail-tile {
-    align-items: flex-start;
-    justify-content: space-between;
-    height: 80px;
-    padding: 12px;
-  }
-
-  /* An odd one out leads across the whole row. */
-  .rail-tile:first-child:nth-last-child(odd) {
-    grid-column: span 2;
-  }
-
-  /* The tiles pop in one after another as the rail opens, the other spaces after them. */
-  .rail-tile {
-    animation: rail-tile-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-
-  .rail-tile:nth-child(2) {
-    animation-delay: 30ms;
-  }
-
-  .rail-tile:nth-child(3) {
-    animation-delay: 60ms;
-  }
-
-  .rail-tile:nth-child(4) {
-    animation-delay: 90ms;
-  }
-
-  .rail-tile:nth-child(n + 5) {
-    animation-delay: 120ms;
-  }
-
-  .rail-others {
-    animation: rail-others-in 220ms ease-out 140ms both;
-  }
-
-  .rail-tile .rail-label {
-    display: block;
-    overflow: hidden;
-    max-width: 100%;
-    text-overflow: ellipsis;
-  }
-
-  .rail-group-title::before {
-    display: none;
-  }
-
-  .rail-others-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .rail-other {
-    width: auto;
-    height: 30px;
-    padding: 0 8px;
-    color: var(--ink-2);
-  }
-
-  .rail-other svg {
-    display: none;
-  }
-
-  .rail-other .rail-label {
-    display: block;
-  }
-}
-
-@keyframes rail-tile-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.94);
-  }
-}
-
-@keyframes rail-others-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rail-tile,
-  .rail-others {
-    animation: none !important;
-  }
 }
 
 /* What it's like outside now, at the right of the top bar; opens the forecast. */
@@ -1369,6 +1067,103 @@ p {
 .dock-bar .segmented button {
   min-height: 30px;
   padding: 0 9px;
+}
+
+/* The rooms, as cards under the view switch: the rooms lived in as tiles, the rest as small links. */
+.room-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  border-radius: 14px;
+}
+
+.room-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.room-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  height: 68px;
+  padding: 10px;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 120ms,
+    color 120ms,
+    border-color 120ms;
+}
+
+/* An odd one out leads across the whole row. */
+.room-tile:first-child:nth-last-child(odd) {
+  grid-column: span 2;
+}
+
+.room-tile:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.room-tile-label {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.room-others {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.room-other {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 120ms,
+    color 120ms;
+}
+
+.room-other:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.room-tile[aria-current='page'],
+.room-other[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.room-tile[aria-current='page'] {
+  border-color: rgb(200 102 74 / 0.3);
 }
 
 .edit-toggle {
@@ -2073,17 +1868,8 @@ input[type='range'].kelvin::-moz-range-thumb {
     display: none;
   }
 
-  .app {
-    --rail: 56px;
-  }
-
-  .rail {
-    padding-left: calc(6px + env(safe-area-inset-left));
-    padding-right: 6px;
-  }
-
-  .rail-brand {
-    padding: 0 8px;
+  .brand span {
+    display: none;
   }
 
   .weather-button {
