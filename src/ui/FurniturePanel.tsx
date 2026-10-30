@@ -96,34 +96,6 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
       </Section>
 
       <Section title={q ? 'Results' : group} aside={<span className="muted num">{entries.length}</span>}>
-        <div className="catalog">
-          {entries.map((e) => (
-            <button
-              key={e.model}
-              className="catalog-item"
-              onClick={() =>
-                onAdd({
-                  name: e.name,
-                  model: e.model,
-                  width: e.width / 100,
-                  depth: e.depth / 100,
-                  height: e.height / 100,
-                })
-              }
-            >
-              <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
-              <span>{e.name}</span>
-              <span className="catalog-size">
-                {e.width} × {e.depth}
-              </span>
-            </button>
-          ))}
-          <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
-            <Plus size={22} />
-            <span>Custom box</span>
-          </button>
-        </div>
-
         {custom && (
           <div className="custom-box">
             <label className="field">
@@ -151,6 +123,34 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
             </button>
           </div>
         )}
+
+        <div className="catalog">
+          <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
+            <Plus size={22} />
+            <span>Custom box</span>
+          </button>
+          {entries.map((e) => (
+            <button
+              key={e.model}
+              className="catalog-item"
+              onClick={() =>
+                onAdd({
+                  name: e.name,
+                  model: e.model,
+                  width: e.width / 100,
+                  depth: e.depth / 100,
+                  height: e.height / 100,
+                })
+              }
+            >
+              <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
+              <span>{e.name}</span>
+              <span className="catalog-size">
+                {e.width} × {e.depth}
+              </span>
+            </button>
+          ))}
+        </div>
       </Section>
     </>
   )
