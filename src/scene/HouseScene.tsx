@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Device, DeviceKind, FurnitureItem } from '../data/types'
+import type { Device, DeviceKind, FurnitureItem, NewFurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
 import { colliding } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
@@ -17,6 +17,8 @@ import { Fade } from './Fade'
 import { DevicePlacer, Devices } from './Devices'
 import { FloorWalls } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
+import { FurniturePlacer } from './FurniturePlacer'
+import { groundLevel } from '../layout/ground'
 import { Outdoor } from './Outdoor'
 import { HouseShadow } from './HouseShadow'
 import { slabGeometry } from './prism'
@@ -85,6 +87,9 @@ type HouseSceneProps = {
   /** A light or lamp tapped while looking round. */
   onPickLight: (id: string) => void
   onPlaceDevice: (device: Omit<Device, 'id' | 'name'>) => void
+  /** A new piece carried under the pointer until a tap puts it down. */
+  placingPiece: Omit<NewFurnitureItem, 'x' | 'y'> | undefined
+  onPlacePiece: (at: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
   nudge: RefObject<CameraNudge>
   /** Changing it puts the camera back to its starting view. */
   viewKey: number
@@ -125,6 +130,8 @@ export const HouseScene = ({
   lights,
   onPickLight,
   onPlaceDevice,
+  placingPiece,
+  onPlacePiece,
   nudge,
   viewKey,
   onSelect,
@@ -150,7 +157,10 @@ export const HouseScene = ({
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
   // From outside, on every floor that's shown, to be seen through the windows.
   const furnished = (f: Floor) => camera === 'walk' || (outside ? floors.indexOf(f) < shownCount : f.id === floor.id)
-  const snapWalls = useMemo(() => floorSnapWalls(floor), [floor])
+  // Furniture is arranged on the floor looked at; from outside, on the ground floor and round it in the garden.
+  const furnitureFloor = outside ? floors[0] : floor
+  const ground = (f: Floor, p: [number, number]) => (f === floors[0] ? groundLevel(f, house.outdoor, p) : f.elevation)
+  const snapWalls = useMemo(() => floorSnapWalls(furnitureFloor), [furnitureFloor])
   // Looking at a room, the walls between the camera and its middle are always cut, and only those.
   const focusPoint = useMemo((): Focus | undefined => {
     const box = focusRoom ? roomBox(floor, focusRoom) : undefined
@@ -165,7 +175,7 @@ export const HouseScene = ({
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
 
-  const items = outside ? [] : data.furniture.filter((f) => camera === 'walk' || f.floor === floor.id)
+  const items = data.furniture.filter((f) => camera === 'walk' || f.floor === furnitureFloor.id)
   // After dark the house's own lights come on, on every floor that's shown.
   const dark = 1 - daylight(sun)
   const level = (id: string) => lightLevel(lights[id], dark)
@@ -178,14 +188,14 @@ export const HouseScene = ({
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
   const selectedItem = selectedIds.length === 1 ? items.find((f) => f.id === selectedIds[0]) : undefined
-  const wallRects = useMemo(() => floorWallRects(floor), [floor])
-  // Measuring uses its own floor and wall targets.
-  const pickable = interaction === 'edit'
+  const wallRects = useMemo(() => floorWallRects(furnitureFloor), [furnitureFloor])
+  // Measuring uses its own floor and wall targets; a piece being put down takes every tap.
+  const pickable = interaction === 'edit' && !placingPiece
   const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside
   // While arranging, anything that runs into a wall or another piece is marked.
   const clashes = pickable ? colliding(items, wallRects) : new Set<string>()
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
-  const gapY = floor.elevation + 0.05
+  const gapY = (selectedItem ? ground(furnitureFloor, [selectedItem.x, selectedItem.y]) : floor.elevation) + 0.05
   const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
   const lineY = floor.elevation + 0.03
   const annotations = [
@@ -246,7 +256,7 @@ export const HouseScene = ({
       >
         <InputInvalidator />
         <PointerReach />
-        <FloorPointerTracker elevation={floor.elevation} pointRef={floorPointer} />
+        <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
         {focusRoom ? (
           <RoomCamera
             floor={floor}
@@ -363,6 +373,19 @@ export const HouseScene = ({
             plan={camera === 'top'}
           />
         )}
+        {interaction === 'edit' && placingPiece && (
+          <FurniturePlacer
+            floor={furnitureFloor}
+            piece={placingPiece}
+            ground={(p) => ground(furnitureFloor, p)}
+            wallSnap={wallSnap}
+            furnitureSnap={furnitureSnap}
+            snapWalls={snapWalls}
+            items={items}
+            wallRects={wallRects}
+            onPlace={onPlacePiece}
+          />
+        )}
         {floors.map((f) => (
           <Fade key={f.id} shown={furnished(f)}>
             <Devices
@@ -403,13 +426,14 @@ export const HouseScene = ({
                   onPickLight={isLamp(item.model) ? lightPick : undefined}
                   onHoverLight={onHoverItem}
                   elevation={f.elevation}
+                  ground={ground(f, [item.x, item.y])}
                   floor={f}
                   // Looking at one room, only its walls are cut; its furniture is what's being looked at.
                   cutaway={cutWalls && !focusRoom && f.id === floor.id}
                   selected={selectedIds.includes(item.id) || pickedLight === item.id}
                   colliding={clashes.has(item.id)}
                   showActions={selectedIds[selectedIds.length - 1] === item.id}
-                  interactive={pickable && !outside}
+                  interactive={pickable && (!outside || f.id === furnitureFloor.id)}
                   // Group snapping is applied to the shared translation in moveItem.
                   wallSnap={wallSnap && selectedIds.length < 2}
                   furnitureSnap={furnitureSnap && selectedIds.length < 2}

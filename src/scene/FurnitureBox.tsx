@@ -18,7 +18,10 @@ type FurnitureBoxProps = {
   glow?: number
   /** The colour a lamp gives off. */
   glowColor?: string
+  /** The floor's level, which it's dragged across. */
   elevation: number
+  /** What it stands on, when that isn't the floor: the lawn or terrace outside the ground floor. */
+  ground?: number
   /** The floor it stands on, and whether its walls are cut ): a tall piece is cut with them. */
   floor?: Floor
   cutaway?: boolean
@@ -63,6 +66,7 @@ export const FurnitureBox = ({
   glow,
   glowColor,
   elevation,
+  ground = elevation,
   floor,
   cutaway = false,
   selected,
@@ -199,7 +203,7 @@ export const FurnitureBox = ({
   return (
     <group
       ref={group}
-      position={[item.x, elevation + z, item.y]}
+      position={[item.x, ground + z, item.y]}
       rotation={[0, -item.rotation, 0]}
       userData={{ itemId: item.id, debug: `${item.name} · ${item.id.slice(0, 4)}` }}
     >

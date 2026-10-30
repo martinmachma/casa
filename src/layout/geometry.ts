@@ -128,7 +128,7 @@ const CUTAWAY_FACING = 0.5
 /** How far past a wall's face to look for the outside of the house. */
 const OUTSIDE_PROBE = 0.05
 
-const insidePolygon = (p: Point, polygon: Point[]): boolean => {
+export const insidePolygon = (p: Point, polygon: Point[]): boolean => {
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const [xi, zi] = polygon[i]

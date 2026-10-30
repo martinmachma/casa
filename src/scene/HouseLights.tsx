@@ -2,6 +2,8 @@ import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import { PointLight, Vector3 } from 'three'
 import type { Device, FurnitureItem } from '../data/types'
+import { groundLevel } from '../layout/ground'
+import { house } from '../layout/layout'
 import type { Floor } from '../layout/types'
 
 // Light falls off more gently than in nature (squared): there's no light bounced off the walls, so it's what
@@ -56,7 +58,14 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
         bulbs.push({
           id: item.id,
           downlight: false,
-          position: [item.x, f.elevation + (item.z ?? 0) + item.height * LAMPS[item.model!], item.y],
+          // A lamp out in the garden stands on the lawn or terrace.
+          position: [
+            item.x,
+            (f === house.floors[0] ? groundLevel(f, house.outdoor, [item.x, item.y]) : f.elevation) +
+              (item.z ?? 0) +
+              item.height * LAMPS[item.model!],
+            item.y,
+          ],
           intensity: LAMP_INTENSITY * level(item.id),
           color: tint(item.id),
         })

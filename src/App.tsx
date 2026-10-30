@@ -11,7 +11,6 @@ import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
 import { pasteFurniture } from './furniture/clipboard'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
-import { floorBounds } from './layout/geometry'
 import { floorRegions, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
@@ -82,6 +81,8 @@ const House = ({ backend, account }: HouseProps) => {
   const interaction: Interaction = planning ? tool : 'view'
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DeviceKind>()
+  // A new piece from the catalog, carried under the pointer until it's put down.
+  const [placingPiece, setPlacingPiece] = useState<Omit<NewFurnitureItem, 'x' | 'y'>>()
   const [todosOpen, setTodosOpen] = useState(false)
   const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
@@ -122,6 +123,8 @@ const House = ({ backend, account }: HouseProps) => {
   const dark = 1 - daylight(sunAt)
 
   const floor = house.floors[floorIndex]
+  // From outside, furniture goes on the ground floor or round it in the garden.
+  const furnitureFloor = outside ? house.floors[0] : floor
   const regions = floorRegions(floor)
   const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
   const selectedItems =
@@ -137,7 +140,7 @@ const House = ({ backend, account }: HouseProps) => {
     const rotation = normalizeAngle(item.rotation + (degrees * Math.PI) / 180)
     // Turning an item that sits against a wall would swing it into the wall; re-seat it, unless
     // snapping would also undo the turn (a 15° step).
-    const seated = wallSnap ? snapToWalls({ ...item, rotation }, floorSnapWalls(floor)) : undefined
+    const seated = wallSnap ? snapToWalls({ ...item, rotation }, floorSnapWalls(furnitureFloor)) : undefined
     const keepsTurn = seated && Math.abs(normalizeAngle(seated.rotation - rotation)) < 1e-6
     const turned = keepsTurn ? seated : { x: item.x, y: item.y, rotation }
     changeItem(item, turned)
@@ -161,11 +164,11 @@ const House = ({ backend, account }: HouseProps) => {
   }
 
   /** Copies land beside the originals, or at the same plan position on another floor. */
-  const duplicateSelection = (targetFloorId = floor.id) => {
+  const duplicateSelection = (targetFloorId = furnitureFloor.id) => {
     const targetIndex = house.floors.findIndex((f) => f.id === targetFloorId)
     if (!selectedItems.length || targetIndex < 0) return
-    const sameFloor = targetFloorId === floor.id
-    const [dx, dy] = sameFloor ? duplicateOffset(selectedItems, floorSnapWalls(floor)) : [0, 0]
+    const sameFloor = targetFloorId === furnitureFloor.id
+    const [dx, dy] = sameFloor ? duplicateOffset(selectedItems, floorSnapWalls(furnitureFloor)) : [0, 0]
     const created = data.addFurniture(
       ...selectedItems.map(({ id: _, ...item }) => ({
         ...item,
@@ -205,30 +208,23 @@ const House = ({ backend, account }: HouseProps) => {
     data.patchDevice(device.id, { ...changeKind(device, kind, floor), ...(numbered ? { name: deviceName(kind) } : {}) })
   }
 
-  /** Where new pieces appear: the middle of the biggest room's largest open area, else the floor's middle. */
-  const dropPoint = (): Point => {
-    const biggest = [...floorRegions(floor).values()].sort((a, b) => b.area - a.area)[0]
-    const cell = biggest?.cells.reduce((p, c) =>
-      (c.x1 - c.x0) * (c.y1 - c.y0) > (p.x1 - p.x0) * (p.y1 - p.y0) ? c : p,
-    )
-    if (cell) return [(cell.x0 + cell.x1) / 2, (cell.y0 + cell.y1) / 2]
-    const { min, max } = floorBounds(floor)
-    return [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2]
-  }
-
+  /** A piece picked from the catalog follows the pointer; the next tap on the house puts it down. */
   const addPiece = (piece: NewPiece) => {
-    // Furniture lives on a floor; from outside it goes on the one last open, shown opened up.
-    setOutside(false)
-    const [x, y] = dropPoint()
-    const [created] = data.addFurniture({
+    setSelection(undefined)
+    setPlacingPiece({
       ...piece,
-      floor: floor.id,
-      x,
-      y,
+      floor: furnitureFloor.id,
       rotation: 0,
       // A box gets a wood tone; a model's colour is its fabric (blue-grey, as in the thumbnails).
       color: piece.model ? FURNITURE_SWATCHES[4] : FURNITURE_SWATCHES[1],
     })
+    // On a phone the sheet covers the house; tuck it away so there's room to tap.
+    if (isNarrow()) setRightOpen(false)
+  }
+  const placePiece = (at: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
+    if (!placingPiece) return
+    const [created] = data.addFurniture({ ...placingPiece, ...at, floor: furnitureFloor.id })
+    setPlacingPiece(undefined)
     select({ kind: 'furniture', ids: [created.id] })
   }
 
@@ -271,6 +267,7 @@ const House = ({ backend, account }: HouseProps) => {
     if (next === section) return
     setSelection(undefined)
     setPlacing(undefined)
+    setPlacingPiece(undefined)
     if (next === 'home') {
       stopMeasuring()
       setRightTucked(false)
@@ -290,6 +287,7 @@ const House = ({ backend, account }: HouseProps) => {
     if (!planning) changeSection('planning')
     setSelection(undefined)
     setPlacing(undefined)
+    setPlacingPiece(undefined)
     setTool(next)
     if (next === 'devices') setRightOpen(true)
   }
@@ -297,6 +295,7 @@ const House = ({ backend, account }: HouseProps) => {
   const toggleMeasure = () => {
     setSelection(undefined)
     setPlacing(undefined)
+    setPlacingPiece(undefined)
     if (measure) stopMeasuring()
     else setMeasure({ mode: 'points', picks: [] })
   }
@@ -341,7 +340,7 @@ const House = ({ backend, account }: HouseProps) => {
           e.preventDefault()
           const at = floorPointer.current?.()
           if (!at) return
-          const created = data.addFurniture(...pasteFurniture(clipboard.current, floor.id, at))
+          const created = data.addFurniture(...pasteFurniture(clipboard.current, furnitureFloor.id, at))
           select({ kind: 'furniture', ids: created.map((f) => f.id) })
           return
         }
@@ -358,18 +357,24 @@ const House = ({ backend, account }: HouseProps) => {
         return
       }
       // Esc first steps back out of what's being done in the room, then out of the room.
-      if (focus && e.key === 'Escape' && !typing && !selection && !placing && !measure)
+      if (focus && e.key === 'Escape' && !typing && !selection && !placing && !placingPiece && !measure)
         return popover ? setPopover(undefined) : leaveRoom()
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return
       if (key === 'e') return changeSection(planning ? 'home' : 'planning')
       if (locked) return
       if (key === 'm') toggleMeasure()
       else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
+      else if (placingPiece && key === 'r')
+        setPlacingPiece({
+          ...placingPiece,
+          rotation: normalizeAngle(placingPiece.rotation + ((e.shiftKey ? -15 : 15) * Math.PI) / 180),
+        })
       else if (selectedItems.length && key === 'r') rotateSelection(e.shiftKey ? -15 : 15)
       else if (selectedItems.length && (e.key === 'Delete' || e.key === 'Backspace')) deleteSelection()
       else if (selectedDevice && (e.key === 'Delete' || e.key === 'Backspace')) deleteDevice(selectedDevice)
       else if (e.key === 'Escape') {
         if (selection) setSelection(undefined)
+        else if (placingPiece) setPlacingPiece(undefined)
         else if (placing) setPlacing(undefined)
         else if (measure?.picks.length) setMeasure({ ...measure, picks: [] })
         else if (measure) stopMeasuring()
@@ -518,13 +523,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
-      <NavRail
-        onHome={leaveRoom}
-        floors={house.floors}
-        rooms={rooms}
-        room={roomView}
-        onRoom={openRoom}
-      />
+      <NavRail onHome={leaveRoom} floors={house.floors} rooms={rooms} room={roomView} onRoom={openRoom} />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
@@ -562,6 +561,8 @@ const House = ({ backend, account }: HouseProps) => {
           measurements={measurements}
           onRemoveMeasurement={(id) => setMeasurements((ms) => ms.filter((m) => m.id !== id))}
           placing={placing}
+          placingPiece={placingPiece}
+          onPlacePiece={placePiece}
           lights={lights.states}
           onPickLight={(id) => (focus ? setPopover(id) : select({ kind: 'light', id }))}
           onPlaceDevice={placeDevice}
