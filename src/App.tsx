@@ -516,13 +516,9 @@ const House = ({ backend, account }: HouseProps) => {
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
       <TopBar
-        onHome={leaveRoom}
+        // Already home, the name puts the camera back where it started.
+        onHome={focus ? leaveRoom : () => setViewKey((k) => k + 1)}
         inRoom={!!focus}
-        floors={house.floors}
-        floorIndex={floorIndex}
-        onFloor={switchFloor}
-        outside={outside}
-        onOutside={goOutside}
         versions={planning && <VersionMenu data={data} />}
         onWeather={() => setWeatherOpen(true)}
         onTodos={() => setTodosOpen(true)}
@@ -591,6 +587,11 @@ const House = ({ backend, account }: HouseProps) => {
         )}
 
         <ViewDock
+          floors={house.floors}
+          floorIndex={floorIndex}
+          onFloor={switchFloor}
+          outside={outside}
+          onOutside={goOutside}
           camera={camera}
           onCamera={setCamera}
           canPlan={planning}
@@ -628,9 +629,9 @@ const House = ({ backend, account }: HouseProps) => {
           {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
         </div>
 
-        {!focus && (
+        {/* Drags and pinches move the 3D view; walking on a touch screen needs the buttons. */}
+        {!focus && camera === 'walk' && (
           <CameraPad
-            mode={camera}
             onHold={(axis, value) => (nudge.current[axis] = value)}
             onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}
             onReset={() => setViewKey((k) => k + 1)}

@@ -247,6 +247,13 @@ p {
   color: var(--ink);
 }
 
+.segmented button:disabled,
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .segmented button[aria-pressed='true'] {
   background: var(--surface);
   color: var(--ink);
@@ -539,6 +546,10 @@ p {
 
 .menu button:hover {
   background: var(--surface-3);
+}
+
+.menu button .todo-count {
+  margin-left: auto;
 }
 
 .settings-dialog {
@@ -2001,15 +2012,15 @@ input[type='range'].kelvin::-moz-range-thumb {
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
 }
 
-/* To-do popup */
-.todo-open {
+/* To-do popup: its open count sits on the avatar and beside the menu entry. */
+.account {
   position: relative;
 }
 
-.todo-open .todo-count {
+.account > .todo-count {
   position: absolute;
-  top: 2px;
-  right: 0;
+  top: -2px;
+  left: 20px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

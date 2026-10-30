@@ -21,6 +21,7 @@ type SegmentedProps<T> = {
   onChange: (value: T) => void
   block?: boolean
   className?: string
+  disabled?: boolean
 }
 
 export const Segmented = <T extends string>({
@@ -30,12 +31,14 @@ export const Segmented = <T extends string>({
   onChange,
   block,
   className = '',
+  disabled,
 }: SegmentedProps<T>) => (
   <div className={`segmented ${block ? 'segmented-block' : ''} ${className}`} role="group" aria-label={label}>
     {options.map((o) => (
       <button
         key={o.value}
         aria-pressed={o.value === value}
+        disabled={disabled}
         onClick={() => onChange(o.value)}
         title={o.label}
         aria-label={o.iconOnly ? o.label : undefined}
