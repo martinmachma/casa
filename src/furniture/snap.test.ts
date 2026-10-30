@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { backingWall, snapFurniture, snapGroupToWalls, snapToWalls, type SnapWall } from './snap'
+import { house } from '../layout/layout'
+import { floorWallRects } from '../layout/rooms'
+import { hits } from './collision'
+import { backingWall, floorSnapWalls, snapFurniture, snapGroupToWalls, snapToWalls, type SnapWall } from './snap'
 
 // A 4×4 room, walls 0.2 thick on their centre lines.
 const room: SnapWall[] = [
@@ -51,6 +54,19 @@ describe('snapToWalls', () => {
     expect(p.y).toBeCloseTo(0.1 + 0.25)
   })
 
+  it('chooses the nearest corner face independently of wall order', () => {
+    const left = room[3]
+    const closer: SnapWall = { ...left, from: [0.05, 4], to: [0.05, 0] }
+    for (const walls of [
+      [room[0], left, closer],
+      [room[0], closer, left],
+    ]) {
+      const p = snapToWalls({ ...box, x: 0.68, y: 0.35 }, walls)
+      expect(p.x).toBeCloseTo(0.65)
+      expect(p.y).toBeCloseTo(0.35)
+    }
+  })
+
   it('leaves an item turned well off square alone', () => {
     expect(snapToWalls({ ...box, x: 2, y: 0.4, rotation: 0.6 }, room)).toEqual({ x: 2, y: 0.4, rotation: 0.6 })
   })
@@ -58,6 +74,51 @@ describe('snapToWalls', () => {
   it('ignores a wall whose segment the item is not beside', () => {
     const short: SnapWall[] = [{ from: [0, 0], to: [1, 0], thickness: 0.2 }]
     expect(snapToWalls({ ...box, x: 3, y: 0.4 }, short)).toEqual({ x: 3, y: 0.4, rotation: 0 })
+  })
+
+  it('snaps to either end of a wall, including when the footprint overhangs its side', () => {
+    const short: SnapWall[] = [{ from: [0, 0], to: [1, 0], thickness: 0.2 }]
+    for (const [x, expectedX] of [
+      [-0.55, -0.5],
+      [1.55, 1.5],
+    ]) {
+      const p = snapToWalls({ ...box, x, y: 0.2 }, short)
+      expect(p.x).toBeCloseTo(expectedX)
+      expect(p.y).toBe(0.2)
+    }
+    // Merely touching a wall's side must not also pull the item towards its end.
+    expect(snapToWalls({ ...box, x: 0.55, y: 0.35 }, short)).toEqual({ x: 0.55, y: 0.35, rotation: 0 })
+  })
+})
+
+describe('kitchen shaft corner', () => {
+  const floor = house.floors.find((f) => f.id === 'ground')!
+  const walls = floorSnapWalls(floor)
+  const item = { id: 'dragged', floor: floor.id, height: 0.8, width: 0.6, depth: 0.6, rotation: 0, y: 2.9 }
+
+  it('slides along the kitchen wall, catches the shaft corner within reach, then releases along the wall', () => {
+    for (const [x, expectedX] of [
+      [1.5, 1.5],
+      [1.24, 1.15],
+      [1.17, 1.15],
+      [1, 1.15],
+      [1.5, 1.5],
+    ]) {
+      const p = snapFurniture({ ...item, x }, walls, [])
+      // Shaft's rendered end is 0.701 + 0.298 / 2 = 0.85, including its end cap.
+      expect(p.x).toBeCloseTo(expectedX)
+      expect(p.y).toBeCloseTo(3.202 - 0.1 / 2 - item.depth / 2)
+      expect(hits({ ...item, ...p }, [], floorWallRects(floor))).toEqual([])
+    }
+  })
+
+  it('uses the rotated width and depth at the shaft corner, without pulling towards it from the other side', () => {
+    const p = snapToWalls({ ...item, x: 1.1, depth: 0.4, rotation: Math.PI / 2 }, walls)
+    expect(p.x).toBeCloseTo(0.85 + 0.4 / 2)
+    expect(p.y).toBeCloseTo(3.152 - 0.6 / 2)
+    const storageSide = snapToWalls({ ...item, x: 1.1, y: 3.6 }, walls)
+    expect(storageSide.x).toBe(1.1)
+    expect(storageSide.y).toBeCloseTo(3.252 + 0.6 / 2)
   })
 })
 
@@ -210,5 +271,6 @@ describe('backingWall', () => {
     expect(backingWall({ ...box, x: 2, y: 0.38 }, room)).toBe(0)
     expect(backingWall({ ...box, x: 3.65, y: 2, rotation: Math.PI / 2 }, room)).toBe(1)
     expect(backingWall({ ...box, x: 2, y: 2 }, room)).toBeUndefined()
+    expect(backingWall({ ...box, x: 1.53, y: 0.2 }, [{ from: [0, 0], to: [1, 0], thickness: 0.2 }])).toBe(0)
   })
 })

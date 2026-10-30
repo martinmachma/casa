@@ -1,4 +1,4 @@
-import { wallThickness } from '../layout/geometry'
+import { wallEndExtensions, wallThickness } from '../layout/geometry'
 import type { FurnitureItem } from '../data/types'
 import type { Floor, Point } from '../layout/types'
 
@@ -11,9 +11,18 @@ type SnapItem = Footprint & Pick<FurnitureItem, 'id' | 'floor' | 'z' | 'height'>
 const QUARTER = Math.PI / 2
 // An item turned further than this from square to a wall is left alone by it.
 const SQUARE_TOLERANCE = (15 * Math.PI) / 180
+const EPS = 1e-9
 
 export const floorSnapWalls = (floor: Floor): SnapWall[] =>
-  floor.walls.map((w) => ({ from: w.from, to: w.to, thickness: wallThickness(w, floor) }))
+  floor.walls.map((w) => {
+    const frame = frameOf({ ...w, thickness: wallThickness(w, floor) })
+    const extension = wallEndExtensions(w, floor)
+    return {
+      from: [w.from[0] - frame.d[0] * extension.from, w.from[1] - frame.d[1] * extension.from],
+      to: [w.to[0] + frame.d[0] * extension.to, w.to[1] + frame.d[1] * extension.to],
+      thickness: frame.thickness,
+    }
+  })
 
 export const normalizeAngle = (a: number): number => {
   const r = a % (2 * Math.PI)
@@ -45,15 +54,38 @@ const frameOf = (w: SnapWall): Frame => {
   }
 }
 
+/** The same wall box across each axis: one frame for its long faces, one for its end caps. */
+const wallFrames = (w: SnapWall): Frame[] => {
+  if (w.from[0] === w.to[0] && w.from[1] === w.to[1]) return []
+  const side = frameOf(w)
+  if (side.thickness <= 0) return [side]
+  return [
+    side,
+    {
+      from: [
+        side.from[0] + (side.d[0] * side.length - side.n[0] * side.thickness) / 2,
+        side.from[1] + (side.d[1] * side.length - side.n[1] * side.thickness) / 2,
+      ],
+      d: side.n,
+      n: [-side.d[0], -side.d[1]],
+      length: side.thickness,
+      thickness: side.length,
+      angle: side.angle + QUARTER,
+    },
+  ]
+}
+
 /**
  * How far the footprint's edge is from the wall face (negative when it overlaps the wall), and the
  * shift along the wall normal that makes it flush.
  */
-const gapTo = (f: Footprint, w: Frame, alongMargin: number) => {
+const gapTo = (f: Footprint, w: Frame) => {
   const rx = f.x - w.from[0]
   const ry = f.y - w.from[1]
   const t = rx * w.d[0] + ry * w.d[1]
-  if (t < -alongMargin || t > w.length + alongMargin) return undefined
+  const along = extentAlong(f, w.d)
+  // Require overlap with the finite face. Merely touching its end must not attract an item along it.
+  if (t <= -along + EPS || t >= w.length + along - EPS) return undefined
   const s = rx * w.n[0] + ry * w.n[1]
   const target = Math.sign(s || 1) * (w.thickness / 2 + extentAlong(f, w.n))
   return { gap: Math.abs(s) - Math.abs(target), shift: target - s }
@@ -69,7 +101,7 @@ const wallPlacement = (
   threshold: number,
   square = true,
 ): { placement: Placement; frame: Frame; corner: boolean } | undefined => {
-  const frames = walls.map(frameOf)
+  const frames = walls.flatMap(wallFrames)
 
   let best: { frame: Frame; placed: Footprint; gap: number } | undefined
   for (const frame of frames) {
@@ -78,7 +110,7 @@ const wallPlacement = (
     const k = Math.round(off / QUARTER)
     if (Math.abs(off - k * QUARTER) > SQUARE_TOLERANCE) continue
     const squared = square ? { ...f, rotation: normalizeAngle(frame.angle + k * QUARTER) } : f
-    const hit = gapTo(squared, frame, 0)
+    const hit = gapTo(squared, frame)
     if (!hit || hit.gap > threshold || (best && Math.abs(hit.gap) >= best.gap)) continue
     best = {
       frame,
@@ -93,7 +125,7 @@ const wallPlacement = (
   let cornerGap = Infinity
   for (const frame of frames) {
     if (frame === first || Math.abs(frame.d[0] * first.d[0] + frame.d[1] * first.d[1]) > 1e-3) continue
-    const hit = gapTo(placed, frame, Math.max(placed.width, placed.depth))
+    const hit = gapTo(best.placed, frame)
     if (!hit || hit.gap > threshold || Math.abs(hit.gap) >= cornerGap) continue
     cornerGap = Math.abs(hit.gap)
     placed = { ...best.placed, x: best.placed.x + frame.n[0] * hit.shift, y: best.placed.y + frame.n[1] * hit.shift }
@@ -183,10 +215,11 @@ export const snapFurniture = (
 export const backingWall = (f: Footprint, walls: SnapWall[], reach = 0.1): number | undefined => {
   let best: { i: number; gap: number } | undefined
   walls.forEach((w, i) => {
-    if (w.from[0] === w.to[0] && w.from[1] === w.to[1]) return
-    const hit = gapTo(f, frameOf(w), 0)
-    if (!hit || hit.gap > reach || (best && Math.abs(hit.gap) >= best.gap)) return
-    best = { i, gap: Math.abs(hit.gap) }
+    for (const frame of wallFrames(w)) {
+      const hit = gapTo(f, frame)
+      if (!hit || hit.gap > reach || (best && Math.abs(hit.gap) >= best.gap)) continue
+      best = { i, gap: Math.abs(hit.gap) }
+    }
   })
   return best?.i
 }
