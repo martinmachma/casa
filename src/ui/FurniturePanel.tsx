@@ -19,7 +19,7 @@ export const PlanTabs = ({ value, onChange }: { value: Interaction; onChange: (t
       onChange={onChange}
       options={[
         { value: 'edit', label: 'Furniture', icon: <Sofa size={16} /> },
-        { value: 'devices', label: 'Devices (L)', icon: <Lightbulb size={16} /> },
+        { value: 'devices', label: 'Devices', icon: <Lightbulb size={16} /> },
       ]}
     />
   </Section>
