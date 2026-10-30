@@ -46,6 +46,8 @@ export type Room = {
   label: Point
   /** Its view looks in through its door, rather than from wherever shows it best. */
   view?: 'door'
+  /** A space passed through or for storing things (hall, WC), listed apart from the rooms lived in. */
+  minor?: boolean
 }
 
 export type Floor = {

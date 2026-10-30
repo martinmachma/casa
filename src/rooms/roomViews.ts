@@ -6,14 +6,14 @@ import { roomLabel } from '../layout/roomName'
 import type { Floor, HouseLayout, Point } from '../layout/types'
 
 /** A room with its own place in the menu: a fixed view of it, the rest of the house blurred. */
-export type RoomView = { id: string; label: string; planName: string; floor: string; room: string }
+export type RoomView = { id: string; label: string; planName: string; floor: string; room: string; minor?: boolean }
 
 /** Every room of every floor, under the name we gave it (or the plan's); names used twice get their plan number. */
 export const roomViews = (house: HouseLayout, names: Map<string, string>): RoomView[] => {
   const views = house.floors.flatMap((floor) =>
     floor.rooms.map((room) => {
       const { name, number, planName } = roomLabel(room, names)
-      return { id: room.id, label: name, number, planName, floor: floor.id, room: room.id }
+      return { id: room.id, label: name, number, planName, floor: floor.id, room: room.id, minor: room.minor }
     }),
   )
   const twice = (label: string) => views.filter((v) => v.label === label).length > 1

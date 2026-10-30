@@ -512,7 +512,7 @@ const House = ({ backend, account }: HouseProps) => {
 
   return (
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
-      <NavRail onHome={leaveRoom} floors={house.floors} rooms={rooms} room={roomView} onRoom={openRoom} />
+      <NavRail onHome={leaveRoom} rooms={rooms} room={roomView} onRoom={openRoom} />
       <TopBar
         floors={house.floors}
         floorIndex={floorIndex}
