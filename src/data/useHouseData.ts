@@ -78,6 +78,15 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     return () => clearTimeout(t)
   }, [backend, draft])
 
+  // Ask before leaving with edits that aren't saved as a version.
+  const dirty = draft !== undefined
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
   // A version deleted elsewhere falls back to the live one.
   // At home only the saved live version shows; the draft waits for planning.
   const viewedId =
@@ -221,7 +230,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     viewed,
     view: setViewing,
     /** Whether there are edits not yet saved as a version. */
-    dirty: draft !== undefined,
+    dirty,
     saveDraft,
     discardDraft,
     endEdit,

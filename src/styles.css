@@ -1819,42 +1819,50 @@ input[type='range'].kelvin::-moz-range-thumb {
   background: var(--danger-soft);
 }
 
-.savebar {
-  position: absolute;
-  top: 14px;
-  left: calc(50% - var(--right-inset, 0px) / 2);
-  transform: translateX(-50%);
-  transition: left 200ms ease;
-  z-index: 6;
+.save-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.save-toggle:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.save-toggle[data-dirty='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.save-dialog {
+  width: min(420px, calc(100% - 24px));
+}
+
+.save-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 20px 20px;
+}
+
+.save-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  align-items: center;
   gap: 6px;
-  max-width: calc(100% - 90px);
-  padding: 6px 6px 6px 12px;
 }
 
-.savebar-title {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.savebar-name {
-  width: 150px;
-  min-width: 0;
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  font: inherit;
-  font-size: 13px;
-}
-
-.savebar-name:focus {
-  outline: none;
-  box-shadow: var(--ring);
+.save-actions .btn-danger {
+  margin-right: auto;
 }
 
 @media (max-width: 1100px) {
@@ -1981,22 +1989,6 @@ input[type='range'].kelvin::-moz-range-thumb {
     right: 8px;
     top: calc(var(--topbar) + env(safe-area-inset-top) + 4px);
     width: auto;
-  }
-
-  .savebar {
-    top: 58px;
-    transform: none;
-    left: 10px;
-    right: 10px;
-    max-width: none;
-  }
-
-  .savebar-name {
-    flex: 1;
-  }
-
-  .savebar-title {
-    width: 100%;
   }
 
   .pad-grid {

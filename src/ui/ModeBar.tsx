@@ -1,5 +1,5 @@
 import { Magnet, PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { IconButton, Switch } from './kit'
 
 type ModeBarProps = {
@@ -9,6 +9,8 @@ type ModeBarProps = {
   /** Undo and redo, shown while editing; absent when there's nothing to step to. */
   onUndo: (() => void) | undefined
   onRedo: (() => void) | undefined
+  /** The Save button, shown while editing. */
+  save: ReactNode
   onOpenPanel?: () => void
   wallSnap: boolean
   onWallSnap: (snap: boolean) => void
@@ -24,6 +26,7 @@ export const ModeBar = ({
   onPlanning,
   onUndo,
   onRedo,
+  save,
   onOpenPanel,
   wallSnap,
   onWallSnap,
@@ -42,6 +45,7 @@ export const ModeBar = ({
         <PencilRuler size={16} />
         <span>Planning</span>
       </button>
+      {editing && save}
       {editing && onOpenPanel && (
         <div className="float history">
           <IconButton label="Open details" small onClick={onOpenPanel}>

@@ -41,7 +41,7 @@ import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { TopBar } from './ui/TopBar'
 import { NavRail, type Section } from './ui/NavRail'
-import { SaveBar } from './ui/SaveBar'
+import { SaveButton } from './ui/SaveVersion'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
@@ -393,6 +393,7 @@ const House = ({ backend, account }: HouseProps) => {
       onPlanning={(on) => changeSection(on ? 'planning' : 'home')}
       onUndo={data.canUndo ? undo : undefined}
       onRedo={data.canRedo ? redo : undefined}
+      save={<SaveButton data={data} />}
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
       wallSnap={wallSnap}
       onWallSnap={setWallSnap}
@@ -625,8 +626,6 @@ const House = ({ backend, account }: HouseProps) => {
             onReset={() => setViewKey((k) => k + 1)}
           />
         )}
-
-        {planning && data.dirty && <SaveBar data={data} />}
 
         {data.loading && <div className="toast">Loading the house…</div>}
         {data.error && (

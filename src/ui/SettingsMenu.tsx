@@ -46,6 +46,7 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
       rows: [
         [`${modifier}+Z`, 'Undo the last edit; clears the selection.'],
         [`${modifier}+Shift+Z / ${modifier}+Y`, 'Redo; clears the selection.'],
+        [`${modifier}+S`, 'Save the changes as a new version (opens the save dialog).'],
         [
           'Escape',
           'Step back in order: clear selection, cancel device placement, clear an unfinished measurement, stop measuring (clearing measurements), then leave Devices for Edit mode. One step per press.',
