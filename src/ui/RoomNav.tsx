@@ -3,13 +3,18 @@ import {
   Bath,
   Bed,
   BedDouble,
+  Check,
   DoorOpen,
   Footprints,
+  Pencil,
   Sofa,
   Square,
   Toilet,
   type LucideIcon,
 } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { arrangeRooms, moveRoom, readRoomOrder, saveRoomOrder, type RoomZone } from '../rooms/roomOrder'
 import type { RoomView } from '../rooms/roomViews'
 
 type RoomNavProps = {
@@ -32,43 +37,213 @@ const ROOM_ICONS: [RegExp, LucideIcon][] = [
 ]
 const roomIcon = (planName: string) => {
   const Icon = ROOM_ICONS.find(([test]) => test.test(planName))?.[1] ?? Square
-  return <Icon size={20} />
+  return <Icon size={18} />
 }
 
-/** Cards for the rooms down the left of the view: the rooms lived in as tiles, halls and storage as small links. */
+const LONG_PRESS = 500
+
+/** The room being dragged, and where the pointer holds it. */
+type Drag = { id: string; zone: RoomZone; x: number; y: number; offsetX: number; offsetY: number; width: number }
+
+/**
+ * The rooms down the left of the view: the rooms lived in as a list, halls and storage as small links under it. In
+ * editing (the pencil, or a long press) everything shakes where it is and can be dragged: up and down the list, or
+ * between the list and the small links to make a room big or small.
+ */
 export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
-  const main = rooms.filter((r) => !r.minor)
-  const minor = rooms.filter((r) => r.minor)
+  const [saved, setSaved] = useState(readRoomOrder)
+  const order = useMemo(() => arrangeRooms(rooms, saved), [rooms, saved])
+  const byId = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms])
+  const [editing, setEditing] = useState(false)
+  const [drag, setDrag] = useState<Drag>()
+  const navRef = useRef<HTMLElement>(null)
+  const ghostRef = useRef<HTMLDivElement>(null)
+  // The order as the pointer handlers last saw or made it, between renders.
+  const orderRef = useRef(order)
+  useLayoutEffect(() => {
+    orderRef.current = order
+  }, [order])
+  // A press that turned into a long press or a drag isn't also a click.
+  const swallowClick = useRef(false)
+
+  useEffect(() => {
+    if (!editing) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setEditing(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [editing])
+
+  // The others slide into their new places as the dragged room moves past them.
+  const places = useRef(new Map<string, { x: number; y: number }>())
+  useLayoutEffect(() => {
+    const next = new Map<string, { x: number; y: number }>()
+    navRef.current?.querySelectorAll<HTMLElement>('[data-room]').forEach((el) => {
+      const id = el.dataset.room!
+      const at = { x: el.offsetLeft, y: el.offsetTop }
+      const was = places.current.get(id)
+      if (drag && was && id !== drag.id && (was.x !== at.x || was.y !== at.y))
+        el.animate([{ transform: `translate(${was.x - at.x}px, ${was.y - at.y}px)` }, { transform: 'none' }], {
+          duration: 160,
+          easing: 'ease-out',
+        })
+      next.set(id, at)
+    })
+    places.current = next
+  })
+
+  // Where a room dropped at this point would go: before or after the room under it, or at the end of an empty spot.
+  const dropAt = (id: string, x: number, y: number): { zone: RoomZone; index: number } | undefined => {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-room], [data-zone]')
+    if (!el || !navRef.current?.contains(el)) return
+    const zone = (el.dataset.zone ?? el.closest<HTMLElement>('[data-zone]')?.dataset.zone) as RoomZone | undefined
+    if (!zone) return
+    const others = orderRef.current[zone].filter((r) => r !== id)
+    const over = el.dataset.room
+    if (!over) return { zone, index: others.length }
+    if (over === id) return
+    const box = el.getBoundingClientRect()
+    const after = zone === 'main' ? y > box.top + box.height / 2 : x > box.left + box.width / 2
+    return { zone, index: others.indexOf(over) + (after ? 1 : 0) }
+  }
+
+  const press = (id: string, zone: RoomZone) => (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return
+    const el = e.currentTarget
+    const start = { x: e.clientX, y: e.clientY }
+    let dragging = false
+    let wasEditing = editing
+    swallowClick.current = false
+    const timer = wasEditing
+      ? undefined
+      : window.setTimeout(() => {
+          wasEditing = true
+          swallowClick.current = true
+          setEditing(true)
+        }, LONG_PRESS)
+
+    const move = (m: PointerEvent) => {
+      if (m.pointerId !== e.pointerId) return
+      const far = Math.hypot(m.clientX - start.x, m.clientY - start.y) > 5
+      if (!wasEditing) {
+        if (far) window.clearTimeout(timer)
+        return
+      }
+      if (!dragging && far) {
+        dragging = true
+        swallowClick.current = true
+        const box = el.getBoundingClientRect()
+        setDrag({
+          id,
+          zone,
+          x: m.clientX,
+          y: m.clientY,
+          offsetX: start.x - box.left,
+          offsetY: start.y - box.top,
+          width: box.width,
+        })
+      }
+      if (!dragging) return
+      m.preventDefault()
+      const ghost = ghostRef.current
+      if (ghost) ghost.style.translate = `${m.clientX}px ${m.clientY}px`
+      const to = dropAt(id, m.clientX, m.clientY)
+      if (!to) return
+      const now = orderRef.current
+      const next = moveRoom(now, id, to.zone, to.index)
+      if (next.main.join() !== now.main.join() || next.minor.join() !== now.minor.join()) {
+        orderRef.current = next
+        setSaved(next)
+        setDrag((d) => d && { ...d, zone: to.zone })
+      }
+    }
+    const end = (u: PointerEvent) => {
+      if (u.pointerId !== e.pointerId) return
+      window.clearTimeout(timer)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      if (dragging) {
+        saveRoomOrder(orderRef.current)
+        setDrag(undefined)
+      }
+    }
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  }
+
+  const click = (id: string) => {
+    if (swallowClick.current) {
+      swallowClick.current = false
+      return
+    }
+    if (!editing) onRoom(id)
+  }
+
+  const item = (id: string, zone: RoomZone) => {
+    const r = byId.get(id)!
+    return (
+      <button
+        key={id}
+        data-room={id}
+        className={zone === 'main' ? 'room-row' : 'room-other'}
+        data-dragging={drag?.id === id || undefined}
+        aria-current={room === id ? 'page' : undefined}
+        onPointerDown={press(id, zone)}
+        onClick={() => click(id)}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {zone === 'main' && roomIcon(r.planName)}
+        <span className="room-row-label">{r.label}</span>
+      </button>
+    )
+  }
+
+  const dragged = drag && byId.get(drag.id)
   return (
-    <nav className="room-nav float" aria-label="Rooms">
-      <div className="room-tiles">
-        {main.map((r) => (
-          <button
-            key={r.id}
-            className="room-tile"
-            aria-current={room === r.id ? 'page' : undefined}
-            aria-label={r.label}
-            onClick={() => onRoom(r.id)}
-          >
-            {roomIcon(r.planName)}
-            <span className="room-tile-label">{r.label}</span>
-          </button>
-        ))}
+    <nav ref={navRef} className="room-nav float" aria-label="Rooms" data-editing={editing || undefined}>
+      <button
+        className="room-edit"
+        aria-label={editing ? 'Done' : 'Edit rooms'}
+        title={editing ? 'Done' : 'Edit rooms'}
+        aria-pressed={editing}
+        onClick={() => setEditing(!editing)}
+      >
+        {editing ? (
+          <span className="room-edit-done">
+            <Check size={12} strokeWidth={3} />
+          </span>
+        ) : (
+          <Pencil size={14} />
+        )}
+      </button>
+      <div className="room-list" data-zone="main">
+        {order.main.map((id) => item(id, 'main'))}
       </div>
-      {minor.length > 0 && (
-        <div className="room-others" role="group" aria-label="Other spaces">
-          {minor.map((r) => (
-            <button
-              key={r.id}
-              className="room-other"
-              aria-current={room === r.id ? 'page' : undefined}
-              onClick={() => onRoom(r.id)}
-            >
-              {r.label}
-            </button>
-          ))}
+      {(order.minor.length > 0 || editing) && (
+        <div className="room-others" role="group" aria-label="Other spaces" data-zone="minor">
+          {order.minor.map((id) => item(id, 'minor'))}
         </div>
       )}
+      {drag &&
+        dragged &&
+        createPortal(
+          <div
+            ref={ghostRef}
+            className="room-ghost float"
+            style={{
+              width: drag.zone === 'main' ? drag.width : undefined,
+              translate: `${drag.x}px ${drag.y}px`,
+              margin: `${-drag.offsetY}px 0 0 ${-drag.offsetX}px`,
+            }}
+          >
+            <span className={drag.zone === 'main' ? 'room-row' : 'room-other'}>
+              {drag.zone === 'main' && roomIcon(dragged.planName)}
+              <span className="room-row-label">{dragged.label}</span>
+            </span>
+          </div>,
+          document.body,
+        )}
     </nav>
   )
 }

@@ -1080,38 +1080,83 @@ p {
   padding: 0 9px;
 }
 
-/* The rooms, as cards under the view switch: the rooms lived in as tiles, the rest as small links. */
+/* The rooms, as a list under the view switch: the rooms lived in as rows, the rest as small links. */
 .room-nav {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 100%;
+  gap: 4px;
+  width: 212px;
+  max-width: 100%;
   min-height: 0;
   box-sizing: border-box;
-  padding: 8px;
+  padding: 6px;
   overflow-y: auto;
   scrollbar-width: none;
   border-radius: 14px;
 }
 
-.room-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+/* The pencil (the check while editing) sits in the corner beside the first row, not on a row of its own. */
+.room-edit {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
 }
 
-.room-tile {
+.room-edit:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.room-edit-done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2f7d4f;
+  color: #fff;
+}
+
+.room-nav[data-editing] .room-edit:hover {
+  background: transparent;
+}
+
+.room-list {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 2px;
+}
+
+.room-list > :first-child {
+  width: calc(100% - 34px);
+}
+
+.room-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
   min-width: 0;
-  height: 68px;
-  padding: 10px;
-  border: 1px solid var(--surface-3);
-  border-radius: var(--radius);
-  background: var(--surface-2);
+  height: 40px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--ink-2);
   font: inherit;
   font-size: 13px;
@@ -1120,22 +1165,20 @@ p {
   cursor: pointer;
   transition:
     background 120ms,
-    color 120ms,
-    border-color 120ms;
+    color 120ms;
 }
 
-/* An odd one out leads across the whole row. */
-.room-tile:first-child:nth-last-child(odd) {
-  grid-column: span 2;
+.room-row > svg {
+  flex: none;
 }
 
-.room-tile:hover {
+.room-row:hover {
   background: var(--surface-3);
   color: var(--ink);
 }
 
-.room-tile-label {
-  max-width: 100%;
+.room-row-label {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1145,6 +1188,13 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
+  min-height: 28px;
+  padding-top: 6px;
+  border-top: 1px solid var(--surface-3);
+}
+
+.room-list:empty {
+  min-height: 40px;
 }
 
 .room-other {
@@ -1156,6 +1206,7 @@ p {
   color: var(--ink-2);
   font: inherit;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background 120ms,
@@ -1167,14 +1218,79 @@ p {
   color: var(--ink);
 }
 
-.room-tile[aria-current='page'],
+.room-row[aria-current='page'],
 .room-other[aria-current='page'] {
   background: var(--accent-soft);
   color: var(--accent-hover);
 }
 
-.room-tile[aria-current='page'] {
-  border-color: rgb(200 102 74 / 0.3);
+/* Editing: nothing moves, everything shakes a little, out of step, until it's dragged. */
+.room-nav[data-editing] .room-row,
+.room-nav[data-editing] .room-other {
+  background: var(--surface-2);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+  animation: room-jiggle 300ms ease-in-out infinite;
+}
+
+.room-nav[data-editing] [aria-current='page'] {
+  background: var(--accent-soft);
+}
+
+.room-nav[data-editing] :nth-child(2n of [data-room]) {
+  animation-delay: -150ms;
+}
+
+.room-nav[data-editing] :nth-child(3n of [data-room]) {
+  animation-delay: -80ms;
+}
+
+.room-nav[data-editing] .room-others {
+  gap: 4px;
+}
+
+.room-nav [data-dragging] {
+  visibility: hidden;
+}
+
+@keyframes room-jiggle {
+  0%,
+  100% {
+    rotate: -0.8deg;
+  }
+  50% {
+    rotate: 0.8deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-nav[data-editing] .room-row,
+  .room-nav[data-editing] .room-other {
+    animation: none;
+  }
+}
+
+/* The room in hand, following the pointer over everything. */
+.room-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  rotate: -1.5deg;
+  scale: 1.04;
+}
+
+.room-ghost > * {
+  width: 100%;
+  color: var(--ink);
+  cursor: grabbing;
 }
 
 .edit-toggle {
