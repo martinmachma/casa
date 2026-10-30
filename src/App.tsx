@@ -255,11 +255,9 @@ const House = ({ backend, account }: HouseProps) => {
     if (measure) setMeasure({ ...measure, picks: [] })
   }
 
-  /** The outside view has no walking. */
   const goOutside = () => {
     leaveRoom()
     setOutside(true)
-    if (planCamera === 'walk') setCamera('orbit')
   }
 
   /** Planning is editing, in a room or not; home is for looking: editing and measuring stop, and the sun follows the clock. */
@@ -510,10 +508,7 @@ const House = ({ backend, account }: HouseProps) => {
           onTool={changeInteraction}
         />
       )
-    if (interaction === 'edit')
-      return (
-        <FurniturePanel onTool={changeInteraction} onAdd={addPiece} />
-      )
+    if (interaction === 'edit') return <FurniturePanel onTool={changeInteraction} onAdd={addPiece} />
     return undefined
   })()
 
@@ -598,7 +593,7 @@ const House = ({ backend, account }: HouseProps) => {
             camera={camera}
             onCamera={setCamera}
             canPlan={planning}
-            canWalk={!outside}
+            canCut={!outside}
             cutaway={cutaway}
             onCutaway={setCutaway}
           />
