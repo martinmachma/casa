@@ -89,12 +89,12 @@ export const useItemCut = (
       if (!(o instanceof Mesh) || o.type !== 'Mesh' || o === section.cap) return
       let opaque = false
       for (const m of [o.material].flat()) {
-        if (!m.visible) continue
-        opaque ||= !m.transparent
+        // Hidden hit boxes get the plane too: what's cut away can't be picked.
         if (m.clippingPlanes?.[0] !== plane) {
           m.clippingPlanes = [plane]
           m.needsUpdate = true
         }
+        if (m.visible) opaque ||= !m.transparent
       }
       if (cut && opaque)
         sources.push({ mesh: o, matrix: new Matrix4().multiplyMatrices(section.inverse, o.matrixWorld) })

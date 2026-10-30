@@ -78,8 +78,14 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     return () => clearTimeout(t)
   }, [backend, draft])
 
+  // Edits that end up back where the version was (moved there and back, say) leave nothing to save.
+  const dirty = useMemo(() => {
+    if (!draft) return false
+    const base = versions.find((v) => v.id === draft.basedOn)?.data ?? EMPTY_STATE
+    return JSON.stringify(draft.state) !== JSON.stringify(base)
+  }, [draft, versions])
+
   // Ask before leaving with edits that aren't saved as a version.
-  const dirty = draft !== undefined
   useEffect(() => {
     if (!dirty) return
     const warn = (e: BeforeUnloadEvent) => e.preventDefault()

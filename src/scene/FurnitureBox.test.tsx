@@ -61,16 +61,21 @@ const setup = (selected: boolean, pointerType = 'mouse', add = false) => {
       target,
       stopPropagation: vi.fn(),
     }) as unknown as ThreeEvent<PointerEvent>
-  return { handlers, event, onSelect, onMove, onMoveEnd, onTap }
+  const click = (delta: number) => ({ delta, stopPropagation: vi.fn() }) as unknown as ThreeEvent<MouseEvent>
+  return { handlers, event, click, onSelect, onMove, onMoveEnd, onTap }
 }
 
 describe.each(['mouse', 'touch'])('furniture gestures (%s)', (pointerType) => {
-  it('selects on release and never moves an initially unselected item', () => {
-    const { handlers, event, onSelect, onMove, onMoveEnd } = setup(false, pointerType)
+  it('selects an unselected item on a tap, but leaves a drag to the camera', () => {
+    const { handlers, event, click, onSelect, onMove, onMoveEnd } = setup(false, pointerType)
     handlers.onPointerDown(event('pointerdown'))
-    expect(onSelect).not.toHaveBeenCalled()
     handlers.onPointerMove(event('pointermove', 5))
     handlers.onPointerUp(event('pointerup', 5))
+    handlers.onClick(click(20))
+    expect(onSelect).not.toHaveBeenCalled()
+    handlers.onPointerDown(event('pointerdown'))
+    handlers.onPointerUp(event('pointerup'))
+    handlers.onClick(click(0))
     expect(onSelect).toHaveBeenCalledExactlyOnceWith('chair', false)
     expect(onMove).not.toHaveBeenCalled()
     expect(onMoveEnd).not.toHaveBeenCalled()
@@ -99,12 +104,13 @@ describe.each(['mouse', 'touch'])('furniture gestures (%s)', (pointerType) => {
   })
 })
 
-it('only changes modifier selection on release, without moving a selected piece', () => {
-  const { handlers, event, onSelect, onMove, onTap } = setup(true, 'mouse', true)
+it('only changes modifier selection on a tap, without moving a selected piece', () => {
+  const { handlers, event, click, onSelect, onMove, onTap } = setup(true, 'mouse', true)
   handlers.onPointerDown(event('pointerdown'))
   handlers.onPointerMove(event('pointermove', 5))
   expect(onSelect).not.toHaveBeenCalled()
   handlers.onPointerUp(event('pointerup', 5))
+  handlers.onClick(click(0))
   expect(onSelect).toHaveBeenCalledExactlyOnceWith('chair', true)
   expect(onMove).not.toHaveBeenCalled()
   expect(onTap).not.toHaveBeenCalled()

@@ -1269,6 +1269,12 @@ p {
   padding: 4px;
 }
 
+/* The same size as the bottom tools beside it. */
+.camera-pad-hidden .pad-btn {
+  width: 30px;
+  height: 30px;
+}
+
 /* ── Inspector content ───────────────────────────────────── */
 .swatches {
   display: grid;

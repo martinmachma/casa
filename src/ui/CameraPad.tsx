@@ -58,7 +58,7 @@ export const CameraPad = ({ onHold, onRelease, mode, onReset }: CameraPadProps) 
     return (
       <div className="camera-pad camera-pad-hidden float">
         <button className="pad-btn" onClick={toggle} aria-label="Show camera buttons" title="Show camera buttons">
-          <Gamepad2 size={18} />
+          <Gamepad2 size={17} />
         </button>
       </div>
     )
