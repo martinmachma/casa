@@ -1,7 +1,9 @@
 import type { Device, DeviceKind } from '../data/types'
 import { DEVICE_KINDS, KIND_ORDER } from '../devices/kinds'
 import { DeviceIcon } from './deviceIcons'
-import { PanelHead, Section } from './kit'
+import { PlanTabs } from './FurniturePanel'
+import type { Interaction } from '../scene/selection'
+import { Section } from './kit'
 
 type DevicePanelProps = {
   /** Devices on this floor. */
@@ -10,13 +12,13 @@ type DevicePanelProps = {
   placing: DeviceKind | undefined
   onPlacing: (kind: DeviceKind | undefined) => void
   onSelect: (id: string) => void
-  onClose: () => void
+  onTool: (tool: Interaction) => void
 }
 
 /** The right panel while the devices tool is on and none is selected: what to place, and what's placed. */
-export const DevicePanel = ({ devices, placing, onPlacing, onSelect, onClose }: DevicePanelProps) => (
+export const DevicePanel = ({ devices, placing, onPlacing, onSelect, onTool }: DevicePanelProps) => (
   <>
-    <PanelHead eyebrow="Smart home" title="Devices" onClose={onClose} closeLabel="Stop placing devices" />
+    <PlanTabs value="devices" onChange={onTool} />
 
     <Section title="Place">
       <div className="catalog device-kinds">

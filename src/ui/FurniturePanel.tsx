@@ -1,50 +1,110 @@
-import { Plus } from 'lucide-react'
+import { Lightbulb, Plus, Search, Sofa } from 'lucide-react'
 import { useState } from 'react'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
+import type { Interaction } from '../scene/selection'
 import { NumberField } from './NumberField'
-import { Section, Switch } from './kit'
+import { Section, Segmented } from './kit'
 
 /** What to add: a catalog model or a plain box, sizes in metres. */
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
+/** Furniture or devices: what the panel adds while nothing is selected. */
+export const PlanTabs = ({ value, onChange }: { value: Interaction; onChange: (tool: Interaction) => void }) => (
+  <Section>
+    <Segmented
+      label="Add"
+      block
+      className="plan-tabs"
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'edit', label: 'Furniture', icon: <Sofa size={16} /> },
+        { value: 'devices', label: 'Devices (L)', icon: <Lightbulb size={16} /> },
+      ]}
+    />
+  </Section>
+)
+
 type FurniturePanelProps = {
-  wallSnap: boolean
-  onWallSnap: (snap: boolean) => void
-  furnitureSnap: boolean
-  onFurnitureSnap: (snap: boolean) => void
+  onTool: (tool: Interaction) => void
   onAdd: (piece: NewPiece) => void
 }
 
-/** Furniture creation and snapping controls shown while editing with nothing selected. */
-export const FurniturePanel = ({
-  wallSnap,
-  onWallSnap,
-  furnitureSnap,
-  onFurnitureSnap,
-  onAdd,
-}: FurniturePanelProps) => {
+/** Furniture creation shown while editing with nothing selected. */
+export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
-  const [group, setGroup] = useState<CatalogGroup | 'Box'>('Living')
+  const [group, setGroup] = useState<CatalogGroup>('Living')
+  const [query, setQuery] = useState('')
+  const [custom, setCustom] = useState(false)
+
+  // A search looks through every group.
+  const q = query.trim().toLowerCase()
+  const entries = CATALOG.filter((e) => (q ? e.name.toLowerCase().includes(q) : e.group === group))
 
   return (
     <>
-      <Section title="Snapping">
-        <Switch label="Snap to walls" checked={wallSnap} onChange={onWallSnap} />
-        <Switch label="Snap to furniture" checked={furnitureSnap} onChange={onFurnitureSnap} />
-      </Section>
+      <PlanTabs value="edit" onChange={onTool} />
 
-      <Section title="Add furniture">
-        <div className="tabs" role="tablist" aria-label="Add">
-          {[...CATALOG_GROUPS, 'Box' as const].map((g) => (
-            <button key={g} role="tab" aria-selected={group === g} onClick={() => setGroup(g)}>
+      <Section>
+        <label className="search">
+          <Search size={16} aria-hidden />
+          <input
+            type="search"
+            placeholder={`Search ${CATALOG.length} pieces`}
+            aria-label="Search furniture"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <div className="tabs" role="tablist" aria-label="Group">
+          {CATALOG_GROUPS.map((g) => (
+            <button
+              key={g}
+              role="tab"
+              aria-selected={!q && group === g}
+              onClick={() => {
+                setGroup(g)
+                setQuery('')
+              }}
+            >
               {g}
             </button>
           ))}
         </div>
+      </Section>
 
-        {group === 'Box' ? (
-          <>
+      <Section title={q ? 'Results' : group} aside={<span className="muted num">{entries.length}</span>}>
+        <div className="catalog">
+          {entries.map((e) => (
+            <button
+              key={e.model}
+              className="catalog-item"
+              onClick={() =>
+                onAdd({
+                  name: e.name,
+                  model: e.model,
+                  width: e.width / 100,
+                  depth: e.depth / 100,
+                  height: e.height / 100,
+                })
+              }
+            >
+              <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
+              <span>{e.name}</span>
+              <span className="catalog-size">
+                {e.width} × {e.depth}
+              </span>
+            </button>
+          ))}
+          <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
+            <Plus size={22} />
+            <span>Custom box</span>
+          </button>
+        </div>
+
+        {custom && (
+          <div className="custom-box">
             <label className="field">
               Name
               <input value={size.name} onChange={(e) => setSize({ ...size, name: e.target.value })} />
@@ -68,27 +128,6 @@ export const FurniturePanel = ({
               <Plus size={16} />
               Add box
             </button>
-          </>
-        ) : (
-          <div className="catalog">
-            {CATALOG.filter((e) => e.group === group).map((e) => (
-              <button
-                key={e.model}
-                className="catalog-item"
-                onClick={() =>
-                  onAdd({
-                    name: e.name,
-                    model: e.model,
-                    width: e.width / 100,
-                    depth: e.depth / 100,
-                    height: e.height / 100,
-                  })
-                }
-              >
-                <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
-                <span>{e.name}</span>
-              </button>
-            ))}
           </div>
         )}
       </Section>

@@ -393,11 +393,13 @@ const House = ({ backend, account }: HouseProps) => {
     <ModeBar
       planning={planning}
       onPlanning={(on) => changeSection(on ? 'planning' : 'home')}
-      interaction={interaction}
-      onChange={changeInteraction}
       onUndo={data.canUndo ? undo : undefined}
       onRedo={data.canRedo ? redo : undefined}
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
+      wallSnap={wallSnap}
+      onWallSnap={setWallSnap}
+      furnitureSnap={furnitureSnap}
+      onFurnitureSnap={setFurnitureSnap}
     />
   )
 
@@ -505,18 +507,12 @@ const House = ({ backend, account }: HouseProps) => {
             if (kind && isNarrow()) setRightOpen(false)
           }}
           onSelect={(id) => select({ kind: 'device', id })}
-          onClose={() => changeInteraction('edit')}
+          onTool={changeInteraction}
         />
       )
     if (interaction === 'edit')
       return (
-        <FurniturePanel
-          wallSnap={wallSnap}
-          onWallSnap={setWallSnap}
-          furnitureSnap={furnitureSnap}
-          onFurnitureSnap={setFurnitureSnap}
-          onAdd={addPiece}
-        />
+        <FurniturePanel onTool={changeInteraction} onAdd={addPiece} />
       )
     return undefined
   })()

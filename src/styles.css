@@ -1509,11 +1509,8 @@ input[type='range'].kelvin::-moz-range-thumb {
 /* Furniture catalog */
 .tabs {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 0 -20px;
-  padding: 0 20px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .tabs button {
@@ -1570,6 +1567,82 @@ input[type='range'].kelvin::-moz-range-thumb {
 .catalog-item img {
   width: 64px;
   height: 64px;
+}
+
+/* Catalog sizes, and the last tile, which opens a size form for a plain box. */
+.catalog-size {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.catalog-custom {
+  justify-content: center;
+  min-height: 100px;
+  border: 1.5px dashed var(--line-strong);
+  background: var(--surface);
+}
+
+.catalog-custom[aria-expanded='true'] {
+  border-style: solid;
+  border-color: var(--ink);
+}
+
+.custom-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.plan-tabs button {
+  min-height: 36px;
+  font-size: 14px;
+}
+
+/* Snapping, from the magnet in the planning toolbar. */
+.modebar .snap .icon-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.snap-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px 10px;
+}
+
+.snap-menu .menu-label {
+  padding: 4px 0;
 }
 
 /* Measuring */

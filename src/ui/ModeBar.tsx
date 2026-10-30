@@ -1,24 +1,35 @@
-import { Lightbulb, MousePointer2, PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
-import type { Interaction } from '../scene/selection'
-import { IconButton, Segmented } from './kit'
+import { Magnet, PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { IconButton, Switch } from './kit'
 
 type ModeBarProps = {
   /** Planning is editing: the house can be changed only while it's on. */
   planning: boolean
   onPlanning: (planning: boolean) => void
-  /** The tool in use while planning. */
-  interaction: Interaction
-  onChange: (interaction: Interaction) => void
   /** Undo and redo, shown while editing; absent when there's nothing to step to. */
   onUndo: (() => void) | undefined
   onRedo: (() => void) | undefined
   onOpenPanel?: () => void
+  wallSnap: boolean
+  onWallSnap: (snap: boolean) => void
+  furnitureSnap: boolean
+  onFurnitureSnap: (snap: boolean) => void
 }
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 
 /** Stays anchored over the view, including while the details panel opens. */
-export const ModeBar = ({ planning, onPlanning, interaction, onChange, onUndo, onRedo, onOpenPanel }: ModeBarProps) => {
+export const ModeBar = ({
+  planning,
+  onPlanning,
+  onUndo,
+  onRedo,
+  onOpenPanel,
+  wallSnap,
+  onWallSnap,
+  furnitureSnap,
+  onFurnitureSnap,
+}: ModeBarProps) => {
   const editing = planning
   return (
     <div className="modebar">
@@ -49,16 +60,50 @@ export const ModeBar = ({ planning, onPlanning, interaction, onChange, onUndo, o
         </div>
       )}
       {editing && (
-        <Segmented
-          label="Tool"
-          className="float tools"
-          value={interaction}
-          onChange={onChange}
-          options={[
-            { value: 'edit', label: 'Select', icon: <MousePointer2 size={17} />, iconOnly: true },
-            { value: 'devices', label: 'Devices (L)', icon: <Lightbulb size={17} />, iconOnly: true },
-          ]}
+        <SnapMenu
+          wallSnap={wallSnap}
+          onWallSnap={onWallSnap}
+          furnitureSnap={furnitureSnap}
+          onFurnitureSnap={onFurnitureSnap}
         />
+      )}
+    </div>
+  )
+}
+
+type SnapMenuProps = Pick<ModeBarProps, 'wallSnap' | 'onWallSnap' | 'furnitureSnap' | 'onFurnitureSnap'>
+
+/** A magnet that lights up while anything snaps; its menu turns each kind on or off. */
+const SnapMenu = ({ wallSnap, onWallSnap, furnitureSnap, onFurnitureSnap }: SnapMenuProps) => {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [open])
+
+  return (
+    <div className="menu-anchor" ref={ref}>
+      <div className="float history snap">
+        <IconButton
+          label="Snapping"
+          small
+          aria-expanded={open}
+          aria-pressed={wallSnap || furnitureSnap}
+          onClick={() => setOpen(!open)}
+        >
+          <Magnet size={17} />
+        </IconButton>
+      </div>
+      {open && (
+        <div className="menu snap-menu">
+          <div className="menu-label">Snap to</div>
+          <Switch label="Walls" checked={wallSnap} onChange={onWallSnap} />
+          <Switch label="Furniture" checked={furnitureSnap} onChange={onFurnitureSnap} />
+        </div>
       )}
     </div>
   )
