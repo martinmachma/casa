@@ -60,16 +60,18 @@ type HouseProps = { backend: Backend; account: Account }
 const NARROW = '(max-width: 820px)'
 const isNarrow = () => window.matchMedia(NARROW).matches
 
-const SECTION_KEY = 'casa.section'
-/** Home is for living in the house; planning is the editor. */
+const PLANNING_PARAM = 'planning'
+/** Home is for living in the house; planning is the editor, `?planning` in the URL. */
 type Section = 'home' | 'planning'
 
-const savedSection = (): Section => {
-  try {
-    return localStorage.getItem(SECTION_KEY) === 'home' ? 'home' : 'planning'
-  } catch {
-    return 'planning'
-  }
+const savedSection = (): Section =>
+  new URLSearchParams(window.location.search).has(PLANNING_PARAM) ? 'planning' : 'home'
+
+const saveSection = (section: Section) => {
+  const url = new URL(window.location.href)
+  if (section === 'planning') url.searchParams.set(PLANNING_PARAM, '')
+  else url.searchParams.delete(PLANNING_PARAM)
+  window.history.replaceState(window.history.state, '', url.toString().replace(`${PLANNING_PARAM}=`, PLANNING_PARAM))
 }
 
 const House = ({ backend, account }: HouseProps) => {
@@ -280,11 +282,7 @@ const House = ({ backend, account }: HouseProps) => {
     } else setTool('edit')
     setSun(next === 'home' ? sunNow() : undefined)
     setSection(next)
-    try {
-      localStorage.setItem(SECTION_KEY, next)
-    } catch {
-      // Private windows may refuse storage; the section just isn't remembered.
-    }
+    saveSection(next)
   }
 
   /** Nothing stays selected across tools; measuring carries on. */
