@@ -1233,7 +1233,7 @@ p {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   cursor: grab;
-  animation: room-jiggle 300ms ease-in-out infinite;
+  animation: room-jiggle 340ms ease-in-out infinite;
 }
 
 .room-nav[data-editing] [aria-current='page'] {
@@ -1241,28 +1241,33 @@ p {
 }
 
 .room-nav[data-editing] :nth-child(2n of [data-room]) {
-  animation-delay: -150ms;
+  animation-delay: -170ms;
 }
 
 .room-nav[data-editing] :nth-child(3n of [data-room]) {
-  animation-delay: -80ms;
+  animation-delay: -90ms;
 }
 
 .room-nav[data-editing] .room-others {
   gap: 4px;
 }
 
-.room-nav [data-dragging] {
-  visibility: hidden;
+/* Where the room in hand would land: itself, faded. */
+.room-nav[data-editing] [data-dragging] {
+  opacity: 0.35;
+  animation: none;
 }
 
+/* A turn alone hardly moves a short link, so the shake is a small nudge as well. */
 @keyframes room-jiggle {
   0%,
   100% {
-    rotate: -0.8deg;
+    rotate: -0.4deg;
+    translate: -0.4px 0;
   }
   50% {
-    rotate: 0.8deg;
+    rotate: 0.4deg;
+    translate: 0.4px 0;
   }
 }
 

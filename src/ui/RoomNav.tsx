@@ -91,19 +91,28 @@ export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
     places.current = next
   })
 
-  // Where a room dropped at this point would go: before or after the room under it, or at the end of an empty spot.
+  /**
+   * Where a room dropped at this point would go: among the small links once the pointer is below the list, and after
+   * every other room whose middle it has passed (in the links, also every one on a row above). A room only swaps
+   * places once the pointer crosses its neighbour's middle, and the swap moves that middle away again, so it holds still.
+   */
   const dropAt = (id: string, x: number, y: number): { zone: RoomZone; index: number } | undefined => {
-    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-room], [data-zone]')
-    if (!el || !navRef.current?.contains(el)) return
-    const zone = (el.dataset.zone ?? el.closest<HTMLElement>('[data-zone]')?.dataset.zone) as RoomZone | undefined
-    if (!zone) return
-    const others = orderRef.current[zone].filter((r) => r !== id)
-    const over = el.dataset.room
-    if (!over) return { zone, index: others.length }
-    if (over === id) return
-    const box = el.getBoundingClientRect()
-    const after = zone === 'main' ? y > box.top + box.height / 2 : x > box.left + box.width / 2
-    return { zone, index: others.indexOf(over) + (after ? 1 : 0) }
+    const nav = navRef.current
+    if (!nav) return
+    // The pointer in the nav's own layout, which offsetTop and offsetLeft measure and sliding rooms don't change.
+    const box = nav.getBoundingClientRect()
+    const px = x - box.left - nav.clientLeft + nav.scrollLeft
+    const py = y - box.top - nav.clientTop + nav.scrollTop
+    const minor = nav.querySelector<HTMLElement>('[data-zone="minor"]')
+    const zone: RoomZone = minor && py > minor.offsetTop ? 'minor' : 'main'
+    const others = [...nav.querySelectorAll<HTMLElement>(`[data-zone="${zone}"] [data-room]`)].filter(
+      (el) => el.dataset.room !== id,
+    )
+    const passed = (el: HTMLElement) =>
+      zone === 'main'
+        ? py > el.offsetTop + el.offsetHeight / 2
+        : py > el.offsetTop + el.offsetHeight || (py >= el.offsetTop && px > el.offsetLeft + el.offsetWidth / 2)
+    return { zone, index: others.filter(passed).length }
   }
 
   const press = (id: string, zone: RoomZone) => (e: ReactPointerEvent<HTMLButtonElement>) => {
