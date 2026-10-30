@@ -73,6 +73,12 @@ export const RoomNav = ({ rooms, room, onRoom }: RoomNavProps) => {
     return () => window.removeEventListener('keydown', onKey)
   }, [editing])
 
+  useEffect(() => {
+    if (!drag) return
+    document.documentElement.dataset.roomDrag = ''
+    return () => delete document.documentElement.dataset.roomDrag
+  }, [drag])
+
   // The others slide into their new places as the dragged room moves past them.
   const places = useRef(new Map<string, { x: number; y: number }>())
   useLayoutEffect(() => {

@@ -1090,34 +1090,41 @@ p {
   max-width: 100%;
   min-height: 0;
   box-sizing: border-box;
-  padding: 6px;
+  padding: 10px 6px;
   overflow-y: auto;
   scrollbar-width: none;
   border-radius: 14px;
 }
 
-/* The pencil (the check while editing) sits in the corner beside the first row, not on a row of its own. */
+/* The pencil (the check while editing) floats in the corner over the list, shown while the card is pointed at. */
 .room-edit {
   position: absolute;
-  top: 12px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
   z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   color: var(--muted);
   cursor: pointer;
+  transition: opacity 120ms;
 }
 
 .room-edit:hover {
-  background: var(--surface-3);
   color: var(--ink);
+}
+
+@media (hover: hover) {
+  .room-nav:not(:hover, :focus-within, [data-editing]) .room-edit {
+    opacity: 0;
+  }
 }
 
 .room-edit-done {
@@ -1131,18 +1138,15 @@ p {
   color: #fff;
 }
 
-.room-nav[data-editing] .room-edit:hover {
+.room-nav[data-editing] .room-edit {
   background: transparent;
+  box-shadow: none;
 }
 
 .room-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.room-list > :first-child {
-  width: calc(100% - 34px);
 }
 
 .room-row {
@@ -1248,8 +1252,10 @@ p {
   animation-delay: -90ms;
 }
 
-.room-nav[data-editing] .room-others {
-  gap: 4px;
+/* While a room is in hand the pointer shows it, wherever it is. */
+html[data-room-drag],
+html[data-room-drag] * {
+  cursor: grabbing !important;
 }
 
 /* Where the room in hand would land: itself, faded. */
