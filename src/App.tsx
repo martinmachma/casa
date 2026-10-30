@@ -42,6 +42,7 @@ import { ModeBar } from './ui/ModeBar'
 import { TopBar } from './ui/TopBar'
 import { NavRail, type Section } from './ui/NavRail'
 import { SaveButton } from './ui/SaveVersion'
+import { SnapMenu } from './ui/SnapMenu'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
@@ -395,10 +396,6 @@ const House = ({ backend, account }: HouseProps) => {
       onRedo={data.canRedo ? redo : undefined}
       save={<SaveButton data={data} />}
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
-      wallSnap={wallSnap}
-      onWallSnap={setWallSnap}
-      furnitureSnap={furnitureSnap}
-      onFurnitureSnap={setFurnitureSnap}
     />
   )
 
@@ -613,6 +610,14 @@ const House = ({ backend, account }: HouseProps) => {
                 setMeasurements([])
                 if (measure) setMeasure({ ...measure, picks: [] })
               }}
+            />
+          )}
+          {planning && (
+            <SnapMenu
+              wallSnap={wallSnap}
+              onWallSnap={setWallSnap}
+              furnitureSnap={furnitureSnap}
+              onFurnitureSnap={setFurnitureSnap}
             />
           )}
           {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}

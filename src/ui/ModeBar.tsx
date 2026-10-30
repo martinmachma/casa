@@ -1,6 +1,6 @@
-import { Magnet, PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
-import { IconButton, Switch } from './kit'
+import { PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { IconButton } from './kit'
 
 type ModeBarProps = {
   /** Planning is editing: the house can be changed only while it's on. */
@@ -12,10 +12,6 @@ type ModeBarProps = {
   /** The Save button, shown while editing. */
   save: ReactNode
   onOpenPanel?: () => void
-  wallSnap: boolean
-  onWallSnap: (snap: boolean) => void
-  furnitureSnap: boolean
-  onFurnitureSnap: (snap: boolean) => void
 }
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -28,10 +24,6 @@ export const ModeBar = ({
   onRedo,
   save,
   onOpenPanel,
-  wallSnap,
-  onWallSnap,
-  furnitureSnap,
-  onFurnitureSnap,
 }: ModeBarProps) => {
   const editing = planning
   return (
@@ -61,52 +53,6 @@ export const ModeBar = ({
           <IconButton label={`Redo (${mod}Shift+Z)`} small disabled={!onRedo} onClick={onRedo}>
             <Redo2 size={17} />
           </IconButton>
-        </div>
-      )}
-      {editing && (
-        <SnapMenu
-          wallSnap={wallSnap}
-          onWallSnap={onWallSnap}
-          furnitureSnap={furnitureSnap}
-          onFurnitureSnap={onFurnitureSnap}
-        />
-      )}
-    </div>
-  )
-}
-
-type SnapMenuProps = Pick<ModeBarProps, 'wallSnap' | 'onWallSnap' | 'furnitureSnap' | 'onFurnitureSnap'>
-
-/** A magnet that lights up while anything snaps; its menu turns each kind on or off. */
-const SnapMenu = ({ wallSnap, onWallSnap, furnitureSnap, onFurnitureSnap }: SnapMenuProps) => {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
-  }, [open])
-
-  return (
-    <div className="menu-anchor" ref={ref}>
-      <div className="float history snap">
-        <IconButton
-          label="Snapping"
-          small
-          aria-expanded={open}
-          aria-pressed={wallSnap || furnitureSnap}
-          onClick={() => setOpen(!open)}
-        >
-          <Magnet size={17} />
-        </IconButton>
-      </div>
-      {open && (
-        <div className="menu snap-menu">
-          <div className="menu-label">Snap to</div>
-          <Switch label="Walls" checked={wallSnap} onChange={onWallSnap} />
-          <Switch label="Furniture" checked={furnitureSnap} onChange={onFurnitureSnap} />
         </div>
       )}
     </div>
