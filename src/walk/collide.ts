@@ -1,4 +1,4 @@
-import { openingId, openingSill, wallAngle, wallPieces, wallThickness } from '../layout/geometry'
+import { openingId, openingSill, wallAngle, wallEndExtensions, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 
 /** A solid rectangle in the plan: centre, half sizes along its own axes, and its angle. */
@@ -25,7 +25,7 @@ export const wallObstacles = (
           ((o.type === 'door' || o.type === 'sliding') && !openDoors.has(openingId(wall.id, i))),
       )
       .map((o) => ({ u0: o.offset, u1: o.offset + o.width, y0: 0, y1: o.height }))
-    return [...wallPieces(wall, floor.height, half), ...fills]
+    return [...wallPieces(wall, floor.height, wallEndExtensions(wall, floor)), ...fills]
       .filter((p) => p.y0 < elevation - floor.elevation + 1.8 && p.y1 > elevation - floor.elevation + 0.15)
       .map((p) => {
         const u = (p.u0 + p.u1) / 2

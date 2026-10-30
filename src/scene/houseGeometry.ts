@@ -1,6 +1,14 @@
 import { BoxGeometry, BufferGeometry } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { openingId, openingSill, wallAngle, wallHeight, wallPieces, wallThickness } from '../layout/geometry'
+import {
+  openingId,
+  openingSill,
+  wallAngle,
+  wallEndExtensions,
+  wallHeight,
+  wallPieces,
+  wallThickness,
+} from '../layout/geometry'
 import type { Floor, Roof } from '../layout/types'
 import { slabGeometry } from './prism'
 import { roofBoxes } from './roofGeometry'
@@ -42,7 +50,7 @@ export const houseSolid = (
     parts.push(bare(slab))
     for (const wall of floor.walls) {
       const thickness = wallThickness(wall, floor)
-      for (const p of wallPieces(wall, wallHeight(wall, floor), thickness / 2)) {
+      for (const p of wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor))) {
         const y0 = p.y0
         const piece = box(
           [p.u1 - p.u0, p.y1 - y0, thickness],

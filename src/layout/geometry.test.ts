@@ -6,6 +6,7 @@ import {
   sidePart,
   splitPieces,
   validateLayout,
+  wallEndExtensions,
   wallJoints,
   wallOutside,
   wallPaintParts,
@@ -179,6 +180,58 @@ describe('cornerCuts', () => {
     const corner: Wall = { id: 'c', from: [4, 0], to: [4, 3], thickness: 0.3 }
     const floor = { wallThickness: 0.1, walls: [wall, corner] } as unknown as Floor
     expect(cornerCuts(wall, floor)).toEqual([{ at: 4 - 0.15, wall: 'c' }])
+  })
+})
+
+describe('wall end joins', () => {
+  it('reaches the far face of a different thickness at each T join, in either direction', () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [0, 4], thickness: 0.1 }
+    const floor = {
+      wallThickness: 0.1,
+      walls: [
+        wall,
+        { id: 'n', from: [-2, 0], to: [2, 0], thickness: 0.2 },
+        { id: 's', from: [2, 4], to: [-2, 4], thickness: 0.4 },
+      ],
+    } as Floor
+    expect(wallEndExtensions(wall, floor)).toEqual({ from: 0.1, to: 0.2 })
+    expect(wallEndExtensions({ ...wall, from: wall.to, to: wall.from }, floor)).toEqual({ from: 0.2, to: 0.1 })
+    expect(wallPieces(wall, 2.6, wallEndExtensions(wall, floor))).toEqual([{ u0: -0.1, u1: 4.2, y0: 0, y1: 2.6 }])
+    expect(cornerCuts(wall, floor)).toEqual([
+      { at: 0.1, wall: 'n' },
+      { at: 3.8, wall: 's' },
+    ])
+  })
+
+  it('fills the three cutaway joins in the upstairs south wall without widening the house', () => {
+    const floor = house.floors[1]
+    const byId = (id: string) => floor.walls.find((w) => w.id === id)!
+    const south = byId('u-south')
+    const southHalf = south.thickness! / 2
+    expect(wallEndExtensions(byId('u-west'), floor).from).toBeCloseTo(southHalf)
+    expect(wallEndExtensions(byId('u-east-south'), floor).to).toBeCloseTo(southHalf)
+    const partition = byId('u-204-203')
+    expect(wallEndExtensions(partition, floor).to).toBeCloseTo(southHalf)
+    expect(wallEndExtensions(partition, floor).from).toBeCloseTo(byId('u-middle').thickness! / 2)
+    const extension = wallEndExtensions(south, floor)
+    const { min, max } = floorBounds(floor)
+    expect(south.from[0] + extension.from).toBeCloseTo(max[0])
+    expect(south.to[0] - extension.to).toBeCloseTo(min[0])
+    expect(cornerCuts(byId('u-west'), floor)).toContainEqual({ at: southHalf, wall: south.id })
+  })
+
+  it('ignores nearby parallel walls and transverse walls that stop short of the join', () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [4, 0], thickness: 0.1 }
+    const floor = {
+      wallThickness: 0.1,
+      walls: [
+        wall,
+        { id: 'parallel', from: [0, 0.1], to: [4, 0.1], thickness: 0.4 },
+        { id: 'short', from: [4, 0.5], to: [4, 2], thickness: 0.4 },
+      ],
+    } as Floor
+    expect(wallEndExtensions(wall, floor)).toEqual({ from: 0.05, to: 0.05 })
+    expect(cornerCuts(wall, floor)).toEqual([])
   })
 })
 

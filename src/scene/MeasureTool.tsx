@@ -2,7 +2,15 @@ import { Line } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { useMemo, useState } from 'react'
 import type { FurnitureItem } from '../data/types'
-import { floorBounds, stubPieces, wallHeight, wallLength, wallPieces, wallThickness } from '../layout/geometry'
+import {
+  floorBounds,
+  stubPieces,
+  wallEndExtensions,
+  wallHeight,
+  wallLength,
+  wallPieces,
+  wallThickness,
+} from '../layout/geometry'
 import { floorWallRects } from '../layout/rooms'
 import type { Floor, Point, Wall } from '../layout/types'
 import { OrthographicCamera, PerspectiveCamera } from 'three'
@@ -119,9 +127,14 @@ export const MeasureTool = ({ floor, items, measure, onPick, cutaway }: MeasureT
       {/* Taps anywhere up a wall count too: the hit on its face is straight above the face on the floor. */}
       {floor.walls.map((wall) => {
         const thickness = wallThickness(wall, floor)
+        const extension = wallEndExtensions(wall, floor)
         const target = (height: number) => (
-          <mesh position={[wallLength(wall) / 2, height / 2, 0]} raycast={raycastIfShown} {...catcher}>
-            <boxGeometry args={[wallLength(wall) + thickness, height, thickness]} />
+          <mesh
+            position={[(wallLength(wall) + extension.to - extension.from) / 2, height / 2, 0]}
+            raycast={raycastIfShown}
+            {...catcher}
+          >
+            <boxGeometry args={[wallLength(wall) + extension.from + extension.to, height, thickness]} />
             <meshBasicMaterial visible={false} />
           </mesh>
         )
@@ -132,19 +145,15 @@ export const MeasureTool = ({ floor, items, measure, onPick, cutaway }: MeasureT
             floor={floor}
             cutaway={cutaway}
             full={target(floor.height)}
-            stub={stubPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - 0.002), STUB_HEIGHT).map(
-              (p, i) => (
-                <mesh
-                  key={i}
-                  position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
-                  raycast={raycastIfShown}
-                  {...catcher}
-                >
-                  <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-                  <meshBasicMaterial visible={false} />
-                </mesh>
-              ),
-            )}
+            stub={stubPieces(
+              wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor, 0.002)),
+              STUB_HEIGHT,
+            ).map((p, i) => (
+              <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={raycastIfShown} {...catcher}>
+                <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
+                <meshBasicMaterial visible={false} />
+              </mesh>
+            ))}
           />
         )
       })}
@@ -193,7 +202,7 @@ const WallHighlight = ({
   cutaway: boolean
 }) => {
   const thickness = wallThickness(wall, floor)
-  const pieces = useMemo(() => wallPieces(wall, wallHeight(wall, floor), thickness / 2), [wall, floor, thickness])
+  const pieces = useMemo(() => wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor)), [wall, floor])
   const boxes = (list: typeof pieces) =>
     list.map((p, i) => (
       <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={noRaycast}>

@@ -36,14 +36,18 @@ export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window
 export const openingId = (wallId: string, index: number): string => `${wallId}:${index}`
 
 /**
- * Splits a wall into solid boxes around its openings. The two ends are pushed out by `endExtension`
- * so walls meeting at a corner overlap instead of leaving a notch.
+ * Splits a wall into solid boxes around its openings. Each end can extend independently to close its join.
  */
-export const wallPieces = (wall: Wall, height: number, endExtension = 0): WallPiece[] => {
+export const wallPieces = (
+  wall: Wall,
+  height: number,
+  endExtension: number | { from: number; to: number } = 0,
+): WallPiece[] => {
   const length = wallLength(wall)
+  const extension = typeof endExtension === 'number' ? { from: endExtension, to: endExtension } : endExtension
   const openings = [...(wall.openings ?? [])].sort((p, q) => p.offset - q.offset)
   const pieces: WallPiece[] = []
-  let cursor = 0 - endExtension
+  let cursor = 0 - extension.from
 
   for (const o of openings) {
     const start = o.offset
@@ -56,7 +60,7 @@ export const wallPieces = (wall: Wall, height: number, endExtension = 0): WallPi
     cursor = end
   }
 
-  const end = length + endExtension
+  const end = length + extension.to
   if (end > cursor) pieces.push({ u0: cursor, u1: end, y0: 0, y1: height })
   return pieces
 }
@@ -196,6 +200,53 @@ export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
 /** How far an end can sit off a wall's face and still count as butting into it. */
 const JOINT_SLACK = 0.02
 
+/** Transverse walls touching either end, including T joins and offset centre lines at exterior corners. */
+const wallEndJoints = (wall: Wall, floor: Floor) => {
+  const length = wallLength(wall)
+  if (length === 0) return []
+  const dir: Point = [(wall.to[0] - wall.from[0]) / length, (wall.to[1] - wall.from[1]) / length]
+  const ownHalf = wallThickness(wall, floor) / 2
+  return floor.walls.flatMap((other) => {
+    if (other.id === wall.id || wallLength(other) === 0) return []
+    const normal = wallNormal(other)
+    const across = dir[0] * normal[0] + dir[1] * normal[1]
+    if (Math.abs(across) < 1e-6) return []
+    const center = ((other.from[0] - wall.from[0]) * normal[0] + (other.from[1] - wall.from[1]) * normal[1]) / across
+    const half = wallThickness(other, floor) / 2 / Math.abs(across)
+    // The intersection must fall within the other wall, allowing for its overlap with this wall's thickness.
+    const along =
+      (wall.from[0] + center * dir[0] - other.from[0]) * normal[1] -
+      (wall.from[1] + center * dir[1] - other.from[1]) * normal[0]
+    const reach = ownHalf / Math.abs(across) + JOINT_SLACK
+    if (along < -reach || along > wallLength(other) + reach) return []
+    return (['from', 'to'] as const).flatMap((end) => {
+      const u = end === 'from' ? 0 : length
+      if (Math.abs(center - u) > half + JOINT_SLACK / Math.abs(across)) return []
+      return [
+        {
+          end,
+          wall: other.id,
+          at: end === 'from' ? center + half : center - half,
+          extension: end === 'from' ? half - center : half + (center - length),
+        },
+      ]
+    })
+  })
+}
+
+/** Reach the connecting wall's far face at each end; keep the usual half-thickness cap at a free end. */
+export const wallEndExtensions = (wall: Wall, floor: Floor, inset = 0): { from: number; to: number } => {
+  const joints = wallEndJoints(wall, floor)
+  const extension = (end: 'from' | 'to') => {
+    const touching = joints.filter((j) => j.end === end)
+    return Math.max(
+      0,
+      (touching.length ? Math.max(...touching.map((j) => j.extension)) : wallThickness(wall, floor) / 2) - inset,
+    )
+  }
+  return { from: extension('from'), to: extension('to') }
+}
+
 /**
  * Where each side of a wall is split into parts that read as separate walls, painted apart: where other
  * walls butt into it (either side of a partition), and floor-to-ceiling gaps (both sides). Distances
@@ -261,18 +312,9 @@ export const wallPaintParts = (wall: Wall, floor: Floor): Record<WallSide, numbe
  */
 export const cornerCuts = (wall: Wall, floor: Floor): { at: number; wall: string }[] => {
   const length = wallLength(wall)
-  const near = (p: Point, q: Point) => Math.hypot(p[0] - q[0], p[1] - q[1]) < JOINT_SLACK
-  return floor.walls.flatMap((other) => {
-    if (other.id === wall.id) return []
-    const half = wallThickness(other, floor) / 2
-    const ends = [other.from, other.to]
-    return [
-      ...(ends.some((e) => near(e, wall.from)) ? [half] : []),
-      ...(ends.some((e) => near(e, wall.to)) ? [length - half] : []),
-    ]
-      .filter((u) => u > 0 && u < length)
-      .map((at) => ({ at, wall: other.id }))
-  })
+  return wallEndJoints(wall, floor)
+    .filter(({ at }) => at > 0 && at < length)
+    .map(({ at, wall }) => ({ at, wall }))
 }
 
 /** Which part of a side, counted from `from`, the point `u` along the wall falls in. */

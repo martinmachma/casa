@@ -6,6 +6,7 @@ import {
   sidePart,
   splitPieces,
   stubPieces,
+  wallEndExtensions,
   wallHeight,
   wallJoints,
   wallLength,
@@ -24,8 +25,7 @@ import { raycastIfShown } from './raycast'
 import type { Selection } from './selection'
 import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 
-// Walls overlap at corners by just under half their thickness, so end caps never sit flush
-// with the neighbouring wall's face (which would z-fight).
+// Keep overlapping end caps just inside the neighbouring wall's face to avoid z-fighting.
 const CORNER_INSET = 0.002
 // A pointer that moved further than this between down and up was an orbit/pan, not a click.
 const CLICK_SLOP_PX = 5
@@ -131,10 +131,10 @@ const WallMesh = ({
   const corners = useMemo(() => cornerCuts(wall, floor), [wall, floor])
   const pieces = useMemo(
     () =>
-      splitPieces(wallPieces(wall, wallHeight(wall, floor), thickness / 2 - CORNER_INSET), [
+      splitPieces(wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor, CORNER_INSET)), [
         ...new Set([...joints.a, ...joints.b, ...ownJoints.a, ...ownJoints.b, ...corners.map((c) => c.at)]),
       ]),
-    [wall, floor, thickness, joints, ownJoints, corners],
+    [wall, floor, joints, ownJoints, corners],
   )
   const partOf = (p: WallPiece, side: WallSide) => paintParts[side][sidePart(joints[side], (p.u0 + p.u1) / 2)]
   const colorOf = (p: WallPiece, side: WallSide) =>
