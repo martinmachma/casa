@@ -1508,9 +1508,41 @@ input[type='range'].kelvin::-moz-range-thumb {
 
 /* Furniture catalog */
 .tabs {
+  --fade-start: 0px;
+  --fade-end: 0px;
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -20px;
+  padding: 0 20px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent
+  );
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fade the edge that has more groups past it. */
+.tabs[data-more-start='true'] {
+  --fade-start: 40px;
+}
+
+.tabs[data-more-end='true'] {
+  --fade-end: 40px;
 }
 
 .tabs button {

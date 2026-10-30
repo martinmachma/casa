@@ -1,5 +1,5 @@
 import { Lightbulb, Plus, Search, Sofa } from 'lucide-react'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
 import type { Interaction } from '../scene/selection'
 import { NumberField } from './NumberField'
@@ -37,6 +37,19 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
   const [group, setGroup] = useState<CatalogGroup>('Living')
   const [query, setQuery] = useState('')
   const [custom, setCustom] = useState(false)
+  const groups = useRef<HTMLDivElement>(null)
+  // Which ends of the group row have more chips past them, so the edge fades there.
+  const [more, setMore] = useState({ start: false, end: false })
+  const measure = () => {
+    const el = groups.current
+    if (!el) return
+    setMore({ start: el.scrollLeft > 1, end: el.scrollLeft + el.clientWidth < el.scrollWidth - 1 })
+  }
+  useLayoutEffect(() => {
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
 
   // A search looks through every group.
   const q = query.trim().toLowerCase()
@@ -57,7 +70,15 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <div className="tabs" role="tablist" aria-label="Group">
+        <div
+          className="tabs"
+          role="tablist"
+          aria-label="Group"
+          ref={groups}
+          onScroll={measure}
+          data-more-start={more.start}
+          data-more-end={more.end}
+        >
           {CATALOG_GROUPS.map((g) => (
             <button
               key={g}
