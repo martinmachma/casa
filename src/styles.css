@@ -3266,6 +3266,15 @@ input[type='range'].kelvin::-moz-range-thumb {
   animation: fade-in 0.2s 0.08s both;
 }
 
+.room-popover[data-closing] {
+  pointer-events: none;
+  animation: tag-to-card 0.2s cubic-bezier(0.4, 0, 0.8, 0.2) reverse forwards;
+}
+
+.room-popover[data-closing] > * {
+  animation: fade-in 0.1s reverse forwards;
+}
+
 @keyframes tag-to-card {
   from {
     clip-path: inset(0 calc(100% - 76px) calc(100% - 26px) 0 round 13px);
