@@ -451,8 +451,8 @@ p {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* The avatar lines up with the right edge of the Planning button below (the modebar's 14px, less the button's 6px inset). */
-  padding: env(safe-area-inset-top) 8px 0 12px;
+  /* The account button lines up with the Planning button below: the modebar's 14px from the edge. */
+  padding: env(safe-area-inset-top) 14px 0 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   min-width: 0;
@@ -478,6 +478,13 @@ p {
   font-size: 13px;
 }
 
+/* The account and Planning buttons stack at the top right, the same width. */
+.account,
+.edit-toggle {
+  min-width: 120px;
+  justify-content: center;
+}
+
 .account {
   display: inline-flex;
   align-items: center;
@@ -498,7 +505,8 @@ p {
   background: var(--surface-3);
 }
 
-.account:has(.avatar:only-child) {
+.account:not(:has(.account-name)) {
+  min-width: 0;
   padding: 0 6px;
 }
 
@@ -2076,7 +2084,7 @@ input[type='range'].kelvin::-moz-range-thumb {
   .topbar {
     gap: 4px;
     padding-left: 6px;
-    padding-right: 4px;
+    padding-right: 10px;
   }
 
   .segmented button {
