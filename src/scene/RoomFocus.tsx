@@ -57,18 +57,18 @@ export const RoomCamera = ({
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
   useFrame(({ camera, invalidate }, delta) => {
     if (!pose) return
-    onView?.(camera.position, t.current < 1 || !controls.current ? look : controls.current.target)
+    // The controls take the new pose's target as soon as it's set, so the flight starts from where it last looked.
     if (heading.current !== pose) {
-      const wasFlying = t.current < 1
-      start.current = {
-        position: camera.position.clone(),
-        target: (wasFlying || !controls.current ? look : controls.current.target).clone(),
-      }
+      start.current = { position: camera.position.clone(), target: look.clone() }
       heading.current = pose
       t.current = 0
       setFlying(true)
     }
-    if (t.current >= 1) return
+    if (t.current >= 1) {
+      if (controls.current) look.copy(controls.current.target)
+      onView?.(camera.position, look)
+      return
+    }
     // The first frame after the view sat still carries all the time it sat, which would skip the flight.
     t.current = Math.min(1, t.current + Math.min(delta, 1 / 30) / FLIGHT_SECONDS)
     const s = start.current
@@ -77,6 +77,7 @@ export const RoomCamera = ({
     camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
+    onView?.(camera.position, look)
     if (k >= 1) setFlying(false)
   })
   return (
