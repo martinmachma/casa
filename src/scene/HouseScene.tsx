@@ -100,8 +100,10 @@ type HouseSceneProps = {
   focusRoom?: string
   /** Elements kept over points in the focused room. */
   pins?: Pin[]
-  /** A smart item in the focused room picked out, everything else blurred behind it. */
-  highlight?: string
+  /** The smart item opened in the focused room: everything else is dimmed behind it. */
+  open?: string
+  /** The smart item pointed at in the focused room, outlined. */
+  hovered?: string
   /** A smart item pointed at in the focused room. */
   onHoverItem?: (id: string | undefined) => void
   pinRefs?: RefObject<Map<string, HTMLElement | null>>
@@ -140,7 +142,8 @@ export const HouseScene = ({
   itemActions,
   focusRoom,
   pins = [],
-  highlight,
+  open,
+  hovered,
   onHoverItem,
   pinRefs,
 }: HouseSceneProps) => {
@@ -303,7 +306,7 @@ export const HouseScene = ({
         <DebugHover copies={interaction === 'view'} />
         {focusRoom ? (
           <>
-            <RoomBlur floor={floor} roomId={focusRoom} highlight={highlight} />
+            <RoomBlur floor={floor} roomId={focusRoom} open={open} hovered={hovered} />
             <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
           </>
         ) : (
