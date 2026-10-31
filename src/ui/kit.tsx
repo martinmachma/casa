@@ -21,6 +21,9 @@ export const Slide = ({ show, children }: { show: boolean; children: ReactNode }
   const [present, setPresent] = useState(show)
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches
   if (present !== show && (show || still)) setPresent(show)
+  // Sliding out, it shows what it last showed, not what the change it's leaving for would make of it.
+  const [last, setLast] = useState(children)
+  if (show && last !== children) setLast(children)
   const ref = useRef<HTMLDivElement>(null)
   // Things already there when the page loads don't slide.
   const mounted = useRef(false)
@@ -51,7 +54,7 @@ export const Slide = ({ show, children }: { show: boolean; children: ReactNode }
 
   return present ? (
     <div ref={ref} className="slide">
-      {children}
+      {show ? children : last}
     </div>
   ) : null
 }
