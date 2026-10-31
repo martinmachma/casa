@@ -47,9 +47,10 @@ import { SnapMenu } from './ui/SnapMenu'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
-import { roomItems } from './rooms/roomItems'
+import { floorItems, roomItems } from './rooms/roomItems'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
+import { HouseOverview } from './ui/HouseOverview'
 import { RoomOverview } from './ui/RoomOverview'
 
 type HouseProps = { backend: Backend; account: Account }
@@ -622,6 +623,20 @@ export const House = ({ backend, account }: HouseProps) => {
             onOpen={setPopover}
             onHover={setHoveredItem}
             pinRefs={pinRefs}
+          />
+        )}
+
+        {/* At home, between rooms: the whole house's smart items. */}
+        {!focus && !planning && !rightOpen && camera !== 'walk' && (
+          <HouseOverview
+            items={house.floors.flatMap((f) => floorItems(f, data.devices, data.furniture))}
+            rooms={rooms}
+            light={(id) => lightSettings(lights.states[id], dark)}
+            onLight={(id, patch) => lights.set(id, patch, dark)}
+            onOpen={(room, item) => {
+              openRoom(room)
+              setPopover(item)
+            }}
           />
         )}
 

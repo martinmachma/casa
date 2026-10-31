@@ -2910,21 +2910,198 @@ input[type='range'].kelvin::-moz-range-thumb {
   top: 64px;
   right: 12px;
   bottom: 12px;
-  width: min(300px, calc(100% - 24px));
+  width: min(320px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;
+  overflow: hidden;
   pointer-events: none;
 }
 
-/* What's in the room, at the bottom; it scrolls once it reaches the Planning button. */
+/* The smart items card, under the Planning button; its list scrolls once it reaches the bottom. */
 .room-card {
-  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   pointer-events: auto;
-  padding: 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.smart-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 10px;
+}
+
+.smart-card-head > div {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.smart-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
+.smart-card-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.smart-card-body > .hint {
+  margin: 4px 6px 6px;
+}
+
+.smart-scenes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.smart-scenes button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.smart-scenes button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent-text);
+}
+
+.smart-group {
+  margin: 0;
+  padding: 10px 6px 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.smart-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+}
+
+.smart-row:hover {
+  background: var(--surface-3);
+}
+
+.smart-row:has(.smart-item[aria-pressed='true']) {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.smart-row .smart-item[aria-pressed='true'] {
+  background: none;
+  box-shadow: none;
+  color: inherit;
+}
+
+.smart-switch {
+  padding: 0 8px;
+}
+
+.smart-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  transition: background 150ms;
+}
+
+.smart-tile[data-on] {
+  color: var(--accent-ink);
+}
+
+.smart-item-name {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.smart-bar {
+  display: block;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.smart-bar > span {
+  display: block;
+  height: 100%;
+  background: #f2b44f;
+}
+
+.smart-room {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.smart-room:hover {
+  background: var(--surface-3);
+}
+
+.smart-room .smart-item-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 550;
+}
+
+.smart-note {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.smart-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--muted);
 }
 
 /* The room looked at: its name written on the view over the middle, in line with the floor buttons, a soft glow
@@ -2959,11 +3136,6 @@ input[type='range'].kelvin::-moz-range-thumb {
   gap: 8px;
 }
 
-.room-card-title {
-  margin: 0 0 8px;
-  font-size: 13px;
-}
-
 .smart-list {
   display: grid;
   gap: 4px;
@@ -2987,9 +3159,10 @@ input[type='range'].kelvin::-moz-range-thumb {
   cursor: pointer;
 }
 
-.smart-item:hover,
 .smart-item-text {
   display: grid;
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
 }
 

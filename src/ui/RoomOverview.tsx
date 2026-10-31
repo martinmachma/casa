@@ -3,9 +3,10 @@ import { type RefObject } from 'react'
 import { DEVICE_KINDS } from '../devices/kinds'
 import type { LightState } from '../devices/lights'
 import type { SmartItem } from '../rooms/roomItems'
-import { DeviceIcon } from './deviceIcons'
 import { IconButton } from './kit'
 import { LightControls } from './LightControls'
+import { SmartCard, SmartRow } from './SmartList'
+import { itemState, KIND_GROUPS, lightsSummary } from './smartText'
 
 type RoomOverviewProps = {
   title: string
@@ -20,59 +21,79 @@ type RoomOverviewProps = {
   pinRefs: RefObject<Map<string, HTMLElement | null>>
 }
 
-const state = (item: SmartItem, light: LightState | undefined) =>
-  item.kind !== 'light' || !light
-    ? item.entity
-      ? 'Not linked yet'
-      : 'Not linked'
-    : light.on
-      ? `On · ${Math.round(light.brightness * 100)} %`
-      : 'Off'
+// Every light in the room at once, as a chip under the card's title.
+const SCENES: { label: string; set: Pick<LightState, 'brightness' | 'kelvin'> }[] = [
+  { label: 'Bright', set: { brightness: 1, kelvin: 4000 } },
+  { label: 'Relax', set: { brightness: 0.4, kelvin: 2700 } },
+]
 
-/** The room's own view: its name over the middle, what's in it bottom right, and a popover by the item picked. */
+/** The room's own view: its name over the middle, what's in it on the right, and a popover by the item picked. */
 export const RoomOverview = ({ title, items, light, onLight, open, onOpen, onHover, pinRefs }: RoomOverviewProps) => {
   const picked = items.find((i) => i.id === open)
+  const lights = items.filter((i) => i.kind === 'light')
+  const on = lights.filter((i) => light(i.id).on).length
+  const kinds = [...new Set(items.map((i) => i.kind))]
+  const inScene = (set: (typeof SCENES)[number]['set']) =>
+    lights.every((i) => {
+      const s = light(i.id)
+      return s.on && s.mode === 'white' && s.brightness === set.brightness && s.kelvin === set.kelvin
+    })
   return (
     <>
       <h2 className="room-name">{title}</h2>
       <div className="room-cards">
-        <section className="room-card float">
-          <h3 className="room-card-title">Smart items</h3>
+        <SmartCard
+          title="In this room"
+          summary={lights.length ? lightsSummary(on, lights.length) : `${items.length} smart items`}
+          allLights={
+            lights.length
+              ? { on: on > 0, onChange: (to) => lights.forEach((i) => onLight(i.id, { on: to })) }
+              : undefined
+          }
+        >
+          {lights.length > 0 && (
+            <div className="smart-scenes" role="group" aria-label="Scenes">
+              {SCENES.map((scene) => (
+                <button
+                  key={scene.label}
+                  className="chip"
+                  aria-pressed={inScene(scene.set)}
+                  onClick={() => lights.forEach((i) => onLight(i.id, { on: true, mode: 'white', ...scene.set }))}
+                >
+                  {scene.label}
+                </button>
+              ))}
+            </div>
+          )}
           {items.length ? (
-            <ul className="smart-list">
-              {items.map((item) => {
-                const s = item.kind === 'light' ? light(item.id) : undefined
-                return (
-                  <li key={item.id}>
-                    <button
-                      className="smart-item"
-                      aria-pressed={open === item.id}
-                      onClick={() => onOpen(open === item.id ? undefined : item.id)}
-                      onPointerEnter={() => onHover(item.id)}
-                      onPointerLeave={() => onHover(undefined)}
-                    >
-                      <span
-                        className="device-swatch"
-                        data-on={s?.on || undefined}
-                        style={{ background: DEVICE_KINDS[item.kind].color }}
-                      >
-                        <DeviceIcon kind={item.kind} size={16} />
-                      </span>
-                      <span className="smart-item-text">
-                        <span>{item.name}</span>
-                        <span className="muted">
-                          {item.lamp ? 'Lamp' : DEVICE_KINDS[item.kind].label} · {state(item, s)}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+            kinds.map((kind) => (
+              <div key={kind}>
+                <h4 className="smart-group">{KIND_GROUPS[kind]}</h4>
+                <ul className="smart-list">
+                  {items
+                    .filter((i) => i.kind === kind)
+                    .map((item) => {
+                      const s = item.kind === 'light' ? light(item.id) : undefined
+                      return (
+                        <SmartRow
+                          key={item.id}
+                          item={item}
+                          sub={(item.lamp ? 'Lamp · ' : '') + itemState(item, s)}
+                          light={s}
+                          pressed={open === item.id}
+                          onOpen={() => onOpen(open === item.id ? undefined : item.id)}
+                          onHover={(h) => onHover(h ? item.id : undefined)}
+                          onLight={(p) => onLight(item.id, p)}
+                        />
+                      )
+                    })}
+                </ul>
+              </div>
+            ))
           ) : (
             <p className="hint">No smart items here yet. Place them under Planning → Devices.</p>
           )}
-        </section>
+        </SmartCard>
       </div>
 
       <div className="overlay">
