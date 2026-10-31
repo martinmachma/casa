@@ -641,7 +641,14 @@ const House = ({ backend, account }: HouseProps) => {
           inRoom={!!focus}
         >
           {camera !== 'walk' && roomOrder.ready && (
-            <RoomNav rooms={rooms} room={roomView} onRoom={openRoom} saved={roomOrder.order} onSave={roomOrder.save} />
+            <RoomNav
+              rooms={rooms}
+              room={roomView}
+              onRoom={openRoom}
+              onLeave={leaveRoom}
+              saved={roomOrder.order}
+              onSave={roomOrder.save}
+            />
           )}
         </ViewDock>
 

@@ -14,10 +14,10 @@ export const IconButton = ({ label, small, className = '', children, ...rest }: 
 const SLIDE_MS = 220
 
 /**
- * Slides its contents in and out sideways as `show` changes, the neighbours making room as it goes.
- * The contents only exist while shown or sliding out.
+ * Slides its contents in and out sideways (or, `vertical`, down from above) as `show` changes, the neighbours making
+ * room as it goes. The contents only exist while shown or sliding out.
  */
-export const Slide = ({ show, children }: { show: boolean; children: ReactNode }) => {
+export const Slide = ({ show, vertical, children }: { show: boolean; vertical?: boolean; children: ReactNode }) => {
   const [present, setPresent] = useState(show)
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches
   if (present !== show && (show || still)) setPresent(show)
@@ -36,9 +36,14 @@ export const Slide = ({ show, children }: { show: boolean; children: ReactNode }
     }
     if (!el || still) return
     // Collapsed, it also gives back the gap it takes in its row.
-    const gap = parseFloat(getComputedStyle(el.parentElement!).columnGap) || 0
-    const open = { width: `${el.scrollWidth}px`, marginInlineEnd: '0px', opacity: 1, transform: 'none' }
-    const closed = { width: '0px', marginInlineEnd: `${-gap}px`, opacity: 0, transform: 'translateX(12px)' }
+    const style = getComputedStyle(el.parentElement!)
+    const gap = parseFloat(vertical ? style.rowGap : style.columnGap) || 0
+    const open = vertical
+      ? { height: `${el.scrollHeight}px`, marginBlockEnd: '0px', opacity: 1, transform: 'none' }
+      : { width: `${el.scrollWidth}px`, marginInlineEnd: '0px', opacity: 1, transform: 'none' }
+    const closed = vertical
+      ? { height: '0px', marginBlockEnd: `${-gap}px`, opacity: 0, transform: 'translateY(-8px)' }
+      : { width: '0px', marginInlineEnd: `${-gap}px`, opacity: 0, transform: 'translateX(12px)' }
     el.style.overflow = 'hidden'
     const anim = el.animate(show ? [closed, open] : [open, closed], {
       duration: SLIDE_MS,
@@ -50,10 +55,10 @@ export const Slide = ({ show, children }: { show: boolean; children: ReactNode }
       if (!show) setPresent(false)
     }
     return () => anim.cancel()
-  }, [show, still])
+  }, [show, still, vertical])
 
   return present ? (
-    <div ref={ref} className="slide">
+    <div ref={ref} className={vertical ? 'slide slide-y' : 'slide'}>
       {show ? children : last}
     </div>
   ) : null

@@ -6,6 +6,7 @@ import {
   Check,
   DoorOpen,
   Footprints,
+  LayoutGrid,
   Pencil,
   Sofa,
   Square,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { Slide } from './kit'
 import { arrangeRooms, moveRoom, type RoomOrder, type RoomZone } from '../rooms/roomOrder'
 import type { RoomView } from '../rooms/roomViews'
 
@@ -22,6 +24,8 @@ type RoomNavProps = {
   /** The room being looked at on its own, if any. */
   room: string | undefined
   onRoom: (id: string) => void
+  /** Out of the room, back to its whole floor. */
+  onLeave: () => void
   /** This person's saved order, if they've arranged the rooms. */
   saved: RoomOrder | undefined
   onSave: (order: RoomOrder) => void
@@ -53,7 +57,7 @@ type Drag = { id: string; zone: RoomZone; x: number; y: number; offsetX: number;
  * editing (the pencil, or a long press) everything shakes where it is and can be dragged: up and down the list, or
  * between the list and the small links to make a room big or small.
  */
-export const RoomNav = ({ rooms, room, onRoom, saved, onSave }: RoomNavProps) => {
+export const RoomNav = ({ rooms, room, onRoom, onLeave, saved, onSave }: RoomNavProps) => {
   // The order while a room is being dragged, saved once it's dropped.
   const [moving, setMoving] = useState<RoomOrder>()
   const order = useMemo(() => arrangeRooms(rooms, moving ?? saved), [rooms, moving, saved])
@@ -264,6 +268,14 @@ export const RoomNav = ({ rooms, room, onRoom, saved, onSave }: RoomNavProps) =>
           <Pencil size={14} />
         )}
       </button>
+      <Slide show={room !== undefined && !editing} vertical>
+        <div className="room-leave">
+          <button className="room-row" onClick={onLeave}>
+            <LayoutGrid size={18} />
+            <span className="room-row-label">All rooms</span>
+          </button>
+        </div>
+      </Slide>
       <div className="room-list" data-zone="main">
         {order.main.map((id) => item(id, 'main'))}
       </div>
