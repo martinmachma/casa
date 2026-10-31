@@ -64,6 +64,12 @@ export const RoomCamera = ({
   const look = useMemo(() => new Vector3(), [])
   const controls = useRef<OrbitControlsImpl>(null)
   const [flying, setFlying] = useState(!!from)
+  // Off from the render that changes the pose, or the controls would turn the camera to the new target first.
+  const [aimed, setAimed] = useState(pose)
+  if (aimed !== pose) {
+    setAimed(pose)
+    setFlying(true)
+  }
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
   useFrame(({ camera, invalidate }, delta) => {
     if (!pose) return
@@ -72,7 +78,6 @@ export const RoomCamera = ({
       start.current = { position: camera.position.clone(), target: look.clone() }
       heading.current = pose
       t.current = 0
-      setFlying(true)
     }
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
