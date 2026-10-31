@@ -3120,6 +3120,11 @@ input[type='range'].kelvin::-moz-range-thumb {
   pointer-events: none;
 }
 
+/* Lighter than the buttons, so the room shows through. */
+.room-name.float {
+  background: rgb(255 255 255 / 0.4);
+}
+
 .room-card-head {
   display: flex;
   align-items: flex-start;
