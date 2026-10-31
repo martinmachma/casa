@@ -178,12 +178,6 @@ p {
   font-size: 13px;
 }
 
-.btn[aria-pressed='true'] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--surface);
-}
-
 .icon-btn {
   display: inline-grid;
   place-items: center;
@@ -206,9 +200,18 @@ p {
   color: var(--ink);
 }
 
-.icon-btn[aria-pressed='true'] {
-  background: var(--surface-3);
-  color: var(--ink);
+/* What's on or chosen, the same everywhere: tools, switches, tabs, chips, the Planning toggle. */
+.btn[aria-pressed='true'],
+.icon-btn[aria-pressed='true'],
+.segmented button[aria-pressed='true'],
+.edit-toggle[aria-pressed='true'],
+.tabs button[aria-selected='true'],
+.smart-item[aria-pressed='true'],
+.device-kinds .catalog-item[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent-text);
 }
 
 .icon-btn-sm {
@@ -245,7 +248,7 @@ p {
     box-shadow 120ms;
 }
 
-.segmented button:hover {
+.segmented button:not([aria-pressed='true']):hover {
   color: var(--ink);
 }
 
@@ -254,14 +257,6 @@ p {
   opacity: 0.45;
   cursor: default;
   pointer-events: none;
-}
-
-.segmented button[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow:
-    0 1px 2px rgb(34 26 18 / 0.1),
-    0 0 0 0.5px rgb(34 26 18 / 0.06);
 }
 
 .segmented-block {
@@ -986,19 +981,7 @@ p {
   padding: 0 9px;
 }
 
-.modebar .segmented button[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--surface);
-  box-shadow: none;
-}
-
-/* A tool that's on, the same for all of them: its button, or the icon heading its open bar. */
-.modebar-tools .icon-btn[aria-pressed='true'] {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
-  color: var(--accent-text);
-}
-
+/* An open tool bar (measure, sun) shows its heading icon in the accent. */
 .modebar-tools .toolbar-icon {
   color: var(--accent);
   opacity: 1;
@@ -1389,12 +1372,6 @@ html[data-room-drag] * {
   cursor: pointer;
 }
 
-.edit-toggle[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--surface);
-  border-color: var(--ink);
-}
-
 /* ── Camera buttons ──────────────────────────────────────── */
 .camera-pad {
   position: absolute;
@@ -1487,7 +1464,7 @@ html[data-room-drag] * {
   box-shadow:
     inset 0 0 0 1px rgb(0 0 0 / 0.1),
     0 0 0 2px var(--surface),
-    0 0 0 4px var(--ink);
+    0 0 0 4px var(--accent);
 }
 
 .color-field {
@@ -1696,7 +1673,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 .material[aria-pressed='true'] img {
   box-shadow:
     0 0 0 2px var(--surface),
-    0 0 0 4px var(--ink);
+    0 0 0 4px var(--accent);
 }
 
 /* Furniture catalog */
@@ -1749,12 +1726,6 @@ input[type='range'].kelvin::-moz-range-thumb {
   font-weight: 500;
   color: var(--ink-2);
   cursor: pointer;
-}
-
-.tabs button[aria-selected='true'] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--surface);
 }
 
 .catalog {
@@ -2189,11 +2160,6 @@ input[type='range'].kelvin::-moz-range-thumb {
 /* Devices */
 .device-kinds {
   grid-template-columns: repeat(4, 1fr);
-}
-
-.device-kinds .catalog-item[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
 }
 
 .device-swatch {
@@ -2949,10 +2915,6 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 .smart-item:hover,
-.smart-item[aria-pressed='true'] {
-  background: var(--line);
-}
-
 .smart-item-text {
   display: grid;
   font-size: 13px;
