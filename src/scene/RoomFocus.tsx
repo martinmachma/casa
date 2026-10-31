@@ -10,6 +10,9 @@ import { roomPose } from '../rooms/roomViews'
 const FLIGHT_SECONDS = 1.1
 /** How far from an opened item the camera comes in to. */
 const CLOSE_UP = 2.2
+const FOV = 45
+/** Room on screen for an opened item's card, which hangs down and right from it, and the room's cards on the right. */
+const CARD = { width: 300, right: 340 }
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
@@ -42,10 +45,17 @@ export const RoomCamera = ({
   const [cx, cy, cz] = closeUp ?? []
   const pose = useMemo(() => {
     if (!roomView || cx === undefined) return roomView
-    const target = new Vector3(cx, cy, cz)
-    const position = roomView.position.clone().sub(target).setLength(CLOSE_UP).add(target)
-    return { ...roomView, position, target }
-  }, [roomView, cx, cy, cz])
+    const item = new Vector3(cx, cy, cz)
+    const back = roomView.position.clone().sub(item).normalize()
+    // The item sits high on the screen, left of the middle of what the room's cards leave, so its card fits below.
+    const right = new Vector3(0, 1, 0).cross(back).normalize()
+    const up = back.clone().cross(right)
+    const perPixel = (2 * CLOSE_UP * Math.tan(((FOV / 2) * Math.PI) / 180)) / size.height
+    const dx = Math.max(16, (size.width - CARD.right - CARD.width) / 2) - size.width / 2
+    const dy = size.height * 0.28 - size.height / 2
+    const target = item.addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel)
+    return { ...roomView, position: target.clone().addScaledVector(back, CLOSE_UP), target }
+  }, [roomView, cx, cy, cz, size])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
@@ -82,7 +92,7 @@ export const RoomCamera = ({
   })
   return (
     <>
-      <PerspectiveCamera makeDefault fov={45} near={0.1} far={200} position={firstPosition} />
+      <PerspectiveCamera makeDefault fov={FOV} near={0.1} far={200} position={firstPosition} />
       {pose && (
         <OrbitControls
           ref={controls}
