@@ -482,7 +482,7 @@ p {
 .account,
 .edit-toggle {
   min-width: 120px;
-  justify-content: center;
+  justify-content: space-evenly;
 }
 
 .account {
