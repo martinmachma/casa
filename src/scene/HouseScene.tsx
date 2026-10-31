@@ -271,6 +271,7 @@ export const HouseScene = ({
             floor={floor}
             roomId={focusRoom}
             furniture={data.furniture}
+            closeUp={open ? pins?.find((p) => p.key === `tag:${open}`)?.at : undefined}
             from={
               lastView.mode === 'orbit'
                 ? { position: lastView.position.clone(), target: lastView.target.clone() }

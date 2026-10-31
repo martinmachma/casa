@@ -8,6 +8,8 @@ import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 
 const FLIGHT_SECONDS = 1.1
+/** How far from an opened item the camera comes in to. */
+const CLOSE_UP = 2.2
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
@@ -15,6 +17,7 @@ export const RoomCamera = ({
   floor,
   roomId,
   furniture,
+  closeUp,
   from,
   onView,
 }: {
@@ -22,6 +25,8 @@ export const RoomCamera = ({
   roomId: string
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
+  /** An opened item to come in close to, from the room's side of it; the camera holds still there. */
+  closeUp?: [number, number, number]
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, for the house's camera to carry on from after the room. */
   onView?: (position: Vector3, target: Vector3) => void
@@ -30,10 +35,17 @@ export const RoomCamera = ({
   // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
   const [placed, setPlaced] = useState({ roomId, furniture })
   if (placed.roomId !== roomId) setPlaced({ roomId, furniture })
-  const pose = useMemo(
+  const roomView = useMemo(
     () => roomPose(floor, roomId, size.width / size.height, placed.furniture),
     [floor, roomId, size, placed.furniture],
   )
+  const [cx, cy, cz] = closeUp ?? []
+  const pose = useMemo(() => {
+    if (!roomView || cx === undefined) return roomView
+    const target = new Vector3(cx, cy, cz)
+    const position = roomView.position.clone().sub(target).setLength(CLOSE_UP).add(target)
+    return { ...roomView, position, target }
+  }, [roomView, cx, cy, cz])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
@@ -74,7 +86,7 @@ export const RoomCamera = ({
         <OrbitControls
           ref={controls}
           makeDefault
-          enabled={!flying}
+          enabled={!flying && !closeUp}
           target={pose.target.toArray()}
           enablePan={false}
           minPolarAngle={0.15}
