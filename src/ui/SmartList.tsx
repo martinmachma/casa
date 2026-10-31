@@ -10,16 +10,23 @@ type SmartRowProps = {
   /** Its settings, for a light. */
   light?: LightState
   pressed?: boolean
+  /** Its item is pointed at in the scene. */
+  hovered?: boolean
   onOpen: () => void
   onHover?: (hovering: boolean) => void
   onLight?: (patch: Partial<LightState>) => void
 }
 
 /** One smart item: its tile lit in the light's own colour while on, and a switch for a light. */
-export const SmartRow = ({ item, sub, light, pressed, onOpen, onHover, onLight }: SmartRowProps) => {
+export const SmartRow = ({ item, sub, light, pressed, hovered, onOpen, onHover, onLight }: SmartRowProps) => {
   const on = !!light?.on
   return (
-    <li className="smart-row" onPointerEnter={() => onHover?.(true)} onPointerLeave={() => onHover?.(false)}>
+    <li
+      className="smart-row"
+      data-hovered={hovered || undefined}
+      onPointerEnter={() => onHover?.(true)}
+      onPointerLeave={() => onHover?.(false)}
+    >
       <button className="smart-item" aria-pressed={pressed} onClick={onOpen}>
         <span
           className="smart-tile"
@@ -88,14 +95,12 @@ export const SmartCard = ({ title, summary, allLights, children }: SmartCardProp
 type SmartTagProps = {
   item: SmartItem
   light?: LightState
-  /** Shows the item's name too, while it's pointed at. */
-  named: boolean
   onOpen: () => void
   onHover: (hovering: boolean) => void
 }
 
 /** The tag over an item in the room's view: its icon, lit in the light's colour, and how bright it is. */
-export const SmartTag = ({ item, light, named, onOpen, onHover }: SmartTagProps) => {
+export const SmartTag = ({ item, light, onOpen, onHover }: SmartTagProps) => {
   const on = !!light?.on
   return (
     <>
@@ -113,7 +118,6 @@ export const SmartTag = ({ item, light, named, onOpen, onHover }: SmartTagProps)
         <span className="smart-tag-icon" style={on ? { background: lightColor(light) } : undefined}>
           <DeviceIcon kind={item.kind} size={12} />
         </span>
-        {named && <span className="smart-tag-name">{item.name}</span>}
         {light && <span className="muted">{on ? `${Math.round(light.brightness * 100)} %` : 'Off'}</span>}
       </button>
     </>

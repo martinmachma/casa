@@ -3003,7 +3003,8 @@ input[type='range'].kelvin::-moz-range-thumb {
   border-radius: 10px;
 }
 
-.smart-row:hover {
+.smart-row:hover,
+.smart-row[data-hovered] {
   background: var(--surface-3);
 }
 
@@ -3230,10 +3231,6 @@ input[type='range'].kelvin::-moz-range-thumb {
 
 .smart-tag-icon[style] {
   color: var(--accent-ink);
-}
-
-.smart-tag-name {
-  font-weight: 600;
 }
 
 .room-popover {

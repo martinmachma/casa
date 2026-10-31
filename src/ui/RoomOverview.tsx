@@ -93,6 +93,7 @@ export const RoomOverview = ({
                           sub={(item.lamp ? 'Lamp · ' : '') + itemState(item, s)}
                           light={s}
                           pressed={open === item.id}
+                          hovered={hovered === item.id}
                           onOpen={() => onOpen(open === item.id ? undefined : item.id)}
                           onHover={(h) => onHover(h ? item.id : undefined)}
                           onLight={(p) => onLight(item.id, p)}
@@ -123,7 +124,6 @@ export const RoomOverview = ({
               <SmartTag
                 item={item}
                 light={item.kind === 'light' ? light(item.id) : undefined}
-                named={hovered === item.id}
                 onOpen={() => onOpen(item.id)}
                 onHover={(h) => onHover(h ? item.id : undefined)}
               />
