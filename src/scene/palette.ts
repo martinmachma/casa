@@ -1,7 +1,7 @@
 export const DEFAULT_WALL = '#f3efe9'
 export const WALL_CAP = '#d8d1c7'
 export const FLOOR_SLAB = '#d9c4a5'
-export const SELECTED_OUTLINE = '#c8664a'
+export const SELECTED_OUTLINE = '#dd7f2e'
 export const COLLIDING = '#e8262a'
 export const EXTERIOR_FRAME = '#3b4045'
 export const INTERIOR_FRAME = '#e9e4dc'
