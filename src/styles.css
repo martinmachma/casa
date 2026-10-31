@@ -718,7 +718,8 @@ p {
   border-bottom: 1px solid var(--line);
 }
 
-.section:last-child {
+.section:last-child,
+.section-flush {
   border-bottom: 0;
 }
 
@@ -1716,6 +1717,9 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 .tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: none;
   min-height: 30px;
   padding: 0 12px;
@@ -1726,6 +1730,11 @@ input[type='range'].kelvin::-moz-range-thumb {
   font-weight: 500;
   color: var(--ink-2);
   cursor: pointer;
+}
+
+.tabs button .num {
+  font-size: 12px;
+  opacity: 0.6;
 }
 
 .catalog {

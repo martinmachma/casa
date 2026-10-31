@@ -9,8 +9,16 @@ import { Section, Segmented } from './kit'
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
 /** Furniture or devices: what the panel adds while nothing is selected. */
-export const PlanTabs = ({ value, onChange }: { value: Interaction; onChange: (tool: Interaction) => void }) => (
-  <Section>
+export const PlanTabs = ({
+  value,
+  onChange,
+  className,
+}: {
+  value: Interaction
+  onChange: (tool: Interaction) => void
+  className?: string
+}) => (
+  <Section className={className}>
     <Segmented
       label="Add"
       block
@@ -57,9 +65,9 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
 
   return (
     <>
-      <PlanTabs value="edit" onChange={onTool} />
+      <PlanTabs value="edit" onChange={onTool} className="section-flush" />
 
-      <Section>
+      <Section className="section-flush">
         <label className="search">
           <Search size={16} aria-hidden />
           <input
@@ -90,12 +98,13 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
               }}
             >
               {g}
+              <span className="num">{CATALOG.filter((e) => e.group === g).length}</span>
             </button>
           ))}
         </div>
       </Section>
 
-      <Section title={q ? 'Results' : group} aside={<span className="muted num">{entries.length}</span>}>
+      <Section>
         {custom && (
           <div className="custom-box">
             <label className="field">

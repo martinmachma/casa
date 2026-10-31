@@ -60,10 +60,10 @@ export const Switch = ({ label, checked, onChange }: SwitchProps) => (
   </label>
 )
 
-type SectionProps = { title?: string; aside?: ReactNode; children: ReactNode }
+type SectionProps = { title?: string; aside?: ReactNode; className?: string; children: ReactNode }
 
-export const Section = ({ title, aside, children }: SectionProps) => (
-  <section className="section">
+export const Section = ({ title, aside, className, children }: SectionProps) => (
+  <section className={className ? `section ${className}` : 'section'}>
     {(title || aside) && (
       <header className="section-head">
         {title && <h3>{title}</h3>}
