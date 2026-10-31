@@ -4,6 +4,10 @@ import type { Floor, HouseLayout, Opening, Point, Wall, WallSide } from './types
 export type WallPiece = { u0: number; u1: number; y0: number; y1: number }
 
 export const DEFAULT_WINDOW_SILL = 0.9
+/** Width of the frame round a door or window, inside the opening. */
+export const OPENING_FRAME = 0.06
+/** How far a hinged door swings open. */
+export const DOOR_SWING = (Math.PI / 180) * 95
 
 export const wallLength = (wall: Wall): number => Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
 

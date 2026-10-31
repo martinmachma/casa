@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { colliding, footprintOutline, type Solid } from './collision'
+import type { Floor, Opening } from '../layout/types'
+import { blockedDoors, colliding, doorSweeps, footprintOutline, type Solid } from './collision'
 
 // A wall along x = 0, 0.2 thick.
 const walls = [{ x0: -0.1, x1: 0.1, y0: 0, y1: 4 }]
@@ -50,5 +51,37 @@ describe('footprintOutline', () => {
       [0, 0.5, 0, 0.5],
     ])
     expect(outline).toHaveLength(6)
+  })
+
+  // A door 0.8 wide in a wall along y = 0, 1 m from its west end, hinged on the west and opening south (+y).
+  const doorFloor = (door: Partial<Opening> = {}): Floor => ({
+    id: 'f',
+    name: 'F',
+    elevation: 0,
+    height: 2.6,
+    wallThickness: 0.2,
+    rooms: [],
+    walls: [
+      { id: 'w', from: [0, 0], to: [4, 0], openings: [{ type: 'door', offset: 1, width: 0.8, height: 2, ...door }] },
+    ],
+  })
+  const blockers = (floor: Floor, items: Solid[]) => blockedDoors(items, doorSweeps(floor), 'f').get('w:0') ?? []
+  const small = (id: string, x: number, y: number, extra: Partial<Solid> = {}) =>
+    piece(id, x, y, { width: 0.3, depth: 0.3, ...extra })
+
+  it('finds what stands where a door leaf swings open', () => {
+    const items = [
+      small('inSwing', 1.4, 0.5),
+      small('otherSide', 1.4, -0.5),
+      // Seated flush against the wall right beside the hinge.
+      piece('besideHinge', 0.5, 0.6),
+      // In the square round the arc but past the arc itself.
+      small('pastArc', 1.85, 0.95),
+      small('rug', 1.4, 0.5, { height: 0.01 }),
+      small('aboveDoor', 1.4, 0.5, { z: 2.1 }),
+    ]
+    expect(blockers(doorFloor(), items)).toEqual(['inSwing'])
+    expect(blockers(doorFloor({ swing: 'b', hinge: 'to' }), items)).toEqual(['otherSide'])
+    expect(blockers(doorFloor({ type: 'sliding' }), items)).toEqual([])
   })
 })

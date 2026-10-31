@@ -1,16 +1,13 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { FrontSide, Group, MathUtils, Mesh, Plane, Vector3 } from 'three'
-import { openingId, openingSill } from '../layout/geometry'
+import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill } from '../layout/geometry'
 import type { Opening } from '../layout/types'
 import { raycastIfShown } from './raycast'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME } from './palette'
 
-const FRAME = 0.06
 const FRAME_DEPTH = 0.08
 const LEAF = 0.04
-/** How far a door swings open. */
-const SWING = (Math.PI / 180) * 95
 /** How quickly doors move, per second (exponential easing). */
 const SPEED = 6
 // A pointer that moved further than this between down and up was an orbit/pan, not a click.
@@ -194,7 +191,7 @@ const Door = ({
   ...state
 }: { inner: Inner; color: string; atEnd: boolean; intoB: boolean } & DoorState) => {
   // The leaf reaches from the hinge along the wall; this turns it towards the side it opens into.
-  const turn = (atEnd ? 1 : -1) * (intoB ? -1 : 1) * SWING
+  const turn = (atEnd ? 1 : -1) * (intoB ? -1 : 1) * DOOR_SWING
   const { group, handlers } = useToggle(state, (g, t) => (g.rotation.y = t * turn))
   const w = (inner.u1 - inner.u0) * (atEnd ? -1 : 1)
   const h = inner.y1 - inner.y0

@@ -5,7 +5,7 @@ import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, DeviceKind, FurnitureItem, NewFurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
-import { colliding } from '../furniture/collision'
+import { blockedDoors, colliding, doorSweeps, sweepOutline } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
@@ -38,7 +38,7 @@ import { clearances } from '../measure/clearance'
 import { distance, formatLength, type MeasuredLine, type MeasurePick, type Measurement } from '../measure/measure'
 import { floorWallRects } from '../layout/rooms'
 import { Line } from '@react-three/drei'
-import { SELECTED_OUTLINE } from './palette'
+import { COLLIDING, DOOR_SWEEP, SELECTED_OUTLINE } from './palette'
 import { RoomFloors } from './RoomFloors'
 import { NEAR_PACE, type CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
@@ -106,6 +106,8 @@ type HouseSceneProps = {
   onHoverItem?: (id: string | undefined) => void
   pinRefs?: RefObject<Map<string, HTMLElement | null>>
 }
+
+const NO_BLOCKED = new Map<string, string[]>()
 
 export const HouseScene = ({
   floorPointer,
@@ -192,8 +194,12 @@ export const HouseScene = ({
   // Measuring uses its own floor and wall targets; a piece being put down takes every tap.
   const pickable = interaction === 'edit' && !placingPiece
   const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside
-  // While arranging, anything that runs into a wall or another piece is marked.
+  // While arranging, anything that runs into a wall or another piece, or stands where a door swings, is marked.
+  const sweeps = useMemo(() => doorSweeps(furnitureFloor), [furnitureFloor])
+  const showSweeps = pickable && !outside
+  const blocked = showSweeps ? blockedDoors(items, sweeps, furnitureFloor.id) : NO_BLOCKED
   const clashes = pickable ? colliding(items, wallRects) : new Set<string>()
+  for (const ids of blocked.values()) for (const id of ids) clashes.add(id)
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = (selectedItem ? ground(furnitureFloor, [selectedItem.x, selectedItem.y]) : floor.elevation) + 0.05
   const lines = outside ? [] : measurements.filter((m) => m.floor === floor.id)
@@ -475,6 +481,21 @@ export const HouseScene = ({
             gapSize={0.05}
           />
         ))}
+        {showSweeps &&
+          sweeps.map((s) => {
+            const y = furnitureFloor.elevation + 0.02
+            // The leaf drawn open, then the arc its edge travels back to the wall.
+            const [hinge, ...arc] = sweepOutline(s)
+            return (
+              <Line
+                key={s.id}
+                points={[hinge, ...arc.reverse()].map(([x, z]) => [x, y, z] as [number, number, number])}
+                color={blocked.has(s.id) ? COLLIDING : DOOR_SWEEP}
+                lineWidth={blocked.has(s.id) ? 2.5 : 1.5}
+                raycast={() => null}
+              />
+            )
+          })}
         <ShadowUpdates />
         <AmbientOcclusion />
       </Canvas>
