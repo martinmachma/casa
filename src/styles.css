@@ -2909,11 +2909,33 @@ input[type='range'].kelvin::-moz-range-thumb {
   pointer-events: none;
 }
 
+/* What's in the room, at the bottom; it scrolls once it reaches the Planning button. */
 .room-card {
+  margin-top: auto;
   pointer-events: auto;
   padding: 14px;
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
+}
+
+/* The room looked at, over the middle of the view in line with the floor buttons. */
+.room-name {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 50%;
+  translate: -50% 0;
+  max-width: calc(100% - 28px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 9px 16px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .room-card-head {
@@ -2983,6 +3005,11 @@ input[type='range'].kelvin::-moz-range-thumb {
   .room-cards {
     top: auto;
     max-height: 45%;
+  }
+
+  /* Under the floor buttons and Planning, which fill the top row here. */
+  .room-name {
+    top: 62px;
   }
 }
 

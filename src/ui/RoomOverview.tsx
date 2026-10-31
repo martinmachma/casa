@@ -9,7 +9,6 @@ import { LightControls } from './LightControls'
 
 type RoomOverviewProps = {
   title: string
-  area: number | undefined
   items: SmartItem[]
   light: (id: string) => LightState
   onLight: (id: string, patch: Partial<LightState>) => void
@@ -17,7 +16,6 @@ type RoomOverviewProps = {
   onOpen: (id: string | undefined) => void
   /** The item whose card is pointed at, picked out in the view like the open one. */
   onHover: (id: string | undefined) => void
-  onClose: () => void
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
 }
@@ -31,35 +29,13 @@ const state = (item: SmartItem, light: LightState | undefined) =>
       ? `On · ${Math.round(light.brightness * 100)} %`
       : 'Off'
 
-/** The room's own view: cards down the right with what's in it, and a popover by the item picked. */
-export const RoomOverview = ({
-  title,
-  area,
-  items,
-  light,
-  onLight,
-  open,
-  onOpen,
-  onHover,
-  onClose,
-  pinRefs,
-}: RoomOverviewProps) => {
+/** The room's own view: its name over the middle, what's in it bottom right, and a popover by the item picked. */
+export const RoomOverview = ({ title, items, light, onLight, open, onOpen, onHover, pinRefs }: RoomOverviewProps) => {
   const picked = items.find((i) => i.id === open)
   return (
     <>
+      <h2 className="room-name float">{title}</h2>
       <div className="room-cards">
-        <section className="room-card float">
-          <header className="room-card-head">
-            <div>
-              <div className="eyebrow">Room</div>
-              <h2 className="panel-title">{title}</h2>
-              {area !== undefined && <div className="panel-sub num">{area.toFixed(1)} m²</div>}
-            </div>
-            <IconButton label="Back to the house" small onClick={onClose}>
-              <X size={18} />
-            </IconButton>
-          </header>
-        </section>
         <section className="room-card float">
           <h3 className="room-card-title">Smart items</h3>
           {items.length ? (

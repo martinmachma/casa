@@ -617,14 +617,12 @@ const House = ({ backend, account }: HouseProps) => {
         {focus && focusFloor && !rightOpen && (
           <RoomOverview
             title={focus.label}
-            area={floorRegions(focusFloor).get(focus.room)?.area}
             items={focusItems}
             light={(id) => lightSettings(lights.states[id], dark)}
             onLight={(id, patch) => lights.set(id, patch, dark)}
             open={popover}
             onOpen={setPopover}
             onHover={setHoveredItem}
-            onClose={leaveRoom}
             pinRefs={pinRefs}
           />
         )}
