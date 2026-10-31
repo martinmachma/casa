@@ -1,5 +1,5 @@
 import { SquareBottomDashedScissors } from 'lucide-react'
-import { IconButton } from './ui/kit'
+import { IconButton, Slide } from './ui/kit'
 import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
@@ -403,7 +403,7 @@ const House = ({ backend, account }: HouseProps) => {
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
       tools={
         <>
-          {!locked && (
+          <Slide show={!locked}>
             <MeasurePanel
               mode={measure?.mode}
               canClear={measurements.length > 0 || !!measure?.picks.length}
@@ -414,18 +414,20 @@ const House = ({ backend, account }: HouseProps) => {
                 if (measure) setMeasure({ ...measure, picks: [] })
               }}
             />
-          )}
-          {planning && (
+          </Slide>
+          <Slide show={planning}>
             <SnapMenu
               wallSnap={wallSnap}
               onWallSnap={setWallSnap}
               furnitureSnap={furnitureSnap}
               onFurnitureSnap={setFurnitureSnap}
             />
-          )}
-          {planning && <SunPanel sun={sun} position={sunAt} onSun={setSun} />}
+          </Slide>
+          <Slide show={planning}>
+            <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+          </Slide>
           {/* Walls in front cut down in the 3D view, to see in; not yet from outside. */}
-          {camera === 'orbit' && !outside && (
+          <Slide show={camera === 'orbit' && !outside}>
             <div className="toolbar float">
               <IconButton
                 label="Cut walls"
@@ -437,7 +439,7 @@ const House = ({ backend, account }: HouseProps) => {
                 <SquareBottomDashedScissors size={17} />
               </IconButton>
             </div>
-          )}
+          </Slide>
         </>
       }
     />

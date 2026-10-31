@@ -903,26 +903,16 @@ p {
   pointer-events: auto;
 }
 
-/* Buttons that come and go (with Planning, or the camera) pop in rather than blink in. */
-.modebar-main > :not(.edit-toggle),
-.modebar-tools > *,
-.segmented > .appear {
-  animation: pop-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+/* Buttons that come and go (with Planning, or the camera) slide in and out; see Slide. */
+.slide {
+  display: flex;
+  flex: none;
+  /* Revealed from the side next to its right-hand neighbour. */
+  justify-content: flex-end;
 }
 
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.85);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .modebar-main > :not(.edit-toggle),
-  .modebar-tools > *,
-  .segmented > .appear {
-    animation: fade-in 120ms ease-out;
-  }
+.slide > * {
+  flex: none;
 }
 
 /* Up here, the sun's date and the snap menu open downwards. */

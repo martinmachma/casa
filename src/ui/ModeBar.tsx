@@ -1,6 +1,6 @@
 import { PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { IconButton } from './kit'
+import { IconButton, Slide } from './kit'
 
 type ModeBarProps = {
   /** Planning is editing: the house can be changed only while it's on. */
@@ -33,15 +33,15 @@ export const ModeBar = ({ planning, onPlanning, onUndo, onRedo, save, onOpenPane
           <PencilRuler size={16} />
           <span>Planning</span>
         </button>
-        {editing && save}
-        {editing && onOpenPanel && (
+        <Slide show={editing}>{save}</Slide>
+        <Slide show={editing && !!onOpenPanel}>
           <div className="float history">
             <IconButton label="Open details" small onClick={onOpenPanel}>
               <PanelRightOpen size={17} />
             </IconButton>
           </div>
-        )}
-        {editing && (
+        </Slide>
+        <Slide show={editing}>
           <div className="float history" role="group" aria-label="History">
             <IconButton label={`Undo (${mod}Z)`} small disabled={!onUndo} onClick={onUndo}>
               <Undo2 size={17} />
@@ -50,7 +50,7 @@ export const ModeBar = ({ planning, onPlanning, onUndo, onRedo, save, onOpenPane
               <Redo2 size={17} />
             </IconButton>
           </div>
-        )}
+        </Slide>
       </div>
       {tools && <div className="modebar-tools">{tools}</div>}
     </div>

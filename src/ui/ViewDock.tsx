@@ -59,7 +59,7 @@ export const ViewDock = ({
           value={camera}
           onChange={onCamera}
           options={[
-            ...(canPlan ? [{ value: 'top' as const, label: 'Plan', icon: <PlanIcon size={15} />, appear: true }] : []),
+            { value: 'top', label: 'Plan', icon: <PlanIcon size={15} />, show: canPlan },
             { value: 'orbit', label: '3D', icon: <Box size={15} /> },
             { value: 'walk', label: 'Walk', icon: <Footprints size={15} /> },
           ]}
