@@ -75,6 +75,16 @@ export const supabaseBackend: Backend = {
     )
   },
 
+  // One conditional update, so two people making versions live at once can't both win.
+  replaceLive: async (id, current) => {
+    const update = supabase
+      .from('live_version')
+      .update({ version_id: id ?? null })
+      .eq('id', true)
+    const rows = check(await (current ? update.eq('version_id', current) : update.is('version_id', null)).select('id'))
+    return (rows ?? []).length > 0
+  },
+
   loadRoomOrder: async () => {
     const row = check(await supabase.from('room_orders').select('main, minor').maybeSingle()) as RoomOrder | null
     return row ?? undefined

@@ -9,8 +9,11 @@ export type Viewing = typeof LIVE | typeof BARE | string
 export const LIVE = 'live'
 export const BARE = 'bare'
 
-/** Edits not yet saved as a version, on top of the version they started from (none: the bare house). */
-type Draft = { basedOn: string | undefined; state: HouseState }
+/**
+ * Edits not yet saved as a version, on top of the version they started from (none: the bare house). `live` is the
+ * version that was live when editing began (null: the bare house), to notice someone else making another one live.
+ */
+type Draft = { basedOn: string | undefined; live?: string | null; state: HouseState }
 
 /**
  * Undo history: drafts before (`past`) and after (`future`) the current one; `undefined` is "no edits". Consecutive
@@ -69,6 +72,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const liveId = query.data?.liveId
   const [failed, setError] = useState<string>()
   const error = failed ?? query.error?.message
+  /** Something that went differently than asked, though nothing failed. */
+  const [notice, setNotice] = useState<string>()
   const [viewing, setViewing] = useState<Viewing>(LIVE)
   // Edits kept from an earlier visit lose their steps, but one undo still takes them back to the saved version.
   const [history, setHistory] = useState<History>(() => {
@@ -136,7 +141,9 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const edit = (change: (s: HouseState) => HouseState, key?: string) =>
     setHistory((h) => {
       const d = h.draft
-      const next = { basedOn: d ? d.basedOn : viewedId, state: change(d?.state ?? state) }
+      const next = d
+        ? { ...d, state: change(d.state) }
+        : { basedOn: viewedId, live: liveId ?? null, state: change(state) }
       const merge = key !== undefined && key === h.key
       return { draft: next, past: merge ? h.past : [...h.past, d].slice(-HISTORY_LIMIT), future: [], key }
     })
@@ -221,18 +228,27 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
 
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
 
+  // The version made live by someone else since editing began; the bare house is `null`. Drafts kept from before
+  // this was noted count from the version they started on.
+  const live = liveId ?? null
+  const startLive = draft && (draft.live !== undefined ? draft.live : (draft.basedOn ?? null))
+  const newerLive = dirty && live !== startLive ? (versions.find((v) => v.id === live) ?? null) : undefined
+
   const save = useMutation({
     mutationFn: async ({ name, makeLive, draft }: { name: string; makeLive: boolean; draft: Draft }) => {
       const created = await backend.saveVersion(name, draft.state, draft.basedOn)
-      if (makeLive) await backend.setLive(created.id)
+      // Replaces only the live version the person saw when saving: one made live a moment ago stays.
+      const madeLive = makeLive && (await backend.replaceLive(created.id, liveId))
       // The new version is loaded before the draft goes, so the old one never shows in between.
       await reload()
-      return created
+      return { created, madeLive }
     },
-    onSuccess: (created, { makeLive }) => {
+    onSuccess: ({ created, madeLive }, { makeLive }) => {
       clearDraft()
       writeDraft(backend, undefined)
-      setViewing(makeLive ? LIVE : created.id)
+      setViewing(madeLive ? LIVE : created.id)
+      if (makeLive && !madeLive)
+        setNotice(`Another version was made live just now, so “${created.name}” is saved but not live.`)
     },
     onError: fail,
   })
@@ -254,6 +270,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
       setError(undefined)
       if (query.isError) void query.refetch()
     },
+    notice,
+    clearNotice: () => setNotice(undefined),
     versions,
     liveId,
     viewing,
@@ -262,6 +280,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     view: setViewing,
     /** Whether there are edits not yet saved as a version. */
     dirty,
+    /** The version someone else made live after these edits began (null: the bare house); undefined if none. */
+    newerLive,
     saveDraft,
     discardDraft,
     endEdit,

@@ -93,6 +93,8 @@ export type Backend = {
   renameVersion: (id: string, name: string) => Promise<void>
   deleteVersion: (id: string) => Promise<void>
   setLive: (id: string | undefined) => Promise<void>
+  /** Makes `id` live only while `current` still is; false when another one was made live in the meantime. */
+  replaceLive: (id: string | undefined, current: string | undefined) => Promise<boolean>
   /** The signed-in person's order of the room menu; undefined until they first arrange it. */
   loadRoomOrder: () => Promise<RoomOrder | undefined>
   saveRoomOrder: (order: RoomOrder) => Promise<void>

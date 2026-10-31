@@ -665,6 +665,11 @@ export const House = ({ backend, account }: HouseProps) => {
             Couldn't save: {data.error} (tap to dismiss)
           </div>
         )}
+        {data.notice && (
+          <div className="toast" role="status" onClick={data.clearNotice}>
+            {data.notice} (tap to dismiss)
+          </div>
+        )}
       </main>
 
       <aside className="sidebar sidebar-right" aria-label="Details" inert={!rightOpen}>

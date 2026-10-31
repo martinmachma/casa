@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 import { BARE, LIVE, type HouseData } from '../data/useHouseData'
 import type { Version } from '../data/types'
 
-const when = (iso: string) =>
+export const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
-const who = (email: string | undefined) => email?.split('@')[0]
+export const who = (email: string | undefined) => email?.split('@')[0]
 
 /** The top bar's version picker: what's on screen, which version is live, and making another one live. */
 export const VersionMenu = ({ data }: { data: HouseData }) => {

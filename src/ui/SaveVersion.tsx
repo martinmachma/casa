@@ -2,6 +2,7 @@ import { Radio, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { HouseData } from '../data/useHouseData'
 import { PanelHead } from './kit'
+import { when, who } from './VersionMenu'
 
 const defaultName = () =>
   new Date().toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -46,6 +47,7 @@ const SaveDialog = ({ data, onClose }: { data: HouseData; onClose: () => void })
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const [placeholder] = useState(defaultName)
+  const { newerLive } = data
 
   useEffect(() => dialog.current?.showModal(), [])
 
@@ -92,6 +94,19 @@ const SaveDialog = ({ data, onClose }: { data: HouseData; onClose: () => void })
             onChange={(e) => setName(e.target.value)}
           />
         </label>
+        {newerLive !== undefined && (
+          <p className="save-warning" role="alert">
+            {newerLive ? (
+              <>
+                <strong>{newerLive.name}</strong>
+                {[who(newerLive.author) && ` by ${who(newerLive.author)}`, `, saved ${when(newerLive.createdAt)},`]}
+              </>
+            ) : (
+              'The bare house'
+            )}{' '}
+            was made live after you started editing. Making yours live replaces it.
+          </p>
+        )}
         <div className="save-actions">
           <button className="btn btn-small btn-ghost btn-danger" type="button" disabled={saving} onClick={discard}>
             Discard changes
@@ -104,11 +119,15 @@ const SaveDialog = ({ data, onClose }: { data: HouseData; onClose: () => void })
             className="btn btn-small btn-primary"
             type="button"
             disabled={saving}
-            title="Save as a new version and make it the live one"
+            title={
+              newerLive === undefined
+                ? 'Save as a new version and make it the live one'
+                : 'Save as a new version and make it live instead of the one made live meanwhile'
+            }
             onClick={() => save(true)}
           >
             <Radio size={15} />
-            Save &amp; make live
+            {newerLive === undefined ? 'Save & make live' : 'Save & replace live'}
           </button>
         </div>
       </form>
