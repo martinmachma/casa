@@ -2904,12 +2904,14 @@ input[type='range'].kelvin::-moz-range-thumb {
   width: min(320px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
+  /* Sits at the bottom of the screen and grows upwards. */
+  justify-content: flex-end;
   gap: 10px;
   overflow: hidden;
   pointer-events: none;
 }
 
-/* The smart items card, under the Planning button; its list scrolls once it reaches the bottom. */
+/* The smart items card, at the bottom right; its list scrolls once it reaches the Planning button. */
 .room-card {
   display: flex;
   flex-direction: column;
