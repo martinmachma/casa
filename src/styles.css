@@ -16,6 +16,10 @@
   --accent-hover: #b5583e;
   --accent-soft: #f8e9e3;
   --accent-ink: #ffffff;
+  /* Shiba orange: a tool that's on. */
+  --active: #e0893a;
+  --active-soft: #fcebd8;
+  --active-ink: #a8571a;
   --danger: #b3362b;
   --danger-soft: #fbeceb;
 
@@ -990,9 +994,16 @@ p {
   box-shadow: none;
 }
 
-.modebar .tools button[aria-pressed='true'] {
-  background: var(--accent-soft);
-  color: var(--accent-hover);
+/* A tool that's on, the same for all of them: its button, or the icon heading its open bar. */
+.modebar-tools .icon-btn[aria-pressed='true'] {
+  background: var(--active-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--active) 45%, transparent);
+  color: var(--active-ink);
+}
+
+.modebar-tools .toolbar-icon {
+  color: var(--active);
+  opacity: 1;
 }
 
 .compass {
@@ -1843,12 +1854,6 @@ input[type='range'].kelvin::-moz-range-thumb {
 .plan-tabs button {
   min-height: 36px;
   font-size: 14px;
-}
-
-/* Snapping, from the magnet in the bottom tools. */
-.snap .icon-btn[aria-pressed='true'] {
-  background: var(--accent-soft);
-  color: var(--accent-hover);
 }
 
 .snap-menu {
