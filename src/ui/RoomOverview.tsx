@@ -78,7 +78,7 @@ export const RoomOverview = ({
     })
   return (
     <>
-      <h2 className="room-name">{title}</h2>
+      <h2 className="room-name float">{title}</h2>
       <div className="room-cards">
         <SmartCard
           title="In this room"

@@ -3114,12 +3114,9 @@ input[type='range'].kelvin::-moz-range-thumb {
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 38px;
+  padding: 0 14px;
   white-space: nowrap;
   text-overflow: ellipsis;
-  text-shadow:
-    0 0 2px rgb(255 255 255 / 0.9),
-    0 0 12px rgb(255 255 255 / 0.8),
-    0 0 24px rgb(255 255 255 / 0.6);
   pointer-events: none;
 }
 
