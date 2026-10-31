@@ -117,6 +117,7 @@ export const RoomOverview = ({
             <div
               key={item.id}
               className="room-pin"
+              data-active={hovered === item.id || undefined}
               ref={(el) => {
                 pinRefs.current.set(`tag:${item.id}`, el)
               }}

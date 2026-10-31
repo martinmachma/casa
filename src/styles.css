@@ -3215,6 +3215,22 @@ input[type='range'].kelvin::-moz-range-thumb {
   pointer-events: auto;
 }
 
+.room-pin[data-active] {
+  z-index: 1;
+}
+
+.room-pin[data-active] .smart-tag {
+  background: var(--accent-soft);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    0 3px 10px rgb(34 26 18 / 0.2);
+  color: var(--accent-text);
+}
+
+.room-pin[data-active] .smart-tag-line polyline {
+  stroke: var(--accent);
+}
+
 .smart-tag[data-off] {
   background: rgb(255 255 255 / 0.82);
 }
