@@ -608,7 +608,7 @@ export const House = ({ backend, account }: HouseProps) => {
           focusRoom={focus?.room}
           pins={[
             ...focusItems.map((i) => ({ key: `tag:${i.id}`, at: i.at })),
-            ...focusItems.filter((i) => i.id === popover).map((i) => ({ key: i.id, at: i.at })),
+            ...focusItems.filter((i) => i.id === popover).map((i) => ({ key: `card:${i.id}`, at: i.at })),
           ]}
           pinRefs={pinRefs}
           open={popover}

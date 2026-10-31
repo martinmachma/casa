@@ -3249,16 +3249,30 @@ input[type='range'].kelvin::-moz-range-thumb {
   color: var(--accent-ink);
 }
 
+/* An open item's card stands where its tag was, at the end of the same line, and grows out of the tag's shape. */
 .room-popover {
   position: absolute;
-  left: 14px;
-  top: 0;
-  transform: translateY(-50%);
+  left: 32px;
+  top: -35px;
   width: 260px;
   padding: 12px;
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
   pointer-events: auto;
+  animation: tag-to-card 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.room-popover > * {
+  animation: fade-in 0.2s 0.08s both;
+}
+
+@keyframes tag-to-card {
+  from {
+    clip-path: inset(0 calc(100% - 76px) calc(100% - 26px) 0 round 13px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 14px);
+  }
 }
 
 @media (max-width: 820px) {

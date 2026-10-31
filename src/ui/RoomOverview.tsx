@@ -5,7 +5,7 @@ import type { LightState } from '../devices/lights'
 import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { LightControls } from './LightControls'
-import { SmartCard, SmartRow, SmartTag } from './SmartList'
+import { SmartCard, SmartRow, SmartTag, TagLine } from './SmartList'
 import { itemState, KIND_GROUPS, lightsSummary } from './smartText'
 
 type RoomOverviewProps = {
@@ -110,31 +110,34 @@ export const RoomOverview = ({
       </div>
 
       <div className="overlay">
-        {/* A tag by each item, on a bent line that stops short of it; the open one's popover takes its place. */}
-        {items
-          .filter((item) => item.id !== open)
-          .map((item) => (
-            <div
-              key={item.id}
-              className="room-pin"
-              data-active={hovered === item.id || undefined}
-              ref={(el) => {
-                pinRefs.current.set(`tag:${item.id}`, el)
-              }}
-            >
+        {/* A tag by each item, on a bent line that stops short of it; the open one's tag grows into its card. */}
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="room-pin"
+            data-active={hovered === item.id || open === item.id || undefined}
+            ref={(el) => {
+              pinRefs.current.set(`tag:${item.id}`, el)
+            }}
+          >
+            {item.id === picked?.id ? (
+              <TagLine />
+            ) : (
               <SmartTag
                 item={item}
                 light={item.kind === 'light' ? light(item.id) : undefined}
                 onOpen={() => onOpen(item.id)}
                 onHover={(h) => onHover(h ? item.id : undefined)}
               />
-            </div>
-          ))}
+            )}
+          </div>
+        ))}
         {picked && (
           <div
             className="room-pin"
+            data-active
             ref={(el) => {
-              pinRefs.current.set(picked.id, el)
+              pinRefs.current.set(`card:${picked.id}`, el)
             }}
           >
             <div className="room-popover float" role="dialog" aria-label={picked.name}>

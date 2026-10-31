@@ -99,14 +99,19 @@ type SmartTagProps = {
   onHover: (hovering: boolean) => void
 }
 
+/** The line from an item to its tag, or to the card the tag opens into: it leaves at an angle, then runs flat. */
+export const TagLine = () => (
+  <svg className="smart-tag-line" width="40" height="30" viewBox="0 0 40 30" aria-hidden>
+    <polyline points="6,22 20,8 34,8" />
+  </svg>
+)
+
 /** The tag over an item in the room's view: its icon, lit in the light's colour, and how bright it is. */
 export const SmartTag = ({ item, light, onOpen, onHover }: SmartTagProps) => {
   const on = !!light?.on
   return (
     <>
-      <svg className="smart-tag-line" width="40" height="30" viewBox="0 0 40 30" aria-hidden>
-        <polyline points="6,22 20,8 34,8" />
-      </svg>
+      <TagLine />
       <button
         className="smart-tag"
         data-off={(light && !on) || undefined}
