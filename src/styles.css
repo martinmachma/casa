@@ -723,6 +723,11 @@ p {
   border-bottom: 0;
 }
 
+/* Without a divider, the next section's top padding is gap enough. */
+.section-flush {
+  padding-bottom: 0;
+}
+
 .section-head {
   display: flex;
   align-items: center;
