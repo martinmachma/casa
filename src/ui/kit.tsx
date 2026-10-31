@@ -11,8 +11,8 @@ export const IconButton = ({ label, small, className = '', children, ...rest }: 
   </button>
 )
 
-/** `iconOnly` keeps the label for the tooltip and screen readers. */
-type Option<T> = { value: T; label: string; icon?: ReactNode; iconOnly?: boolean }
+/** `iconOnly` keeps the label for the tooltip and screen readers; `appear` animates it in when it's added. */
+type Option<T> = { value: T; label: string; icon?: ReactNode; iconOnly?: boolean; appear?: boolean }
 
 type SegmentedProps<T> = {
   label: string
@@ -37,6 +37,7 @@ export const Segmented = <T extends string>({
     {options.map((o) => (
       <button
         key={o.value}
+        className={o.appear ? 'appear' : undefined}
         aria-pressed={o.value === value}
         disabled={disabled}
         onClick={() => onChange(o.value)}
