@@ -84,3 +84,38 @@ export const SmartCard = ({ title, summary, allLights, children }: SmartCardProp
     </p>
   </section>
 )
+
+type SmartTagProps = {
+  item: SmartItem
+  light?: LightState
+  /** Shows the item's name too, while it's pointed at. */
+  named: boolean
+  onOpen: () => void
+  onHover: (hovering: boolean) => void
+}
+
+/** The tag over an item in the room's view: its icon, lit in the light's colour, and how bright it is. */
+export const SmartTag = ({ item, light, named, onOpen, onHover }: SmartTagProps) => {
+  const on = !!light?.on
+  return (
+    <>
+      <svg className="smart-tag-line" width="40" height="30" viewBox="0 0 40 30" aria-hidden>
+        <polyline points="6,22 20,8 34,8" />
+      </svg>
+      <button
+        className="smart-tag"
+        data-off={(light && !on) || undefined}
+        aria-label={item.name}
+        onClick={onOpen}
+        onPointerEnter={() => onHover(true)}
+        onPointerLeave={() => onHover(false)}
+      >
+        <span className="smart-tag-icon" style={on ? { background: lightColor(light) } : undefined}>
+          <DeviceIcon kind={item.kind} size={12} />
+        </span>
+        {named && <span className="smart-tag-name">{item.name}</span>}
+        {light && <span className="muted">{on ? `${Math.round(light.brightness * 100)} %` : 'Off'}</span>}
+      </button>
+    </>
+  )
+}

@@ -3176,6 +3176,66 @@ input[type='range'].kelvin::-moz-range-thumb {
   left: 0;
 }
 
+/* A smart item's tag: a line leaving the item at an angle, turning flat into a small pill. */
+.smart-tag-line {
+  position: absolute;
+  left: -2px;
+  top: -30px;
+  overflow: visible;
+  filter: drop-shadow(0 0 1.5px rgb(34 26 18 / 0.45));
+}
+
+.smart-tag-line polyline {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.smart-tag {
+  position: absolute;
+  left: 32px;
+  top: -35px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px 0 3px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgb(34 26 18 / 0.08),
+    0 3px 10px rgb(34 26 18 / 0.18);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.smart-tag[data-off] {
+  background: rgb(255 255 255 / 0.82);
+}
+
+.smart-tag-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+
+.smart-tag-icon[style] {
+  color: var(--accent-ink);
+}
+
+.smart-tag-name {
+  font-weight: 600;
+}
+
 .room-popover {
   position: absolute;
   left: 14px;

@@ -5,7 +5,7 @@ import type { LightState } from '../devices/lights'
 import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { LightControls } from './LightControls'
-import { SmartCard, SmartRow } from './SmartList'
+import { SmartCard, SmartRow, SmartTag } from './SmartList'
 import { itemState, KIND_GROUPS, lightsSummary } from './smartText'
 
 type RoomOverviewProps = {
@@ -17,6 +17,8 @@ type RoomOverviewProps = {
   onOpen: (id: string | undefined) => void
   /** The item whose card is pointed at, picked out in the view like the open one. */
   onHover: (id: string | undefined) => void
+  /** The item pointed at, here or in the view; its tag shows its name. */
+  hovered: string | undefined
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
 }
@@ -28,7 +30,17 @@ const SCENES: { label: string; set: Pick<LightState, 'brightness' | 'kelvin'> }[
 ]
 
 /** The room's own view: its name over the middle, what's in it on the right, and a popover by the item picked. */
-export const RoomOverview = ({ title, items, light, onLight, open, onOpen, onHover, pinRefs }: RoomOverviewProps) => {
+export const RoomOverview = ({
+  title,
+  items,
+  light,
+  onLight,
+  open,
+  onOpen,
+  onHover,
+  hovered,
+  pinRefs,
+}: RoomOverviewProps) => {
   const picked = items.find((i) => i.id === open)
   const lights = items.filter((i) => i.kind === 'light')
   const on = lights.filter((i) => light(i.id).on).length
@@ -97,6 +109,26 @@ export const RoomOverview = ({ title, items, light, onLight, open, onOpen, onHov
       </div>
 
       <div className="overlay">
+        {/* A tag by each item, on a bent line that stops short of it; the open one's popover takes its place. */}
+        {items
+          .filter((item) => item.id !== open)
+          .map((item) => (
+            <div
+              key={item.id}
+              className="room-pin"
+              ref={(el) => {
+                pinRefs.current.set(`tag:${item.id}`, el)
+              }}
+            >
+              <SmartTag
+                item={item}
+                light={item.kind === 'light' ? light(item.id) : undefined}
+                named={hovered === item.id}
+                onOpen={() => onOpen(item.id)}
+                onHover={(h) => onHover(h ? item.id : undefined)}
+              />
+            </div>
+          ))}
         {picked && (
           <div
             className="room-pin"
