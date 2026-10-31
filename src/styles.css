@@ -3103,7 +3103,8 @@ input[type='range'].kelvin::-moz-range-thumb {
 .room-name {
   position: absolute;
   z-index: 2;
-  top: 14px;
+  /* Lined up with the buttons; the padding above and below is where the patch fades. */
+  top: 6px;
   left: 50%;
   translate: -50% 0;
   max-width: calc(100% - 28px);
@@ -3114,24 +3115,26 @@ input[type='range'].kelvin::-moz-range-thumb {
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 40px;
-  padding: 0 32px;
+  padding: 8px 32px;
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
 }
 
-/* A see-through pill behind the name that fades out at its sides, so the room shows through. */
+/* A see-through patch behind the name that fades out on every side, so the room shows through. */
 .room-name::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  border: 1px solid rgb(34 26 18 / 0.07);
-  border-radius: var(--radius);
   background: rgb(255 255 255 / 0.4);
   backdrop-filter: blur(12px) saturate(1.4);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+  mask-image:
+    linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent),
+    linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
 }
 
 .room-card-head {
@@ -3296,7 +3299,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 
   /* Under the floor buttons and Planning, which fill the top row here. */
   .room-name {
-    top: 62px;
+    top: 54px;
   }
 }
 
