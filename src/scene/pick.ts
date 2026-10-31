@@ -32,13 +32,25 @@ export const solidHits = (scene: Object3D, ray: Raycaster) => {
   return hits.sort((a, b) => a.distance - b.distance).filter(solid)
 }
 
+/** Part of a piece of furniture. */
+const inFurniture = (o: Object3D) => {
+  for (let p: Object3D | null = o; p; p = p.parent) if (p.userData.itemId) return true
+  return false
+}
+
 /**
  * What the pointer reaches: nothing out of focus around a room in its view, and nothing behind whatever solid
- * thing is in front, even one that doesn't take the pointer itself (a box in front of a door).
+ * thing is in front, even one that doesn't take the pointer itself (a box in front of a door). A target marked
+ * `pastFurniture` (the floor while a ceiling light is placed) is reached through furniture standing on it.
  */
 export const reachable = (hits: Intersection[], scene: Object3D, ray: Raycaster) => {
   const near = hits.filter((h) => !h.object.userData.outside)
   if (!near.length) return near
-  const front = solidHits(scene, ray)[0]
-  return front ? near.filter((h) => h.distance <= front.distance + 0.01) : near
+  const solids = solidHits(scene, ray)
+  const front = solids[0]
+  const past = near.some((h) => h.object.userData.pastFurniture) && solids.find((h) => !inFurniture(h.object))
+  return near.filter((h) => {
+    const by = h.object.userData.pastFurniture ? past : front
+    return !by || h.distance <= by.distance + 0.01
+  })
 }

@@ -17,8 +17,6 @@ export const DEVICE_KINDS: Record<DeviceKind, KindInfo> = {
   other: { label: 'Other', height: 1.1, color: '#a597b5' },
 }
 
-export const KIND_ORDER = Object.keys(DEVICE_KINDS) as DeviceKind[]
-
 export const onCeiling = (kind: DeviceKind) => DEVICE_KINDS[kind].height === 'ceiling'
 
 /** The kind's usual height above the floor, the ceiling being the floor's wall height. */

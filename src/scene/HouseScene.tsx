@@ -194,8 +194,8 @@ export const HouseScene = ({
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
   const selectedItem = selectedIds.length === 1 ? items.find((f) => f.id === selectedIds[0]) : undefined
   const wallRects = useMemo(() => floorWallRects(furnitureFloor), [furnitureFloor])
-  // Measuring uses its own floor and wall targets; a piece being put down takes every tap.
-  const pickable = interaction === 'edit' && !placingPiece
+  // Measuring uses its own floor and wall targets; a piece or device being put down takes every tap.
+  const pickable = interaction === 'edit' && !placingPiece && !placing
   const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside
   // While arranging, anything that runs into a wall or another piece, or stands where a door swings, is marked.
   const sweeps = useMemo(() => doorSweeps(furnitureFloor), [furnitureFloor])
@@ -261,7 +261,7 @@ export const HouseScene = ({
         shadows="percentage"
         dpr={[1, 2]}
         frameloop="demand"
-        onPointerMissed={() => (pickable || interaction === 'devices' || pickedLight) && onSelect(undefined)}
+        onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
       >
         <InputInvalidator />
         <PointerReach />
@@ -363,7 +363,7 @@ export const HouseScene = ({
               colors={data.wallColors}
               selection={selection}
               interactive={pickable && (outside || f.id === floor.id)}
-              doors={!measure && !placingPiece && (outside || f.id === floor.id)}
+              doors={!measure && !placingPiece && !placing && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
               cutaway={cutWalls && f.id === floor.id}
@@ -375,7 +375,7 @@ export const HouseScene = ({
 
         <Fade shown={outside}>{house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}</Fade>
 
-        {interaction === 'devices' && placing && !outside && (
+        {interaction === 'edit' && placing && !outside && (
           <DevicePlacer
             floor={floor}
             kind={placing}
@@ -408,7 +408,7 @@ export const HouseScene = ({
               plan={camera === 'top'}
               onPickLight={lightPick}
               onHoverLight={onHoverItem}
-              interactive={interaction === 'devices' && !placing && !outside}
+              interactive={pickable && !outside}
               onSelect={(id) => onSelect({ kind: 'device', id })}
               onMove={moveDevice}
               onMoveEnd={saveItem}

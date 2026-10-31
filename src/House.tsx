@@ -8,7 +8,7 @@ import type { Account } from './auth/AuthGate'
 import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { DEVICE_KINDS } from './devices/kinds'
-import { changeKind, deviceRoom } from './devices/place'
+import { deviceRoom } from './devices/place'
 import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
 import { pasteFurniture } from './furniture/clipboard'
@@ -26,7 +26,6 @@ import { DeviceEditor } from './ui/DeviceEditor'
 import { lightSettings, useLights } from './devices/lights'
 import { LightPanel } from './ui/LightPanel'
 import { daylight } from './scene/Lights'
-import { DevicePanel } from './ui/DevicePanel'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
@@ -140,7 +139,6 @@ export const House = ({ backend, account }: HouseProps) => {
     selection?.kind === 'furniture' ? data.furniture.filter((f) => selection.ids.includes(f.id)) : []
   const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
   const selectedDevice = selection?.kind === 'device' ? data.devices.find((d) => d.id === selection.id) : undefined
-  const floorDevices = data.devices.filter((d) => d.floor === floor.id)
 
   // Typing a size or dragging the colour picker undoes as one step per field.
   const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>, key?: string) =>
@@ -211,15 +209,10 @@ export const House = ({ backend, account }: HouseProps) => {
     select({ kind: 'device', id: created.id })
   }
 
-  /** A device still under its numbered name is renamed for its new kind. */
-  const changeDeviceKind = (device: Device, kind: DeviceKind) => {
-    const numbered = new RegExp(`^${DEVICE_KINDS[device.kind].label} \\d+$`).test(device.name)
-    data.patchDevice(device.id, { ...changeKind(device, kind, floor), ...(numbered ? { name: deviceName(kind) } : {}) })
-  }
-
   /** A piece picked from the catalog follows the pointer; the next tap on the house puts it down. */
   const addPiece = (piece: NewPiece) => {
     setSelection(undefined)
+    setPlacing(undefined)
     setPlacingPiece({
       ...piece,
       floor: furnitureFloor.id,
@@ -284,16 +277,6 @@ export const House = ({ backend, account }: HouseProps) => {
     saveSection(next)
   }
 
-  /** Nothing stays selected across tools; measuring carries on. */
-  const changeInteraction = (next: Interaction) => {
-    if (next === 'view' || next === 'measure') return changeSection('home')
-    if (!planning) changeSection('planning')
-    setSelection(undefined)
-    setPlacing(undefined)
-    setPlacingPiece(undefined)
-    setTool(next)
-    if (next === 'devices') setRightOpen(true)
-  }
   /** Measuring works in any mode; while it's on, taps measure instead of selecting. */
   const toggleMeasure = () => {
     setSelection(undefined)
@@ -366,7 +349,6 @@ export const House = ({ backend, account }: HouseProps) => {
       if (key === 'e') return changeSection(planning ? 'home' : 'planning')
       if (locked) return
       if (key === 'm') toggleMeasure()
-      else if (key === 'l') changeInteraction(interaction === 'devices' ? 'edit' : 'devices')
       else if (placingPiece && key === 'r')
         setPlacingPiece({
           ...placingPiece,
@@ -381,7 +363,6 @@ export const House = ({ backend, account }: HouseProps) => {
         else if (placing) setPlacing(undefined)
         else if (measure?.picks.length) setMeasure({ ...measure, picks: [] })
         else if (measure) stopMeasuring()
-        else if (interaction === 'devices') changeInteraction('edit')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -529,7 +510,6 @@ export const House = ({ backend, account }: HouseProps) => {
           onChange={(patch) =>
             data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
           }
-          onKind={(kind) => changeDeviceKind(selectedDevice, kind)}
           light={lightSettings(lights.states[selectedDevice.id], dark)}
           onLight={(patch) => lights.set(selectedDevice.id, patch, dark)}
           onDelete={() => deleteDevice(selectedDevice)}
@@ -537,21 +517,22 @@ export const House = ({ backend, account }: HouseProps) => {
         />
       )
     }
-    if (interaction === 'devices')
+    if (interaction === 'edit')
       return (
-        <DevicePanel
-          devices={floorDevices}
+        <FurniturePanel
+          onAdd={addPiece}
           placing={placing}
           onPlacing={(kind) => {
+            setSelection(undefined)
+            setPlacingPiece(undefined)
             setPlacing(kind)
+            // Lights hang from a floor's ceiling, so it's placed from inside.
+            if (kind && outside) setOutside(false)
             // On a phone the sheet covers the house; tuck it away so there's room to tap.
             if (kind && isNarrow()) setRightOpen(false)
           }}
-          onSelect={(id) => select({ kind: 'device', id })}
-          onTool={changeInteraction}
         />
       )
-    if (interaction === 'edit') return <FurniturePanel onTool={changeInteraction} onAdd={addPiece} />
     return undefined
   })()
 

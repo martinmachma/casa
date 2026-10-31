@@ -1,48 +1,31 @@
-import { Lightbulb, Plus, Search, Sofa } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
-import type { Interaction } from '../scene/selection'
+import type { DeviceKind } from '../data/types'
+import { DEVICE_KINDS } from '../devices/kinds'
+import { DeviceIcon } from './deviceIcons'
 import { NumberField } from './NumberField'
-import { Section, Segmented } from './kit'
+import { Section } from './kit'
 
 /** What to add: a catalog model or a plain box, sizes in metres. */
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
-/** Furniture or devices: what the panel adds while nothing is selected. */
-export const PlanTabs = ({
-  value,
-  onChange,
-  className,
-}: {
-  value: Interaction
-  onChange: (tool: Interaction) => void
-  className?: string
-}) => (
-  <Section className={className}>
-    <Segmented
-      label="Add"
-      block
-      className="plan-tabs"
-      value={value}
-      onChange={onChange}
-      options={[
-        { value: 'edit', label: 'Furniture', icon: <Sofa size={16} /> },
-        { value: 'devices', label: 'Devices', icon: <Lightbulb size={16} /> },
-      ]}
-    />
-  </Section>
-)
+// Smart devices that can be put in by hand; the rest (sockets, blinds…) are fixed in the house's layout.
+const DEVICES: { kind: DeviceKind; name: string }[] = [{ kind: 'light', name: 'Ceiling light' }]
+const DEVICES_GROUP = 'Devices'
 
 type FurniturePanelProps = {
-  onTool: (tool: Interaction) => void
   onAdd: (piece: NewPiece) => void
+  /** The device kind the next tap places, if one is picked. */
+  placing: DeviceKind | undefined
+  onPlacing: (kind: DeviceKind | undefined) => void
 }
 
 /** Furniture creation shown while editing with nothing selected. */
-export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
+export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
-  const [group, setGroup] = useState<CatalogGroup>('Living')
+  const [group, setGroup] = useState<CatalogGroup | typeof DEVICES_GROUP>('Living')
   const [query, setQuery] = useState('')
   const [custom, setCustom] = useState(false)
   const groups = useRef<HTMLDivElement>(null)
@@ -62,11 +45,10 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
   // A search looks through every group.
   const q = query.trim().toLowerCase()
   const entries = CATALOG.filter((e) => (q ? e.name.toLowerCase().includes(q) : e.group === group))
+  const devices = DEVICES.filter((d) => (q ? d.name.toLowerCase().includes(q) : group === DEVICES_GROUP))
 
   return (
     <>
-      <PlanTabs value="edit" onChange={onTool} className="section-flush" />
-
       <Section className="section-flush">
         <label className="search">
           <Search size={16} aria-hidden />
@@ -101,11 +83,22 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
               <span className="num">{CATALOG.filter((e) => e.group === g).length}</span>
             </button>
           ))}
+          <button
+            role="tab"
+            aria-selected={!q && group === DEVICES_GROUP}
+            onClick={() => {
+              setGroup(DEVICES_GROUP)
+              setQuery('')
+            }}
+          >
+            {DEVICES_GROUP}
+            <span className="num">{DEVICES.length}</span>
+          </button>
         </div>
       </Section>
 
       <Section>
-        {custom && (
+        {custom && (q || group !== DEVICES_GROUP) && (
           <div className="custom-box">
             <label className="field">
               Name
@@ -133,11 +126,28 @@ export const FurniturePanel = ({ onTool, onAdd }: FurniturePanelProps) => {
           </div>
         )}
 
+        {placing && <p className="hint">Tap the floor where the light should hang from the ceiling.</p>}
+
         <div className="catalog">
-          <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
-            <Plus size={22} />
-            <span>Custom box</span>
-          </button>
+          {(q || group !== DEVICES_GROUP) && (
+            <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
+              <Plus size={22} />
+              <span>Custom box</span>
+            </button>
+          )}
+          {devices.map((d) => (
+            <button
+              key={d.kind}
+              className="catalog-item"
+              aria-pressed={placing === d.kind}
+              onClick={() => onPlacing(placing === d.kind ? undefined : d.kind)}
+            >
+              <span className="device-swatch" style={{ background: DEVICE_KINDS[d.kind].color }}>
+                <DeviceIcon kind={d.kind} size={18} />
+              </span>
+              <span>{d.name}</span>
+            </button>
+          ))}
           {entries.map((e) => (
             <button
               key={e.model}

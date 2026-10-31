@@ -11,8 +11,5 @@ export type Selection =
 
 export type CameraMode = 'top' | 'orbit' | 'walk'
 
-/**
- * What a tap in the 3D view does: nothing while just looking, select and drag while editing, measure, or place and
- * drag smart-home devices.
- */
-export type Interaction = 'view' | 'edit' | 'measure' | 'devices'
+/** What a tap in the 3D view does: nothing while just looking, select, drag and place while editing, or measure. */
+export type Interaction = 'view' | 'edit' | 'measure'

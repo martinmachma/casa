@@ -1,8 +1,7 @@
 import { Trash2 } from 'lucide-react'
-import type { Device, DeviceKind } from '../data/types'
+import type { Device } from '../data/types'
 import type { LightState } from '../devices/lights'
-import { DEVICE_KINDS, KIND_ORDER } from '../devices/kinds'
-import { DeviceIcon } from './deviceIcons'
+import { DEVICE_KINDS } from '../devices/kinds'
 import { LightControls } from './LightControls'
 import { NumberField } from './NumberField'
 import { PanelHead, Section } from './kit'
@@ -12,7 +11,6 @@ type DeviceEditorProps = {
   /** The room it's in, for the heading. */
   room: string | undefined
   onChange: (patch: Partial<Device>) => void
-  onKind: (kind: DeviceKind) => void
   /** How it's set now; only lights use it. */
   light: LightState
   onLight: (patch: Partial<LightState>) => void
@@ -22,16 +20,7 @@ type DeviceEditorProps = {
 
 const cm = (m: number) => Math.round(m * 100)
 
-export const DeviceEditor = ({
-  device,
-  room,
-  onChange,
-  onKind,
-  light,
-  onLight,
-  onDelete,
-  onClose,
-}: DeviceEditorProps) => (
+export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) => (
   <>
     <PanelHead
       eyebrow={DEVICE_KINDS[device.kind].label}
@@ -70,24 +59,6 @@ export const DeviceEditor = ({
           }}
         />
       </label>
-    </Section>
-
-    <Section title="Kind">
-      <div className="catalog device-kinds">
-        {KIND_ORDER.map((kind) => (
-          <button
-            key={kind}
-            className="catalog-item"
-            aria-pressed={device.kind === kind}
-            onClick={() => kind !== device.kind && onKind(kind)}
-          >
-            <span className="device-swatch" style={{ background: DEVICE_KINDS[kind].color }}>
-              <DeviceIcon kind={kind} size={18} />
-            </span>
-            <span>{DEVICE_KINDS[kind].label}</span>
-          </button>
-        ))}
-      </div>
     </Section>
 
     <Section>

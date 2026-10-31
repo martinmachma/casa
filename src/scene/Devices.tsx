@@ -297,6 +297,8 @@ export const DevicePlacer = ({ floor, kind, onPlace, cutaway, plan }: DevicePlac
       <mesh
         rotation-x={-Math.PI / 2}
         position={[0, floor.elevation + 0.01, 0]}
+        // A light hangs over a sofa or table as easily as over bare floor.
+        userData={{ pastFurniture: kind === 'light' }}
         onClick={(e) => {
           if (e.delta > CLICK_SLOP_PX) return
           e.stopPropagation()

@@ -93,23 +93,6 @@ export const placeDevice = (kind: DeviceKind, p: Point, floor: Floor): Omit<Devi
   return mount && { floor: floor.id, kind, z, ...mount }
 }
 
-/** The changes that turn a device into another kind: off the wall onto the ceiling, or onto the nearest wall. */
-export const changeKind = (device: Device, kind: DeviceKind, floor: Floor): Partial<Device> => {
-  const z = defaultHeight(kind, floor.height)
-  if (onCeiling(kind)) {
-    // Step out from the wall into the room, so the light isn't stuck to the wall's top edge.
-    const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
-    if (!wall) return { kind, z, wall: undefined }
-    const { n } = frameOf(wall, floor)
-    const s = device.wall!.side === 'a' ? 0.3 : -0.3
-    return { kind, z, wall: undefined, x: device.x + n[0] * s, y: device.y + n[1] * s }
-  }
-  const mount = device.wall
-    ? snapToWall([device.x, device.y], floor, z, Infinity, device.wall)
-    : snapToWall([device.x, device.y], floor, z, Infinity)
-  return { kind, z, ...mount }
-}
-
 /** The room a device is in; a wall-mounted one belongs to the room its face looks into. */
 export const deviceRoom = (device: Device, floor: Floor, regions: Map<string, RoomRegion>): string | undefined => {
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
