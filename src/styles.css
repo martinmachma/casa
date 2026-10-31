@@ -3272,7 +3272,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 /* An open item's card stands clear of it, at the end of a longer line, its middle level with the line; it grows
-   out of a tag's shape there. The room's camera frames the item so the card ends up in the middle of the screen. */
+   out of the tag, sliding out as the line grows. The room's camera frames the item so the card ends up in the middle of the screen. */
 .room-popover {
   position: absolute;
   left: 98px;
@@ -3284,6 +3284,30 @@ input[type='range'].kelvin::-moz-range-thumb {
   box-shadow: var(--shadow-lg);
   pointer-events: auto;
   animation: tag-to-card 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.room-pin:has(.room-popover) .smart-tag-line polyline {
+  stroke-dasharray: 100 200;
+  animation: tag-line-grow 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.room-pin:has(.room-popover[data-closing]) .smart-tag-line polyline {
+  stroke-dasharray: 34 200;
+  /* The card plays its growth backwards; this is that curve, played forwards. */
+  animation: tag-line-shrink 0.2s cubic-bezier(0.2, 0.8, 0.6, 1);
+}
+
+/* From as long as a tag's line to as long as the open card's, and back. */
+@keyframes tag-line-grow {
+  from {
+    stroke-dasharray: 34 200;
+  }
+}
+
+@keyframes tag-line-shrink {
+  from {
+    stroke-dasharray: 100 200;
+  }
 }
 
 .room-popover > * {
@@ -3302,9 +3326,12 @@ input[type='range'].kelvin::-moz-range-thumb {
 @keyframes tag-to-card {
   from {
     clip-path: inset(calc(50% - 13px) calc(100% - 76px) calc(50% - 13px) 0 round 13px);
+    /* Where the tag stood, sliding out along the line as it grows. */
+    translate: -66px -50%;
   }
   to {
     clip-path: inset(0 0 0 0 round 14px);
+    translate: 0 -50%;
   }
 }
 
