@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { type RefObject } from 'react'
+import { type RefObject, useEffect } from 'react'
 import { DEVICE_KINDS } from '../devices/kinds'
 import type { LightState } from '../devices/lights'
 import type { SmartItem } from '../rooms/roomItems'
@@ -17,7 +17,7 @@ type RoomOverviewProps = {
   onOpen: (id: string | undefined) => void
   /** The item whose card is pointed at, picked out in the view like the open one. */
   onHover: (id: string | undefined) => void
-  /** The item pointed at, here or in the view; its tag shows its name. */
+  /** The item pointed at, here or in the view; its tag and row are picked out. */
   hovered: string | undefined
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
@@ -42,6 +42,26 @@ export const RoomOverview = ({
   pinRefs,
 }: RoomOverviewProps) => {
   const picked = items.find((i) => i.id === open)
+  // A click anywhere else closes the open card; the card, the tags and the room's card handle their own clicks,
+  // and a drag (turning the view) isn't a click.
+  useEffect(() => {
+    if (!open) return
+    let down: { x: number; y: number; inside: boolean } | undefined
+    const onDown = (e: PointerEvent) => {
+      const inside = !!(e.target as Element).closest?.('.room-popover, .smart-tag, .room-cards')
+      down = { x: e.clientX, y: e.clientY, inside }
+    }
+    const onUp = (e: PointerEvent) => {
+      if (down && !down.inside && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) onOpen(undefined)
+      down = undefined
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('pointerup', onUp, true)
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('pointerup', onUp, true)
+    }
+  }, [open, onOpen])
   const lights = items.filter((i) => i.kind === 'light')
   const on = lights.filter((i) => light(i.id).on).length
   const kinds = [...new Set(items.map((i) => i.kind))]
