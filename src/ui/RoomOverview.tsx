@@ -150,7 +150,8 @@ export const RoomOverview = ({
               }}
             >
               {carded ? (
-                <TagLine />
+                // Longer to the open card, which stands clear of its item.
+                <TagLine reach={80} />
               ) : (
                 <SmartTag
                   item={item}

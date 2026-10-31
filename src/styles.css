@@ -3271,11 +3271,13 @@ input[type='range'].kelvin::-moz-range-thumb {
   color: var(--accent-ink);
 }
 
-/* An open item's card stands where its tag was, at the end of the same line, and grows out of the tag's shape. */
+/* An open item's card stands clear of it, at the end of a longer line, its middle level with the line; it grows
+   out of a tag's shape there. The room's camera frames the item so the card ends up in the middle of the screen. */
 .room-popover {
   position: absolute;
-  left: 32px;
-  top: -35px;
+  left: 98px;
+  top: -22px;
+  translate: 0 -50%;
   width: 260px;
   padding: 12px;
   border-radius: 14px;
@@ -3299,7 +3301,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 
 @keyframes tag-to-card {
   from {
-    clip-path: inset(0 calc(100% - 76px) calc(100% - 26px) 0 round 13px);
+    clip-path: inset(calc(50% - 13px) calc(100% - 76px) calc(50% - 13px) 0 round 13px);
   }
   to {
     clip-path: inset(0 0 0 0 round 14px);

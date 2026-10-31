@@ -91,9 +91,9 @@ type SmartTagProps = {
 }
 
 /** The line from an item to its tag, or to the card the tag opens into: it leaves at an angle, then runs flat. */
-export const TagLine = () => (
-  <svg className="smart-tag-line" width="40" height="30" viewBox="0 0 40 30" aria-hidden>
-    <polyline points="6,22 20,8 34,8" />
+export const TagLine = ({ reach = 14 }: { reach?: number }) => (
+  <svg className="smart-tag-line" width={26 + reach} height="30" viewBox={`0 0 ${26 + reach} 30`} aria-hidden>
+    <polyline points={`6,22 20,8 ${20 + reach},8`} />
   </svg>
 )
 

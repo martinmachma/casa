@@ -11,8 +11,8 @@ const FLIGHT_SECONDS = 1.1
 /** How far from an opened item the camera comes in to. */
 const CLOSE_UP = 2.2
 const FOV = 45
-/** Room on screen for an opened item's card, which hangs down and right from it, and the room's cards on the right. */
-const CARD = { width: 300, right: 256 }
+/** An opened item's card: how far right of the item it starts, and how wide it is. */
+const CARD = { left: 98, width: 260 }
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
@@ -47,12 +47,13 @@ export const RoomCamera = ({
     if (!roomView || cx === undefined) return roomView
     const item = new Vector3(cx, cy, cz)
     const back = roomView.position.clone().sub(item).normalize()
-    // The item sits high on the screen, left of the middle of what the room's cards leave, so its card fits below.
+    // The item sits left of its card, which ends up in the middle of the screen.
     const right = new Vector3(0, 1, 0).cross(back).normalize()
     const up = back.clone().cross(right)
     const perPixel = (2 * CLOSE_UP * Math.tan(((FOV / 2) * Math.PI) / 180)) / size.height
-    const dx = Math.max(16, (size.width - CARD.right - CARD.width) / 2) - size.width / 2
-    const dy = size.height * 0.28 - size.height / 2
+    const dx = Math.max(16, (size.width - CARD.width) / 2 - CARD.left) - size.width / 2
+    // The line rises 22px to the card's middle.
+    const dy = 22
     const target = item.addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel)
     return { ...roomView, position: target.clone().addScaledVector(back, CLOSE_UP), target }
   }, [roomView, cx, cy, cz, size])
