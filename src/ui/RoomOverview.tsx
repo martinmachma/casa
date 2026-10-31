@@ -34,7 +34,7 @@ export const RoomOverview = ({ title, items, light, onLight, open, onOpen, onHov
   const picked = items.find((i) => i.id === open)
   return (
     <>
-      <h2 className="room-name float">{title}</h2>
+      <h2 className="room-name">{title}</h2>
       <div className="room-cards">
         <section className="room-card float">
           <h3 className="room-card-title">Smart items</h3>

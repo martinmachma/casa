@@ -2918,7 +2918,8 @@ input[type='range'].kelvin::-moz-range-thumb {
   box-shadow: var(--shadow-lg);
 }
 
-/* The room looked at, over the middle of the view in line with the floor buttons. */
+/* The room looked at: its name written on the view over the middle, in line with the floor buttons, a soft glow
+   keeping it legible over whatever is behind it. */
 .room-name {
   position: absolute;
   z-index: 2;
@@ -2926,15 +2927,19 @@ input[type='range'].kelvin::-moz-range-thumb {
   left: 50%;
   translate: -50% 0;
   max-width: calc(100% - 28px);
-  box-sizing: border-box;
   margin: 0;
-  padding: 9px 16px;
   overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 18px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 38px;
   white-space: nowrap;
   text-overflow: ellipsis;
+  text-shadow:
+    0 0 2px rgb(255 255 255 / 0.9),
+    0 0 12px rgb(255 255 255 / 0.8),
+    0 0 24px rgb(255 255 255 / 0.6);
   pointer-events: none;
 }
 
