@@ -12,7 +12,7 @@ const FLIGHT_SECONDS = 1.1
 const CLOSE_UP = 2.2
 const FOV = 45
 /** Room on screen for an opened item's card, which hangs down and right from it, and the room's cards on the right. */
-const CARD = { width: 300, right: 340 }
+const CARD = { width: 300, right: 256 }
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */

@@ -79,7 +79,7 @@ export const RoomOverview = ({
   return (
     <>
       <h2 className="room-name">{title}</h2>
-      <div className="room-cards">
+      <div className="room-cards" data-compact>
         <SmartCard
           title="In this room"
           summary={lights.length ? lightsSummary(on, lights.length) : `${items.length} smart items`}
@@ -106,7 +106,7 @@ export const RoomOverview = ({
           {items.length ? (
             kinds.map((kind) => (
               <div key={kind}>
-                <h4 className="smart-group">{KIND_GROUPS[kind]}</h4>
+                {kinds.length > 1 && <h4 className="smart-group">{KIND_GROUPS[kind]}</h4>}
                 <ul className="smart-list">
                   {items
                     .filter((i) => i.kind === kind)
@@ -116,7 +116,7 @@ export const RoomOverview = ({
                         <SmartRow
                           key={item.id}
                           item={item}
-                          sub={(item.lamp ? 'Lamp · ' : '') + itemState(item, s)}
+                          sub={item.kind === 'light' ? (item.lamp ? 'Lamp' : undefined) : itemState(item, s)}
                           light={s}
                           pressed={open === item.id}
                           hovered={hovered === item.id}

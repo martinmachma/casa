@@ -2911,6 +2911,54 @@ input[type='range'].kelvin::-moz-range-thumb {
   pointer-events: none;
 }
 
+/* In a room, a narrower card: just each item's name and switch. */
+.room-cards[data-compact] {
+  width: min(232px, calc(100% - 24px));
+}
+
+.room-cards[data-compact] .smart-card-head {
+  padding: 10px 10px 8px 12px;
+}
+
+.room-cards[data-compact] .smart-card-title {
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.room-cards[data-compact] .smart-card-head .muted {
+  font-size: 12px;
+}
+
+.room-cards[data-compact] .smart-card-body {
+  padding: 0 6px 6px;
+}
+
+.room-cards[data-compact] .smart-scenes {
+  padding: 0 4px 8px;
+  margin-bottom: 4px;
+}
+
+.room-cards[data-compact] .smart-scenes button {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.room-cards[data-compact] .smart-item {
+  gap: 8px;
+  padding: 4px;
+}
+
+.room-cards[data-compact] .smart-tile {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.room-cards[data-compact] .smart-switch {
+  padding: 0 6px;
+}
+
 /* The smart items card, at the bottom right; its list scrolls once it reaches the Planning button. */
 .room-card {
   display: flex;
@@ -3038,21 +3086,6 @@ input[type='range'].kelvin::-moz-range-thumb {
   font-weight: 600;
 }
 
-.smart-bar {
-  display: block;
-  height: 3px;
-  margin-top: 3px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.smart-bar > span {
-  display: block;
-  height: 100%;
-  background: #f2b44f;
-}
-
 .smart-room {
   display: flex;
   align-items: center;
@@ -3078,24 +3111,6 @@ input[type='range'].kelvin::-moz-range-thumb {
   flex: 1;
   min-width: 0;
   font-weight: 550;
-}
-
-.smart-note {
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  padding: 10px 14px 12px;
-  border-top: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.smart-note svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--muted);
 }
 
 /* The room looked at: its name written on the view over the middle, in line with the floor buttons, a soft glow

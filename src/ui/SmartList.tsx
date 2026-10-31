@@ -1,4 +1,4 @@
-import { Power, Unlink } from 'lucide-react'
+import { Power } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { lightColor, type LightState } from '../devices/lights'
 import type { SmartItem } from '../rooms/roomItems'
@@ -6,7 +6,7 @@ import { DeviceIcon } from './deviceIcons'
 
 type SmartRowProps = {
   item: SmartItem
-  sub: string
+  sub?: string
   /** Its settings, for a light. */
   light?: LightState
   pressed?: boolean
@@ -37,12 +37,7 @@ export const SmartRow = ({ item, sub, light, pressed, hovered, onOpen, onHover, 
         </span>
         <span className="smart-item-text">
           <span className="smart-item-name">{item.name}</span>
-          <span className="muted">{sub}</span>
-          {on && (
-            <span className="smart-bar" aria-hidden>
-              <span style={{ width: `${light!.brightness * 100}%` }} />
-            </span>
-          )}
+          {sub && <span className="muted">{sub}</span>}
         </span>
       </button>
       {light && onLight && (
@@ -69,7 +64,7 @@ type SmartCardProps = {
   children: ReactNode
 }
 
-/** The card down the right that lists smart items, with a switch for all the lights and a note on linking. */
+/** The card down the right that lists smart items, with a switch for all the lights. */
 export const SmartCard = ({ title, summary, allLights, children }: SmartCardProps) => (
   <section className="room-card float">
     <header className="smart-card-head">
@@ -85,10 +80,6 @@ export const SmartCard = ({ title, summary, allLights, children }: SmartCardProp
       )}
     </header>
     <div className="smart-card-body">{children}</div>
-    <p className="smart-note">
-      <Unlink size={14} aria-hidden />
-      Not linked to Home Assistant yet: changes stay in this app.
-    </p>
   </section>
 )
 
