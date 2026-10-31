@@ -3113,16 +3113,25 @@ input[type='range'].kelvin::-moz-range-thumb {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 38px;
-  padding: 0 14px;
+  line-height: 40px;
+  padding: 0 32px;
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
 }
 
-/* Lighter than the buttons, so the room shows through. */
-.room-name.float {
+/* A see-through pill behind the name that fades out at its sides, so the room shows through. */
+.room-name::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid rgb(34 26 18 / 0.07);
+  border-radius: var(--radius);
   background: rgb(255 255 255 / 0.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
 }
 
 .room-card-head {
