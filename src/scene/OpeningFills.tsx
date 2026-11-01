@@ -1,8 +1,8 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { Fragment, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { FrontSide, Group, InstancedMesh, MathUtils, Mesh, Object3D, Plane, Vector3 } from 'three'
 import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill, shadeId } from '../layout/geometry'
-import { SHADE_UP, type ShadeState } from '../devices/shades'
+import { SHADE_INSET, SHADE_UP, type ShadeState } from '../devices/shades'
 import type { Opening, WallSide } from '../layout/types'
 import { raycastIfShown } from './raycast'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME, SHADE } from './palette'
@@ -113,6 +113,7 @@ export const OpeningFills = ({
     const y0 = openingSill(o)
     return (
       <Shade
+        id={id}
         u0={o.offset}
         u1={o.offset + o.width}
         y0={y0}
@@ -141,8 +142,7 @@ export const OpeningFills = ({
         const window = o.type === 'window'
         const inner = { u0: u0 + FRAME, u1: u1 - FRAME, y0: window ? y0 + FRAME : y0, y1: y1 - FRAME }
         return (
-          // A window with a shade is one item: opened, it's drawn clear of the dimmed rest.
-          <group key={id} userData={shaded(o) ? { itemId: shadeId(id) } : undefined}>
+          <group key={id}>
             <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} section={section} />
             {o.type === 'window' && <Glass inner={inner} section={section} />}
             {o.type === 'door' && (
@@ -165,14 +165,7 @@ export const OpeningFills = ({
   return (
     <>
       <ClipAbove top={top}>{fills}</ClipAbove>
-      {apart &&
-        openings.map((o, i) =>
-          shaded(o) ? (
-            <group key={i} userData={{ itemId: shadeId(openingId(wallId, i)) }}>
-              {shade(o, i)}
-            </group>
-          ) : null,
-        )}
+      {apart && openings.map((o, i) => shaded(o) && <Fragment key={i}>{shade(o, i)}</Fragment>)}
     </>
   )
 }
@@ -295,7 +288,6 @@ const SlidingDoor = ({ inner, section, ...state }: { inner: Inner } & DoorState)
 }
 
 /** How far in from the wall's outer face the shade's slats are centred, in the reveal outside the glazing. */
-const SHADE_INSET = 0.045
 /** How much of a see-through shade shows, looking into a room. */
 const GHOST_SHADE = 0.35
 /** Zetta 70: 70 mm Z-shaped slats on a 63 mm pitch, stacking to about 9 mm each when raised. */
@@ -322,12 +314,15 @@ const Shade = ({
   y0,
   y1,
   z,
+  id,
   state,
   section,
   opacity,
   onPick,
   onHover,
 }: {
+  /** The shade as a smart item: pointed at, it's outlined. */
+  id: string
   u0: number
   u1: number
   y0: number
@@ -342,6 +337,7 @@ const Shade = ({
 }) => {
   const slats = useRef<InstancedMesh>(null)
   const bottom = useRef<Mesh>(null)
+  const pick = useRef<Mesh>(null)
   const shown = useRef<ShadeState | undefined>(undefined)
   const w = u1 - u0
   const top = y1 - HEAD
@@ -363,6 +359,9 @@ const Shade = ({
     }
     const end = top - hanging * SLAT_PITCH - (count - hanging) * SLAT_STACKED
     bottom.current?.position.setY(end - BOTTOM / 2)
+    // The taps land on a sheet over whatever is down, from the head to the bottom bar.
+    pick.current?.scale.setY(y1 - end + BOTTOM)
+    pick.current?.position.setY((y1 + end - BOTTOM) / 2)
   }
   useLayoutEffect(() => {
     if (!shown.current) place((shown.current = { ...state }))
@@ -407,7 +406,7 @@ const Shade = ({
     />
   )
   return (
-    <group position={[(u0 + u1) / 2, 0, z]}>
+    <group position={[(u0 + u1) / 2, 0, z]} userData={{ itemId: id }}>
       <instancedMesh ref={slats} args={[undefined, undefined, count]} castShadow raycast={noRaycast}>
         <boxGeometry args={[w - RAIL, SLAT_THICK, SLAT_DEPTH]} />
         {material}
@@ -426,10 +425,10 @@ const Shade = ({
           {material}
         </mesh>
       ))}
-      {/* Taps land anywhere over the window, the shade up or down. */}
-      <mesh position={[0, (y0 + y1) / 2, 0]} {...handlers}>
-        <boxGeometry args={[w, y1 - y0, SLAT_DEPTH + 0.02]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      {/* Not drawn, nor in its outline. */}
+      <mesh ref={pick} {...handlers}>
+        <boxGeometry args={[w, 1, SLAT_DEPTH + 0.02]} />
+        <meshBasicMaterial visible={false} />
       </mesh>
     </group>
   )

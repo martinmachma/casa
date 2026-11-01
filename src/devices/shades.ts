@@ -16,8 +16,10 @@ export type WindowShade = {
   id: string
   name: string
   room: string | undefined
-  /** The middle of the opening, in the scene. */
+  /** The top of the shade, in the scene, where its tag points. */
   at: [number, number, number]
+  /** The middle of the window, which its close-up is centred on. */
+  look: [number, number, number]
   /** Out of the house, across the wall (plan): its close-up looks at it from outside. */
   facing: [number, number]
   /** Just past the window's right-hand edge as seen from outside, where its controls stand. */
@@ -27,6 +29,8 @@ export type WindowShade = {
 const COMPASS = ['East', 'South', 'West', 'North'] as const
 /** How far past the window's edge its controls stand. */
 const BESIDE = 0.25
+/** How far in from the wall's outer face the shade hangs. */
+export const SHADE_INSET = 0.045
 /** How far into the house to look for the room a window belongs to, past the wall's inner face. */
 const ROOM_PROBE = 0.3
 
@@ -42,13 +46,17 @@ export const floorShades = (floor: Floor, regions: Map<string, RoomRegion>): Win
     const n = [-d[1] * sign, d[0] * sign]
     // Plan y grows south, so a normal's angle counts clockwise from east.
     const facing = COMPASS[(Math.round(Math.atan2(n[1], n[0]) / (Math.PI / 2)) + 4) % 4]
-    const reach = wallThickness(wall, floor) / 2 + ROOM_PROBE
+    const half = wallThickness(wall, floor) / 2
+    const reach = half + ROOM_PROBE
+    // The shade hangs just inside the wall's outer face.
+    const face = half - SHADE_INSET
     return (wall.openings ?? []).flatMap((o, i) => {
       if (o.type !== 'window' && o.type !== 'sliding') return []
       const u = o.offset + o.width / 2
       const x = wall.from[0] + d[0] * u
       const y = wall.from[1] + d[1] * u
-      const z = floor.elevation + openingSill(o) + o.height / 2
+      const sill = floor.elevation + openingSill(o)
+      const z = sill + o.height / 2
       // Facing the house, right is the outward normal turned a quarter back.
       const side = o.width / 2 + BESIDE
       return [
@@ -56,7 +64,8 @@ export const floorShades = (floor: Floor, regions: Map<string, RoomRegion>): Win
           id: shadeId(openingId(wall.id, i)),
           name: `${facing} ${o.type === 'sliding' ? 'door' : 'window'}`,
           room: roomAt(regions, x - n[0] * reach, y - n[1] * reach),
-          at: [x, z, y] as WindowShade['at'],
+          at: [x + n[0] * face, sill + o.height, y + n[1] * face] as WindowShade['at'],
+          look: [x, z, y] as WindowShade['look'],
           facing: [n[0], n[1]] as WindowShade['facing'],
           beside: [x + n[1] * side, z, y - n[0] * side] as WindowShade['beside'],
         },

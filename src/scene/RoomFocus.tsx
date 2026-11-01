@@ -46,7 +46,7 @@ export const RoomCamera = ({
     () => roomPose(floor, roomId, size.width / size.height, placed.furniture),
     [floor, roomId, size, placed.furniture],
   )
-  const [cx, cy, cz] = closeUp?.at ?? []
+  const [cx, cy, cz] = closeUp?.look ?? closeUp?.at ?? []
   const [fx, fz] = closeUp?.facing ?? []
   const pose = useMemo(() => {
     if (!roomView || cx === undefined) return roomView
@@ -126,7 +126,13 @@ export const RoomCamera = ({
 }
 
 /** A point in the room to pin a DOM element to, such as a smart item's popover. */
-export type Pin = { key: string; at: [number, number, number]; facing?: [number, number] }
+export type Pin = {
+  key: string
+  at: [number, number, number]
+  facing?: [number, number]
+  /** Where a close-up on it is centred, if not on `at`. */
+  look?: [number, number, number]
+}
 
 type FocusProjectorProps = {
   pins: Pin[]

@@ -385,7 +385,9 @@ export const HouseScene = ({
           </Fade>
         ))}
 
-        <Fade shown={outside || whole}>{house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}</Fade>
+        <Fade shown={outside || whole}>
+          {house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
+        </Fade>
 
         {interaction === 'edit' && placing && !outside && (
           <DevicePlacer

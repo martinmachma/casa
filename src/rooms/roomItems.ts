@@ -16,6 +16,8 @@ export type SmartItem = {
   at: [number, number, number]
   /** The way (plan) its close-up looks at it from, for one only seen from one side, like a window's shade. */
   facing?: [number, number]
+  /** Where its close-up is centred, if not on `at`. */
+  look?: [number, number, number]
   /** Where its controls stand, if beside it rather than at the end of its tag's line. */
   beside?: [number, number, number]
 }

@@ -612,7 +612,12 @@ export const House = ({ backend, account }: HouseProps) => {
           }}
           focusRoom={focus?.room}
           pins={[
-            ...(focus ? focusItems : floorTags).map((i) => ({ key: `tag:${i.id}`, at: i.at, facing: i.facing })),
+            ...(focus ? focusItems : floorTags).map((i) => ({
+              key: `tag:${i.id}`,
+              at: i.at,
+              facing: i.facing,
+              look: i.look,
+            })),
             ...focusItems.flatMap((i) => (i.beside ? [{ key: `beside:${i.id}`, at: i.beside }] : [])),
           ]}
           pinRefs={pinRefs}
