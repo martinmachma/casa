@@ -23,6 +23,7 @@ import { Outdoor } from './Outdoor'
 import { HouseShadow } from './HouseShadow'
 import { slabGeometry } from './prism'
 import { Railings, Stairs } from './Stairs'
+import { Fixtures } from './Fixtures'
 import { Roof } from './Roof'
 import { house } from '../layout/layout'
 import { FLOOR_SLAB } from './palette'
@@ -361,6 +362,7 @@ export const HouseScene = ({
               />
             )}
             <Railings floor={f} />
+            <Fixtures floor={f} cutaway={cutWalls && !focusRoom && f.id === floor.id} />
             <RoomFloors floor={f} regions={floorRegions(f)} />
             <FloorWalls
               floor={f}

@@ -344,6 +344,31 @@
           "label": [5.45, 4.25]
         }
       ],
+      "fixtures": [
+        {
+          "id": "u-boiler",
+          "name": "Gas boiler (Viessmann Vitodens 050-W B0HA)",
+          "kind": "boiler",
+          "x": 5.76,
+          "y": 3.435,
+          "rotation": 0,
+          "width": 0.4,
+          "depth": 0.35,
+          "height": 0.707,
+          "z": 1.2
+        },
+        {
+          "id": "u-water-tank",
+          "name": "Hot water tank (Viessmann Vitocell 100-W, 160 l)",
+          "kind": "waterTank",
+          "x": 5.73,
+          "y": 4.895,
+          "rotation": 1.5708,
+          "width": 0.581,
+          "depth": 0.581,
+          "height": 1.189
+        }
+      ],
       "walls": [
         {
           "id": "u-north",

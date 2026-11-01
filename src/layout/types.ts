@@ -68,6 +68,27 @@ export type Floor = {
   railings?: Point[][]
   /** Stairs up to the next floor. */
   stairs?: Stairs
+  /** Equipment built in where the plans put it, which can't be moved or picked. */
+  fixtures?: Fixture[]
+}
+
+/**
+ * A piece of built-in equipment, placed like furniture: centred at (x, y), `width` along its own x axis, its back
+ * on its own -y side (so at rotation 0 it hangs on a wall to its north, facing south).
+ */
+export type Fixture = {
+  id: string
+  name: string
+  kind: 'boiler' | 'waterTank'
+  x: number
+  y: number
+  /** Plan angle, radians. */
+  rotation: number
+  width: number
+  depth: number
+  height: number
+  /** Height of its underside above the floor; absent: standing on it. */
+  z?: number
 }
 
 /** Steps in walking order, each a plan polygon; they rise evenly to the next floor, the last one flush with it. */
