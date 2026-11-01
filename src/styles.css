@@ -1275,7 +1275,16 @@ p {
   display: flex;
   flex: none;
   margin-left: auto;
+  color: var(--ink-2);
+  opacity: 0.35;
+  transition:
+    color 120ms,
+    opacity 120ms;
+}
+
+.room-lit[data-on] {
   color: #e9a31b;
+  opacity: 1;
 }
 
 .room-other .room-lit {

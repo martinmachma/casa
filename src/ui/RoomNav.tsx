@@ -30,8 +30,8 @@ type RoomNavProps = {
   /** This person's saved order, if they've arranged the rooms. */
   saved: RoomOrder | undefined
   onSave: (order: RoomOrder) => void
-  /** The rooms with a light on. */
-  lit: Set<string>
+  /** The rooms with lights, and whether any is on. */
+  lights: Map<string, boolean>
 }
 
 // A room's icon, from what the plan calls it.
@@ -60,7 +60,7 @@ type Drag = { id: string; zone: RoomZone; x: number; y: number; offsetX: number;
  * editing (the pencil, or a long press) everything shakes where it is and can be dragged: up and down the list, or
  * between the list and the small links to make a room big or small.
  */
-export const RoomNav = ({ rooms, room, onRoom, onLeave, saved, onSave, lit }: RoomNavProps) => {
+export const RoomNav = ({ rooms, room, onRoom, onLeave, saved, onSave, lights }: RoomNavProps) => {
   // The order while a room is being dragged, saved once it's dropped.
   const [moving, setMoving] = useState<RoomOrder>()
   const order = useMemo(() => arrangeRooms(rooms, moving ?? saved), [rooms, moving, saved])
@@ -249,8 +249,13 @@ export const RoomNav = ({ rooms, room, onRoom, onLeave, saved, onSave, lit }: Ro
       >
         {zone === 'main' && roomIcon(r.planName)}
         <span className="room-row-label">{r.label}</span>
-        {lit.has(id) && (
-          <span className="room-lit" title="Lights on" aria-label="Lights on">
+        {lights.has(id) && (
+          <span
+            className="room-lit"
+            data-on={lights.get(id) || undefined}
+            title={lights.get(id) ? 'Lights on' : 'Lights off'}
+            aria-label={lights.get(id) ? 'Lights on' : 'Lights off'}
+          >
             <Lightbulb size={zone === 'main' ? 14 : 12} />
           </span>
         )}

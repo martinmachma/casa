@@ -131,13 +131,12 @@ export const House = ({ backend, account }: HouseProps) => {
   const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
   const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
   const dark = 1 - daylight(sunAt)
-  const litRooms = new Set(
-    house.floors.flatMap((f) =>
-      floorItems(f, data.devices, data.furniture)
-        .filter((i) => i.kind === 'light' && i.room && lightSettings(lights.states[i.id], dark).on)
-        .map((i) => i.room!),
-    ),
-  )
+  // Each room with lights, and whether any is on.
+  const roomLights = new Map<string, boolean>()
+  for (const f of house.floors)
+    for (const i of floorItems(f, data.devices, data.furniture))
+      if (i.kind === 'light' && i.room)
+        roomLights.set(i.room, roomLights.get(i.room) || lightSettings(lights.states[i.id], dark).on)
 
   const floor = house.floors[floorIndex]
   // From outside, furniture goes on the ground floor or round it in the garden.
@@ -661,7 +660,7 @@ export const House = ({ backend, account }: HouseProps) => {
               onLeave={leaveRoom}
               saved={roomOrder.order}
               onSave={roomOrder.save}
-              lit={litRooms}
+              lights={roomLights}
             />
           )}
         </ViewDock>
