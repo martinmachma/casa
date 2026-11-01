@@ -395,8 +395,10 @@ const Shade = ({
         },
       }
     : { raycast: noRaycast }
+  // A new material when it turns see-through or solid: a wall fading in or out round it keeps the one it had.
   const material = (
     <FillMaterial
+      key={opacity ?? 'solid'}
       section={section}
       color={SHADE}
       roughness={0.5}
