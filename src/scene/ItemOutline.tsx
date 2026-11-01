@@ -2,6 +2,9 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import {
   Color,
+  type Camera,
+  type Light,
+  type WebGLRenderer,
   Mesh,
   MeshBasicMaterial,
   OrthographicCamera,
@@ -17,6 +20,8 @@ import {
 
 // The pointed at item's meshes go on a layer of their own while its silhouette is drawn.
 const OUTLINE_LAYER = 4
+// Items drawn over the walls go on one too, with the lights so they're lit as they are in the scene.
+const XRAY_LAYER = 5
 const ACCENT = new Color('#dd7f2e')
 /** How long the outline takes to come and go, in ms. */
 const FADE_IN = 120
@@ -79,12 +84,40 @@ const makeTools = () => {
   return { mask, ring, ringScene, flat: new OrthographicCamera(), whites, whiteFor }
 }
 
+/** Draws the given items again over everything already drawn, each still hiding its own far side. */
+const drawOver = (gl: WebGLRenderer, scene: Scene, camera: Camera, ids: ReadonlySet<string>) => {
+  const raised: Object3D[] = []
+  const raise = (o: Object3D) => {
+    o.layers.enable(XRAY_LAYER)
+    raised.push(o)
+  }
+  scene.traverseVisible((o) => {
+    if ((o as Light).isLight) raise(o)
+    else if (ids.has(o.userData.itemId)) o.traverseVisible(raise)
+  })
+  const layers = camera.layers.mask
+  const background = scene.background
+  const autoClear = gl.autoClear
+  const { autoUpdate, needsUpdate } = gl.shadowMap
+  gl.shadowMap.autoUpdate = gl.shadowMap.needsUpdate = false
+  scene.background = null
+  camera.layers.set(XRAY_LAYER)
+  gl.autoClear = false
+  gl.clearDepth()
+  gl.render(scene, camera)
+  gl.autoClear = autoClear
+  camera.layers.mask = layers
+  scene.background = background
+  Object.assign(gl.shadowMap, { autoUpdate, needsUpdate })
+  raised.forEach((o) => o.layers.disable(XRAY_LAYER))
+}
+
 /**
  * Rings the smart item pointed at, wherever it can be picked, easing in and out; drawn over everything, so an
  * item behind a wall it's picked through still shows. Unless `over` (something else draws the scene first, as
- * RoomBlur does), it draws the scene itself.
+ * RoomBlur does), it draws the scene itself. The `seen` items are drawn over the walls in front of them.
  */
-export const ItemOutline = ({ item, over }: { item?: string; over: boolean }) => {
+export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean; seen?: readonly string[] }) => {
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [item, redraw])
   const kit = useRef<ReturnType<typeof makeTools>>(undefined)
@@ -101,9 +134,13 @@ export const ItemOutline = ({ item, over }: { item?: string; over: boolean }) =>
   const fade = useRef<{ value: number; item?: string; last?: number }>({ value: 0 })
   const size = useMemo(() => new Vector2(), [])
   const clear = useMemo(() => new Color(), [])
+  const seenKey = seen?.join() ?? ''
+  const seenIds = useMemo(() => new Set(seenKey ? seenKey.split(',') : []), [seenKey])
+  useEffect(() => redraw(), [seenIds, redraw])
 
   useFrame(({ gl, scene, camera, invalidate }) => {
     if (!over) gl.render(scene, camera)
+    if (seenIds.size) drawOver(gl, scene, camera, seenIds)
     const f = fade.current
     const now = performance.now()
     if (item) f.item = item

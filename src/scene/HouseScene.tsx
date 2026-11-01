@@ -321,7 +321,12 @@ export const HouseScene = ({
         ) : (
           <CameraNudger nudge={nudge} />
         )}
-        <ItemOutline item={hovered} over={!!focusRoom && !whole} />
+        <ItemOutline
+          item={hovered}
+          over={!!focusRoom && !whole}
+          // With the whole house shown round a shade, the room's smart items are seen through its walls.
+          seen={whole ? pins.flatMap((p) => (p.key.startsWith('tag:') ? [p.key.slice(4)] : [])) : undefined}
+        />
         <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
         <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
