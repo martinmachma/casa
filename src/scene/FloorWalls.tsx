@@ -249,6 +249,7 @@ const WallMesh = ({
         onToggleDoor={onToggleDoor}
         shades={shades}
         onPickShade={onPickShade}
+        ghostShades={!!focus}
         top={top}
       />
     )

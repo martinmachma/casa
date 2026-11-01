@@ -81,6 +81,7 @@ export const OpeningFills = ({
   onToggleDoor,
   shades,
   onPickShade,
+  ghostShades,
 }: {
   wallId: string
   openings: Opening[]
@@ -94,6 +95,8 @@ export const OpeningFills = ({
   shades: Readonly<Record<string, ShadeState>>
   /** Opens a shade's controls when it's tapped; left out, shades don't take taps. */
   onPickShade?: (id: string) => void
+  /** Seen through into a room: the shades are drawn whole and see-through, even where the wall is cut down. */
+  ghostShades?: boolean
   /** Whether a tap on a door opens or closes it. */
   clickable: boolean
   /** In a wall cut down to its stub: only what's below this height is drawn. */
@@ -102,6 +105,25 @@ export const OpeningFills = ({
   const section = top !== undefined
   const shaded = (o: Opening) => !!outside && (o.type === 'window' || o.type === 'sliding')
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME
+  const shade = (o: Opening, i: number) => {
+    const id = shadeId(openingId(wallId, i))
+    const y0 = openingSill(o)
+    return (
+      <Shade
+        u0={o.offset}
+        u1={o.offset + o.width}
+        y0={y0}
+        y1={y0 + o.height}
+        z={(outside === 'a' ? 1 : -1) * (thickness / 2 - SHADE_INSET)}
+        section={section && !ghostShades}
+        opacity={ghostShades ? GHOST_SHADE : undefined}
+        state={shades[id] ?? SHADE_UP}
+        onPick={onPickShade && (() => onPickShade(id))}
+      />
+    )
+  }
+  // Cut down, the wall keeps its shades whole when they're see-through: they're drawn apart from the clipped rest.
+  const apart = section && ghostShades
   const fills = (
     <group>
       {openings.map((o, i) => {
@@ -129,24 +151,26 @@ export const OpeningFills = ({
               />
             )}
             {o.type === 'sliding' && <SlidingDoor inner={inner} {...door} />}
-            {shaded(o) && (
-              <Shade
-                u0={u0}
-                u1={u1}
-                y0={y0}
-                y1={y1}
-                z={(outside === 'a' ? 1 : -1) * (thickness / 2 - SHADE_INSET)}
-                section={section}
-                state={shades[shadeId(id)] ?? SHADE_UP}
-                onPick={onPickShade && (() => onPickShade(shadeId(id)))}
-              />
-            )}
+            {shaded(o) && !apart && shade(o, i)}
           </group>
         )
       })}
     </group>
   )
-  return top === undefined ? fills : <ClipAbove top={top}>{fills}</ClipAbove>
+  if (top === undefined) return fills
+  return (
+    <>
+      <ClipAbove top={top}>{fills}</ClipAbove>
+      {apart &&
+        openings.map((o, i) =>
+          shaded(o) ? (
+            <group key={i} userData={{ itemId: shadeId(openingId(wallId, i)) }}>
+              {shade(o, i)}
+            </group>
+          ) : null,
+        )}
+    </>
+  )
 }
 
 /** Draws its children only below `top`, measured from where it stands. */
@@ -268,6 +292,8 @@ const SlidingDoor = ({ inner, section, ...state }: { inner: Inner } & DoorState)
 
 /** How far in from the wall's outer face the shade's slats are centred, in the reveal outside the glazing. */
 const SHADE_INSET = 0.045
+/** How much of a see-through shade shows, looking into a room. */
+const GHOST_SHADE = 0.35
 /** Zetta 70: 70 mm Z-shaped slats on a 63 mm pitch, stacking to about 9 mm each when raised. */
 const SLAT_DEPTH = 0.07
 const SLAT_PITCH = 0.063
@@ -294,6 +320,7 @@ const Shade = ({
   z,
   state,
   section,
+  opacity,
   onPick,
 }: {
   u0: number
@@ -303,6 +330,8 @@ const Shade = ({
   z: number
   state: ShadeState
   section: boolean
+  /** See-through, to look past it into the room. */
+  opacity?: number
   onPick?: () => void
 }) => {
   const slats = useRef<InstancedMesh>(null)
@@ -358,7 +387,16 @@ const Shade = ({
         onPointerOut: () => (document.body.style.cursor = ''),
       }
     : { raycast: noRaycast }
-  const material = <FillMaterial section={section} color={SHADE} roughness={0.5} metalness={0.3} />
+  const material = (
+    <FillMaterial
+      section={section}
+      color={SHADE}
+      roughness={0.5}
+      metalness={0.3}
+      transparent={opacity !== undefined}
+      opacity={opacity}
+    />
+  )
   return (
     <group position={[(u0 + u1) / 2, 0, z]}>
       <instancedMesh ref={slats} args={[undefined, undefined, count]} castShadow raycast={noRaycast}>
