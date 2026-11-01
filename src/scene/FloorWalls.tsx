@@ -257,7 +257,7 @@ const WallMesh = ({
         shades={shades}
         onPickShade={onPickShade}
         onHoverShade={onHoverShade}
-        ghostShades={!!focus}
+        ghostShades={cutaway}
         top={top}
       />
     )

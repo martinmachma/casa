@@ -98,7 +98,7 @@ export const OpeningFills = ({
   onPickShade?: (id: string) => void
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
-  /** Seen through into a room: the shades are drawn whole and see-through, even where the wall is cut down. */
+  /** Walls cut away to see in: the shades are drawn whole and see-through, even where the wall is cut down. */
   ghostShades?: boolean
   /** Whether a tap on a door opens or closes it. */
   clickable: boolean
