@@ -1271,6 +1271,19 @@ p {
   text-overflow: ellipsis;
 }
 
+.room-lit {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  color: #e9a31b;
+}
+
+.room-other .room-lit {
+  display: inline-flex;
+  margin-left: 4px;
+  vertical-align: -1px;
+}
+
 .room-others {
   display: flex;
   flex-wrap: wrap;
