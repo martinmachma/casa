@@ -60,7 +60,7 @@ export const RoomOverview = ({
     if (!open) return
     let down: { x: number; y: number; inside: boolean } | undefined
     const onDown = (e: PointerEvent) => {
-      const inside = !!(e.target as Element).closest?.('.room-popover, .smart-tag, .room-cards')
+      const inside = !!(e.target as Element).closest?.('.room-popover, .shade-beside, .smart-tag, .room-cards')
       down = { x: e.clientX, y: e.clientY, inside }
     }
     const onUp = (e: PointerEvent) => {
@@ -132,6 +132,43 @@ export const RoomOverview = ({
         {/* A tag by each item, on a bent line that stops short of it; the open one's tag grows into its card, and
             shrinks back into the tag as it closes. */}
         {items.map((item) => {
+          // Controls standing beside their item (a window's shade) take the place of its tag while open.
+          if (item.beside) {
+            return item.id === open ? (
+              <div
+                key={item.id}
+                className="room-pin"
+                ref={(el) => {
+                  pinRefs.current.set(`beside:${item.id}`, el)
+                }}
+              >
+                <div className="shade-beside" role="dialog" aria-label={item.name}>
+                  <ShadeControls
+                    name={item.name}
+                    shade={shade(item.id)}
+                    onChange={(p) => onShade(item.id, p)}
+                    onClose={() => onOpen(undefined)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                key={item.id}
+                className="room-pin"
+                data-active={hovered === item.id || undefined}
+                ref={(el) => {
+                  pinRefs.current.set(`tag:${item.id}`, el)
+                }}
+              >
+                <SmartTag
+                  item={item}
+                  shade={shade(item.id)}
+                  onOpen={() => onOpen(item.id)}
+                  onHover={(h) => onHover(h ? item.id : undefined)}
+                />
+              </div>
+            )
+          }
           const carded = item.id === open || leaving.includes(item.id)
           return (
             <div
@@ -149,7 +186,6 @@ export const RoomOverview = ({
                 <SmartTag
                   item={item}
                   light={item.kind === 'light' ? light(item.id) : undefined}
-                  shade={item.kind === 'blind' ? shade(item.id) : undefined}
                   onOpen={() => onOpen(item.id)}
                   onHover={(h) => onHover(h ? item.id : undefined)}
                 />
@@ -158,8 +194,7 @@ export const RoomOverview = ({
                 <div
                   // Reopened while closing, it grows afresh.
                   key={item.id === open ? 'open' : 'closing'}
-                  className={item.kind === 'blind' ? 'room-popover' : 'room-popover float'}
-                  data-bare={item.kind === 'blind' || undefined}
+                  className="room-popover float"
                   data-closing={item.id !== open || undefined}
                   role="dialog"
                   aria-label={item.name}
@@ -168,39 +203,30 @@ export const RoomOverview = ({
                       setLeaving((l) => l.filter((i) => i !== item.id))
                   }}
                 >
-                  {item.kind === 'blind' ? (
-                    <ShadeControls
-                      name={item.name}
-                      shade={shade(item.id)}
-                      onChange={(p) => onShade(item.id, p)}
-                      onClose={() => onOpen(undefined)}
-                    />
-                  ) : (
-                    <>
-                      <header className="room-card-head">
-                        <div>
-                          <div className="eyebrow">{item.lamp ? 'Lamp' : DEVICE_KINDS[item.kind].label}</div>
-                          <strong>{item.name}</strong>
-                        </div>
-                        <IconButton label="Close" small onClick={() => onOpen(undefined)}>
-                          <X size={16} />
-                        </IconButton>
-                      </header>
-                      {item.kind === 'light' ? (
-                        <LightControls
-                          light={light(item.id)}
-                          entity={item.entity}
-                          onChange={(p) => onLight(item.id, p)}
-                        />
-                      ) : (
-                        <p className="hint">
-                          {item.entity
-                            ? `It will show ${item.entity} once Home Assistant is linked.`
-                            : 'Give it a Home Assistant entity under Planning to control it here.'}
-                        </p>
-                      )}
-                    </>
-                  )}
+                  <>
+                    <header className="room-card-head">
+                      <div>
+                        <div className="eyebrow">{item.lamp ? 'Lamp' : DEVICE_KINDS[item.kind].label}</div>
+                        <strong>{item.name}</strong>
+                      </div>
+                      <IconButton label="Close" small onClick={() => onOpen(undefined)}>
+                        <X size={16} />
+                      </IconButton>
+                    </header>
+                    {item.kind === 'light' ? (
+                      <LightControls
+                        light={light(item.id)}
+                        entity={item.entity}
+                        onChange={(p) => onLight(item.id, p)}
+                      />
+                    ) : (
+                      <p className="hint">
+                        {item.entity
+                          ? `It will show ${item.entity} once Home Assistant is linked.`
+                          : 'Give it a Home Assistant entity under Planning to control it here.'}
+                      </p>
+                    )}
+                  </>
                 </div>
               )}
             </div>

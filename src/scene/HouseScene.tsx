@@ -7,7 +7,7 @@ import type { Device, DeviceKind, FurnitureItem, NewFurnitureItem } from '../dat
 import type { HouseData } from '../data/useHouseData'
 import { blockedDoors, colliding, doorSweeps, sweepOutline } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
-import { floorBounds } from '../layout/geometry'
+import { floorBounds, shadeWall } from '../layout/geometry'
 import { floorRegions } from '../layout/rooms'
 import type { Floor, WallFace } from '../layout/types'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
@@ -181,8 +181,9 @@ export const HouseScene = ({
       center: [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2],
       box: roomBox(floor, focusRoom, 0)!,
       sides: roomWallSides(floor, focusRoom),
+      keep: open ? shadeWall(open) : undefined,
     }
-  }, [floor, focusRoom])
+  }, [floor, focusRoom, open])
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2

@@ -611,7 +611,10 @@ export const House = ({ backend, account }: HouseProps) => {
             onDelete: deleteSelection,
           }}
           focusRoom={focus?.room}
-          pins={(focus ? focusItems : floorTags).map((i) => ({ key: `tag:${i.id}`, at: i.at, facing: i.facing }))}
+          pins={[
+            ...(focus ? focusItems : floorTags).map((i) => ({ key: `tag:${i.id}`, at: i.at, facing: i.facing })),
+            ...focusItems.flatMap((i) => (i.beside ? [{ key: `beside:${i.id}`, at: i.beside }] : [])),
+          ]}
           pinRefs={pinRefs}
           open={popover}
           hovered={hoveredItem}

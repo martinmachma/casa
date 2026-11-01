@@ -13,7 +13,13 @@ const forward = new Vector3()
  * A room being looked at: its middle, its floor's extent, and the walls along its outline with the way out across
  * each.
  */
-export type Focus = { center: Point; box: { min: Point; max: Point }; sides: Map<string, Point> }
+export type Focus = {
+  center: Point
+  box: { min: Point; max: Point }
+  sides: Map<string, Point>
+  /** A wall left standing whatever the camera's side, as its window is looked at from outside. */
+  keep?: string
+}
 
 /** A wall wholly past the room's floor on the camera's side, in either direction, stands between them. */
 const beyond = (wall: Wall, eye: Point, { min, max }: Focus['box']) =>
@@ -28,6 +34,7 @@ const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: 
   // Looking at one room, only walls between the camera and it go: its own walls seen from outside, and
   // walls beyond it in the way. Walls inside it and its far walls stay up.
   if (focus) {
+    if (wall.id === focus.keep) return false
     const out = focus.sides.get(wall.id)
     const eye: Point = [camera.position.x, camera.position.z]
     if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0

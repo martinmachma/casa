@@ -100,6 +100,7 @@ export const OpeningFills = ({
   top?: number
 }) => {
   const section = top !== undefined
+  const shaded = (o: Opening) => !!outside && (o.type === 'window' || o.type === 'sliding')
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME
   const fills = (
     <group>
@@ -114,7 +115,8 @@ export const OpeningFills = ({
         const window = o.type === 'window'
         const inner = { u0: u0 + FRAME, u1: u1 - FRAME, y0: window ? y0 + FRAME : y0, y1: y1 - FRAME }
         return (
-          <group key={id}>
+          // A window with a shade is one item: opened, it's drawn clear of the dimmed rest.
+          <group key={id} userData={shaded(o) ? { itemId: shadeId(id) } : undefined}>
             <Boxes boxes={frame(u0, u1, y0, y1, frameColor, window)} section={section} />
             {o.type === 'window' && <Glass inner={inner} section={section} />}
             {o.type === 'door' && (
@@ -127,7 +129,7 @@ export const OpeningFills = ({
               />
             )}
             {o.type === 'sliding' && <SlidingDoor inner={inner} {...door} />}
-            {outside && (o.type === 'window' || o.type === 'sliding') && (
+            {shaded(o) && (
               <Shade
                 u0={u0}
                 u1={u1}

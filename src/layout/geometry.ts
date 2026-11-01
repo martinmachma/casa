@@ -42,6 +42,9 @@ export const openingId = (wallId: string, index: number): string => `${wallId}:$
 /** The outside shade over a window or sliding door. */
 export const shadeId = (openingKey: string): string => `${openingKey}:shade`
 
+/** The wall a shade's window is in, if the id is a shade's. */
+export const shadeWall = (id: string): string | undefined => (id.endsWith(':shade') ? id.split(':')[0] : undefined)
+
 /**
  * Splits a wall into solid boxes around its openings. Each end can extend independently to close its join.
  */
