@@ -45,8 +45,10 @@ for the gas boiler and hot-water circulation pump. Sheet 4 marks two heated roof
 temperature sensor on sheet 2. The note requires coordination of boiler, temperature sensors and room
 thermostats with the heating supplier; unlocated thermostat points have not been fabricated.
 
-These are electrical connections and provisions. The drawings do not specify a full radiator layout,
-underfloor heating loops or radiator sizes.
+The architectural background also sketches panel radiators beneath windows, including in the upstairs
+bedrooms. Heater positions can therefore be read from the drawing, but radiator sizes, heating pipework and
+underfloor heating loops are not specified. The electrical import records their electrical connections;
+it does not add radiator models with invented dimensions.
 
 ## Implementation
 

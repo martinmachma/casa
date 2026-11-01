@@ -99,8 +99,9 @@ export const ElectricalPanel = ({
       <Section>
         <h3 className="smart-group">Heating</h3>
         <p className="hint">
-          The drawings mark a bathroom towel rail connection, boiler and circulation pump sockets, and two heated roof
-          drains. They do not give a radiator or underfloor heating layout.
+          Radiator outlines appear beneath windows in the background drawing. The plans also mark a bathroom towel rail
+          connection, boiler and circulation pump sockets, and two heated roof drains. Radiator sizes, pipework and
+          underfloor heating circuits are not specified.
         </p>
       </Section>
     </>
