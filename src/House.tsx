@@ -623,7 +623,7 @@ export const House = ({ backend, account }: HouseProps) => {
           pinRefs={pinRefs}
           open={popover}
           hovered={hoveredItem}
-          onHoverItem={focus ? setHoveredItem : undefined}
+          onHoverItem={setHoveredItem}
         />
 
         {/* While planning, the editor takes the room's place on the right. */}

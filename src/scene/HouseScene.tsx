@@ -52,6 +52,7 @@ import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
 import { RoomBlur } from './RoomBlur'
 import { ShadowUpdates } from './ShadowUpdates'
 import { AmbientOcclusion } from './AmbientOcclusion'
+import { ItemOutline } from './ItemOutline'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
@@ -107,7 +108,7 @@ type HouseSceneProps = {
   pins?: Pin[]
   /** The smart item opened in the focused room: everything else is dimmed behind it. */
   open?: string
-  /** The smart item pointed at in the focused room, outlined. */
+  /** The smart item pointed at, outlined. */
   hovered?: string
   /** A smart item pointed at in the focused room. */
   onHoverItem?: (id: string | undefined) => void
@@ -315,10 +316,11 @@ export const HouseScene = ({
         )}
         <DebugHover copies={interaction === 'view'} />
         {focusRoom ? (
-          !whole && <RoomBlur floor={floor} roomId={focusRoom} open={open} hovered={hovered} />
+          !whole && <RoomBlur floor={floor} roomId={focusRoom} open={open} />
         ) : (
           <CameraNudger nudge={nudge} />
         )}
+        <ItemOutline item={hovered} over={!!focusRoom && !whole} />
         <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
         <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
