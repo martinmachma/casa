@@ -198,7 +198,9 @@ export const AmbientOcclusion = () => {
             m.needsUpdate = true
           }
         }
+        // Fat lines (selection outlines) are meshes of instanced quads; drawn plain they'd be big phantom planes.
         if (
+          (o as { isLineSegments2?: boolean }).isLineSegments2 ||
           o.userData.shadowOnly ||
           materials.some((m) => !m.colorWrite || !m.depthWrite || m.transparent) ||
           materials.every((m) => m.userData.section)
