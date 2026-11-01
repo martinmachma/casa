@@ -114,8 +114,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     return !sameHouse(draft.state, base)
   }, [draft, versions])
 
-  // Ask before leaving with edits that aren't saved as a version. Away from planning the draft is out of sight
-  // (and it's kept on this device anyway), so leaving is quiet.
+  // Ask before leaving with edits that aren't saved as a version. Away from planning there are none to lose
+  // (leaving planning discards them, and a draft kept from an earlier visit waits on this device), so leaving is quiet.
   const warnOnLeave = dirty && !liveOnly
   useEffect(() => {
     if (!warnOnLeave) return

@@ -281,6 +281,11 @@ export const House = ({ backend, account }: HouseProps) => {
   /** Planning is editing, in a room or not; home is for looking: editing and measuring stop, and the sun follows the clock. */
   const changeSection = (next: Section) => {
     if (next === section) return
+    // Leaving planning drops unsaved edits, so it asks first, as leaving the page does.
+    if (next === 'home') {
+      if (data.dirty && !confirm('Leave planning? Your unsaved changes will be lost.')) return
+      data.discardDraft()
+    }
     setSelection(undefined)
     setPlacing(undefined)
     setPlacingPiece(undefined)
