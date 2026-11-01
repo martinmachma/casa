@@ -58,15 +58,14 @@ type WoodOptions = {
   spread: number
   /** Chance a board shows flat-sawn arches. */
   arches: number
-  /** Chance a board has a knot, and a crack along its grain, for rustic oak. */
-  knots: number
+  /** Chance a board has a crack along its grain, for rustic oak. */
   cracks: number
   seed: number
 }
 
 /**
  * Wide oak boards of random lengths in staggered rows: lengthwise streaks, fine grain, flat-sawn arches on some
- * boards, and knots and cracks on rustic ones. A board running off the right edge carries on from the left, so
+ * boards, and cracks on rustic ones. A board running off the right edge carries on from the left, so
  * the texture tiles.
  */
 const wood = (o: WoodOptions) => (ctx: CanvasRenderingContext2D, px: number, bump: boolean) => {
@@ -130,44 +129,6 @@ const wood = (o: WoodOptions) => (ctx: CanvasRenderingContext2D, px: number, bum
         ctx.ellipse(cx + k * ry * 0.8, cy, ry * stretch, ry, tilt, 0, Math.PI * 2)
         ctx.stroke()
       }
-    }
-
-    // Knots: drawn out along the grain, a soft dark core inside rings of grain bending round it, so at a
-    // distance they read as knots rather than round dots.
-    if (r() < o.knots) {
-      const kx = x + r() * w
-      const ky = y + (0.25 + r() * 0.5) * h
-      // Half the core's height, 7–13 mm, and how far it is drawn out along the board.
-      const kr = (0.007 + r() * 0.006) * m
-      const stretch = 2.5 + r() * 1.5
-      // The grain swirls round it, in a lighter halo.
-      ctx.globalAlpha = 0.35
-      ctx.fillStyle = paint(tone + 0.05)
-      ctx.beginPath()
-      ctx.ellipse(kx, ky, kr * stretch * 3, kr * 2.6, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.strokeStyle = paint(tone - 0.14)
-      for (let k = 5; k >= 1; k--) {
-        ctx.globalAlpha = 0.65 - k * 0.07
-        ctx.lineWidth = (1.5 + r() * 1.5) * u
-        ctx.beginPath()
-        ctx.ellipse(kx, ky, kr * stretch * (1 + k * 0.45), kr * (1 + k * 0.32), 0, 0, Math.PI * 2)
-        ctx.stroke()
-      }
-      // The core: dark, fading out to its edge, drawn as a circle squashed across the grain.
-      ctx.save()
-      ctx.translate(kx, ky)
-      ctx.scale(stretch, 1)
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, kr)
-      g.addColorStop(0, paint(tone - 0.24))
-      g.addColorStop(0.5, paint(tone - 0.18))
-      g.addColorStop(1, bump ? grey(0, 0) : shade(o.base, tone - 0.2, 0))
-      ctx.globalAlpha = 0.75
-      ctx.fillStyle = g
-      ctx.beginPath()
-      ctx.arc(0, 0, kr, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
     }
 
     // Cracks: thin, dark and ragged, along the grain.
@@ -291,7 +252,6 @@ const OAK_NATURAL: FloorMaterial = {
     length: [0.9, 1.5],
     spread: 0.07,
     arches: 0.35,
-    knots: 0.08,
     cracks: 0,
     seed: 13,
   }),
@@ -309,7 +269,6 @@ const OAK_RUSTIC: FloorMaterial = {
     length: [0.9, 1.5],
     spread: 0.09,
     arches: 0.55,
-    knots: 0.45,
     cracks: 0.35,
     seed: 14,
   }),

@@ -562,6 +562,20 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
   return { position: new Vector3(cx + away * 0.8, up, cz + away * 1.25), target: new Vector3(cx, look, cz) }
 }
 
+/**
+ * How far in or out a view carried over to another floor may be, as a share of that floor's own
+ * starting view. Further in or out than this and the new floor opens at the nearer bound instead.
+ * These bound only the switch; zooming afterwards is as free as ever.
+ */
+const FLOOR_ZOOM = {
+  /** Distance from the camera to what it looks at, in 3D. */
+  orbit: { closest: 0.45, furthest: 1.4 },
+  /** Plan scale, in top view (higher is closer). */
+  top: { out: 0.7, in: 2.5 },
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
 /** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
 const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }
 
@@ -570,20 +584,32 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   // Chosen once: carried over from the previous floor's camera, or this view's own start
   // (after Reset view, or a change between 3D and top). Resizing doesn't move it.
   const [start] = useState(() => {
-    if (lastView.mode === mode && lastView.viewKey === viewKey)
-      return { position: lastView.position.clone(), target: lastView.target.clone(), zoom: lastView.zoom }
     const { min, max } = floorBounds(floor)
     const cx = (min[0] + max[0]) / 2
     const cz = (min[1] + max[1]) / 2
     const span = Math.max(max[0] - min[0], max[1] - min[1])
-    if (mode === 'top')
-      return {
-        // Straight down with north at the top; the tiny z offset keeps OrbitControls' math stable.
-        position: new Vector3(cx, floor.elevation + 40, cz + 0.001),
-        target: new Vector3(cx, floor.elevation, cz),
-        zoom: Math.min(size.width, size.height) / (span * 1.35),
-      }
-    return { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
+    const own =
+      mode === 'top'
+        ? {
+            // Straight down with north at the top; the tiny z offset keeps OrbitControls' math stable.
+            position: new Vector3(cx, floor.elevation + 40, cz + 0.001),
+            target: new Vector3(cx, floor.elevation, cz),
+            zoom: Math.min(size.width, size.height) / (span * 1.35),
+          }
+        : { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
+    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return own
+    // Carried over, but kept within this floor's bounds so it opens neither lost in a corner nor far off.
+    const position = lastView.position.clone()
+    const target = lastView.target.clone()
+    if (mode === 'top') {
+      const { out, in: closest } = FLOOR_ZOOM.top
+      return { position, target, zoom: clamp(lastView.zoom, own.zoom * out, own.zoom * closest) }
+    }
+    const { closest, furthest } = FLOOR_ZOOM.orbit
+    const base = own.position.distanceTo(own.target)
+    const offset = position.clone().sub(target)
+    offset.setLength(clamp(offset.length(), base * closest, base * furthest))
+    return { position: target.clone().add(offset), target, zoom: lastView.zoom }
   })
   useFrame(({ camera, controls }) => {
     if (!controls) return
