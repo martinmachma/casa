@@ -594,7 +594,7 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
  */
 const FLOOR_ZOOM = {
   /** Distance from the camera to what it looks at, in 3D. */
-  orbit: { closest: 0.45, furthest: 1 },
+  orbit: { closest: 0, furthest: 1 },
   /** Plan scale, in top view (higher is closer). */
   top: { out: 1, in: 2.5 },
 }

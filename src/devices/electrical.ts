@@ -179,8 +179,8 @@ sw('g-stairs-two-way', 'Staircase two-way switch', 'g-storage-wc', 'b', 2.03, 'T
 sw('g-stairs-intermediate', 'Staircase intermediate switch', 'g-storage-wc', 'b', 2.28, 'Intermediate switch')
 ceiling('g-wc-light', 'WC ceiling light', 'ground', [1.25, 6.0], 'Ceiling light · max. 100 W, IP20')
 wall('g-wc-fan', 'fan', 'WC extractor fan', 'g-west', 'a', 6.27, 'V · 230 V, up to 100 W', 2.3)
-sw('g-wc-switch', 'WC light switch', 'g-core', 'a', 6.34)
-sw('g-wc-timer', 'WC fan timer button', 'g-core', 'a', 6.48, 'Push button with run-on relay')
+sw('g-wc-switch', 'WC light switch', 'g-wc-hall', 'b', 1.88)
+sw('g-wc-timer', 'WC fan timer button', 'g-wc-hall', 'b', 2.07, 'Push button with run-on relay')
 sw('g-hall-two-way', 'Hall two-way switch', 'g-wc-hall', 'a', 2.18, 'Two-way switch')
 ceiling('g-hall-light', 'Hall ceiling light', 'ground', [1.55, 7.9], 'Ceiling light · max. 100 W, IP20')
 point(
