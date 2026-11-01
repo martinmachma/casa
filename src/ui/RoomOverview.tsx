@@ -137,7 +137,7 @@ export const RoomOverview = ({
             >
               {carded ? (
                 // Longer to the open card, which stands clear of its item; it grows and shrinks with the card.
-                <TagLine key={item.id === open ? 'open' : 'closing'} reach={80} />
+                <TagLine key={item.id === open ? 'line-open' : 'line-closing'} reach={80} />
               ) : (
                 <SmartTag
                   item={item}
