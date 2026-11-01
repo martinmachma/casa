@@ -1,7 +1,8 @@
 import { FrontSide } from 'three'
 import { useMemo } from 'react'
-import type { Floor } from '../layout/types'
-import { RAILING, STAIR_WOOD } from './palette'
+import type { Floor, Point } from '../layout/types'
+import { floorBump, floorTexture, STAIR_FLOOR } from './floorMaterials'
+import { RAILING } from './palette'
 import { prismGeometry } from './prism'
 
 // Each step is a solid block this deep under its tread, so the flights read as a stepped slab with room beneath.
@@ -10,6 +11,30 @@ const RAIL_HEIGHT = 1.0
 const RAIL_BAR = 0.04
 
 const noRaycast = () => null
+
+/** A step block with its texture turned so the boards run along the tread's longest edge. */
+const stepGeometry = (polygon: Point[], depth: number) => {
+  const g = prismGeometry(polygon, depth)
+  let angle = 0
+  let longest = 0
+  polygon.forEach(([x0, y0], i) => {
+    const [x1, y1] = polygon[(i + 1) % polygon.length]
+    const length = Math.hypot(x1 - x0, y1 - y0)
+    if (length > longest) {
+      longest = length
+      angle = Math.atan2(y1 - y0, x1 - x0)
+    }
+  })
+  const uv = g.getAttribute('uv')
+  const cos = Math.cos(-angle)
+  const sin = Math.sin(-angle)
+  for (let i = 0; i < uv.count; i++) {
+    const u = uv.getX(i)
+    const v = uv.getY(i)
+    uv.setXY(i, u * cos - v * sin, u * sin + v * cos)
+  }
+  return g
+}
 
 type StairsProps = {
   floor: Floor
@@ -26,7 +51,7 @@ export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
     () =>
       (steps ?? [])
         .filter((_, i) => (i + 1) * rise <= cut + 1e-6)
-        .map((s, i) => prismGeometry(s, Math.min(STEP_DEPTH, (i + 1) * rise))),
+        .map((s, i) => stepGeometry(s, Math.min(STEP_DEPTH, (i + 1) * rise))),
     [steps, rise, cut],
   )
   return (
@@ -41,7 +66,13 @@ export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
           raycast={noRaycast}
           userData={{ rooms: floor.stairs?.rooms }}
         >
-          <meshStandardMaterial shadowSide={FrontSide} color={STAIR_WOOD} roughness={0.7} />
+          <meshStandardMaterial
+            shadowSide={FrontSide}
+            map={floorTexture(STAIR_FLOOR)}
+            bumpMap={floorBump(STAIR_FLOOR)}
+            bumpScale={STAIR_FLOOR.bumpScale}
+            roughness={STAIR_FLOOR.roughness}
+          />
         </mesh>
       ))}
     </group>

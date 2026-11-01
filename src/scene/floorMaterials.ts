@@ -344,6 +344,9 @@ const ROOM_FLOORS: Record<string, FloorMaterial | undefined> = {
 
 export const roomFloor = (roomId: string) => ROOM_FLOORS[roomId]
 
+/** The stairs are in the living room's oak. */
+export const STAIR_FLOOR = OAK_NATURAL
+
 // Drawn once per material, colour and bump map apart.
 const textures = new Map<FloorMaterial, CanvasTexture>()
 const bumpTextures = new Map<FloorMaterial, CanvasTexture>()
