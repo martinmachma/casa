@@ -82,7 +82,7 @@ export const RoomOverview = ({
   const kinds = [...new Set(items.map((i) => i.kind))]
   return (
     <>
-      <h2 className="room-name">
+      <h2 className="room-name float">
         <span className="room-name-text">{title}</span>
         <IconButton label="Leave room (Esc)" small className="room-name-leave" onClick={onLeave}>
           <X size={14} />
