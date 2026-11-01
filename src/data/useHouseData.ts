@@ -60,6 +60,13 @@ const writeDraft = (backend: Backend, draft: Draft | undefined) => {
   }
 }
 
+/** Whether two states are the same house; the order wall paints are listed in doesn't matter. */
+const sameHouse = (a: HouseState, b: HouseState) => {
+  const paints = (s: HouseState) =>
+    Object.fromEntries(s.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color]))
+  return sameJson({ ...a, walls: undefined }, { ...b, walls: undefined }) && sameJson(paints(a), paints(b))
+}
+
 /**
  * The house's versions and the one on screen. Edits go into an unsaved draft on this device; saving it makes a new
  * version, which anyone can then make live.
@@ -104,7 +111,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const dirty = useMemo(() => {
     if (!draft) return false
     const base = versions.find((v) => v.id === draft.basedOn)?.data ?? EMPTY_STATE
-    return !sameJson(draft.state, base)
+    return !sameHouse(draft.state, base)
   }, [draft, versions])
 
   // Ask before leaving with edits that aren't saved as a version. Away from planning the draft is out of sight
@@ -140,9 +147,11 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const edit = (change: (s: HouseState) => HouseState, key?: string) =>
     setHistory((h) => {
       const d = h.draft
-      const next = d
-        ? { ...d, state: change(d.state) }
-        : { basedOn: viewedId, live: liveId ?? null, state: change(state) }
+      const from = d ? d.state : state
+      const changed = change(from)
+      // Picking what's already there (the same colour, say) changes nothing and starts no draft or undo step.
+      if (sameHouse(changed, from)) return h
+      const next = d ? { ...d, state: changed } : { basedOn: viewedId, live: liveId ?? null, state: changed }
       const merge = key !== undefined && key === h.key
       return { draft: next, past: merge ? h.past : [...h.past, d].slice(-HISTORY_LIMIT), future: [], key }
     })
@@ -168,14 +177,14 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const setWallColor = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
     edit((s) => {
       const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
-      return {
-        ...s,
-        walls: [
-          ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side && w.part === part)),
-          // A reset part goes back to the whole side's paint; with none, to the default.
-          ...(color && color !== sideColor?.color ? [{ wallId, side, part, color }] : []),
-        ],
-      }
+      const isThis = (w: HouseState['walls'][number]) => w.wallId === wallId && w.side === side && w.part === part
+      // A reset part goes back to the whole side's paint; with none, to the default.
+      if (!color || color === sideColor?.color) return { ...s, walls: s.walls.filter((w) => !isThis(w)) }
+      const paint = { wallId, side, part, color }
+      // Repainted where it's listed, so the list keeps its order.
+      return s.walls.some(isThis)
+        ? { ...s, walls: s.walls.map((w) => (isThis(w) ? paint : w)) }
+        : { ...s, walls: [...s.walls, paint] }
     }, `wall:${wallId}:${side}:${part}`)
 
   /** Adds pieces as one undo step. */
