@@ -164,8 +164,10 @@ export const HouseScene = ({
       return next
     })
   const floor = floors[floorIndex]
+  // A window's shade opened is seen from outside on the whole house: every floor and the roof, nothing cut or dimmed.
+  const whole = !!open && !!shadeWall(open)
   // Floors above the one looked at are left off; one taken off fades out, one put back fades in.
-  const shownCount = camera === 'walk' ? floors.length : floorIndex + 1
+  const shownCount = camera === 'walk' || whole ? floors.length : floorIndex + 1
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
   // From outside, on every floor that's shown, to be seen through the windows.
   const furnished = (f: Floor) => camera === 'walk' || (outside ? floors.indexOf(f) < shownCount : f.id === floor.id)
@@ -176,14 +178,13 @@ export const HouseScene = ({
   // Looking at a room, the walls between the camera and its middle are always cut, and only those.
   const focusPoint = useMemo((): Focus | undefined => {
     const box = focusRoom ? roomBox(floor, focusRoom) : undefined
-    if (!box || !focusRoom) return undefined
+    if (!box || !focusRoom || whole) return undefined
     return {
       center: [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2],
       box: roomBox(floor, focusRoom, 0)!,
       sides: roomWallSides(floor, focusRoom),
-      keep: open ? shadeWall(open) : undefined,
     }
-  }, [floor, focusRoom, open])
+  }, [floor, focusRoom, whole])
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
@@ -204,7 +205,7 @@ export const HouseScene = ({
   const wallRects = useMemo(() => floorWallRects(furnitureFloor), [furnitureFloor])
   // Measuring uses its own floor and wall targets; a piece or device being put down takes every tap.
   const pickable = interaction === 'edit' && !placingPiece && !placing
-  const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside
+  const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside && !whole
   // While arranging, anything that runs into a wall or another piece, or stands where a door swings, is marked.
   const sweeps = useMemo(() => doorSweeps(furnitureFloor), [furnitureFloor])
   const showSweeps = pickable && !outside
@@ -314,9 +315,7 @@ export const HouseScene = ({
         )}
         <DebugHover copies={interaction === 'view'} />
         {focusRoom ? (
-          <>
-            <RoomBlur floor={floor} roomId={focusRoom} open={open} hovered={hovered} />
-          </>
+          !whole && <RoomBlur floor={floor} roomId={focusRoom} open={open} hovered={hovered} />
         ) : (
           <CameraNudger nudge={nudge} />
         )}
@@ -351,6 +350,7 @@ export const HouseScene = ({
                 cut={
                   i === floorIndex &&
                   !outside &&
+                  !whole &&
                   camera !== 'walk' &&
                   !(focusRoom && f.stairs?.rooms?.includes(focusRoom))
                     ? f.height
@@ -384,7 +384,7 @@ export const HouseScene = ({
           </Fade>
         ))}
 
-        <Fade shown={outside}>{house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}</Fade>
+        <Fade shown={outside || whole}>{house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}</Fade>
 
         {interaction === 'edit' && placing && !outside && (
           <DevicePlacer
