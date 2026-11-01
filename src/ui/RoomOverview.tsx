@@ -2,11 +2,13 @@ import { X } from 'lucide-react'
 import { type RefObject, useEffect, useState } from 'react'
 import { DEVICE_KINDS } from '../devices/kinds'
 import type { LightState } from '../devices/lights'
+import type { Scene } from '../devices/scenes'
 import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { LightControls } from './LightControls'
-import { SmartCard, SmartRow, SmartTag, TagLine } from './SmartList'
-import { itemState, KIND_GROUPS, lightsSummary } from './smartText'
+import { RoomScenes } from './RoomScenes'
+import { SmartCard, SmartTag, SmartTile, TagLine } from './SmartList'
+import { KIND_GROUPS, lightsSummary } from './smartText'
 
 type RoomOverviewProps = {
   title: string
@@ -21,13 +23,9 @@ type RoomOverviewProps = {
   hovered: string | undefined
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
+  scenes: Scene[]
+  onScenes: (scenes: Scene[]) => void
 }
-
-// Every light in the room at once, as a chip under the card's title.
-const SCENES: { label: string; set: Pick<LightState, 'brightness' | 'kelvin'> }[] = [
-  { label: 'Bright', set: { brightness: 1, kelvin: 4000 } },
-  { label: 'Relax', set: { brightness: 0.4, kelvin: 2700 } },
-]
 
 /** The room's own view: its name over the middle, what's in it on the right, and a popover by the item picked. */
 export const RoomOverview = ({
@@ -40,6 +38,8 @@ export const RoomOverview = ({
   onHover,
   hovered,
   pinRefs,
+  scenes,
+  onScenes,
 }: RoomOverviewProps) => {
   // Cards closing, kept until they've shrunk back into their tags.
   const [leaving, setLeaving] = useState<string[]>([])
@@ -71,11 +71,6 @@ export const RoomOverview = ({
   const lights = items.filter((i) => i.kind === 'light')
   const on = lights.filter((i) => light(i.id).on).length
   const kinds = [...new Set(items.map((i) => i.kind))]
-  const inScene = (set: (typeof SCENES)[number]['set']) =>
-    lights.every((i) => {
-      const s = light(i.id)
-      return s.on && s.mode === 'white' && s.brightness === set.brightness && s.kelvin === set.kelvin
-    })
   return (
     <>
       <h2 className="room-name">{title}</h2>
@@ -90,43 +85,34 @@ export const RoomOverview = ({
           }
         >
           {lights.length > 0 && (
-            <div className="smart-scenes" role="group" aria-label="Scenes">
-              {SCENES.map((scene) => (
-                <button
-                  key={scene.label}
-                  className="chip"
-                  aria-pressed={inScene(scene.set)}
-                  onClick={() => lights.forEach((i) => onLight(i.id, { on: true, mode: 'white', ...scene.set }))}
-                >
-                  {scene.label}
-                </button>
-              ))}
-            </div>
+            <RoomScenes
+              scenes={scenes}
+              onScenes={onScenes}
+              lightIds={lights.map((i) => i.id)}
+              light={light}
+              onLight={onLight}
+            />
           )}
           {items.length ? (
             kinds.map((kind) => (
               <div key={kind}>
                 {kinds.length > 1 && <h4 className="smart-group">{KIND_GROUPS[kind]}</h4>}
-                <ul className="smart-list">
+                <div className="smart-lights">
                   {items
                     .filter((i) => i.kind === kind)
-                    .map((item) => {
-                      const s = item.kind === 'light' ? light(item.id) : undefined
-                      return (
-                        <SmartRow
-                          key={item.id}
-                          item={item}
-                          sub={item.kind === 'light' ? (item.lamp ? 'Lamp' : undefined) : itemState(item, s)}
-                          light={s}
-                          pressed={open === item.id}
-                          hovered={hovered === item.id}
-                          onOpen={() => onOpen(open === item.id ? undefined : item.id)}
-                          onHover={(h) => onHover(h ? item.id : undefined)}
-                          onLight={(p) => onLight(item.id, p)}
-                        />
-                      )
-                    })}
-                </ul>
+                    .map((item) => (
+                      <SmartTile
+                        key={item.id}
+                        item={item}
+                        light={item.kind === 'light' ? light(item.id) : undefined}
+                        pressed={open === item.id}
+                        hovered={hovered === item.id}
+                        onOpen={() => onOpen(open === item.id ? undefined : item.id)}
+                        onHover={(h) => onHover(h ? item.id : undefined)}
+                        onLight={(p) => onLight(item.id, p)}
+                      />
+                    ))}
+                </div>
               </div>
             ))
           ) : (

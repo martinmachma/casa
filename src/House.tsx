@@ -24,6 +24,7 @@ import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
 import { lightSettings, useLights } from './devices/lights'
+import { useScenes } from './devices/scenes'
 import { LightPanel } from './ui/LightPanel'
 import { daylight } from './scene/Lights'
 import { FurnitureEditor } from './ui/FurnitureEditor'
@@ -126,6 +127,7 @@ export const House = ({ backend, account }: HouseProps) => {
   const rooms = useMemo(() => roomViews(house, data.roomNames), [data.roomNames])
   const focus = rooms.find((r) => r.id === roomView)
   const lights = useLights()
+  const scenes = useScenes()
   const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
   const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
   const dark = 1 - daylight(sunAt)
@@ -610,6 +612,11 @@ export const House = ({ backend, account }: HouseProps) => {
             onHover={setHoveredItem}
             hovered={hoveredItem}
             pinRefs={pinRefs}
+            scenes={scenes.of(
+              focus.room,
+              focusItems.filter((i) => i.kind === 'light').map((i) => i.id),
+            )}
+            onScenes={(s) => scenes.set(focus.room, s)}
           />
         )}
 

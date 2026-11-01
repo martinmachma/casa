@@ -56,6 +56,53 @@ export const SmartRow = ({ item, sub, light, pressed, hovered, onOpen, onHover, 
   )
 }
 
+type SmartTileProps = {
+  item: SmartItem
+  /** Its settings, for a light: a tap switches it. */
+  light?: LightState
+  /** Its card is open. */
+  pressed?: boolean
+  /** Its item is pointed at in the scene. */
+  hovered?: boolean
+  /** Opens its card: a tap for anything but a light, a right-click for a light. */
+  onOpen: () => void
+  onHover: (hovering: boolean) => void
+  onLight: (patch: Partial<LightState>) => void
+}
+
+/** A smart item as a tile: its icon, lit in the light's colour while on, over its name and state. */
+export const SmartTile = ({ item, light, pressed, hovered, onOpen, onHover, onLight }: SmartTileProps) => {
+  const on = !!light?.on
+  return (
+    <button
+      className="smart-light"
+      aria-pressed={light ? on : undefined}
+      data-open={pressed || undefined}
+      data-hovered={hovered || undefined}
+      title={light ? `${item.name}: click to switch, right-click for brightness and colour` : item.name}
+      onClick={() => (light ? onLight({ on: !on }) : onOpen())}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onOpen()
+      }}
+      onPointerEnter={() => onHover(true)}
+      onPointerLeave={() => onHover(false)}
+    >
+      <span
+        className="smart-light-bulb"
+        data-on={on || undefined}
+        style={on ? { background: lightColor(light) } : undefined}
+      >
+        <DeviceIcon kind={item.kind} size={18} />
+      </span>
+      <span className="smart-light-name">{item.name}</span>
+      <span className="smart-light-state">
+        {light ? (on ? `${Math.round(light.brightness * 100)} %` : 'Off') : item.lamp ? 'Lamp' : 'Not linked'}
+      </span>
+    </button>
+  )
+}
+
 type SmartCardProps = {
   title: string
   summary: string
