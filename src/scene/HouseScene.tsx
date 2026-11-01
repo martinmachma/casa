@@ -564,7 +564,7 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
 
 /**
  * How far in or out a view carried over to another floor may be, as a share of that floor's own
- * starting view. Further in or out than this and the new floor opens at the nearer bound instead.
+ * starting view. Further in or out than this and the new floor eases to the nearer bound instead.
  * These bound only the switch; zooming afterwards is as free as ever.
  */
 const FLOOR_ZOOM = {
@@ -575,6 +575,8 @@ const FLOOR_ZOOM = {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+const ZOOM_EASE_SECONDS = 0.6
 
 /** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
 const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }
@@ -597,19 +599,41 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
             zoom: Math.min(size.width, size.height) / (span * 1.35),
           }
         : { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
-    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return own
-    // Carried over, but kept within this floor's bounds so it opens neither lost in a corner nor far off.
-    const position = lastView.position.clone()
-    const target = lastView.target.clone()
+    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return { ...own, ease: undefined }
+    // Carried over, then eased within this floor's bounds so it ends neither lost in a corner nor far off:
+    // `ease` runs the plan's zoom (top) or the distance to the target (3D) from what it was to the bound.
+    const carried = { position: lastView.position.clone(), target: lastView.target.clone(), zoom: lastView.zoom }
+    const [from, lo, hi] =
+      mode === 'top'
+        ? [carried.zoom, own.zoom * FLOOR_ZOOM.top.out, own.zoom * FLOOR_ZOOM.top.in]
+        : [
+            carried.position.distanceTo(carried.target),
+            own.position.distanceTo(own.target) * FLOOR_ZOOM.orbit.closest,
+            own.position.distanceTo(own.target) * FLOOR_ZOOM.orbit.furthest,
+          ]
+    const to = clamp(from, lo, hi)
+    return { ...carried, ease: to === from ? undefined : { from, to } }
+  })
+  const easing = useRef(start.ease ? 0 : 1)
+  // Zooming or dragging meanwhile takes over from the ease.
+  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
+  useEffect(() => {
+    if (!controls) return
+    const stop = () => (easing.current = 1)
+    controls.addEventListener('start', stop)
+    return () => controls.removeEventListener('start', stop)
+  }, [controls])
+  useFrame(({ camera, controls, invalidate }, delta) => {
+    const orbit = controls as OrbitControlsImpl | null
+    if (!orbit || !start.ease || easing.current >= 1) return
+    easing.current = Math.min(1, easing.current + delta / ZOOM_EASE_SECONDS)
+    const value = MathUtils.lerp(start.ease.from, start.ease.to, easeInOut(easing.current))
     if (mode === 'top') {
-      const { out, in: closest } = FLOOR_ZOOM.top
-      return { position, target, zoom: clamp(lastView.zoom, own.zoom * out, own.zoom * closest) }
-    }
-    const { closest, furthest } = FLOOR_ZOOM.orbit
-    const base = own.position.distanceTo(own.target)
-    const offset = position.clone().sub(target)
-    offset.setLength(clamp(offset.length(), base * closest, base * furthest))
-    return { position: target.clone().add(offset), target, zoom: lastView.zoom }
+      camera.zoom = value
+      camera.updateProjectionMatrix()
+    } else camera.position.sub(orbit.target).setLength(value).add(orbit.target)
+    orbit.update()
+    invalidate()
   })
   useFrame(({ camera, controls }) => {
     if (!controls) return
