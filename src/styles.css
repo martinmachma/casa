@@ -3556,21 +3556,9 @@ input[type='range'].kelvin::-moz-range-thumb {
 .shade-controls {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   width: max-content;
-}
-
-.shade-name {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 6px 6px 12px;
-  border-radius: 12px;
-  white-space: nowrap;
-}
-
-.shade-name .muted {
-  font-size: 12px;
 }
 
 .shade-buttons {

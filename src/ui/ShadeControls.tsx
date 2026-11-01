@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, X } from 'lucide-react'
-import { shadeText, type ShadeState } from '../devices/shades'
+import type { ShadeState } from '../devices/shades'
 import { IconButton } from './kit'
 
 /** One press of a single arrow lets the shade down (or takes it up) to the next quarter. */
@@ -41,20 +41,16 @@ type ShadeControlsProps = {
   onClose: () => void
 }
 
-/** A shade's controls beside it, without a card: its name and state, arrows up and down, and how far the slats turn. */
+/** A shade's controls beside it, without a card: a close button, arrows up and down, and how far the slats turn. */
 export const ShadeControls = ({ name, shade, onChange, onClose }: ShadeControlsProps) => {
   const p = shade.position
   const up = p <= EPS
   const down = p >= 1 - EPS
   return (
     <div className="shade-controls">
-      <div className="shade-name float">
-        <div>
-          <strong>{name}</strong>
-          <div className="muted">{shadeText(shade)}</div>
-        </div>
-        <IconButton label="Close" small onClick={onClose}>
-          <X size={15} />
+      <div className="shade-group float">
+        <IconButton label={`Close ${name}`} onClick={onClose}>
+          <X size={18} />
         </IconButton>
       </div>
       <div className="shade-buttons">
