@@ -49,6 +49,8 @@ type FloorWallsProps = {
   shades: Readonly<Record<string, ShadeState>>
   /** Opens a shade's controls when it's tapped. */
   onPickShade?: (id: string) => void
+  /** The shade pointed at, while shades can be picked. */
+  onHoverShade?: (id: string | undefined) => void
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
@@ -66,6 +68,7 @@ export const FloorWalls = ({
   onToggleDoor,
   shades,
   onPickShade,
+  onHoverShade,
   cutaway,
   focus,
   onPick,
@@ -89,6 +92,7 @@ export const FloorWalls = ({
           onToggleDoor={onToggleDoor}
           shades={shades}
           onPickShade={onPickShade}
+          onHoverShade={onHoverShade}
           onPick={onPick}
         />
       ))}
@@ -110,6 +114,8 @@ type WallMeshProps = {
   shades: Readonly<Record<string, ShadeState>>
   /** Opens a shade's controls when it's tapped. */
   onPickShade?: (id: string) => void
+  /** The shade pointed at, while shades can be picked. */
+  onHoverShade?: (id: string | undefined) => void
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
@@ -129,6 +135,7 @@ const WallMesh = ({
   onToggleDoor,
   shades,
   onPickShade,
+  onHoverShade,
   onPick,
 }: WallMeshProps) => {
   const owner = wallOwner(wall, floor)
@@ -249,6 +256,7 @@ const WallMesh = ({
         onToggleDoor={onToggleDoor}
         shades={shades}
         onPickShade={onPickShade}
+        onHoverShade={onHoverShade}
         ghostShades={!!focus}
         top={top}
       />

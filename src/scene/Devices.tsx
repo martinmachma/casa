@@ -46,7 +46,9 @@ type DevicesProps = {
   onMoveEnd: () => void
   /** Set while looking round: a tap on a light picks it, to switch and set it. */
   onPickLight?: (id: string) => void
-  /** The light pointed at, while lights can be picked. */
+  /** Set in a room's view: a tap on any other device opens it. */
+  onPickDevice?: (id: string) => void
+  /** The device pointed at, while it can be picked. */
   onHoverLight?: (id: string | undefined) => void
 }
 
@@ -65,6 +67,7 @@ export const Devices = ({
   onMove,
   onMoveEnd,
   onPickLight,
+  onPickDevice,
   onHoverLight,
 }: DevicesProps) => (
   <group>
@@ -82,6 +85,7 @@ export const Devices = ({
         onMove={onMove}
         onMoveEnd={onMoveEnd}
         onPickLight={onPickLight}
+        onPickDevice={onPickDevice}
         onHoverLight={onHoverLight}
       />
     ))}
@@ -107,6 +111,7 @@ const DeviceMesh = ({
   onMove,
   onMoveEnd,
   onPickLight,
+  onPickDevice,
   onHoverLight,
 }: DeviceMeshProps) => {
   const getState = useThree((s) => s.get)
@@ -116,6 +121,7 @@ const DeviceMesh = ({
   const hit = useMemo(() => new Vector3(), [])
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
   const color = DEVICE_KINDS[device.kind].color
+  const pick = device.kind === 'light' ? onPickLight : onPickDevice
 
   const setControlsEnabled = (enabled: boolean) => {
     const controls = getState().controls as Controls | null
@@ -164,13 +170,13 @@ const DeviceMesh = ({
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'grab')),
         onPointerOut: () => (document.body.style.cursor = ''),
       }
-    : onPickLight && device.kind === 'light'
+    : pick
       ? {
           raycast: Mesh.prototype.raycast,
           onClick: (e: ThreeEvent<MouseEvent>) => {
             if (e.delta > CLICK_SLOP_PX) return
             e.stopPropagation()
-            onPickLight(device.id)
+            pick(device.id)
           },
           onPointerOver: (e: ThreeEvent<PointerEvent>) => {
             e.stopPropagation()
@@ -205,8 +211,9 @@ const DeviceMesh = ({
       <meshBasicMaterial color={selected ? SELECTED_OUTLINE : color} />
     </mesh>
   )
-  const hitSphere = (
-    <mesh {...handlers}>
+  // Round the device's middle, so it's sorted into the room with it.
+  const hitSphere = (at?: [number, number, number]) => (
+    <mesh position={at} {...handlers}>
       <sphereGeometry args={[HIT_RADIUS, 12, 8]} />
       <meshBasicMaterial visible={false} />
     </mesh>
@@ -228,7 +235,7 @@ const DeviceMesh = ({
             {material}
             {outline}
           </mesh>
-          {hitSphere}
+          {hitSphere([0, -LIGHT_DEPTH / 2, 0])}
         </group>
         {marker}
       </>
@@ -250,7 +257,7 @@ const DeviceMesh = ({
           {material}
           {outline}
         </mesh>
-        {hitSphere}
+        {hitSphere()}
       </group>
       {marker}
     </>

@@ -81,6 +81,7 @@ export const OpeningFills = ({
   onToggleDoor,
   shades,
   onPickShade,
+  onHoverShade,
   ghostShades,
 }: {
   wallId: string
@@ -95,6 +96,8 @@ export const OpeningFills = ({
   shades: Readonly<Record<string, ShadeState>>
   /** Opens a shade's controls when it's tapped; left out, shades don't take taps. */
   onPickShade?: (id: string) => void
+  /** The shade pointed at, while shades can be picked. */
+  onHoverShade?: (id: string | undefined) => void
   /** Seen through into a room: the shades are drawn whole and see-through, even where the wall is cut down. */
   ghostShades?: boolean
   /** Whether a tap on a door opens or closes it. */
@@ -119,6 +122,7 @@ export const OpeningFills = ({
         opacity={ghostShades ? GHOST_SHADE : undefined}
         state={shades[id] ?? SHADE_UP}
         onPick={onPickShade && (() => onPickShade(id))}
+        onHover={(on) => onHoverShade?.(on ? id : undefined)}
       />
     )
   }
@@ -322,6 +326,7 @@ const Shade = ({
   section,
   opacity,
   onPick,
+  onHover,
 }: {
   u0: number
   u1: number
@@ -333,10 +338,10 @@ const Shade = ({
   /** See-through, to look past it into the room. */
   opacity?: number
   onPick?: () => void
+  onHover?: (pointed: boolean) => void
 }) => {
   const slats = useRef<InstancedMesh>(null)
   const bottom = useRef<Mesh>(null)
-  const pick = useRef<Mesh>(null)
   const shown = useRef<ShadeState | undefined>(undefined)
   const w = u1 - u0
   const top = y1 - HEAD
@@ -358,9 +363,6 @@ const Shade = ({
     }
     const end = top - hanging * SLAT_PITCH - (count - hanging) * SLAT_STACKED
     bottom.current?.position.setY(end - BOTTOM / 2)
-    // The taps land on a sheet over whatever is down, from the head to the bottom bar.
-    pick.current?.scale.setY(y1 - end + BOTTOM)
-    pick.current?.position.setY((y1 + end - BOTTOM) / 2)
   }
   useLayoutEffect(() => {
     if (!shown.current) place((shown.current = { ...state }))
@@ -383,8 +385,15 @@ const Shade = ({
           e.stopPropagation()
           onPick()
         },
-        onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')),
-        onPointerOut: () => (document.body.style.cursor = ''),
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+          onHover?.(true)
+        },
+        onPointerOut: () => {
+          document.body.style.cursor = ''
+          onHover?.(false)
+        },
       }
     : { raycast: noRaycast }
   const material = (
@@ -417,8 +426,9 @@ const Shade = ({
           {material}
         </mesh>
       ))}
-      <mesh ref={pick} {...handlers}>
-        <boxGeometry args={[w, 1, SLAT_DEPTH + 0.02]} />
+      {/* Taps land anywhere over the window, the shade up or down. */}
+      <mesh position={[0, (y0 + y1) / 2, 0]} {...handlers}>
+        <boxGeometry args={[w, y1 - y0, SLAT_DEPTH + 0.02]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
     </group>

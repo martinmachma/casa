@@ -377,6 +377,7 @@ export const HouseScene = ({
               onToggleDoor={toggleDoor}
               shades={shades}
               onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? onPickShade : undefined}
+              onHoverShade={onHoverItem}
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
               onPick={pickWall}
@@ -418,6 +419,7 @@ export const HouseScene = ({
               tint={tint}
               plan={camera === 'top'}
               onPickLight={lightPick}
+              onPickDevice={focusRoom ? lightPick : undefined}
               onHoverLight={onHoverItem}
               interactive={pickable && !outside}
               onSelect={(id) => onSelect({ kind: 'device', id })}
