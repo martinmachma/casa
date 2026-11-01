@@ -1021,6 +1021,11 @@ p {
   pointer-events: none;
 }
 
+/* The whole house's card stands where the compass would; the compass steps left of it, as beside the planning panel. */
+.app:has(.room-cards:not([data-compact])) .compass {
+  right: calc(12px + min(320px, 100% - 24px) + 10px);
+}
+
 .compass-rose {
   display: flex;
 }
