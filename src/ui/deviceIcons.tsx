@@ -1,4 +1,19 @@
-import { Blinds, CircleHelp, Lightbulb, Plug, Radar, Thermometer, ToggleLeft } from 'lucide-react'
+import {
+  Bell,
+  Blinds,
+  Cable,
+  CircleHelp,
+  EthernetPort,
+  Fan,
+  Lightbulb,
+  PanelTop,
+  Plug,
+  Radar,
+  Thermometer,
+  ToggleLeft,
+  Tv,
+  UtilityPole,
+} from 'lucide-react'
 import type { DeviceKind } from '../data/types'
 
 const ICONS = {
@@ -8,6 +23,13 @@ const ICONS = {
   sensor: Radar,
   thermostat: Thermometer,
   blind: Blinds,
+  data: EthernetPort,
+  tv: Tv,
+  connection: Cable,
+  panel: PanelTop,
+  fan: Fan,
+  bell: Bell,
+  earth: UtilityPole,
   other: CircleHelp,
 }
 

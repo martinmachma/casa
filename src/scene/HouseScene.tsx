@@ -26,6 +26,7 @@ import { Compass, CompassTracker } from './Compass'
 import type { Focus } from './CutawayWall'
 import { DebugHover } from './DebugHover'
 import { DevicePlacer, Devices } from './Devices'
+import { ElectricalRoutes } from './ElectricalRoutes'
 import { Fade } from './Fade'
 import { Fixtures } from './Fixtures'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
@@ -65,6 +66,7 @@ type HouseSceneProps = {
   camera: CameraMode
   /** In the 3D view, hide the walls nearest the camera so you can see inside. */
   cutaway: boolean
+  electrical: boolean
   data: HouseData
   /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
   interaction: Interaction
@@ -123,6 +125,7 @@ export const HouseScene = ({
   outside,
   camera,
   cutaway,
+  electrical,
   data,
   interaction,
   selection,
@@ -388,6 +391,26 @@ export const HouseScene = ({
           {house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
         </Fade>
 
+        {floors.map((f) => (
+          <Devices
+            key={`electrical-${f.id}`}
+            floor={f}
+            devices={data.devices.filter(
+              (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside' ? furnished(f) : outside),
+            )}
+            selectedId={selection?.kind === 'device' ? selection.id : undefined}
+            glow={level}
+            tint={tint}
+            plan={electrical}
+            interactive={false}
+            onSelect={() => {}}
+            onMove={() => {}}
+            onMoveEnd={() => {}}
+            onPickDevice={electrical && !measure ? (id) => onSelect({ kind: 'device', id }) : undefined}
+          />
+        ))}
+        {electrical && <ElectricalRoutes outside={outside} floor={floor} />}
+
         {interaction === 'edit' && placing && !outside && (
           <DevicePlacer
             floor={floor}
@@ -414,7 +437,7 @@ export const HouseScene = ({
           <Fade key={f.id} shown={furnished(f)}>
             <Devices
               floor={f}
-              devices={data.devices.filter((d) => d.floor === f.id && (outside || f.id === floor.id))}
+              devices={data.devices.filter((d) => !d.plan && d.floor === f.id && (outside || f.id === floor.id))}
               selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
               glow={level}
               tint={tint}

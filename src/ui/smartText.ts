@@ -9,6 +9,13 @@ export const KIND_GROUPS: Record<DeviceKind, string> = {
   sensor: 'Sensors',
   thermostat: 'Thermostats',
   blind: 'Blinds',
+  data: 'Data outlets',
+  tv: 'TV outlets',
+  connection: 'Connection points',
+  panel: 'Distribution boards',
+  fan: 'Extractor fans',
+  bell: 'Doorbells',
+  earth: 'Earth connections',
   other: 'Other',
 }
 

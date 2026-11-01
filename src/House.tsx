@@ -1,4 +1,4 @@
-import { SquareBottomDashedScissors } from 'lucide-react'
+import { Cable, SquareBottomDashedScissors } from 'lucide-react'
 import { IconButton, Slide } from './ui/kit'
 import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
@@ -52,6 +52,7 @@ import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
 import { HouseTags } from './ui/HouseTags'
 import { RoomOverview } from './ui/RoomOverview'
+import { ElectricalPanel } from './ui/ElectricalPanel'
 
 type HouseProps = { backend: Backend; account: Account }
 
@@ -84,6 +85,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // The plan is a planning tool; at home the house is seen in 3D or walked through.
   const camera = planning || planCamera !== 'top' ? planCamera : 'orbit'
   const [cutaway, setCutaway] = useState(true)
+  const [electrical, setElectrical] = useState(false)
   // The tool in use while planning; at home the house is only looked at.
   const [tool, setTool] = useState<Exclude<Interaction, 'view' | 'measure'>>('edit')
   const interaction: Interaction = planning ? tool : 'view'
@@ -142,7 +144,6 @@ export const House = ({ backend, account }: HouseProps) => {
   const floor = house.floors[floorIndex]
   // From outside, furniture goes on the ground floor or round it in the garden.
   const furnitureFloor = outside ? house.floors[0] : floor
-  const regions = floorRegions(floor)
   const selectedItems =
     selection?.kind === 'furniture' ? data.furniture.filter((f) => selection.ids.includes(f.id)) : []
   const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
@@ -197,6 +198,7 @@ export const House = ({ backend, account }: HouseProps) => {
   }
 
   const deleteDevice = (device: Device) => {
+    if (device.plan) return
     data.removeDevice(device.id)
     setSelection(undefined)
   }
@@ -431,6 +433,22 @@ export const House = ({ backend, account }: HouseProps) => {
           <Slide show={planning}>
             <SunPanel sun={sun} position={sunAt} onSun={setSun} />
           </Slide>
+          <Slide show={planning}>
+            <div className="toolbar float">
+              <IconButton
+                label="Electrical plan"
+                aria-pressed={electrical}
+                small
+                onClick={() => {
+                  setElectrical(!electrical)
+                  setSelection(undefined)
+                  setRightOpen(true)
+                }}
+              >
+                <Cable size={17} />
+              </IconButton>
+            </div>
+          </Slide>
           {/* Walls in front cut down in the 3D view, to see in; not yet from outside. */}
           <Slide show={camera === 'orbit' && !outside}>
             <div className="toolbar float">
@@ -514,13 +532,15 @@ export const House = ({ backend, account }: HouseProps) => {
         />
       )
     if (selectedDevice) {
-      const room = deviceRoom(selectedDevice, floor, regions)
-      const roomRecord = floor.rooms.find((r) => r.id === room)
+      const deviceFloor = house.floors.find((f) => f.id === selectedDevice.floor)!
+      const room = deviceRoom(selectedDevice, deviceFloor, floorRegions(deviceFloor))
+      const roomRecord = deviceFloor.rooms.find((r) => r.id === room)
       return (
         <DeviceEditor
           device={selectedDevice}
           room={roomRecord && roomLabel(roomRecord, data.roomNames).name}
           onChange={(patch) =>
+            !selectedDevice.plan &&
             data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
           }
           light={lightSettings(lights.states[selectedDevice.id], dark)}
@@ -530,6 +550,17 @@ export const House = ({ backend, account }: HouseProps) => {
         />
       )
     }
+    if (planning && electrical)
+      return (
+        <ElectricalPanel
+          floor={floor}
+          devices={data.devices}
+          outside={outside}
+          roomNames={data.roomNames}
+          onSelect={(id) => select({ kind: 'device', id })}
+          onClose={() => setElectrical(false)}
+        />
+      )
     if (interaction === 'edit')
       return (
         <FurniturePanel
@@ -574,6 +605,7 @@ export const House = ({ backend, account }: HouseProps) => {
           outside={outside}
           camera={camera}
           cutaway={cutaway}
+          electrical={planning && electrical}
           data={data}
           interaction={measure ? 'measure' : interaction}
           selection={selection}

@@ -19,6 +19,13 @@ const PLATES: Record<Exclude<DeviceKind, 'light'>, [number, number, number]> = {
   sensor: [0.06, 0.06, 0.04],
   thermostat: [0.1, 0.1, 0.025],
   blind: [0.12, 0.07, 0.03],
+  data: [0.086, 0.086, 0.02],
+  tv: [0.086, 0.086, 0.02],
+  connection: [0.07, 0.07, 0.02],
+  panel: [0.3, 0.4, 0.09],
+  fan: [0.16, 0.16, 0.07],
+  bell: [0.1, 0.15, 0.04],
+  earth: [0.06, 0.08, 0.03],
   other: [0.08, 0.08, 0.03],
 }
 
@@ -120,7 +127,7 @@ const DeviceMesh = ({
   const drag = useRef<{ dx: number; dy: number; moved: boolean }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
-  const color = DEVICE_KINDS[device.kind].color
+  const color = device.plan && device.kind === 'socket' && plan ? '#ba7c31' : DEVICE_KINDS[device.kind].color
   const pick = device.kind === 'light' ? onPickLight : onPickDevice
 
   const setControlsEnabled = (enabled: boolean) => {
@@ -201,14 +208,21 @@ const DeviceMesh = ({
   )
   const outline = selected && <Edges color={SELECTED_OUTLINE} lineWidth={2} />
   // From above, a marker on top of the wall (or just under the ceiling) where the device is.
+  const offset = wall && device.plan ? 0.1 + device.z * 0.1 : 0
+  const angle = wall ? wallAngle(wall) : 0
+  const outSide = device.wall?.side === 'a' ? 1 : -1
   const marker = plan && (
     <mesh
-      position={[device.x, floor.elevation + Math.max(device.z, floor.height) + 0.02, device.y]}
+      position={[
+        device.x - Math.sin(angle) * offset * outSide,
+        floor.elevation + Math.max(device.z, floor.height) + 0.04,
+        device.y + Math.cos(angle) * offset * outSide,
+      ]}
       rotation-x={-Math.PI / 2}
-      raycast={() => null}
+      {...handlers}
     >
       <circleGeometry args={[selected ? 0.12 : 0.09, 24]} />
-      <meshBasicMaterial color={selected ? SELECTED_OUTLINE : color} />
+      <meshBasicMaterial color={selected ? SELECTED_OUTLINE : color} depthTest={!device.plan} />
     </mesh>
   )
   // Round the device's middle, so it's sorted into the room with it.
@@ -229,8 +243,14 @@ const DeviceMesh = ({
           <mesh position={[0, -LIGHT_DEPTH / 2, 0]} castShadow raycast={() => null}>
             {device.kind === 'light' ? (
               <cylinderGeometry args={[LIGHT_RADIUS, LIGHT_RADIUS * 0.9, LIGHT_DEPTH, 24]} />
+            ) : device.plan?.area === 'roof' && device.kind === 'earth' ? (
+              <cylinderGeometry args={[0.012, 0.018, 2, 12]} />
+            ) : device.plan?.area === 'roof' && device.kind === 'tv' ? (
+              <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
+            ) : device.plan?.area === 'roof' && device.kind === 'connection' ? (
+              <cylinderGeometry args={[0.09, 0.09, 0.02, 24]} />
             ) : (
-              <boxGeometry args={[0.08, 0.08, 0.08]} />
+              <boxGeometry args={PLATES[device.kind]} />
             )}
             {material}
             {outline}
@@ -257,6 +277,20 @@ const DeviceMesh = ({
           {material}
           {outline}
         </mesh>
+        {(device.kind === 'socket' || device.kind === 'tv') &&
+          [-0.017, 0.017].map((x) => (
+            <mesh key={x} position={[x, 0, out * (depth + 0.001)]} rotation-x={Math.PI / 2} raycast={() => null}>
+              <cylinderGeometry args={[0.005, 0.005, 0.003, 12]} />
+              <meshStandardMaterial color="#4b4d50" />
+            </mesh>
+          ))}
+        {device.kind === 'data' &&
+          [-0.017, 0.017].map((x) => (
+            <mesh key={x} position={[x, 0, out * (depth + 0.001)]} raycast={() => null}>
+              <boxGeometry args={[0.022, 0.017, 0.003]} />
+              <meshStandardMaterial color="#263b46" />
+            </mesh>
+          ))}
         {hitSphere()}
       </group>
       {marker}

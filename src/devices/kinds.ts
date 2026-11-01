@@ -14,6 +14,13 @@ export const DEVICE_KINDS: Record<DeviceKind, KindInfo> = {
   sensor: { label: 'Sensor', height: 2.2, color: '#6fa3b5' },
   thermostat: { label: 'Thermostat', height: 1.5, color: '#c8664a' },
   blind: { label: 'Blind', height: 2.3, color: '#8a8d90' },
+  data: { label: 'Data outlet', height: 0.25, color: '#438caa' },
+  tv: { label: 'TV outlet', height: 0.25, color: '#7963ab' },
+  connection: { label: 'Connection point', height: 1.1, color: '#dba348' },
+  panel: { label: 'Distribution board', height: 1.5, color: '#89959e' },
+  fan: { label: 'Extractor fan', height: 2.3, color: '#66a49b' },
+  bell: { label: 'Doorbell', height: 1.1, color: '#ba9571' },
+  earth: { label: 'Earth connection', height: 0.25, color: '#8d9b4b' },
   other: { label: 'Other', height: 1.1, color: '#a597b5' },
 }
 

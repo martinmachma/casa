@@ -34,7 +34,21 @@ export type RoomName = { roomId: string; name: string }
 
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
-export type DeviceKind = 'light' | 'switch' | 'socket' | 'sensor' | 'thermostat' | 'blind' | 'other'
+export type DeviceKind =
+  | 'light'
+  | 'switch'
+  | 'socket'
+  | 'sensor'
+  | 'thermostat'
+  | 'blind'
+  | 'data'
+  | 'tv'
+  | 'connection'
+  | 'panel'
+  | 'fan'
+  | 'bell'
+  | 'earth'
+  | 'other'
 
 /** A smart-home device placed in the house. */
 export type Device = {
@@ -52,6 +66,14 @@ export type Device = {
   wall?: { wallId: string; side: WallSide }
   /** Home Assistant entity id, e.g. light.living_ceiling. */
   entity?: string
+  /** Fixed infrastructure traced from the electrical drawings, independent of saved furnishing versions. */
+  plan?: {
+    sheet: 2 | 3 | 4
+    symbol: string
+    notes?: string
+    ports?: number
+    area: 'inside' | 'outside' | 'roof'
+  }
 }
 
 export type NewDevice = Omit<Device, 'id'>

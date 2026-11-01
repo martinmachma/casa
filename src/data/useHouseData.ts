@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { WallFace } from '../layout/types'
 import type { Backend, Device, FurnitureItem, HouseState, NewDevice, NewFurnitureItem, Version } from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
+import { ELECTRICAL_DEVICES } from '../devices/electrical'
 
 /** What is being looked at: whichever version is live, the bare house, or one version by id. */
 export type Viewing = typeof LIVE | typeof BARE | string
@@ -23,7 +24,6 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 
 const HISTORY_LIMIT = 100
 
-const NO_DEVICES: Device[] = []
 const NO_VERSIONS: Version[] = []
 
 /** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
@@ -136,6 +136,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
           : liveId
   const viewed = versions.find((v) => v.id === viewedId)
   const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? EMPTY_STATE
+  // Built-in electrical infrastructure is shared by every version, including old snapshots and the bare house.
+  const devices = useMemo(() => [...ELECTRICAL_DEVICES, ...(state.devices ?? [])], [state.devices])
 
   const wallColors = useMemo(
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
@@ -292,8 +294,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     patchFurniture,
     patchFurnitures,
     removeFurniture,
-    // Versions and drafts from before devices have none.
-    devices: state.devices ?? NO_DEVICES,
+    // Fixed infrastructure plus the devices in this version/draft.
+    devices,
     addDevice,
     patchDevice,
     removeDevice,
