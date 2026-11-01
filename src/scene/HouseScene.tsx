@@ -308,11 +308,11 @@ export const HouseScene = ({
         {focusRoom ? (
           <>
             <RoomBlur floor={floor} roomId={focusRoom} open={open} hovered={hovered} />
-            <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
           </>
         ) : (
           <CameraNudger nudge={nudge} />
         )}
+        <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
         <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
         <CompassTracker north={north} needle={needle} />

@@ -46,9 +46,10 @@ import { SnapMenu } from './ui/SnapMenu'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
-import { roomItems } from './rooms/roomItems'
+import { floorItems, roomItems } from './rooms/roomItems'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
+import { HouseTags } from './ui/HouseTags'
 import { RoomOverview } from './ui/RoomOverview'
 
 type HouseProps = { backend: Backend; account: Account }
@@ -371,6 +372,10 @@ export const House = ({ backend, account }: HouseProps) => {
   const editing = planning
   // While looking round, it opens only for a picked light (in a room, its card does that).
   const rightOpen = (editing || (selection?.kind === 'light' && !focus)) && !rightTucked
+  const floorTags =
+    !focus && !planning && !rightOpen && !outside && camera !== 'walk'
+      ? floorItems(floor, data.devices, data.furniture)
+      : []
   const closeRight = () => setRightOpen(false)
   const modeBar = (
     <ModeBar
@@ -586,7 +591,7 @@ export const House = ({ backend, account }: HouseProps) => {
             onDelete: deleteSelection,
           }}
           focusRoom={focus?.room}
-          pins={focusItems.map((i) => ({ key: `tag:${i.id}`, at: i.at }))}
+          pins={(focus ? focusItems : floorTags).map((i) => ({ key: `tag:${i.id}`, at: i.at }))}
           pinRefs={pinRefs}
           open={popover}
           hovered={hoveredItem}
@@ -602,6 +607,21 @@ export const House = ({ backend, account }: HouseProps) => {
             onLight={(id, patch) => lights.set(id, patch, dark)}
             open={popover}
             onOpen={setPopover}
+            onHover={setHoveredItem}
+            hovered={hoveredItem}
+            pinRefs={pinRefs}
+          />
+        )}
+
+        {/* Between rooms, every smart item on the floor in view keeps its tag. */}
+        {floorTags.length > 0 && (
+          <HouseTags
+            items={floorTags}
+            light={(id) => lightSettings(lights.states[id], dark)}
+            onOpen={(room, item) => {
+              openRoom(room)
+              setPopover(item)
+            }}
             onHover={setHoveredItem}
             hovered={hoveredItem}
             pinRefs={pinRefs}
