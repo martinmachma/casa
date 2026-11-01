@@ -1721,6 +1721,15 @@ input[type='range'].kelvin::-moz-range-thumb {
   transform: scale(1.04);
 }
 
+/* A fixed floor, shown but not picked. */
+div.material {
+  cursor: default;
+}
+
+div.material:hover img {
+  transform: none;
+}
+
 .material[aria-pressed='true'] img {
   box-shadow:
     0 0 0 2px var(--surface),

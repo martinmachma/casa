@@ -27,9 +27,13 @@ const shade = (hex: string, amount: number) => {
   return `rgb(${ch(n >> 16)}, ${ch((n >> 8) & 255)}, ${ch(n & 255)})`
 }
 
-/** Staggered planks with grain. `rows` planks across the tile, each `ratio` times as long as wide. */
+/**
+ * Staggered planks with grain. `rows` planks across the tile, each `ratio` times as long as wide; `knots` is the
+ * chance a plank has a knot, for rustic boards.
+ */
 const planks =
-  (base: string, rows: number, ratio: number, seed: number) => (ctx: CanvasRenderingContext2D, px: number) => {
+  (base: string, rows: number, ratio: number, seed: number, knots = 0) =>
+  (ctx: CanvasRenderingContext2D, px: number) => {
     const rnd = random(seed)
     const h = px / rows
     const w = h * ratio
@@ -48,6 +52,15 @@ const planks =
           ctx.moveTo(x, y)
           ctx.bezierCurveTo(x + w * 0.3, y + (rnd() - 0.5) * 6, x + w * 0.7, y + (rnd() - 0.5) * 6, x + w, y)
           ctx.stroke()
+        }
+        if (rnd() < knots) {
+          const kx = x + rnd() * w
+          const ky = r * h + (0.2 + rnd() * 0.6) * h
+          ctx.globalAlpha = 0.6
+          ctx.fillStyle = shade(base, -0.25)
+          ctx.beginPath()
+          ctx.ellipse(kx, ky, 2 + rnd() * 4, 1.5 + rnd() * 2, 0, 0, Math.PI * 2)
+          ctx.fill()
         }
         ctx.globalAlpha = 1
         ctx.fillStyle = shade(base, -0.15)
@@ -70,6 +83,27 @@ const tiles =
         ctx.fillStyle = shade(base, (rnd() - 0.5) * 0.05)
         ctx.fillRect(i * s + 2, j * s + 2, s - 4, s - 4)
       }
+  }
+
+/** Long tiles in a half bond with fine grout and a faint stone speckle; `cols` × `rows` tiles per texture. */
+const slabs =
+  (base: string, grout: string, cols: number, rows: number, seed: number) =>
+  (ctx: CanvasRenderingContext2D, px: number) => {
+    const rnd = random(seed)
+    ctx.fillStyle = grout
+    ctx.fillRect(0, 0, px, px)
+    const w = px / cols
+    const h = px / rows
+    for (let r = 0; r < rows; r++)
+      for (let c = -1; c < cols; c++) {
+        const x = c * w + (r % 2 ? w / 2 : 0)
+        ctx.fillStyle = shade(base, (rnd() - 0.5) * 0.03)
+        ctx.fillRect(x + 1, r * h + 1, w - 2, h - 2)
+      }
+    for (let k = 0; k < px * px * 0.05; k++) {
+      ctx.fillStyle = shade(base, (rnd() - 0.5) * 0.08)
+      ctx.fillRect(rnd() * px, rnd() * px, 1, 1)
+    }
   }
 
 /** Fine fibre noise. */
@@ -147,7 +181,49 @@ export const FLOOR_MATERIALS: FloorMaterial[] = [
   { id: 'concrete', name: 'Concrete', group: 'Other', tile: 2, roughness: 0.8, draw: speckle('#b3b0aa', 0.05, 12) },
 ]
 
+// The house's actual floors, which can't be changed in the app.
+const OAK_NATURAL: FloorMaterial = {
+  id: 'oak-natural',
+  name: 'Natural oak',
+  group: 'Wood',
+  tile: 1.2,
+  roughness: 0.6,
+  draw: planks('#b38b66', 6, 6, 13),
+}
+const OAK_RUSTIC: FloorMaterial = {
+  id: 'oak-rustic',
+  name: 'Rustic light oak',
+  group: 'Wood',
+  tile: 1.2,
+  roughness: 0.65,
+  draw: planks('#cdbea5', 6, 6, 14, 0.5),
+}
+// Spark Perla, 30 × 90 cm, matt.
+const SPARK_PERLA: FloorMaterial = {
+  id: 'spark-perla',
+  name: 'Spark Perla 30 × 90',
+  group: 'Tiles',
+  tile: 1.8,
+  roughness: 0.75,
+  draw: slabs('#cfccc6', '#bdb9b2', 2, 6, 15),
+}
+
+/** Fixed floors by layout room id. Rooms left out (the bathrooms, for now) keep the finish picked for them. */
+export const FIXED_FLOORS: Record<string, FloorMaterial> = {
+  'g-living': OAK_NATURAL,
+  'u-hall': OAK_NATURAL,
+  'u-room-203': OAK_RUSTIC,
+  'u-bedroom': OAK_RUSTIC,
+  'u-room-205': OAK_RUSTIC,
+  'g-hall': SPARK_PERLA,
+  'g-storage': SPARK_PERLA,
+  'u-storage': SPARK_PERLA,
+}
+
 export const floorMaterial = (id: string | undefined) => FLOOR_MATERIALS.find((m) => m.id === id)
+
+/** A room's floor: its fixed one, else the picked finish `saved`. */
+export const roomFloor = (roomId: string, saved: string | undefined) => FIXED_FLOORS[roomId] ?? floorMaterial(saved)
 
 const canvases = new Map<string, HTMLCanvasElement>()
 const textures = new Map<string, CanvasTexture>()

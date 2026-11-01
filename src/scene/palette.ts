@@ -11,7 +11,8 @@ export const HANDLE = '#8a8d90'
 export const GLASS = '#bcd6e0'
 /** Outside shades: Isotra Zetta 70 in RAL 7016 anthracite. */
 export const SHADE = '#383e42'
-export const STAIR_WOOD = '#b48a5a'
+/** The natural oak of the living room and landing (scene/floorMaterials). */
+export const STAIR_WOOD = '#b38b66'
 export const RAILING = '#3b4045'
 export const LAWN = '#9fb47f'
 export const PLOT_EDGE = '#f7f3ec'

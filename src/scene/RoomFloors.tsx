@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { BufferGeometry, Float32BufferAttribute, Mesh } from 'three'
 import { subtractRects, type Rect, type RoomRegion } from '../layout/rooms'
 import type { Floor } from '../layout/types'
-import { floorMaterial, floorTexture } from './floorMaterials'
+import { floorTexture, roomFloor } from './floorMaterials'
 import { FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
 
 // Just above the slab top, below anything standing on the floor.
@@ -77,7 +77,7 @@ const noRaycast = () => null
 
 const RoomFloorMesh = ({ region, voids, material, tint, interactive, onPick }: RoomFloorMeshProps) => {
   const geometry = useMemo(() => floorGeometry(subtractRects(region.cells, voids ?? [])), [region, voids])
-  const finish = floorMaterial(material)
+  const finish = roomFloor(region.roomId, material)
   const map = finish ? floorTexture(finish) : null
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
