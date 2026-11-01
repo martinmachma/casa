@@ -15,8 +15,6 @@ type ViewDockProps = {
   onCamera: (camera: CameraMode) => void
   /** The plan view is for planning; at home there's only 3D and walking. */
   canPlan: boolean
-  /** In a room the floor and camera are the room's own, so the switches only show where you are. */
-  inRoom: boolean
   /** The rooms, at the bottom. */
   children?: ReactNode
 }
@@ -35,7 +33,6 @@ export const ViewDock = ({
   camera,
   onCamera,
   canPlan,
-  inRoom,
   children,
 }: ViewDockProps) => (
   <div className="dock">
@@ -49,7 +46,6 @@ export const ViewDock = ({
             { value: OUTSIDE, label: 'Outside', icon: <House size={15} />, iconOnly: true },
             ...floors.map((f, i) => ({ value: f.id, label: ordinal(i + 1) })),
           ]}
-          disabled={inRoom}
           className="floors"
         />
       </div>
@@ -63,7 +59,6 @@ export const ViewDock = ({
             { value: 'orbit', label: '3D', icon: <Box size={15} /> },
             { value: 'walk', label: 'Walk', icon: <Footprints size={15} /> },
           ]}
-          disabled={inRoom}
           className="views"
         />
       </div>

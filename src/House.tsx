@@ -636,6 +636,7 @@ export const House = ({ backend, account }: HouseProps) => {
               focusItems.filter((i) => i.kind === 'light').map((i) => i.id),
             )}
             onScenes={(s) => scenes.set(focus.room, s)}
+            onLeave={leaveRoom}
           />
         )}
 
@@ -662,9 +663,11 @@ export const House = ({ backend, account }: HouseProps) => {
           outside={outside}
           onOutside={goOutside}
           camera={camera}
-          onCamera={setCamera}
+          onCamera={(c) => {
+            leaveRoom()
+            setCamera(c)
+          }}
           canPlan={planning}
-          inRoom={!!focus}
         >
           {camera !== 'walk' && roomOrder.ready && (
             <RoomNav

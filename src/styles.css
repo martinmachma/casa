@@ -3255,18 +3255,38 @@ input[type='range'].kelvin::-moz-range-thumb {
   top: 6px;
   left: 50%;
   translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   max-width: calc(100% - 28px);
   margin: 0;
-  overflow: hidden;
   color: var(--ink);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 40px;
-  padding: 8px 32px;
+  padding: 8px 20px 8px 32px;
   white-space: nowrap;
-  text-overflow: ellipsis;
   pointer-events: none;
+}
+
+.room-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The way out, right by the name: a solid button, so it reads over whatever the room is behind it. */
+.room-name-leave {
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  pointer-events: auto;
+}
+
+.room-name-leave:hover {
+  background: var(--surface-3);
 }
 
 /* A see-through patch behind the name that fades out on every side, so the room shows through. */

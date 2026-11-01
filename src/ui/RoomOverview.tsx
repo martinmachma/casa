@@ -29,6 +29,8 @@ type RoomOverviewProps = {
   pinRefs: RefObject<Map<string, HTMLElement | null>>
   scenes: Scene[]
   onScenes: (scenes: Scene[]) => void
+  /** Out of the room, back to its whole floor. */
+  onLeave: () => void
 }
 
 /** The room's own view: its name over the middle, what's in it on the right, and a popover by the item picked. */
@@ -46,6 +48,7 @@ export const RoomOverview = ({
   pinRefs,
   scenes,
   onScenes,
+  onLeave,
 }: RoomOverviewProps) => {
   // Cards closing, kept until they've shrunk back into their tags.
   const [leaving, setLeaving] = useState<string[]>([])
@@ -79,7 +82,12 @@ export const RoomOverview = ({
   const kinds = [...new Set(items.map((i) => i.kind))]
   return (
     <>
-      <h2 className="room-name">{title}</h2>
+      <h2 className="room-name">
+        <span className="room-name-text">{title}</span>
+        <IconButton label="Leave room (Esc)" small className="room-name-leave" onClick={onLeave}>
+          <X size={14} />
+        </IconButton>
+      </h2>
       <div className="room-cards" data-compact>
         <SmartCard
           title="In this room"

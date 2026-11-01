@@ -1,12 +1,12 @@
 import {
   Archive,
+  ArrowLeft,
   Bath,
   Bed,
   BedDouble,
   Check,
   DoorOpen,
   Footprints,
-  LayoutGrid,
   Lightbulb,
   Pencil,
   Sofa,
@@ -284,7 +284,7 @@ export const RoomNav = ({ rooms, room, onRoom, onLeave, saved, onSave, lights }:
       <Slide show={room !== undefined && !editing} vertical>
         <div className="room-leave">
           <button className="room-row" onClick={onLeave}>
-            <LayoutGrid size={18} />
+            <ArrowLeft size={18} />
             <span className="room-row-label">All rooms</span>
           </button>
         </div>
