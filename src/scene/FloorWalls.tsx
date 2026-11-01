@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import {
   cornerCuts,
   isExteriorWall,
+  outsideFace,
   sidePart,
   splitPieces,
   stubPieces,
@@ -221,12 +222,15 @@ const WallMesh = ({
   }
 
   const ownStub = stubPieces(own, STUB_HEIGHT)
+  const outside = useMemo(() => (isExteriorWall(wall, floor) ? outsideFace(wall, floor) : undefined), [wall, floor])
   const opening = (top?: number) =>
     wall.openings && (
       <OpeningFills
         wallId={wall.id}
         openings={wall.openings}
         exterior={isExteriorWall(wall, floor)}
+        outside={outside}
+        thickness={thickness}
         clickable={doors}
         openDoors={openDoors}
         onToggleDoor={onToggleDoor}

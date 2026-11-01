@@ -9,6 +9,8 @@ export const INTERIOR_FRAME = '#e9e4dc'
 export const DOOR_LEAF = '#f7f4ef'
 export const HANDLE = '#8a8d90'
 export const GLASS = '#bcd6e0'
+/** Outside shades: Isotra Zetta 70 in RAL 7016 anthracite. */
+export const SHADE = '#383e42'
 export const STAIR_WOOD = '#b48a5a'
 export const RAILING = '#3b4045'
 export const LAWN = '#9fb47f'

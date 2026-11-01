@@ -1,10 +1,10 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
-import { FrontSide, Group, MathUtils, Mesh, Plane, Vector3 } from 'three'
-import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill } from '../layout/geometry'
-import type { Opening } from '../layout/types'
+import { FrontSide, Group, InstancedMesh, MathUtils, Mesh, Object3D, Plane, Vector3 } from 'three'
+import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill, shadeId } from '../layout/geometry'
+import type { Opening, WallSide } from '../layout/types'
 import { raycastIfShown } from './raycast'
-import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME } from './palette'
+import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME, SHADE } from './palette'
 
 const FRAME_DEPTH = 0.08
 const LEAF = 0.04
@@ -72,6 +72,8 @@ export const OpeningFills = ({
   wallId,
   openings,
   exterior,
+  outside,
+  thickness,
   clickable,
   top,
   openDoors,
@@ -83,6 +85,9 @@ export const OpeningFills = ({
   onToggleDoor: (id: string) => void
   /** Outer walls' doors and windows get dark aluminium frames. */
   exterior: boolean
+  /** The face looking out of the house, where windows and sliding doors get an outside shade. */
+  outside?: WallSide
+  thickness: number
   /** Whether a tap on a door opens or closes it. */
   clickable: boolean
   /** In a wall cut down to its stub: only what's below this height is drawn. */
@@ -116,6 +121,19 @@ export const OpeningFills = ({
               />
             )}
             {o.type === 'sliding' && <SlidingDoor inner={inner} {...door} />}
+            {outside && (o.type === 'window' || o.type === 'sliding') && (
+              <Shade
+                u0={u0}
+                u1={u1}
+                y0={y0}
+                y1={y1}
+                z={(outside === 'a' ? 1 : -1) * (thickness / 2 - SHADE_INSET)}
+                section={section}
+                clickable={clickable}
+                open={openDoors.has(shadeId(id))}
+                onToggle={() => onToggleDoor(shadeId(id))}
+              />
+            )}
           </group>
         )
       })}
@@ -178,7 +196,7 @@ const useToggle = ({ open, onToggle, clickable }: DoorState, apply: (group: Grou
         onPointerOut: () => (document.body.style.cursor = ''),
       }
     : { raycast: noRaycast }
-  return { group, handlers }
+  return { group, handlers, amount }
 }
 
 /** A leaf hinged at the opening's start (or end), swinging into side 'a' (+z) or 'b' (-z). */
@@ -236,6 +254,89 @@ const SlidingDoor = ({ inner, section, ...state }: { inner: Inner } & DoorState)
       <mesh position={[0.03, inner.y0 + 1.05, LEAF / 2 + 0.01]} {...handlers}>
         <boxGeometry args={[0.02, 0.3, 0.02]} />
         <FillMaterial section={section} color={HANDLE} metalness={0.6} roughness={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
+/** How far in from the wall's outer face the shade's slats are centred, in the reveal outside the glazing. */
+const SHADE_INSET = 0.045
+/** Zetta 70: 70 mm Z-shaped slats on a 63 mm pitch, stacking to about 9 mm each when raised. */
+const SLAT_DEPTH = 0.07
+const SLAT_PITCH = 0.063
+const SLAT_STACKED = 0.009
+const SLAT_THICK = 0.006
+/** How far lowered slats turn from flat, radians, nearly closing. */
+const SLAT_TILT = 1.1
+const RAIL = 0.025
+const HEAD = 0.05
+const BOTTOM = 0.03
+
+/**
+ * An outside venetian shade (Isotra Zetta 70) in the window's reveal: guide rails at the sides, a head profile
+ * above, and slats that unstack down to the sill and tilt shut when lowered (`open`), stacked under the head when
+ * raised. Tapping it raises or lowers it.
+ */
+const Shade = ({
+  u0,
+  u1,
+  y0,
+  y1,
+  z,
+  ...state
+}: { u0: number; u1: number; y0: number; y1: number; z: number } & DoorState) => {
+  const slats = useRef<InstancedMesh>(null)
+  const bottom = useRef<Mesh>(null)
+  const pick = useRef<Mesh>(null)
+  const w = u1 - u0
+  const top = y1 - HEAD
+  const count = Math.max(1, Math.floor((y1 - y0 - HEAD - BOTTOM) / SLAT_PITCH))
+  const dummy = useMemo(() => new Object3D(), [])
+  const place = (t: number) => {
+    const pitch = MathUtils.lerp(SLAT_STACKED, SLAT_PITCH, t)
+    if (slats.current) {
+      for (let k = 0; k < count; k++) {
+        dummy.position.set(0, top - (k + 0.5) * pitch, 0)
+        dummy.rotation.set(t * SLAT_TILT, 0, 0)
+        dummy.updateMatrix()
+        slats.current.setMatrixAt(k, dummy.matrix)
+      }
+      slats.current.instanceMatrix.needsUpdate = true
+      slats.current.computeBoundingSphere()
+    }
+    const end = top - count * pitch
+    bottom.current?.position.setY(end - BOTTOM / 2)
+    // The taps land on a sheet over whatever is down, from the head to the bottom bar.
+    pick.current?.scale.setY(y1 - end + BOTTOM)
+    pick.current?.position.setY((y1 + end - BOTTOM) / 2)
+  }
+  const { group, handlers, amount } = useToggle(state, (_, t) => place(t))
+  useLayoutEffect(() => place(amount.current))
+  const section = state.section
+  const material = <FillMaterial section={section} color={SHADE} roughness={0.5} metalness={0.3} />
+  return (
+    <group ref={group} position={[(u0 + u1) / 2, 0, z]}>
+      <instancedMesh ref={slats} args={[undefined, undefined, count]} castShadow raycast={noRaycast}>
+        <boxGeometry args={[w - RAIL, SLAT_THICK, SLAT_DEPTH]} />
+        {material}
+      </instancedMesh>
+      <mesh ref={bottom} castShadow raycast={noRaycast}>
+        <boxGeometry args={[w - RAIL, BOTTOM, SLAT_DEPTH * 0.6]} />
+        {material}
+      </mesh>
+      <mesh position={[0, y1 - HEAD / 2, 0]} castShadow raycast={noRaycast}>
+        <boxGeometry args={[w, HEAD, SLAT_DEPTH + 0.02]} />
+        {material}
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[(side * (w - RAIL)) / 2, (y0 + y1) / 2, 0]} castShadow raycast={noRaycast}>
+          <boxGeometry args={[RAIL, y1 - y0, 0.04]} />
+          {material}
+        </mesh>
+      ))}
+      <mesh ref={pick} {...handlers}>
+        <boxGeometry args={[w, 1, SLAT_DEPTH + 0.02]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
     </group>
   )

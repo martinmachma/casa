@@ -39,6 +39,9 @@ export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window
 /** Openings have no stored id; wall ids are unique and openings retain their layout order. */
 export const openingId = (wallId: string, index: number): string => `${wallId}:${index}`
 
+/** The outside shade over a window or sliding door, lowered when its id is in the open set like a door's. */
+export const shadeId = (openingKey: string): string => `${openingKey}:shade`
+
 /**
  * Splits a wall into solid boxes around its openings. Each end can extend independently to close its join.
  */
@@ -168,6 +171,14 @@ export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
     if (!insidePolygon([mx + sign * nx * reach, mz + sign * nz * reach], outline)) return [sign * nx, sign * nz]
   }
   return undefined
+}
+
+/** Which face of an outer wall looks out of the house; undefined for walls with rooms on both sides. */
+export const outsideFace = (wall: Wall, floor: Floor): WallSide | undefined => {
+  const out = wallOutside(wall, floor)
+  if (!out) return undefined
+  const [nx, nz] = wallNormal(wall)
+  return out[0] * nx + out[1] * nz > 0 ? 'a' : 'b'
 }
 
 /**
