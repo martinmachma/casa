@@ -135,7 +135,6 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     [state.walls],
   )
   const roomNames = useMemo(() => new Map((state.rooms ?? []).map((r) => [r.roomId, r.name])), [state.rooms])
-  const roomFloors = useMemo(() => new Map(state.floors.map((f) => [f.roomId, f.material])), [state.floors])
 
   /** Applies an edit, starting a draft from what's on screen if there isn't one. */
   const edit = (change: (s: HouseState) => HouseState, key?: string) =>
@@ -178,22 +177,6 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
         ],
       }
     }, `wall:${wallId}:${side}:${part}`)
-
-  const setRoomFloor = (roomId: string, material: string | undefined) =>
-    edit((s) => ({
-      ...s,
-      floors: [...s.floors.filter((f) => f.roomId !== roomId), ...(material ? [{ roomId, material }] : [])],
-    }))
-
-  /** Renames a room; an empty name goes back to the plan's. */
-  const setRoomName = (roomId: string, name: string) =>
-    edit(
-      (s) => ({
-        ...s,
-        rooms: [...(s.rooms ?? []).filter((r) => r.roomId !== roomId), ...(name.trim() ? [{ roomId, name }] : [])],
-      }),
-      `room:${roomId}`,
-    )
 
   /** Adds pieces as one undo step. */
   const addFurniture = (...items: NewFurnitureItem[]): FurnitureItem[] => {
@@ -294,10 +277,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     deleteVersion: (id: string) => change.mutate(() => backend.deleteVersion(id)),
     wallColors,
     setWallColor,
-    roomFloors,
-    setRoomFloor,
     roomNames,
-    setRoomName,
     furniture: state.furniture,
     addFurniture,
     patchFurniture,

@@ -4,7 +4,6 @@ export type Selection =
   | { kind: 'wall'; wallId: string; side: WallFace; part: number }
   /** One piece, or several picked with Shift/⌘ to move, turn, copy or remove together. */
   | { kind: 'furniture'; ids: string[] }
-  | { kind: 'room'; roomId: string }
   | { kind: 'device'; id: string }
   /** A ceiling light (device id) or lamp (furniture id) picked while looking round, to switch and set. */
   | { kind: 'light'; id: string }

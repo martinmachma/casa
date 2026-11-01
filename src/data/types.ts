@@ -7,9 +7,6 @@ import type { WallFace, WallSide } from '../layout/types'
  */
 export type WallColor = { wallId: string; side: WallFace; part?: number; color: string }
 
-/** A room's floor finish; `material` is an id from scene/floorMaterials. */
-export type RoomFloor = { roomId: string; material: string }
-
 export type FurnitureItem = {
   id: string
   /** Layout floor id. */
@@ -62,7 +59,6 @@ export type NewDevice = Omit<Device, 'id'>
 /** Everything placed in the house: what a version records. */
 export type HouseState = {
   walls: WallColor[]
-  floors: RoomFloor[]
   furniture: FurnitureItem[]
   /** Absent in versions saved before rooms could be renamed. */
   rooms?: RoomName[]
@@ -70,7 +66,7 @@ export type HouseState = {
   devices?: Device[]
 }
 
-export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [], rooms: [], devices: [] }
+export const EMPTY_STATE: HouseState = { walls: [], furniture: [], rooms: [], devices: [] }
 
 /** A saved snapshot of the house; once saved only its name can change. */
 export type Version = {

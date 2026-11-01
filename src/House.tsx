@@ -37,7 +37,6 @@ import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } f
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
 import { ViewDock } from './ui/ViewDock'
-import { RoomPanel } from './ui/RoomPanel'
 import { WallPanel } from './ui/WallPanel'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
@@ -144,7 +143,6 @@ export const House = ({ backend, account }: HouseProps) => {
   // From outside, furniture goes on the ground floor or round it in the garden.
   const furnitureFloor = outside ? house.floors[0] : floor
   const regions = floorRegions(floor)
-  const selectedRoom = selection?.kind === 'room' ? floor.rooms.find((r) => r.id === selection.roomId) : undefined
   const selectedItems =
     selection?.kind === 'furniture' ? data.furniture.filter((f) => selection.ids.includes(f.id)) : []
   const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
@@ -482,18 +480,6 @@ export const House = ({ backend, account }: HouseProps) => {
         />
       )
     }
-    if (selectedRoom)
-      return (
-        <RoomPanel
-          room={selectedRoom}
-          region={regions.get(selectedRoom.id)}
-          names={data.roomNames}
-          onName={(name) => data.setRoomName(selectedRoom.id, name)}
-          material={data.roomFloors.get(selectedRoom.id)}
-          onMaterial={(material) => data.setRoomFloor(selectedRoom.id, material)}
-          onClose={() => setSelection(undefined)}
-        />
-      )
     if (selectedItem)
       return (
         <FurnitureEditor

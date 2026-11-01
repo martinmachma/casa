@@ -1,14 +1,12 @@
-import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo } from 'react'
-import { BufferGeometry, Float32BufferAttribute, Mesh } from 'three'
+import { BufferGeometry, Float32BufferAttribute } from 'three'
 import { subtractRects, type Rect, type RoomRegion } from '../layout/rooms'
 import type { Floor } from '../layout/types'
-import { floorTexture, roomFloor } from './floorMaterials'
-import { FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
+import { floorBump, floorTexture, roomFloor } from './floorMaterials'
+import { FLOOR_SLAB } from './palette'
 
 // Just above the slab top, below anything standing on the floor.
 const LIFT = 0.003
-const CLICK_SLOP_PX = 5
 
 /** A flat mesh over the rectangles, facing up, with plan metres as UVs so textures line up across cells. */
 const floorGeometry = (cells: Rect[]): BufferGeometry => {
@@ -39,24 +37,12 @@ const floorGeometry = (cells: Rect[]): BufferGeometry => {
 type RoomFloorsProps = {
   floor: Floor
   regions: Map<string, RoomRegion>
-  materials: Map<string, string>
-  selectedRoom: string | undefined
-  interactive: boolean
-  onPick: (roomId: string) => void
 }
 
-export const RoomFloors = ({ floor, regions, materials, selectedRoom, interactive, onPick }: RoomFloorsProps) => (
+export const RoomFloors = ({ floor, regions }: RoomFloorsProps) => (
   <group position={[0, floor.elevation + LIFT, 0]}>
     {[...regions.values()].map((region) => (
-      <RoomFloorMesh
-        key={region.roomId}
-        region={region}
-        voids={floor.voids}
-        material={materials.get(region.roomId)}
-        tint={region.roomId === selectedRoom ? 0.3 : 0}
-        interactive={interactive}
-        onPick={onPick}
-      />
+      <RoomFloorMesh key={region.roomId} region={region} voids={floor.voids} />
     ))}
   </group>
 )
@@ -65,47 +51,26 @@ type RoomFloorMeshProps = {
   region: RoomRegion
   /** Left bare, like the stairwell. */
   voids: Rect[] | undefined
-  material: string | undefined
-  /** How strongly the accent colour washes over the floor; 0 for not at all. */
-  tint: number
-  interactive: boolean
-  onPick: (roomId: string) => void
 }
 
-// Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
+// Taps go through the floor to whatever is under it.
 const noRaycast = () => null
 
-const RoomFloorMesh = ({ region, voids, material, tint, interactive, onPick }: RoomFloorMeshProps) => {
+const RoomFloorMesh = ({ region, voids }: RoomFloorMeshProps) => {
   const geometry = useMemo(() => floorGeometry(subtractRects(region.cells, voids ?? [])), [region, voids])
-  const finish = roomFloor(region.roomId, material)
-  const map = finish ? floorTexture(finish) : null
-
-  const handleClick = (e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > CLICK_SLOP_PX) return
-    e.stopPropagation()
-    onPick(region.roomId)
-  }
-
+  const finish = roomFloor(region.roomId)
   return (
-    <>
-      <mesh
-        geometry={geometry}
-        receiveShadow
-        raycast={interactive ? Mesh.prototype.raycast : noRaycast}
-        onClick={interactive ? handleClick : undefined}
-      >
+    <mesh geometry={geometry} receiveShadow raycast={noRaycast}>
+      {finish ? (
         <meshStandardMaterial
-          key={finish?.id ?? 'plain'}
-          map={map}
-          color={map ? '#ffffff' : FLOOR_SLAB}
-          roughness={finish?.roughness ?? 0.9}
+          map={floorTexture(finish)}
+          bumpMap={floorBump(finish)}
+          bumpScale={finish.bumpScale}
+          roughness={finish.roughness}
         />
-      </mesh>
-      {tint > 0 && (
-        <mesh geometry={geometry} position={[0, 0.002, 0]} raycast={noRaycast}>
-          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={tint} depthWrite={false} />
-        </mesh>
+      ) : (
+        <meshStandardMaterial color={FLOOR_SLAB} roughness={0.9} />
       )}
-    </>
+    </mesh>
   )
 }

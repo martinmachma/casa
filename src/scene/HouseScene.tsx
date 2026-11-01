@@ -361,14 +361,7 @@ export const HouseScene = ({
               />
             )}
             <Railings floor={f} />
-            <RoomFloors
-              floor={f}
-              regions={floorRegions(f)}
-              materials={data.roomFloors}
-              selectedRoom={selection?.kind === 'room' ? selection.roomId : undefined}
-              interactive={pickable && f.id === floor.id}
-              onPick={(roomId) => onSelect({ kind: 'room', roomId })}
-            />
+            <RoomFloors floor={f} regions={floorRegions(f)} />
             <FloorWalls
               floor={f}
               colors={data.wallColors}
