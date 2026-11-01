@@ -38,10 +38,17 @@ const inFurniture = (o: Object3D) => {
   return false
 }
 
+/** Part of a wall, or of what's set in one. */
+const inWall = (o: Object3D) => {
+  for (let p: Object3D | null = o; p; p = p.parent) if (p.userData.wallId) return true
+  return false
+}
+
 /**
  * What the pointer reaches: nothing out of focus around a room in its view, and nothing behind whatever solid
  * thing is in front, even one that doesn't take the pointer itself (a box in front of a door). A target marked
- * `pastFurniture` (the floor while a ceiling light is placed) is reached through furniture standing on it.
+ * `pastFurniture` (the floor while a ceiling light is placed) is reached through furniture standing on it, and one
+ * marked `pastWalls` (a window's shade, outside it) through the walls.
  */
 export const reachable = (hits: Intersection[], scene: Object3D, ray: Raycaster) => {
   const near = hits.filter((h) => !h.object.userData.outside)
@@ -49,8 +56,10 @@ export const reachable = (hits: Intersection[], scene: Object3D, ray: Raycaster)
   const solids = solidHits(scene, ray)
   const front = solids[0]
   const past = near.some((h) => h.object.userData.pastFurniture) && solids.find((h) => !inFurniture(h.object))
+  const pastWall = near.some((h) => h.object.userData.pastWalls) && solids.find((h) => !inWall(h.object))
   return near.filter((h) => {
-    const by = h.object.userData.pastFurniture ? past : front
+    const ud = h.object.userData
+    const by = ud.pastFurniture ? past : ud.pastWalls ? pastWall : front
     return !by || h.distance <= by.distance + 0.01
   })
 }

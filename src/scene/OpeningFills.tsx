@@ -298,6 +298,8 @@ const SLAT_THICK = 0.006
 /** How far hanging slats turn from flat when tilted fully shut, radians. */
 const SLAT_SHUT = 1.4
 const RAIL = 0.025
+/** How wide a strip along a shade's rails and sill takes taps. */
+const FRAME_HIT = 0.1
 const HEAD = 0.05
 const BOTTOM = 0.03
 /** How quickly a shade travels and its slats turn, per second (exponential easing); slower than a door. */
@@ -432,9 +434,25 @@ const Shade = ({
         <boxGeometry args={[w - 2 * RAIL, RAIL, 0.04]} />
         {material}
       </mesh>
-      {/* Not drawn, nor in its outline. */}
-      <mesh ref={pick} {...handlers}>
+      {/* Not drawn, nor in its outline; reached through the wall it's on, seen from in the room. */}
+      <mesh ref={pick} userData={{ pastWalls: true }} {...handlers}>
         <boxGeometry args={[w, 1, SLAT_DEPTH + 0.02]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      {/* The rails and the sill take taps too, over a wider strip than they're drawn. */}
+      {[-1, 1].map((side) => (
+        <mesh
+          key={side}
+          position={[(side * (w - FRAME_HIT)) / 2, (y0 + y1) / 2, 0]}
+          userData={{ pastWalls: true }}
+          {...handlers}
+        >
+          <boxGeometry args={[FRAME_HIT, y1 - y0, SLAT_DEPTH + 0.02]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+      ))}
+      <mesh position={[0, y0 + FRAME_HIT / 2, 0]} userData={{ pastWalls: true }} {...handlers}>
+        <boxGeometry args={[w, FRAME_HIT, SLAT_DEPTH + 0.02]} />
         <meshBasicMaterial visible={false} />
       </mesh>
     </group>
