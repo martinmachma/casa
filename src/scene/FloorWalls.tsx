@@ -20,6 +20,7 @@ import {
 } from '../layout/geometry'
 import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
 import { wallPartColor } from '../data/types'
+import type { ShadeState } from '../devices/shades'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
 import { raycastIfShown } from './raycast'
@@ -45,6 +46,9 @@ type FloorWallsProps = {
   doors: boolean
   openDoors: ReadonlySet<string>
   onToggleDoor: (id: string) => void
+  shades: Readonly<Record<string, ShadeState>>
+  /** Opens a shade's controls when it's tapped. */
+  onPickShade?: (id: string) => void
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
@@ -60,6 +64,8 @@ export const FloorWalls = ({
   doors,
   openDoors,
   onToggleDoor,
+  shades,
+  onPickShade,
   cutaway,
   focus,
   onPick,
@@ -81,6 +87,8 @@ export const FloorWalls = ({
           doors={doors}
           openDoors={openDoors}
           onToggleDoor={onToggleDoor}
+          shades={shades}
+          onPickShade={onPickShade}
           onPick={onPick}
         />
       ))}
@@ -99,6 +107,9 @@ type WallMeshProps = {
   doors: boolean
   openDoors: ReadonlySet<string>
   onToggleDoor: (id: string) => void
+  shades: Readonly<Record<string, ShadeState>>
+  /** Opens a shade's controls when it's tapped. */
+  onPickShade?: (id: string) => void
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
@@ -116,6 +127,8 @@ const WallMesh = ({
   doors,
   openDoors,
   onToggleDoor,
+  shades,
+  onPickShade,
   onPick,
 }: WallMeshProps) => {
   const owner = wallOwner(wall, floor)
@@ -234,6 +247,8 @@ const WallMesh = ({
         clickable={doors}
         openDoors={openDoors}
         onToggleDoor={onToggleDoor}
+        shades={shades}
+        onPickShade={onPickShade}
         top={top}
       />
     )

@@ -56,7 +56,7 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
     { out: [0, -1], beyond: z0 - bounds.min[1] },
   ]
   // On a wide screen the long side faces the camera, on a tall one the short side.
-  const across = (width >= depth) === aspect >= 1
+  const across = width >= depth === aspect >= 1
   const long = Math.max(width, depth) / Math.min(width, depth) > 1.25
   // Pieces tall enough to hide the room when they stand on the camera's side of it.
   const tall = items.filter(
@@ -96,10 +96,7 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
   // The floor, what stands on it, and the far walls up to near the ceiling.
   const points = corners.flatMap(([x, z]) => {
     const far = (x - cx) * look.x + (z - cz) * look.z < 0
-    return [
-      new Vector3(x, floorY, z),
-      new Vector3(x, floorY + (far ? floor.height * 0.75 : 1), z),
-    ]
+    return [new Vector3(x, floorY, z), new Vector3(x, floorY + (far ? floor.height * 0.75 : 1), z)]
   })
   // The part of the screen the room may take (NDC); the cards take the right of a wide screen.
   const wide = aspect > 1.2

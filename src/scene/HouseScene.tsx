@@ -30,6 +30,7 @@ import type { SunPosition } from '../sun/sun'
 import { daylight, Lights } from './Lights'
 import { HouseLights, isLamp } from './HouseLights'
 import { lightColor, lightLevel, type LightState } from '../devices/lights'
+import type { ShadeState } from '../devices/shades'
 import { MeasureTool } from './MeasureTool'
 import { Compass, CompassTracker } from './Compass'
 import { WalkCamera } from './WalkCamera'
@@ -86,6 +87,10 @@ type HouseSceneProps = {
   lights: Readonly<Record<string, LightState>>
   /** A light or lamp tapped while looking round. */
   onPickLight: (id: string) => void
+  /** The windows' outside shades, by shade id; those nobody has moved are up. */
+  shades: Readonly<Record<string, ShadeState>>
+  /** A shade tapped while looking round. */
+  onPickShade: (id: string) => void
   onPlaceDevice: (device: Omit<Device, 'id' | 'name'>) => void
   /** A new piece carried under the pointer until a tap puts it down. */
   placingPiece: Omit<NewFurnitureItem, 'x' | 'y'> | undefined
@@ -133,6 +138,8 @@ export const HouseScene = ({
   placing,
   lights,
   onPickLight,
+  shades,
+  onPickShade,
   onPlaceDevice,
   placingPiece,
   onPlacePiece,
@@ -271,7 +278,7 @@ export const HouseScene = ({
             floor={floor}
             roomId={focusRoom}
             furniture={data.furniture}
-            closeUp={open ? pins?.find((p) => p.key === `tag:${open}`)?.at : undefined}
+            closeUp={open ? pins?.find((p) => p.key === `tag:${open}`) : undefined}
             from={
               lastView.mode === 'orbit'
                 ? { position: lastView.position.clone(), target: lastView.target.clone() }
@@ -367,6 +374,8 @@ export const HouseScene = ({
               doors={!measure && !placingPiece && !placing && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
+              shades={shades}
+              onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? onPickShade : undefined}
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
               onPick={pickWall}

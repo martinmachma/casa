@@ -3542,3 +3542,46 @@ input[type='range'].kelvin::-moz-range-thumb {
   align-items: center;
   margin: 8px 0 20px;
 }
+
+/* A shade's controls stand by it without a card: its name, then the arrows and the slat turns, each in a pill. */
+.room-popover[data-bare] {
+  width: auto;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.shade-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+}
+
+.shade-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.shade-name .muted {
+  font-size: 12px;
+}
+
+.shade-buttons {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.shade-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+}

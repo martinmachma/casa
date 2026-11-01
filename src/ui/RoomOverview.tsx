@@ -2,11 +2,13 @@ import { X } from 'lucide-react'
 import { type RefObject, useEffect, useState } from 'react'
 import { DEVICE_KINDS } from '../devices/kinds'
 import type { LightState } from '../devices/lights'
+import type { ShadeState } from '../devices/shades'
 import type { Scene } from '../devices/scenes'
 import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { LightControls } from './LightControls'
 import { RoomScenes } from './RoomScenes'
+import { ShadeControls } from './ShadeControls'
 import { SmartCard, SmartTag, SmartTile, TagLine } from './SmartList'
 import { KIND_GROUPS, lightsSummary } from './smartText'
 
@@ -15,6 +17,8 @@ type RoomOverviewProps = {
   items: SmartItem[]
   light: (id: string) => LightState
   onLight: (id: string, patch: Partial<LightState>) => void
+  shade: (id: string) => ShadeState
+  onShade: (id: string, patch: Partial<ShadeState>) => void
   open: string | undefined
   onOpen: (id: string | undefined) => void
   /** The item whose card is pointed at, picked out in the view like the open one. */
@@ -33,6 +37,8 @@ export const RoomOverview = ({
   items,
   light,
   onLight,
+  shade,
+  onShade,
   open,
   onOpen,
   onHover,
@@ -105,6 +111,7 @@ export const RoomOverview = ({
                         key={item.id}
                         item={item}
                         light={item.kind === 'light' ? light(item.id) : undefined}
+                        shade={item.kind === 'blind' ? shade(item.id) : undefined}
                         pressed={open === item.id}
                         hovered={hovered === item.id}
                         onOpen={() => onOpen(open === item.id ? undefined : item.id)}
@@ -142,6 +149,7 @@ export const RoomOverview = ({
                 <SmartTag
                   item={item}
                   light={item.kind === 'light' ? light(item.id) : undefined}
+                  shade={item.kind === 'blind' ? shade(item.id) : undefined}
                   onOpen={() => onOpen(item.id)}
                   onHover={(h) => onHover(h ? item.id : undefined)}
                 />
@@ -150,7 +158,8 @@ export const RoomOverview = ({
                 <div
                   // Reopened while closing, it grows afresh.
                   key={item.id === open ? 'open' : 'closing'}
-                  className="room-popover float"
+                  className={item.kind === 'blind' ? 'room-popover' : 'room-popover float'}
+                  data-bare={item.kind === 'blind' || undefined}
                   data-closing={item.id !== open || undefined}
                   role="dialog"
                   aria-label={item.name}
@@ -159,23 +168,38 @@ export const RoomOverview = ({
                       setLeaving((l) => l.filter((i) => i !== item.id))
                   }}
                 >
-                  <header className="room-card-head">
-                    <div>
-                      <div className="eyebrow">{item.lamp ? 'Lamp' : DEVICE_KINDS[item.kind].label}</div>
-                      <strong>{item.name}</strong>
-                    </div>
-                    <IconButton label="Close" small onClick={() => onOpen(undefined)}>
-                      <X size={16} />
-                    </IconButton>
-                  </header>
-                  {item.kind === 'light' ? (
-                    <LightControls light={light(item.id)} entity={item.entity} onChange={(p) => onLight(item.id, p)} />
+                  {item.kind === 'blind' ? (
+                    <ShadeControls
+                      name={item.name}
+                      shade={shade(item.id)}
+                      onChange={(p) => onShade(item.id, p)}
+                      onClose={() => onOpen(undefined)}
+                    />
                   ) : (
-                    <p className="hint">
-                      {item.entity
-                        ? `It will show ${item.entity} once Home Assistant is linked.`
-                        : 'Give it a Home Assistant entity under Planning to control it here.'}
-                    </p>
+                    <>
+                      <header className="room-card-head">
+                        <div>
+                          <div className="eyebrow">{item.lamp ? 'Lamp' : DEVICE_KINDS[item.kind].label}</div>
+                          <strong>{item.name}</strong>
+                        </div>
+                        <IconButton label="Close" small onClick={() => onOpen(undefined)}>
+                          <X size={16} />
+                        </IconButton>
+                      </header>
+                      {item.kind === 'light' ? (
+                        <LightControls
+                          light={light(item.id)}
+                          entity={item.entity}
+                          onChange={(p) => onLight(item.id, p)}
+                        />
+                      ) : (
+                        <p className="hint">
+                          {item.entity
+                            ? `It will show ${item.entity} once Home Assistant is linked.`
+                            : 'Give it a Home Assistant entity under Planning to control it here.'}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}

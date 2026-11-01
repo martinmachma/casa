@@ -10,7 +10,11 @@ import { roomPose } from '../rooms/roomViews'
 const FLIGHT_SECONDS = 1.1
 /** How far from an opened item the camera comes in to. */
 const CLOSE_UP = 2.2
+/** Further back from one looked at from a given way (a window's shade), to take in the whole window. */
+const CLOSE_UP_FACING = 3.4
 const FOV = 45
+/** Looking at an item from a given way, how far the camera rises for each metre it stands back. */
+const FACING_RISE = 0.35
 /** An opened item's card: how far right of the item it starts, and how wide it is. */
 const CARD = { left: 98, width: 260 }
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
@@ -28,8 +32,8 @@ export const RoomCamera = ({
   roomId: string
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
-  /** An opened item to come in close to, from the room's side of it; the camera holds still there. */
-  closeUp?: [number, number, number]
+  /** An opened item to come in close to, from the room's side of it (or from `facing`); the camera holds still there. */
+  closeUp?: Pin
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, for the house's camera to carry on from after the room. */
   onView?: (position: Vector3, target: Vector3) => void
@@ -42,21 +46,24 @@ export const RoomCamera = ({
     () => roomPose(floor, roomId, size.width / size.height, placed.furniture),
     [floor, roomId, size, placed.furniture],
   )
-  const [cx, cy, cz] = closeUp ?? []
+  const [cx, cy, cz] = closeUp?.at ?? []
+  const [fx, fz] = closeUp?.facing ?? []
   const pose = useMemo(() => {
     if (!roomView || cx === undefined) return roomView
     const item = new Vector3(cx, cy, cz)
-    const back = roomView.position.clone().sub(item).normalize()
+    const back =
+      fx === undefined ? roomView.position.clone().sub(item).normalize() : new Vector3(fx, FACING_RISE, fz).normalize()
     // The item sits left of its card, which ends up in the middle of the screen.
     const right = new Vector3(0, 1, 0).cross(back).normalize()
     const up = back.clone().cross(right)
-    const perPixel = (2 * CLOSE_UP * Math.tan(((FOV / 2) * Math.PI) / 180)) / size.height
+    const distance = fx === undefined ? CLOSE_UP : CLOSE_UP_FACING
+    const perPixel = (2 * distance * Math.tan(((FOV / 2) * Math.PI) / 180)) / size.height
     const dx = Math.max(16, (size.width - CARD.width) / 2 - CARD.left) - size.width / 2
     // The line rises 22px to the card's middle.
     const dy = 22
     const target = item.addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel)
-    return { ...roomView, position: target.clone().addScaledVector(back, CLOSE_UP), target }
-  }, [roomView, cx, cy, cz, size])
+    return { ...roomView, position: target.clone().addScaledVector(back, distance), target }
+  }, [roomView, cx, cy, cz, fx, fz, size])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
@@ -117,7 +124,7 @@ export const RoomCamera = ({
 }
 
 /** A point in the room to pin a DOM element to, such as a smart item's popover. */
-export type Pin = { key: string; at: [number, number, number] }
+export type Pin = { key: string; at: [number, number, number]; facing?: [number, number] }
 
 type FocusProjectorProps = {
   pins: Pin[]

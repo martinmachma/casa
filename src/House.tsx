@@ -48,6 +48,7 @@ import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
 import { floorItems, roomItems } from './rooms/roomItems'
+import { floorShades, SHADE_UP, useShades } from './devices/shades'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
 import { HouseTags } from './ui/HouseTags'
@@ -127,6 +128,7 @@ export const House = ({ backend, account }: HouseProps) => {
   const rooms = useMemo(() => roomViews(house, data.roomNames), [data.roomNames])
   const focus = rooms.find((r) => r.id === roomView)
   const lights = useLights()
+  const shades = useShades()
   const scenes = useScenes()
   const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
   const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
@@ -254,6 +256,14 @@ export const House = ({ backend, account }: HouseProps) => {
     setSelection(undefined)
     setPopover(undefined)
     setRoomView(id)
+  }
+
+  /** A tapped shade opens its controls, in its room's view. */
+  const pickShade = (id: string) => {
+    const room = house.floors.flatMap((f) => floorShades(f, floorRegions(f))).find((s) => s.id === id)?.room
+    if (!room) return
+    if (focus?.room !== room) openRoom(room)
+    setPopover(id)
   }
 
   const switchFloor = (index: number) => {
@@ -589,6 +599,8 @@ export const House = ({ backend, account }: HouseProps) => {
           onPlacePiece={placePiece}
           lights={lights.states}
           onPickLight={(id) => (focus ? setPopover(id) : select({ kind: 'light', id }))}
+          shades={shades.states}
+          onPickShade={pickShade}
           onPlaceDevice={placeDevice}
           nudge={nudge}
           viewKey={viewKey}
@@ -599,7 +611,7 @@ export const House = ({ backend, account }: HouseProps) => {
             onDelete: deleteSelection,
           }}
           focusRoom={focus?.room}
-          pins={(focus ? focusItems : floorTags).map((i) => ({ key: `tag:${i.id}`, at: i.at }))}
+          pins={(focus ? focusItems : floorTags).map((i) => ({ key: `tag:${i.id}`, at: i.at, facing: i.facing }))}
           pinRefs={pinRefs}
           open={popover}
           hovered={hoveredItem}
@@ -613,6 +625,8 @@ export const House = ({ backend, account }: HouseProps) => {
             items={focusItems}
             light={(id) => lightSettings(lights.states[id], dark)}
             onLight={(id, patch) => lights.set(id, patch, dark)}
+            shade={(id) => shades.states[id] ?? SHADE_UP}
+            onShade={shades.set}
             open={popover}
             onOpen={setPopover}
             onHover={setHoveredItem}
@@ -631,6 +645,7 @@ export const House = ({ backend, account }: HouseProps) => {
           <HouseTags
             items={floorTags}
             light={(id) => lightSettings(lights.states[id], dark)}
+            shade={(id) => shades.states[id] ?? SHADE_UP}
             onOpen={(room, item) => {
               openRoom(room)
               setPopover(item)

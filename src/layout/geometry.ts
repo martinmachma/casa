@@ -39,7 +39,7 @@ export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window
 /** Openings have no stored id; wall ids are unique and openings retain their layout order. */
 export const openingId = (wallId: string, index: number): string => `${wallId}:${index}`
 
-/** The outside shade over a window or sliding door, lowered when its id is in the open set like a door's. */
+/** The outside shade over a window or sliding door. */
 export const shadeId = (openingKey: string): string => `${openingKey}:shade`
 
 /**

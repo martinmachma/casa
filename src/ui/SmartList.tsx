@@ -1,6 +1,7 @@
 import { Power } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { lightColor, type LightState } from '../devices/lights'
+import { shadeText, type ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
 import { DeviceIcon } from './deviceIcons'
 
@@ -60,6 +61,8 @@ type SmartTileProps = {
   item: SmartItem
   /** Its settings, for a light: a tap switches it. */
   light?: LightState
+  /** Its position, for a window's shade. */
+  shade?: ShadeState
   /** Its card is open. */
   pressed?: boolean
   /** Its item is pointed at in the scene. */
@@ -71,7 +74,7 @@ type SmartTileProps = {
 }
 
 /** A smart item as a tile: its icon, lit in the light's colour while on, over its name and state. */
-export const SmartTile = ({ item, light, pressed, hovered, onOpen, onHover, onLight }: SmartTileProps) => {
+export const SmartTile = ({ item, light, shade, pressed, hovered, onOpen, onHover, onLight }: SmartTileProps) => {
   const on = !!light?.on
   return (
     <button
@@ -97,7 +100,15 @@ export const SmartTile = ({ item, light, pressed, hovered, onOpen, onHover, onLi
       </span>
       <span className="smart-light-name">{item.name}</span>
       <span className="smart-light-state">
-        {light ? (on ? `${Math.round(light.brightness * 100)} %` : 'Off') : item.lamp ? 'Lamp' : 'Not linked'}
+        {light
+          ? on
+            ? `${Math.round(light.brightness * 100)} %`
+            : 'Off'
+          : shade
+            ? shadeText(shade)
+            : item.lamp
+              ? 'Lamp'
+              : 'Not linked'}
       </span>
     </button>
   )
@@ -133,6 +144,7 @@ export const SmartCard = ({ title, summary, allLights, children }: SmartCardProp
 type SmartTagProps = {
   item: SmartItem
   light?: LightState
+  shade?: ShadeState
   onOpen: () => void
   onHover: (hovering: boolean) => void
 }
@@ -145,7 +157,7 @@ export const TagLine = ({ reach = 14 }: { reach?: number }) => (
 )
 
 /** The tag over an item in the room's view: its icon, lit in the light's colour, and how bright it is. */
-export const SmartTag = ({ item, light, onOpen, onHover }: SmartTagProps) => {
+export const SmartTag = ({ item, light, shade, onOpen, onHover }: SmartTagProps) => {
   const on = !!light?.on
   return (
     <>
@@ -162,6 +174,7 @@ export const SmartTag = ({ item, light, onOpen, onHover }: SmartTagProps) => {
           <DeviceIcon kind={item.kind} size={12} />
         </span>
         {light && <span className="muted">{on ? `${Math.round(light.brightness * 100)} %` : 'Off'}</span>}
+        {shade && <span className="muted">{shadeText(shade)}</span>}
       </button>
     </>
   )

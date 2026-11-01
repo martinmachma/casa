@@ -23,7 +23,9 @@ export const DebugHover = ({ copies }: { copies: boolean }) => {
   const debug = useDebug()
   const { gl, scene, get, invalidate } = useThree()
   useEffect(() => {
-    if (!debug) return; (window as any).__scene = scene; (window as any).__get = get
+    if (!debug) return
+    ;(window as any).__scene = scene
+    ;(window as any).__get = get
     const tag = document.createElement('div')
     tag.className = 'debug-label debug-hover'
     tag.hidden = true

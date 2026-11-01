@@ -2,6 +2,7 @@ import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { FrontSide, Group, InstancedMesh, MathUtils, Mesh, Object3D, Plane, Vector3 } from 'three'
 import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill, shadeId } from '../layout/geometry'
+import { SHADE_UP, type ShadeState } from '../devices/shades'
 import type { Opening, WallSide } from '../layout/types'
 import { raycastIfShown } from './raycast'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME, SHADE } from './palette'
@@ -78,6 +79,8 @@ export const OpeningFills = ({
   top,
   openDoors,
   onToggleDoor,
+  shades,
+  onPickShade,
 }: {
   wallId: string
   openings: Opening[]
@@ -88,6 +91,9 @@ export const OpeningFills = ({
   /** The face looking out of the house, where windows and sliding doors get an outside shade. */
   outside?: WallSide
   thickness: number
+  shades: Readonly<Record<string, ShadeState>>
+  /** Opens a shade's controls when it's tapped; left out, shades don't take taps. */
+  onPickShade?: (id: string) => void
   /** Whether a tap on a door opens or closes it. */
   clickable: boolean
   /** In a wall cut down to its stub: only what's below this height is drawn. */
@@ -129,9 +135,8 @@ export const OpeningFills = ({
                 y1={y1}
                 z={(outside === 'a' ? 1 : -1) * (thickness / 2 - SHADE_INSET)}
                 section={section}
-                clickable={clickable}
-                open={openDoors.has(shadeId(id))}
-                onToggle={() => onToggleDoor(shadeId(id))}
+                state={shades[shadeId(id)] ?? SHADE_UP}
+                onPick={onPickShade && (() => onPickShade(shadeId(id)))}
               />
             )}
           </group>
@@ -196,7 +201,7 @@ const useToggle = ({ open, onToggle, clickable }: DoorState, apply: (group: Grou
         onPointerOut: () => (document.body.style.cursor = ''),
       }
     : { raycast: noRaycast }
-  return { group, handlers, amount }
+  return { group, handlers }
 }
 
 /** A leaf hinged at the opening's start (or end), swinging into side 'a' (+z) or 'b' (-z). */
@@ -266,16 +271,18 @@ const SLAT_DEPTH = 0.07
 const SLAT_PITCH = 0.063
 const SLAT_STACKED = 0.009
 const SLAT_THICK = 0.006
-/** How far lowered slats turn from flat, radians, nearly closing. */
-const SLAT_TILT = 1.1
+/** How far hanging slats turn from flat when tilted fully shut, radians. */
+const SLAT_SHUT = 1.4
 const RAIL = 0.025
 const HEAD = 0.05
 const BOTTOM = 0.03
+/** How quickly a shade travels and its slats turn, per second (exponential easing); slower than a door. */
+const SHADE_SPEED = 3
 
 /**
- * An outside venetian shade (Isotra Zetta 70) in the window's reveal: guide rails at the sides, a head profile
- * above, and slats that unstack down to the sill and tilt shut when lowered (`open`), stacked under the head when
- * raised. Tapping it raises or lowers it.
+ * An outside venetian shade (Isotra Zetta 70) in the window's reveal: guide rails at the sides and a head profile
+ * above. Let down, its slats hang from the head on their ladders, turned by the tilt; the rest stack on the bottom
+ * bar, as a real one gathers them when it's raised. Tapping it opens its controls.
  */
 const Shade = ({
   u0,
@@ -283,39 +290,75 @@ const Shade = ({
   y0,
   y1,
   z,
-  ...state
-}: { u0: number; u1: number; y0: number; y1: number; z: number } & DoorState) => {
+  state,
+  section,
+  onPick,
+}: {
+  u0: number
+  u1: number
+  y0: number
+  y1: number
+  z: number
+  state: ShadeState
+  section: boolean
+  onPick?: () => void
+}) => {
   const slats = useRef<InstancedMesh>(null)
   const bottom = useRef<Mesh>(null)
   const pick = useRef<Mesh>(null)
+  const shown = useRef<ShadeState | undefined>(undefined)
   const w = u1 - u0
   const top = y1 - HEAD
   const count = Math.max(1, Math.floor((y1 - y0 - HEAD - BOTTOM) / SLAT_PITCH))
   const dummy = useMemo(() => new Object3D(), [])
-  const place = (t: number) => {
-    const pitch = MathUtils.lerp(SLAT_STACKED, SLAT_PITCH, t)
+  const place = ({ position, tilt }: ShadeState) => {
+    // How many slats hang (fractionally); the others lie stacked under the last one.
+    const hanging = position * count
     if (slats.current) {
       for (let k = 0; k < count; k++) {
-        dummy.position.set(0, top - (k + 0.5) * pitch, 0)
-        dummy.rotation.set(t * SLAT_TILT, 0, 0)
+        const down = Math.min(k + 1, hanging) * SLAT_PITCH + Math.max(0, k + 1 - hanging) * SLAT_STACKED
+        dummy.position.set(0, top - down, 0)
+        dummy.rotation.set(tilt * SLAT_SHUT * MathUtils.clamp(hanging - k, 0, 1), 0, 0)
         dummy.updateMatrix()
         slats.current.setMatrixAt(k, dummy.matrix)
       }
       slats.current.instanceMatrix.needsUpdate = true
       slats.current.computeBoundingSphere()
     }
-    const end = top - count * pitch
+    const end = top - hanging * SLAT_PITCH - (count - hanging) * SLAT_STACKED
     bottom.current?.position.setY(end - BOTTOM / 2)
     // The taps land on a sheet over whatever is down, from the head to the bottom bar.
     pick.current?.scale.setY(y1 - end + BOTTOM)
     pick.current?.position.setY((y1 + end - BOTTOM) / 2)
   }
-  const { group, handlers, amount } = useToggle(state, (_, t) => place(t))
-  useLayoutEffect(() => place(amount.current))
-  const section = state.section
+  useLayoutEffect(() => {
+    if (!shown.current) place((shown.current = { ...state }))
+  })
+  useFrame(({ invalidate }, dt) => {
+    const s = shown.current
+    if (!s || (s.position === state.position && s.tilt === state.tilt)) return
+    invalidate()
+    for (const key of ['position', 'tilt'] as const) {
+      s[key] = MathUtils.damp(s[key], state[key], SHADE_SPEED, dt)
+      if (Math.abs(s[key] - state[key]) < 0.001) s[key] = state[key]
+    }
+    place(s)
+  })
+  const handlers = onPick
+    ? {
+        raycast: raycastIfShown,
+        onClick: (e: ThreeEvent<MouseEvent>) => {
+          if (e.delta > CLICK_SLOP_PX) return
+          e.stopPropagation()
+          onPick()
+        },
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')),
+        onPointerOut: () => (document.body.style.cursor = ''),
+      }
+    : { raycast: noRaycast }
   const material = <FillMaterial section={section} color={SHADE} roughness={0.5} metalness={0.3} />
   return (
-    <group ref={group} position={[(u0 + u1) / 2, 0, z]}>
+    <group position={[(u0 + u1) / 2, 0, z]}>
       <instancedMesh ref={slats} args={[undefined, undefined, count]} castShadow raycast={noRaycast}>
         <boxGeometry args={[w - RAIL, SLAT_THICK, SLAT_DEPTH]} />
         {material}

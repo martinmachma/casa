@@ -1,10 +1,11 @@
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import { deviceRoom } from '../devices/place'
+import { floorShades } from '../devices/shades'
 import { floorRegions, roomAt } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 import { isLamp } from '../scene/HouseLights'
 
-/** A smart item in a room: a placed device, or a lamp (switched like a ceiling light). */
+/** A smart item in a room: a placed device, a lamp (switched like a ceiling light), or a window's outside shade. */
 export type SmartItem = {
   id: string
   name: string
@@ -13,6 +14,8 @@ export type SmartItem = {
   entity: string | undefined
   /** Where its popover points, in the scene. */
   at: [number, number, number]
+  /** The way (plan) its close-up looks at it from, for one only seen from one side, like a window's shade. */
+  facing?: [number, number]
 }
 
 /** Every smart item on a floor, with the room it's in (if any). */
@@ -45,6 +48,7 @@ export const floorItems = (
         at: [f.x, floor.elevation + (f.z ?? 0) + f.height, f.y] as SmartItem['at'],
         room: roomAt(regions, f.x, f.y),
       })),
+    ...floorShades(floor, regions).map((s) => ({ ...s, kind: 'blind' as DeviceKind, lamp: false, entity: undefined })),
   ]
 }
 
