@@ -663,11 +663,9 @@ export const House = ({ backend, account }: HouseProps) => {
           outside={outside}
           onOutside={goOutside}
           camera={camera}
-          onCamera={(c) => {
-            leaveRoom()
-            setCamera(c)
-          }}
+          onCamera={setCamera}
           canPlan={planning}
+          inRoom={!!focus}
         >
           {camera !== 'walk' && roomOrder.ready && (
             <RoomNav
