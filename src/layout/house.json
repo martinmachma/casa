@@ -350,11 +350,11 @@
           "name": "Gas boiler (Viessmann Vitodens 050-W B0HA)",
           "kind": "boiler",
           "x": 5.76,
-          "y": 3.435,
+          "y": 3.41,
           "rotation": 0,
           "width": 0.4,
-          "depth": 0.35,
-          "height": 0.707,
+          "depth": 0.3,
+          "height": 0.7,
           "z": 1.2
         },
         {
