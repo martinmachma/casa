@@ -427,6 +427,11 @@ const Shade = ({
           {material}
         </mesh>
       ))}
+      {/* Along the sill between the rails, closing its frame. */}
+      <mesh position={[0, y0 + RAIL / 2, 0]} castShadow raycast={noRaycast}>
+        <boxGeometry args={[w - 2 * RAIL, RAIL, 0.04]} />
+        {material}
+      </mesh>
       {/* Not drawn, nor in its outline. */}
       <mesh ref={pick} {...handlers}>
         <boxGeometry args={[w, 1, SLAT_DEPTH + 0.02]} />
