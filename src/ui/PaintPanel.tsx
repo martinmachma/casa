@@ -9,7 +9,10 @@ type PaintPanelProps = {
   onClose: () => void
 }
 
-/** The paint tool: pick a colour, then tap walls to paint them or drag across them to paint a rectangle. */
+// How big the squares painted with one tap are, metres.
+const SIZES = [0.05, 0.1, 0.25, 0.5]
+
+/** The paint tool: pick a colour, then tap a wall to paint a square of it or drag to paint a block of squares. */
 export const PaintPanel = ({ brush, onBrush, onClose }: PaintPanelProps) => (
   <>
     <PanelHead
@@ -17,8 +20,8 @@ export const PaintPanel = ({ brush, onBrush, onClose }: PaintPanelProps) => (
       title="Paint walls"
       sub={
         brush.erase
-          ? 'Tap a painted area to remove it, or a wall to take it back to white.'
-          : 'Tap a wall or painted area to paint it. Drag across a wall to paint a rectangle on it.'
+          ? 'Tap or drag to take paint off in squares. Shift-tap takes a whole wall back to white.'
+          : 'Tap a wall to paint a square, drag to paint a block of them. Shift-tap paints the whole wall.'
       }
       onClose={onClose}
       closeLabel="Stop painting (P)"
@@ -33,6 +36,15 @@ export const PaintPanel = ({ brush, onBrush, onClose }: PaintPanelProps) => (
           { value: 'paint', label: 'Paint', icon: <Paintbrush size={15} /> },
           { value: 'erase', label: 'Erase', icon: <Eraser size={15} /> },
         ]}
+      />
+    </Section>
+    <Section title="Square">
+      <Segmented
+        label="Square size"
+        block
+        value={String(brush.size)}
+        onChange={(size) => onBrush({ ...brush, size: Number(size) })}
+        options={SIZES.map((s) => ({ value: String(s), label: `${Math.round(s * 100)} cm` }))}
       />
     </Section>
     {!brush.erase && (

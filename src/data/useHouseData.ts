@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { WallFace } from '../layout/types'
+import type { WallFace, WallSide } from '../layout/types'
+import { paintWallArea } from './wallAreas'
 import type {
   Backend,
   Device,
@@ -71,6 +72,25 @@ const writeDraft = (backend: Backend, draft: Draft | undefined) => {
 }
 
 const EMPTY_AREAS: WallArea[] = []
+
+/** A part of a wall side painted, or with no colour taken back to the whole side's paint (none: white). */
+const applyWallColor = (
+  s: HouseState,
+  wallId: string,
+  side: WallFace,
+  part: number,
+  color: string | undefined,
+): HouseState => {
+  const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
+  const isThis = (w: HouseState['walls'][number]) => w.wallId === wallId && w.side === side && w.part === part
+  // A reset part goes back to the whole side's paint; with none, to the default.
+  if (!color || color === sideColor?.color) return { ...s, walls: s.walls.filter((w) => !isThis(w)) }
+  const paint = { wallId, side, part, color }
+  // Repainted where it's listed, so the list keeps its order.
+  return s.walls.some(isThis)
+    ? { ...s, walls: s.walls.map((w) => (isThis(w) ? paint : w)) }
+    : { ...s, walls: [...s.walls, paint] }
+}
 
 /** Whether two states are the same house; the order wall paints are listed in doesn't matter. */
 const sameHouse = (a: HouseState, b: HouseState) => {
@@ -191,23 +211,19 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     )
 
   const setWallColor = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
-    edit((s) => {
-      const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
-      const isThis = (w: HouseState['walls'][number]) => w.wallId === wallId && w.side === side && w.part === part
-      // A reset part goes back to the whole side's paint; with none, to the default.
-      if (!color || color === sideColor?.color) return { ...s, walls: s.walls.filter((w) => !isThis(w)) }
-      const paint = { wallId, side, part, color }
-      // Repainted where it's listed, so the list keeps its order.
-      return s.walls.some(isThis)
-        ? { ...s, walls: s.walls.map((w) => (isThis(w) ? paint : w)) }
-        : { ...s, walls: [...s.walls, paint] }
-    }, `wall:${wallId}:${side}:${part}`)
+    edit((s) => applyWallColor(s, wallId, side, part, color), `wall:${wallId}:${side}:${part}`)
 
-  const addWallArea = (area: NewWallArea): WallArea => {
-    const created = { ...area, id: crypto.randomUUID() }
-    edit((s) => ({ ...s, wallAreas: [...(s.wallAreas ?? []), created] }))
-    return created
-  }
+  /** Paints a rectangle on a part of a wall side; no colour takes the paint there off. */
+  const paintArea = (at: Omit<NewWallArea, 'color'>, color: string | undefined) =>
+    edit((s) => ({ ...s, wallAreas: paintWallArea(s.wallAreas ?? [], at, color) }))
+
+  /** Paints the whole of a part of a wall side, over any areas on it; no colour takes it back to white. */
+  const paintWall = (wallId: string, side: WallSide, part: number, color: string | undefined) =>
+    edit((s) => {
+      const painted = applyWallColor(s, wallId, side, part, color)
+      const onPart = (a: WallArea) => a.wallId === wallId && a.side === side && a.part === part
+      return { ...painted, wallAreas: (s.wallAreas ?? []).filter((a) => !onPart(a)) }
+    })
 
   /** Changes a painted area; changes with the same `key` (one colour being picked) undo as one step. */
   const patchWallArea = (id: string, patch: Partial<WallArea>, key?: string) =>
@@ -316,7 +332,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     wallColors,
     setWallColor,
     wallAreas: state.wallAreas ?? EMPTY_AREAS,
-    addWallArea,
+    paintArea,
+    paintWall,
     patchWallArea,
     removeWallArea,
     roomNames,

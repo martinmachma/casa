@@ -411,28 +411,28 @@ export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
     return edges.slice(1).map((u1, i) => ({ ...p, u0: edges[i], u1 }))
   })
 
-// Painted rectangles snap to this grid, counted from the left end of the face as you look at it.
-const PAINT_GRID = 0.05
-
 /**
- * The rectangle a drag between two points paints on a side's face, as distances along the wall and above the
- * floor: kept on the face, snapped to a 5 cm grid from its left end and onto its edges. Undefined if too thin.
+ * The block of paint squares, `size` across, from the one under `from` to the one under `to`, as distances along
+ * the wall and above the floor. Squares are counted from the left end of the face as you look at it and from
+ * the floor; those at the far edges are cut short by the face.
  */
-export const paintRect = (
+export const paintCells = (
   side: WallSide,
   face: { u0: number; u1: number },
   height: number,
+  size: number,
   from: [u: number, y: number],
   to: [u: number, y: number],
-): { u0: number; u1: number; y0: number; y1: number } | undefined => {
-  const snap = (v: number, max: number) => {
-    const on = Math.min(Math.max(v, 0), max)
-    return max - on < PAINT_GRID / 2 ? max : Math.min(Math.round(on / PAINT_GRID) * PAINT_GRID, max)
-  }
+): { u0: number; u1: number; y0: number; y1: number } => {
   const span = face.u1 - face.u0
-  const left = (u: number) => snap(side === 'a' ? u - face.u0 : face.u1 - u, span)
+  const cell = (v: number, max: number) =>
+    Math.min(Math.max(Math.floor(v / size), 0), Math.max(Math.ceil(max / size - 1e-6) - 1, 0))
+  const left = (u: number) => cell(side === 'a' ? u - face.u0 : face.u1 - u, span)
   const [l0, l1] = [left(from[0]), left(to[0])].sort((p, q) => p - q)
-  const [y0, y1] = [snap(from[1], height), snap(to[1], height)].sort((p, q) => p - q)
-  if (l1 - l0 < PAINT_GRID / 2 || y1 - y0 < PAINT_GRID / 2) return undefined
-  return side === 'a' ? { u0: face.u0 + l0, u1: face.u0 + l1, y0, y1 } : { u0: face.u1 - l1, u1: face.u1 - l0, y0, y1 }
+  const [c0, c1] = [cell(from[1], height), cell(to[1], height)].sort((p, q) => p - q)
+  const l = l0 * size
+  const r = Math.min((l1 + 1) * size, span)
+  const y0 = c0 * size
+  const y1 = Math.min((c1 + 1) * size, height)
+  return side === 'a' ? { u0: face.u0 + l, u1: face.u0 + r, y0, y1 } : { u0: face.u1 - r, u1: face.u1 - l, y0, y1 }
 }

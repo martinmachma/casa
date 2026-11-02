@@ -74,8 +74,8 @@ type HouseSceneProps = {
   interaction: Interaction
   /** What painting puts on the walls. */
   brush: Brush
-  onPaint: (target: PaintTarget) => void
-  onPaintArea: (area: PaintStroke) => void
+  onPaint: (stroke: PaintStroke) => void
+  onPaintWall: (target: PaintTarget) => void
   selection: Selection | undefined
   wallSnap: boolean
   furnitureSnap: boolean
@@ -138,7 +138,7 @@ export const HouseScene = ({
   interaction,
   brush,
   onPaint,
-  onPaintArea,
+  onPaintWall,
   selection,
   wallSnap,
   furnitureSnap,
@@ -412,7 +412,7 @@ export const HouseScene = ({
               onPick={pickWall}
               brush={interaction === 'paint' && (outside || f.id === floor.id) ? brush : undefined}
               onPaint={onPaint}
-              onPaintArea={onPaintArea}
+              onPaintWall={onPaintWall}
             />
           </Fade>
         ))}

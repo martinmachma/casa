@@ -3,7 +3,7 @@ import {
   blocksView,
   cornerCuts,
   floorBounds,
-  paintRect,
+  paintCells,
   sidePart,
   splitPieces,
   validateLayout,
@@ -282,25 +282,28 @@ describe('wallFace', () => {
   })
 })
 
-describe('paintRect', () => {
+describe('paintCells', () => {
   const face = { u0: 0.1, u1: 3.05 }
 
-  it('snaps a drag to the grid from the left end and onto the far edges', () => {
-    const r = paintRect('a', face, 2.54, [0.43, 2.52], [1.62, 1.02])!
-    expect(r.u0).toBeCloseTo(0.45)
-    expect(r.u1).toBeCloseTo(1.6)
-    expect(r.y0).toBeCloseTo(1)
+  it('is the square under a tap, counted from the left end and the floor', () => {
+    const r = paintCells('a', face, 2.54, 0.1, [0.43, 1.27], [0.43, 1.27])
+    expect(r.u0).toBeCloseTo(0.4)
+    expect(r.u1).toBeCloseTo(0.5)
+    expect(r.y0).toBeCloseTo(1.2)
+    expect(r.y1).toBeCloseTo(1.3)
+  })
+
+  it('covers every square a drag spans, cut short at the edges of the face', () => {
+    const r = paintCells('a', face, 2.54, 0.1, [3.02, 2.6], [1.62, 2.31])
+    expect(r.u0).toBeCloseTo(1.6)
+    expect(r.u1).toBeCloseTo(3.05)
+    expect(r.y0).toBeCloseTo(2.3)
     expect(r.y1).toBeCloseTo(2.54)
   })
 
-  it('counts from the other end on side b, and stays on the face', () => {
-    const r = paintRect('b', face, 2.54, [3.5, -1], [2.43, 0.5])!
+  it('counts from the other end on side b', () => {
+    const r = paintCells('b', face, 2.54, 0.25, [3, 0.1], [3, 0.1])
+    expect(r.u0).toBeCloseTo(2.8)
     expect(r.u1).toBeCloseTo(3.05)
-    expect(r.u0).toBeCloseTo(2.45)
-    expect(r.y0).toBe(0)
-  })
-
-  it('paints nothing for a drag too thin to see', () => {
-    expect(paintRect('a', face, 2.54, [1, 1], [1.01, 2])).toBeUndefined()
   })
 })

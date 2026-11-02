@@ -1,11 +1,11 @@
 import { useThree, type ThreeElements, type ThreeEvent } from '@react-three/fiber'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Plane, Vector3, type Object3D } from 'three'
 import {
   cornerCuts,
   isExteriorWall,
   outsideFace,
-  paintRect,
+  paintCells,
   sidePart,
   splitPieces,
   stubPieces,
@@ -42,14 +42,20 @@ const AREA_PROUD = 0.0008
 /** An end face is told apart by where it is along the wall, in millimetres. */
 const endPart = (u: number) => Math.round(u * 1000)
 
-/** What a tap or drag on a wall does while painting: brush on a colour, or take paint off. */
-export type Brush = { color: string; erase: boolean }
+/** What a tap or drag on a wall does while painting: brush on a colour in squares `size` across, or take it off. */
+export type Brush = { color: string; erase: boolean; size: number }
 
-/** A painted area being dragged out, before it has a colour. */
+/** A block of paint squares on a part of a wall side, before it has a colour. */
 export type PaintStroke = Omit<NewWallArea, 'color'>
 
-/** What's under a painting tap: a part of a side, or one area painted on it. */
-export type PaintTarget = { wallId: string; side: WallSide; part: number; area?: string }
+/** A part of a wall side, painted whole with Shift. */
+export type PaintTarget = { wallId: string; side: WallSide; part: number }
+
+/** Where painting would go: the square under the pointer, or the block being dragged out. */
+type PaintPreview = PaintStroke & { dragging: boolean }
+
+const samePreview = (a: PaintPreview | undefined, b: PaintPreview | undefined) =>
+  a === b || (!!a && !!b && (Object.keys(a) as (keyof PaintPreview)[]).every((k) => a[k] === b[k]))
 
 type MeshHandlers = Pick<
   ThreeElements['mesh'],
@@ -90,10 +96,10 @@ type FloorWallsProps = {
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
   focus?: Focus
   onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
-  /** While painting: a tap fills the wall or area under it, a drag across a wall paints a new area. */
+  /** While painting: a tap paints the square under it, a drag a block of squares, a Shift-tap the whole wall. */
   brush?: Brush
-  onPaint?: (target: PaintTarget) => void
-  onPaintArea?: (area: PaintStroke) => void
+  onPaint?: (stroke: PaintStroke) => void
+  onPaintWall?: (target: PaintTarget) => void
 }
 
 export const FloorWalls = ({
@@ -114,9 +120,13 @@ export const FloorWalls = ({
   onPick,
   brush,
   onPaint,
-  onPaintArea,
+  onPaintWall,
 }: FloorWallsProps) => {
-  const [stroke, setStroke] = useState<PaintStroke>()
+  const [preview, setPreview] = useState<PaintPreview>()
+  const showPreview = useCallback(
+    (next: PaintPreview | undefined) => setPreview((now) => (samePreview(now, next) ? now : next)),
+    [],
+  )
   return (
     <group>
       {floor.walls.map((wall) => (
@@ -141,10 +151,10 @@ export const FloorWalls = ({
           hoveredShade={hoveredShade}
           onPick={onPick}
           brush={brush}
-          stroke={stroke?.wallId === wallOwner(wall, floor).id ? stroke : undefined}
-          onStroke={setStroke}
+          preview={brush && preview?.wallId === wallOwner(wall, floor).id ? preview : undefined}
+          onPreview={showPreview}
           onPaint={onPaint}
-          onPaintArea={onPaintArea}
+          onPaintWall={onPaintWall}
         />
       ))}
     </group>
@@ -171,11 +181,11 @@ type WallMeshProps = {
   hoveredShade?: string
   onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
   brush?: Brush
-  /** The area being dragged out on this wall, shown in the brush's colour. */
-  stroke?: PaintStroke
-  onStroke: (stroke: PaintStroke | undefined) => void
-  onPaint?: (target: PaintTarget) => void
-  onPaintArea?: (area: PaintStroke) => void
+  /** Where painting would go on this wall. */
+  preview?: PaintPreview
+  onPreview: (preview: PaintPreview | undefined) => void
+  onPaint?: (stroke: PaintStroke) => void
+  onPaintWall?: (target: PaintTarget) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
@@ -199,10 +209,10 @@ const WallMesh = ({
   hoveredShade,
   onPick,
   brush,
-  stroke,
-  onStroke,
+  preview,
+  onPreview,
   onPaint,
-  onPaintArea,
+  onPaintWall,
 }: WallMeshProps) => {
   const owner = wallOwner(wall, floor)
   const offset = wallOwnerOffset(wall, owner)
@@ -261,53 +271,59 @@ const WallMesh = ({
     else if (Math.abs(n.x) > 0.5) onPick(owner.id, 'end', endPart((n.x > 0 ? p.u1 : p.u0) + offset))
   }
 
-  // Painting: a drag from a press on a side's face, across the plane of that face, in the wall's own space.
+  // Painting goes on in squares on a side's face: hovering shows the square under the pointer, a drag the block of
+  // squares from where it was pressed, across the plane of that face, in the wall's own space.
   const getState = useThree((s) => s.get)
-  const drag = useRef<{
-    target: PaintTarget
-    group: Object3D
-    plane: Plane
-    face: { u0: number; u1: number }
-    /** Where it was pressed, along the owning wall and up. */
-    start: [number, number]
-    x: number
-    y: number
-    rect?: PaintStroke
-  }>(undefined)
+  const drag = useRef<{ target: PaintTarget; group: Object3D; plane: Plane; start: [number, number] }>(undefined)
   const setControlsEnabled = (enabled: boolean) => {
     const controls = getState().controls as { enabled: boolean } | null
     if (controls) controls.enabled = enabled
   }
-  const startStroke = (e: ThreeEvent<PointerEvent>, target: PaintTarget) => {
+  /** A point in the world, along the owning wall and up. */
+  const local = (group: Object3D, p: Vector3): [number, number] => {
+    const l = group.worldToLocal(p.clone())
+    return [l.x + offset, l.y]
+  }
+  const cells = (target: PaintTarget, from: [number, number], to: [number, number]): PaintStroke => ({
+    ...target,
+    ...paintCells(
+      target.side,
+      wallFace(owner, floor, target.side, target.part),
+      wallHeight(owner, floor),
+      brush?.size ?? 1,
+      from,
+      to,
+    ),
+  })
+  const pointerDown = (e: ThreeEvent<PointerEvent>, target: PaintTarget) => {
     const group = wallGroup(e.object)
     if (!group) return
     e.stopPropagation()
-    const normal = new Vector3(0, 0, target.side === 'a' ? 1 : -1).transformDirection(group.matrixWorld)
-    const start = group.worldToLocal(e.point.clone())
-    drag.current = {
-      start: [start.x + offset, start.y],
-      target,
-      group,
-      plane: new Plane().setFromNormalAndCoplanarPoint(normal, e.point),
-      face: wallFace(owner, floor, target.side, target.part),
-      x: e.nativeEvent.clientX,
-      y: e.nativeEvent.clientY,
+    // Shift paints the whole wall, as one tap.
+    if (e.nativeEvent.shiftKey) {
+      onPreview(undefined)
+      return onPaintWall?.(target)
     }
+    const start = local(group, e.point)
+    const normal = new Vector3(0, 0, target.side === 'a' ? 1 : -1).transformDirection(group.matrixWorld)
+    drag.current = { target, group, plane: new Plane().setFromNormalAndCoplanarPoint(normal, e.point), start }
     ;(e.target as Element).setPointerCapture(e.pointerId)
     setControlsEnabled(false)
+    onPreview({ ...cells(target, start, start), dragging: true })
   }
-  const moveStroke = (e: ThreeEvent<PointerEvent>) => {
+  const pointerMove = (e: ThreeEvent<PointerEvent>, target: PaintTarget | undefined) => {
     const d = drag.current
-    if (!d || brush?.erase) return
+    if (d) {
+      e.stopPropagation()
+      const hit = e.ray.intersectPlane(d.plane, new Vector3())
+      if (hit) onPreview({ ...cells(d.target, d.start, local(d.group, hit)), dragging: true })
+      return
+    }
+    const group = wallGroup(e.object)
+    if (!target || !group) return onPreview(undefined)
     e.stopPropagation()
-    const moved = Math.hypot(e.nativeEvent.clientX - d.x, e.nativeEvent.clientY - d.y) > CLICK_SLOP_PX
-    if (!d.rect && !moved) return
-    const hit = e.ray.intersectPlane(d.plane, new Vector3())
-    if (!hit) return
-    const end = d.group.worldToLocal(hit)
-    const rect = paintRect(d.target.side, d.face, wallHeight(owner, floor), d.start, [end.x + offset, end.y])
-    d.rect = rect && { wallId: owner.id, side: d.target.side, part: d.target.part, ...rect }
-    onStroke(d.rect)
+    const at = local(group, e.point)
+    onPreview({ ...cells(target, at, at), dragging: false })
   }
   const endStroke = (e: ThreeEvent<PointerEvent>, cancel = false) => {
     const d = drag.current
@@ -315,21 +331,24 @@ const WallMesh = ({
     drag.current = undefined
     ;(e.target as Element).releasePointerCapture(e.pointerId)
     setControlsEnabled(true)
-    onStroke(undefined)
+    onPreview(undefined)
     if (cancel) return
-    const moved = Math.hypot(e.nativeEvent.clientX - d.x, e.nativeEvent.clientY - d.y) > CLICK_SLOP_PX
-    if (d.rect) onPaintArea?.(d.rect)
-    else if (!moved || brush?.erase) onPaint?.(d.target)
+    const hit = e.ray.intersectPlane(d.plane, new Vector3())
+    onPaint?.(cells(d.target, d.start, hit ? local(d.group, hit) : d.start))
   }
   const strokeHandlers = (target: (e: ThreeEvent<PointerEvent>) => PaintTarget | undefined): MeshHandlers => ({
     onPointerDown: (e) => {
       const t = target(e)
-      if (t) startStroke(e, t)
+      if (t) pointerDown(e, t)
     },
-    onPointerMove: moveStroke,
+    onPointerMove: (e) => pointerMove(e, target(e)),
     onPointerUp: (e) => endStroke(e),
     onPointerCancel: (e) => endStroke(e, true),
-    ...hover('crosshair'),
+    onPointerOver: (e) => (e.stopPropagation(), (document.body.style.cursor = 'crosshair')),
+    onPointerOut: () => {
+      document.body.style.cursor = ''
+      if (!drag.current) onPreview(undefined)
+    },
   })
   const boxHandlers = (p: WallPiece): MeshHandlers =>
     interactive
@@ -352,7 +371,7 @@ const WallMesh = ({
           ...hover('pointer'),
         }
       : brush
-        ? strokeHandlers(() => ({ wallId: owner.id, side: area.side, part: area.part, area: area.id }))
+        ? strokeHandlers(() => ({ wallId: owner.id, side: area.side, part: area.part }))
         : {}
 
   // The block at a corner, shared with the wall met there: a room view keeps it with either wall.
@@ -412,7 +431,7 @@ const WallMesh = ({
     ))
   }
 
-  // Later areas are painted over earlier ones, and the one being dragged out over them all.
+  // Areas don't overlap; where painting would go shows over them.
   const paint = (list: WallPiece[]) => (
     <>
       {areas.map((area, k) => (
@@ -425,11 +444,13 @@ const WallMesh = ({
           handlers={interactive || brush ? areaHandlers(area) : undefined}
         />
       ))}
-      {stroke && brush && (
+      {preview && brush && (
         <AreaPaint
-          pieces={areaPieces({ ...stroke, id: '', color: brush.color }, list)}
-          side={stroke.side}
-          color={brush.color}
+          pieces={areaPieces({ ...preview, id: '', color: '' }, list)}
+          side={preview.side}
+          // Taking paint off shows as the selection wash.
+          color={brush.erase ? SELECTED_OUTLINE : brush.color}
+          opacity={brush.erase ? 0.45 : preview.dragging ? 0.9 : 0.6}
           z={thickness / 2 + AREA_PROUD * (areas.length + 1)}
         />
       )}
@@ -528,6 +549,7 @@ const AreaPaint = ({
   color,
   z,
   handlers,
+  opacity,
 }: {
   pieces: WallPiece[]
   side: WallSide
@@ -536,6 +558,8 @@ const AreaPaint = ({
   z: number
   /** Taps and drags on it; none and it can't be pointed at. */
   handlers?: MeshHandlers
+  /** Less than 1 to see through it. */
+  opacity?: number
 }) => (
   <group rotation-y={side === 'a' ? 0 : Math.PI}>
     {pieces.map((p, i) => (
@@ -550,6 +574,9 @@ const AreaPaint = ({
         <meshStandardMaterial
           roughness={1}
           color={color}
+          transparent={opacity !== undefined}
+          opacity={opacity ?? 1}
+          depthWrite={opacity === undefined}
           polygonOffset
           polygonOffsetFactor={-1}
           polygonOffsetUnits={-1}

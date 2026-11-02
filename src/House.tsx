@@ -19,7 +19,7 @@ import type { Point } from './layout/types'
 import { wallFace, wallHeight } from './layout/geometry'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
-import { FURNITURE_SWATCHES } from './scene/palette'
+import { DEFAULT_WALL, FURNITURE_SWATCHES } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
@@ -92,7 +92,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // The tool in use while planning; at home the house is only looked at.
   const [tool, setTool] = useState<Exclude<Interaction, 'view' | 'measure'>>('edit')
   const interaction: Interaction = planning ? tool : 'view'
-  const [brush, setBrush] = useState<Brush>({ color: '#7f9172', erase: false })
+  const [brush, setBrush] = useState<Brush>({ color: '#7f9172', erase: false, size: 0.1 })
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DevicePlacement>()
   // A new piece from the catalog, carried under the pointer until it's put down.
@@ -363,12 +363,13 @@ export const House = ({ backend, account }: HouseProps) => {
     setTool(tool === 'paint' ? 'edit' : 'paint')
     setRightOpen(true)
   }
-  const paint = ({ wallId, side, part, area }: PaintTarget) => {
-    if (!area) data.setWallColor(wallId, side, part, brush.erase ? undefined : brush.color)
-    else if (brush.erase) data.removeWallArea(area)
-    else data.patchWallArea(area, { color: brush.color })
+  // Paint in the wall's own colour is no paint: it just covers what was there.
+  const paint = (stroke: PaintStroke) => {
+    const base = wallPartColor(data.wallColors, stroke.wallId, stroke.side, stroke.part) ?? DEFAULT_WALL
+    data.paintArea(stroke, brush.erase || brush.color.toLowerCase() === base.toLowerCase() ? undefined : brush.color)
   }
-  const paintArea = (area: PaintStroke) => !brush.erase && data.addWallArea({ ...area, color: brush.color })
+  const paintWall = ({ wallId, side, part }: PaintTarget) =>
+    data.paintWall(wallId, side, part, brush.erase ? undefined : brush.color)
   const stopMeasuring = () => {
     setMeasure(undefined)
     setMeasurements([])
@@ -712,7 +713,7 @@ export const House = ({ backend, account }: HouseProps) => {
           interaction={measure ? 'measure' : interaction}
           brush={brush}
           onPaint={paint}
-          onPaintArea={paintArea}
+          onPaintWall={paintWall}
           selection={selection}
           wallSnap={wallSnap}
           furnitureSnap={furnitureSnap}
