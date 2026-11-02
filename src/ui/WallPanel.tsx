@@ -1,7 +1,8 @@
-import { Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { RotateCcw, Trash2 } from 'lucide-react'
 import type { WallArea } from '../data/types'
 import type { WallFace } from '../layout/types'
-import { DEFAULT_WALL, PAINT_SWATCHES } from '../scene/palette'
+import { DEFAULT_WALL } from '../scene/palette'
+import { PaintSwatches } from './PaintSwatches'
 import { PanelHead, Section, Segmented } from './kit'
 import { NumberField } from './NumberField'
 
@@ -27,7 +28,6 @@ type WallPanelProps = {
   /** The one being edited; none edits the whole part. */
   area: WallArea | undefined
   onSelectArea: (id: string | undefined) => void
-  onAddArea: () => void
   /** Changes with the same `key` undo as one step. */
   onPatchArea: (patch: Partial<WallArea>, key: string) => void
   onRemoveArea: () => void
@@ -66,7 +66,6 @@ export const WallPanel = ({
   areas,
   area,
   onSelectArea,
-  onAddArea,
   onPatchArea,
   onRemoveArea,
   onClose,
@@ -84,16 +83,9 @@ export const WallPanel = ({
         sub={details}
         onClose={onClose}
       />
-      {face && (
-        <Section
-          title="Paint on"
-          aside={
-            <button className="btn btn-ghost btn-small" onClick={onAddArea} title="Paint just part of this wall">
-              <Plus size={14} />
-              Add area
-            </button>
-          }
-        >
+      {/* Areas are painted with the paint tool, by dragging across the wall. */}
+      {face && areas.length > 0 && (
+        <Section title="Paint on">
           <Segmented
             label="Paint on"
             value={area?.id ?? WHOLE}
@@ -107,24 +99,7 @@ export const WallPanel = ({
         </Section>
       )}
       <Section title="Paint">
-        <div className="swatches">
-          {PAINT_SWATCHES.map((c) => (
-            <button
-              key={c}
-              className="swatch"
-              style={{ background: c }}
-              aria-label={c}
-              title={c}
-              aria-pressed={current.toLowerCase() === c}
-              onClick={() => paint(c)}
-            />
-          ))}
-        </div>
-        <div className="row">
-          <label className="color-field">
-            <input type="color" value={current} onChange={(e) => paint(e.target.value)} />
-            <span>Custom colour</span>
-          </label>
+        <PaintSwatches color={current} onColor={paint}>
           {!area && (
             <button
               className="btn btn-ghost"
@@ -136,7 +111,7 @@ export const WallPanel = ({
               Reset
             </button>
           )}
-        </div>
+        </PaintSwatches>
       </Section>
       {area && at && face && (
         <Section title="Area">

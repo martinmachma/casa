@@ -31,7 +31,7 @@ import { ElectricalRoutes } from './ElectricalRoutes'
 import { Fade } from './Fade'
 import { Fixtures } from './Fixtures'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
-import { FloorWalls } from './FloorWalls'
+import { FloorWalls, type Brush, type PaintStroke, type PaintTarget } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { FurniturePlacer } from './FurniturePlacer'
 import { HouseLights, isLamp } from './HouseLights'
@@ -70,8 +70,12 @@ type HouseSceneProps = {
   cutaway: boolean
   electrical: boolean
   data: HouseData
-  /** What a tap does: nothing (just looking), select and drag (editing), or measure. */
+  /** What a tap does: nothing (just looking), select and drag (editing), measure, or paint walls. */
   interaction: Interaction
+  /** What painting puts on the walls. */
+  brush: Brush
+  onPaint: (target: PaintTarget) => void
+  onPaintArea: (area: PaintStroke) => void
   selection: Selection | undefined
   wallSnap: boolean
   furnitureSnap: boolean
@@ -132,6 +136,9 @@ export const HouseScene = ({
   electrical,
   data,
   interaction,
+  brush,
+  onPaint,
+  onPaintArea,
   selection,
   wallSnap,
   furnitureSnap,
@@ -393,7 +400,7 @@ export const HouseScene = ({
               areas={data.wallAreas}
               selection={selection}
               interactive={pickable && (outside || f.id === floor.id)}
-              doors={!measure && !placingPiece && !placing && (outside || f.id === floor.id)}
+              doors={!measure && interaction !== 'paint' && !placingPiece && !placing && (outside || f.id === floor.id)}
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
               shades={shades}
@@ -403,6 +410,9 @@ export const HouseScene = ({
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
               onPick={pickWall}
+              brush={interaction === 'paint' && (outside || f.id === floor.id) ? brush : undefined}
+              onPaint={onPaint}
+              onPaintArea={onPaintArea}
             />
           </Fade>
         ))}

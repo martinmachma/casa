@@ -11,5 +11,8 @@ export type Selection =
 
 export type CameraMode = 'top' | 'orbit' | 'walk'
 
-/** What a tap in the 3D view does: nothing while just looking, select, drag and place while editing, or measure. */
-export type Interaction = 'view' | 'edit' | 'measure'
+/**
+ * What a tap in the 3D view does: nothing while just looking, select, drag and place while editing, measure, or
+ * paint the walls.
+ */
+export type Interaction = 'view' | 'edit' | 'measure' | 'paint'

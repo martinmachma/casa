@@ -1,4 +1,4 @@
-import { Cable, SquareBottomDashedScissors } from 'lucide-react'
+import { Cable, Paintbrush, SquareBottomDashedScissors } from 'lucide-react'
 import { IconButton, Slide } from './ui/kit'
 import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
@@ -39,6 +39,8 @@ import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
 import { ViewDock } from './ui/ViewDock'
 import { WallPanel } from './ui/WallPanel'
+import { PaintPanel } from './ui/PaintPanel'
+import type { Brush, PaintStroke, PaintTarget } from './scene/FloorWalls'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { TopBar } from './ui/TopBar'
@@ -90,6 +92,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // The tool in use while planning; at home the house is only looked at.
   const [tool, setTool] = useState<Exclude<Interaction, 'view' | 'measure'>>('edit')
   const interaction: Interaction = planning ? tool : 'view'
+  const [brush, setBrush] = useState<Brush>({ color: '#7f9172', erase: false })
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DevicePlacement>()
   // A new piece from the catalog, carried under the pointer until it's put down.
@@ -344,12 +347,28 @@ export const House = ({ backend, account }: HouseProps) => {
 
   /** Measuring works in any mode; while it's on, taps measure instead of selecting. */
   const toggleMeasure = () => {
+    setTool('edit')
     setSelection(undefined)
     setPlacing(undefined)
     setPlacingPiece(undefined)
     if (measure) stopMeasuring()
     else setMeasure({ mode: 'points', picks: [] })
   }
+  /** While painting, taps and drags on walls paint them instead of selecting. */
+  const togglePaint = () => {
+    setSelection(undefined)
+    setPlacing(undefined)
+    setPlacingPiece(undefined)
+    if (measure) stopMeasuring()
+    setTool(tool === 'paint' ? 'edit' : 'paint')
+    setRightOpen(true)
+  }
+  const paint = ({ wallId, side, part, area }: PaintTarget) => {
+    if (!area) data.setWallColor(wallId, side, part, brush.erase ? undefined : brush.color)
+    else if (brush.erase) data.removeWallArea(area)
+    else data.patchWallArea(area, { color: brush.color })
+  }
+  const paintArea = (area: PaintStroke) => !brush.erase && data.addWallArea({ ...area, color: brush.color })
   const stopMeasuring = () => {
     setMeasure(undefined)
     setMeasurements([])
@@ -408,13 +427,23 @@ export const House = ({ backend, account }: HouseProps) => {
         return
       }
       // Esc first steps back out of what's being done in the room, then out of the room.
-      if (focus && e.key === 'Escape' && !typing && !selection && !placing && !placingPiece && !measure)
+      if (
+        focus &&
+        e.key === 'Escape' &&
+        !typing &&
+        !selection &&
+        !placing &&
+        !placingPiece &&
+        !measure &&
+        interaction !== 'paint'
+      )
         return popover ? openPopover(undefined) : leaveRoom()
       if (popover && !focus && e.key === 'Escape' && !typing) return openPopover(undefined)
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return
       if (key === 'e') return changeSection(planning ? 'home' : 'planning')
       if (locked) return
       if (key === 'm') toggleMeasure()
+      else if (key === 'p') togglePaint()
       else if (placingPiece && key === 'r')
         setPlacingPiece({
           ...placingPiece,
@@ -429,6 +458,7 @@ export const House = ({ backend, account }: HouseProps) => {
         else if (placing) setPlacing(undefined)
         else if (measure?.picks.length) setMeasure({ ...measure, picks: [] })
         else if (measure) stopMeasuring()
+        else if (interaction === 'paint') setTool('edit')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -477,6 +507,13 @@ export const House = ({ backend, account }: HouseProps) => {
           </Slide>
           <Slide show={planning}>
             <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+          </Slide>
+          <Slide show={planning}>
+            <div className="toolbar float">
+              <IconButton label="Paint walls (P)" aria-pressed={tool === 'paint'} small onClick={togglePaint}>
+                <Paintbrush size={17} />
+              </IconButton>
+            </div>
           </Slide>
           <Slide show={planning}>
             <div className="toolbar float">
@@ -555,15 +592,6 @@ export const House = ({ backend, account }: HouseProps) => {
           areas={areas}
           area={area}
           onSelectArea={pickArea}
-          onAddArea={() => {
-            if (!face || side === 'end') return
-            // A dado across the whole part to start with, in a colour that stands out from the wall's.
-            const accent = color?.toLowerCase() === '#7f9172' ? '#4f6d7a' : '#7f9172'
-            const height = Math.round(face.height * 50) / 100
-            pickArea(
-              data.addWallArea({ wallId, side, part, u0: face.u0, u1: face.u1, y0: 0, y1: height, color: accent }).id,
-            )
-          }}
           onPatchArea={(patch, key) => area && data.patchWallArea(area.id, patch, `area:${area.id}:${key}`)}
           onRemoveArea={() => {
             if (!area) return
@@ -621,6 +649,7 @@ export const House = ({ backend, account }: HouseProps) => {
         />
       )
     }
+    if (interaction === 'paint') return <PaintPanel brush={brush} onBrush={setBrush} onClose={togglePaint} />
     if (planning && electrical)
       return (
         <ElectricalPanel
@@ -681,6 +710,9 @@ export const House = ({ backend, account }: HouseProps) => {
           electrical={planning && electrical}
           data={data}
           interaction={measure ? 'measure' : interaction}
+          brush={brush}
+          onPaint={paint}
+          onPaintArea={paintArea}
           selection={selection}
           wallSnap={wallSnap}
           furnitureSnap={furnitureSnap}

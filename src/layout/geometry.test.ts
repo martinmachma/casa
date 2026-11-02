@@ -3,6 +3,7 @@ import {
   blocksView,
   cornerCuts,
   floorBounds,
+  paintRect,
   sidePart,
   splitPieces,
   validateLayout,
@@ -278,5 +279,28 @@ describe('wallFace', () => {
     const face = wallFace(w, floor, 'b', 0)
     expect(face.u0).toBeCloseTo(-0.1)
     expect(face.u1).toBeCloseTo(5.1)
+  })
+})
+
+describe('paintRect', () => {
+  const face = { u0: 0.1, u1: 3.05 }
+
+  it('snaps a drag to the grid from the left end and onto the far edges', () => {
+    const r = paintRect('a', face, 2.54, [0.43, 2.52], [1.62, 1.02])!
+    expect(r.u0).toBeCloseTo(0.45)
+    expect(r.u1).toBeCloseTo(1.6)
+    expect(r.y0).toBeCloseTo(1)
+    expect(r.y1).toBeCloseTo(2.54)
+  })
+
+  it('counts from the other end on side b, and stays on the face', () => {
+    const r = paintRect('b', face, 2.54, [3.5, -1], [2.43, 0.5])!
+    expect(r.u1).toBeCloseTo(3.05)
+    expect(r.u0).toBeCloseTo(2.45)
+    expect(r.y0).toBe(0)
+  })
+
+  it('paints nothing for a drag too thin to see', () => {
+    expect(paintRect('a', face, 2.54, [1, 1], [1.01, 2])).toBeUndefined()
   })
 })
