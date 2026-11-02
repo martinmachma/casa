@@ -401,14 +401,14 @@ export const HouseScene = ({
             selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
             glow={level}
             tint={tint}
-            plan={electrical || camera === 'top'}
+            plan={electrical}
             interactive={false}
             onSelect={() => {}}
             onMove={() => {}}
             onMoveEnd={() => {}}
-            onPickLight={pickable
-              ? (id) => onSelect({ kind: 'device', id })
-              : interaction === 'view' ? onPickLight : undefined}
+            onPickLight={
+              pickable ? (id) => onSelect({ kind: 'device', id }) : interaction === 'view' ? onPickLight : undefined
+            }
             onPickDevice={electrical && !measure ? (id) => onSelect({ kind: 'device', id }) : undefined}
             onHoverLight={onHoverItem}
           />

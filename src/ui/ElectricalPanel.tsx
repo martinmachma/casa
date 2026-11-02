@@ -1,4 +1,5 @@
 import type { Device } from '../data/types'
+import type { ReactNode } from 'react'
 import { ELECTRICAL_ROUTES } from '../devices/electrical'
 import { DEVICE_KINDS } from '../devices/kinds'
 import { deviceRoom } from '../devices/place'
@@ -112,10 +113,12 @@ export const ElectricalDetails = ({
   device,
   room,
   onClose,
+  children,
 }: {
   device: Device
   room?: string
   onClose: () => void
+  children?: ReactNode
 }) => (
   <>
     <PanelHead
@@ -124,6 +127,7 @@ export const ElectricalDetails = ({
       sub={[room, `${Math.round(device.z * 100)} cm above floor`].filter(Boolean).join(' · ')}
       onClose={onClose}
     />
+    {children}
     <Section>
       <p>
         <strong>{device.plan!.symbol}</strong>

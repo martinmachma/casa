@@ -23,10 +23,9 @@ const cm = (m: number) => Math.round(m * 100)
 
 export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) =>
   device.plan ? (
-    <>
-      <ElectricalDetails device={device} room={room} onClose={onClose} />
+    <ElectricalDetails device={device} room={room} onClose={onClose}>
       {device.kind === 'light' && <LightControls light={light} entity={device.entity} onChange={onLight} />}
-    </>
+    </ElectricalDetails>
   ) : (
     <>
       <PanelHead

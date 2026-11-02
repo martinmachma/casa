@@ -4,6 +4,7 @@ import { house } from '../layout/layout'
 import { floorRegions } from '../layout/rooms'
 import { deviceRoom } from './place'
 import { openingSill, wallLength } from '../layout/geometry'
+import { roomItems } from '../rooms/roomItems'
 
 describe('traced electrical infrastructure', () => {
   it('mounts every inside point in a room, on an existing wall and clear of openings', () => {
@@ -51,5 +52,20 @@ describe('traced electrical infrastructure', () => {
       expect(deviceRoom(device, home, home === floor ? regions : floorRegions(home))).toBe(room)
       expect(device.plan?.ports).toBe(2)
     }
+  })
+
+  it('makes the plan lights available to room controls and scenes without adding passive connections', () => {
+    const living = roomItems(house.floors[0], 'g-living', ELECTRICAL_DEVICES, []).filter((i) => i.kind !== 'blind')
+    expect(living.map((i) => i.id).sort()).toEqual([
+      'electrical-g-dining-light',
+      'electrical-g-kitchen-light',
+      'electrical-g-living-light',
+      'electrical-g-worktop-light',
+    ])
+    expect(living.every((i) => i.kind === 'light')).toBe(true)
+    const bedroom = roomItems(house.floors[1], 'u-bedroom', ELECTRICAL_DEVICES, []).filter((i) => i.kind !== 'blind')
+    expect(bedroom.map((i) => i.id)).toEqual(['electrical-u-bedroom-light'])
+    expect(ELECTRICAL_DEVICES.find((d) => d.id === 'electrical-g-hob')?.kind).toBe('connection')
+    expect(ELECTRICAL_DEVICES.find((d) => d.id === 'electrical-roof-drain-north')?.kind).toBe('connection')
   })
 })

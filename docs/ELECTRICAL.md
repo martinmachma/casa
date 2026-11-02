@@ -9,14 +9,16 @@ Traced on 2026-11-01 from `A22_NJ6A_RD_C1_dsp_elektro_1.jpg` through `_4.jpg` in
 
 Casa contains 135 fixed points: 54 inside the ground floor, 63 inside the upper floor and 18 exterior/roof
 points. These include individual power sockets, four TV outlets and four double RJ45 outlets (eight RJ45
-ports), appliance supplies, switches and timer buttons, lighting connection points, smoke/PIR/temperature
+ports), appliance supplies, switches and timer buttons, smart lights, smoke/PIR/temperature
 sensors, fans, doorbells, distribution boards, bonding and lightning protection equipment.
 
 Open **Planning → Electrical plan** (the cable button). Pick a marker or an entry in the room inventory to
 see its symbol, source sheet and notes. Choose **Outside** for the utility connections and roof. These are
 built-in points shared by every saved version; choosing them does not edit furniture or create a draft.
-Lighting connection points are separate from the editable light fittings and do not generate extra lights
-or smart-home controls.
+The 17 lighting positions are smart lights using the same on/off, brightness and colour controls as lights
+added from the Devices palette. They appear in their rooms and lighting scenes. The old passive lighting
+markers have been replaced, preserving their positions and source IDs. Ceiling lights emit downward; wall
+lights emit in front of their wall face. Other electrical connections remain passive.
 
 ## Placement and routes
 
@@ -54,8 +56,8 @@ it does not add radiator models with invented dimensions.
 
 `src/devices/electrical.ts` contains the trace with stable IDs and source metadata. It is combined with saved
 devices at read time, so existing versions and the bare house gain the infrastructure without a database
-migration. Fixed points cannot be dragged or deleted. They remain separate from Home Assistant controls;
-passive sockets and cable outlets do not acquire fictional on/off states.
+migration. Fixed points cannot be dragged or deleted. Plan lights have the app's smart-light controls;
+passive sockets and cable outlets remain separate from those controls.
 
 Core tests verify room assignment, wall mounting clear of openings, and correct room/port assignment for the
 four media banks. Browser verification covers both floor plans, picking a data marker, the towel rail's

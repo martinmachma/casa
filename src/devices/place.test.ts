@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Device } from '../data/types'
 import { roomRegions } from '../layout/rooms'
 import type { Floor } from '../layout/types'
-import { deviceRoom, placeDevice, snapToWall } from './place'
+import { deviceRoom, lightPosition, placeDevice, snapToWall } from './place'
 
 // A 4×3 m box (wall centre lines), 0.2 m walls, a window in the south wall, split by a wall at x = 2 with a door.
 const floor: Floor = {
@@ -75,5 +75,14 @@ describe('deviceRoom', () => {
     expect(deviceRoom(device(west), floor, regions)).toBe('west')
     expect(deviceRoom(device(east), floor, regions)).toBe('east')
     expect(deviceRoom(device(light), floor, regions)).toBe('east')
+  })
+
+  it('puts a wall light emitter in the room its face looks into, rather than inside the wall', () => {
+    const west = device({ ...placeDevice('switch', [1.8, 0.5], floor)!, kind: 'light' })
+    const east = device({ ...placeDevice('switch', [2.2, 0.5], floor)!, kind: 'light' })
+    expect(lightPosition(west, floor)[0]).toBeCloseTo(1.78)
+    expect(lightPosition(east, floor)[0]).toBeCloseTo(2.22)
+    const ceiling = device(placeDevice('light', [3, 1], floor)!)
+    expect(lightPosition(ceiling, floor)).toEqual([3, 2.42, 1])
   })
 })

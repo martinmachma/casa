@@ -479,7 +479,7 @@ export const House = ({ backend, account }: HouseProps) => {
       const room = home.rooms.find((r) => r.id === roomId)
       return (
         <LightPanel
-          kind={device ? device.wall ? 'Smart wall light' : 'Smart ceiling light' : 'Lamp'}
+          kind={device ? (device.wall ? 'Smart wall light' : 'Smart ceiling light') : 'Lamp'}
           name={device?.name ?? lamp!.name}
           room={room && roomLabel(room, data.roomNames).name}
           entity={device?.entity}
@@ -738,7 +738,12 @@ export const House = ({ backend, account }: HouseProps) => {
 
       <aside className="sidebar sidebar-right" aria-label="Details" inert={!rightOpen}>
         <div className="sheet-handle" onClick={closeRight} />
-        <div className="sidebar-inner">{inspector}</div>
+        <div
+          className="sidebar-inner"
+          key={selectedDevice?.id ?? (selection?.kind === 'light' ? selection.id : 'catalog')}
+        >
+          {inspector}
+        </div>
       </aside>
     </div>
   )
