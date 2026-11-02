@@ -9,6 +9,7 @@ import { wallAngle } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
+import { RoofDrain } from './RoofDrain'
 
 const CLICK_SLOP_PX = 5
 
@@ -241,21 +242,23 @@ const DeviceMesh = ({
           position={[device.x, level, device.y]}
           userData={{ itemId: device.id, debug: `${device.name} · ${device.id.slice(0, 4)}` }}
         >
-          <mesh position={[0, -LIGHT_DEPTH / 2, 0]} castShadow raycast={() => null}>
-            {device.kind === 'light' ? (
-              <cylinderGeometry args={[LIGHT_RADIUS, LIGHT_RADIUS * 0.9, LIGHT_DEPTH, 24]} />
-            ) : device.plan?.area === 'roof' && device.kind === 'earth' ? (
-              <cylinderGeometry args={[0.012, 0.018, 2, 12]} />
-            ) : device.plan?.area === 'roof' && device.kind === 'tv' ? (
-              <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
-            ) : device.plan?.area === 'roof' && device.kind === 'connection' ? (
-              <cylinderGeometry args={[0.09, 0.09, 0.02, 24]} />
-            ) : (
-              <boxGeometry args={PLATES[device.kind]} />
-            )}
-            {material}
-            {outline}
-          </mesh>
+          {device.plan?.area === 'roof' && device.kind === 'connection' ? (
+            <RoofDrain selected={selected} />
+          ) : (
+            <mesh position={[0, -LIGHT_DEPTH / 2, 0]} castShadow raycast={() => null}>
+              {device.kind === 'light' ? (
+                <cylinderGeometry args={[LIGHT_RADIUS, LIGHT_RADIUS * 0.9, LIGHT_DEPTH, 24]} />
+              ) : device.plan?.area === 'roof' && device.kind === 'earth' ? (
+                <cylinderGeometry args={[0.012, 0.018, 2, 12]} />
+              ) : device.plan?.area === 'roof' && device.kind === 'tv' ? (
+                <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
+              ) : (
+                <boxGeometry args={PLATES[device.kind]} />
+              )}
+              {material}
+              {outline}
+            </mesh>
+          )}
           {hitSphere([0, -LIGHT_DEPTH / 2, 0])}
         </group>
         {marker}
