@@ -1,6 +1,5 @@
 import { RotateCcw, Trash2 } from 'lucide-react'
 import type { WallArea } from '../data/types'
-import type { WallFace } from '../layout/types'
 import { DEFAULT_WALL } from '../scene/palette'
 import { PaintSwatches } from './PaintSwatches'
 import { PanelHead, Section, Segmented } from './kit'
@@ -14,12 +13,13 @@ const cm = (m: number) => Math.round(m * 100)
 
 /**
  * The stretch of the picked part you can see, along the wall from its `from` point (across it, on an end), and
- * how high it is. Mirrored when its left end, as you face it, is at `u1`.
+ * how high it is (how deep, `across` a sill or head). Mirrored when its left end, as you face it, is at `u1`.
  */
-export type WallFaceSpan = { u0: number; u1: number; height: number; mirrored: boolean }
+export type WallFaceSpan = { u0: number; u1: number; height: number; mirrored: boolean; across?: boolean }
 
 type WallPanelProps = {
-  side: WallFace
+  /** e.g. "Side A", "Window sill". */
+  title: string
   /** Its size, e.g. "6.03 m centre line · 34 cm thick · 2.68 m high". */
   details: string
   color: string | undefined
@@ -59,7 +59,7 @@ const place = (
 }
 
 export const WallPanel = ({
-  side,
+  title,
   details,
   color,
   onColor,
@@ -78,12 +78,7 @@ export const WallPanel = ({
     area && face && at && onPatchArea(place(face, { ...at, ...patch }), key)
   return (
     <>
-      <PanelHead
-        eyebrow="Wall"
-        title={side === 'end' ? 'Wall end' : `Side ${side.toUpperCase()}`}
-        sub={details}
-        onClose={onClose}
-      />
+      <PanelHead eyebrow="Wall" title={title} sub={details} onClose={onClose} />
       {/* Areas are painted with the paint tool, by dragging across the wall. */}
       {face && areas.length > 0 && (
         <Section title="Paint on">
@@ -128,13 +123,13 @@ export const WallPanel = ({
           </div>
           <div className="row" key={`${area.id}:y:${area.y0}:${area.y1}`}>
             <NumberField
-              label="From floor cm"
+              label={face.across ? 'From side B cm' : 'From floor cm'}
               min={0}
               value={cm(at.bottom)}
               onCommit={(v) => move({ bottom: v / 100 }, 'bottom')}
             />
             <NumberField
-              label="Height cm"
+              label={face.across ? 'Depth cm' : 'Height cm'}
               value={cm(at.height)}
               onCommit={(v) => move({ height: v / 100 }, 'height')}
             />
@@ -144,10 +139,14 @@ export const WallPanel = ({
               Full width
             </button>
             <button className="btn btn-small" onClick={() => move({ bottom: 0, height: face.height }, 'full-height')}>
-              Full height
+              {face.across ? 'Full depth' : 'Full height'}
             </button>
           </div>
-          <p className="muted">Measured as you face it, from its left edge.</p>
+          <p className="muted">
+            {face.across
+              ? 'Measured along the wall from its left edge, and across from side B.'
+              : 'Measured as you face it, from its left edge.'}
+          </p>
           <button className="btn btn-danger btn-block" onClick={onRemoveArea}>
             <Trash2 size={16} />
             Remove area

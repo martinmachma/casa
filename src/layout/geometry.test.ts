@@ -3,6 +3,7 @@ import {
   blocksView,
   cornerCuts,
   endPart,
+  openingAt,
   floorBounds,
   paintCells,
   paintStretch,
@@ -44,6 +45,14 @@ it("finds the shaft an end belongs to, so its side is painted across the shaft's
   expect(near.wall.id).toBe('u-shaft-s15')
   expect(near.far).toBe(false)
   expect(wallEnd(owner, floor, endPart(offset + 0.45)).far).toBe(true)
+})
+
+it("tells an opening's reveals apart from the wall's ends", () => {
+  const w = wall([{ type: 'window', offset: 1, width: 1.2, height: 1.4 }])
+  const floor: Floor = { id: 'f', name: 'Test', elevation: 0, height: 2.7, wallThickness: 0.2, rooms: [], walls: [w] }
+  expect(openingAt(w, floor, endPart(1))).toMatchObject({ u0: 1, far: true })
+  expect(openingAt(w, floor, endPart(2.2))).toMatchObject({ u0: 1, far: false })
+  expect(openingAt(w, floor, endPart(5))).toBeUndefined()
 })
 
 it("keeps paint on the wall apart from paint on a shaft's front", () => {

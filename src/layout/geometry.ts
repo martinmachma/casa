@@ -339,6 +339,28 @@ export const cornerCuts = (wall: Wall, floor: Floor): { at: number; wall: string
 export const endPart = (u: number) => Math.round(u * 1000)
 
 /**
+ * The opening with an edge at `part` along its owner wall (see `endPart`), in the owner or one of its members, and
+ * whether that edge's reveal faces the way the wall runs (the opening's near edge). A sill or head is told apart by
+ * the opening's near edge too.
+ */
+export const openingAt = (
+  owner: Wall,
+  floor: Floor,
+  part: number,
+): { wall: Wall; opening: Opening; u0: number; far: boolean } | undefined => {
+  for (const wall of floor.walls) {
+    if (wall.id !== owner.id && wall.partOf !== owner.id) continue
+    const offset = wallOwnerOffset(wall, owner)
+    for (const opening of wall.openings ?? []) {
+      const u0 = opening.offset + offset
+      if (endPart(u0) === part) return { wall, opening, u0, far: true }
+      if (endPart(u0 + opening.width) === part) return { wall, opening, u0, far: false }
+    }
+  }
+  return undefined
+}
+
+/**
  * The wall an end belongs to (the owner itself or one of its members), and whether it's the far end, where it
  * faces the way the wall runs.
  */

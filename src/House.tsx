@@ -16,7 +16,7 @@ import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorRegions, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
-import { wallEnd, wallFace, wallHeight, wallThickness } from './layout/geometry'
+import { openingAt, wallEnd, wallFace, wallHeight, wallThickness } from './layout/geometry'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
 import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
@@ -367,7 +367,7 @@ export const House = ({ backend, account }: HouseProps) => {
   const paint = (stroke: PaintStroke) => {
     const base =
       wallPartColor(data.wallColors, stroke.wallId, stroke.side, stroke.part) ??
-      (stroke.side === 'end' ? WALL_CAP : DEFAULT_WALL)
+      (stroke.side === 'a' || stroke.side === 'b' ? DEFAULT_WALL : WALL_CAP)
     data.paintArea(stroke, brush.erase || brush.color.toLowerCase() === base.toLowerCase() ? undefined : brush.color)
   }
   const paintWall = ({ wallId, side, part }: PaintFace) =>
@@ -580,20 +580,40 @@ export const House = ({ backend, account }: HouseProps) => {
       const wall = home.walls.find((w) => w.id === selection.wallId)
       const { wallId, side, part } = selection
       const color = wallPartColor(data.wallColors, wallId, side, part)
-      const end = wall && side === 'end' && wallEnd(wall, home, part)
+      const sided = side === 'a' || side === 'b'
+      // The side of an opening is an end too, told apart by the opening having an edge there.
+      const reveal = wall && !sided ? openingAt(wall, home, part) : undefined
+      const end = wall && side === 'end' ? (reveal ?? wallEnd(wall, home, part)) : undefined
       const half = end ? wallThickness(end.wall, home) / 2 : 0
-      // An end runs across its wall, from the left as you face it.
+      const kind =
+        reveal && (reveal.opening.type === 'window' ? 'Window' : reveal.opening.type === 'passage' ? 'Opening' : 'Door')
+      // An end runs across its wall, from the left as you face it; a sill or head along it, and across from side b.
       const face = end
         ? { u0: -half, u1: half, height: wallHeight(end.wall, home), mirrored: end.far }
-        : wall && side !== 'end'
+        : wall && sided
           ? { ...wallFace(wall, home, side, part), height: wallHeight(wall, home), mirrored: side === 'b' }
-          : undefined
+          : reveal
+            ? {
+                u0: reveal.u0,
+                u1: reveal.u0 + reveal.opening.width,
+                height: wallThickness(reveal.wall, home),
+                mirrored: false,
+                across: true,
+              }
+            : undefined
+      const title = sided
+        ? `Side ${side.toUpperCase()}`
+        : side === 'end'
+          ? reveal
+            ? `${kind} reveal`
+            : 'Wall end'
+          : `${kind ?? 'Opening'} ${side}`
       const areas = data.wallAreas.filter((a) => a.wallId === wallId && a.side === side && a.part === part)
       const area = areas.find((a) => a.id === selection.area)
       const pickArea = (id: string | undefined) => setSelection({ ...selection, area: id })
       return (
         <WallPanel
-          side={side}
+          title={title}
           details={wall ? wallText(wall, home) : ''}
           color={color}
           onColor={(color) => data.setWallColor(wallId, side, part, color)}

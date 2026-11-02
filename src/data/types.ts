@@ -10,7 +10,8 @@ export type WallColor = { wallId: string; side: WallFace; part?: number; color: 
 /**
  * Paint over a rectangle of one part of a wall side (a dado, a stripe, a patch behind the bed), on top of the
  * part's own. Metres: `u0`–`u1` along the wall from its `from` point, `y0`–`y1` above the floor. On an end,
- * `u0`–`u1` run across it, from the centre line of the wall the end is on, towards side a.
+ * `u0`–`u1` run across it, from the centre line of the wall the end is on, towards side a. On a sill or head,
+ * `u0`–`u1` run along the wall as on a side, and `y0`–`y1` across it from side b's face.
  */
 export type WallArea = {
   id: string

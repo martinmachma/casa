@@ -153,5 +153,8 @@ export type HouseLayout = {
 /** Which face of a wall: walking from `from` to `to` in the plan (north up), 'a' is on the right, 'b' on the left. */
 export type WallSide = 'a' | 'b'
 
-/** A paintable face of a wall: one of its sides, or an end left bare (at an opening, or a wall stopping short). */
-export type WallFace = WallSide | 'end'
+/**
+ * A paintable face of a wall: one of its sides, an end left bare (at an opening, or a wall stopping short), or the
+ * sill or head of an opening, the reveal's bottom and top.
+ */
+export type WallFace = WallSide | 'end' | 'sill' | 'head'
