@@ -21,7 +21,7 @@ import { roomBox, roomWallSides } from '../rooms/roomViews'
 import type { SunPosition } from '../sun/sun'
 import { AmbientOcclusion } from './AmbientOcclusion'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
-import { NEAR_PACE, type CameraNudge } from './cameraNudge'
+import { NEAR_PACE, PAN_SPEED, ZOOM_SPEED, type CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
 import { Compass, CompassTracker } from './Compass'
 import type { Focus } from './CutawayWall'
@@ -755,8 +755,8 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     // Speed them up there to keep the pace they have this far out.
     if (mode === 'orbit') {
       const boost = NEAR_PACE / camera.position.distanceTo(orbit.target)
-      orbit.panSpeed = Math.max(1, boost)
-      orbit.zoomSpeed = Math.max(2, boost)
+      orbit.panSpeed = PAN_SPEED * Math.max(1, boost)
+      orbit.zoomSpeed = ZOOM_SPEED * Math.max(1, boost / 2)
     }
     Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation: houseHeight ? NaN : floor.elevation })
     lastView.position.copy(camera.position)
@@ -776,7 +776,8 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
           target={target.toArray()}
           enableRotate={false}
           zoomToCursor
-          zoomSpeed={2}
+          zoomSpeed={ZOOM_SPEED}
+          panSpeed={PAN_SPEED}
           screenSpacePanning
           mouseButtons={{ LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
           touches={{ ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_PAN }}

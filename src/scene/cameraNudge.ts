@@ -22,3 +22,7 @@ export const createCameraNudge = (): CameraNudge => ({ forward: 0, right: 0, zoo
 
 /** Closer to the orbit target than this, panning and zooming keep the pace they have here. */
 export const NEAR_PACE = 4
+
+/** Base speeds for the mouse and touch camera controls: wheel and pinch zoom, and drag panning. */
+export const ZOOM_SPEED = 1.2
+export const PAN_SPEED = 1.6

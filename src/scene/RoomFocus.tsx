@@ -6,6 +6,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { FurnitureItem } from '../data/types'
 import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
+import { ZOOM_SPEED } from './cameraNudge'
 import { ZoomToSurface } from './ZoomToSurface'
 
 const FLIGHT_SECONDS = 1.1
@@ -125,7 +126,7 @@ export const RoomCamera = ({
           minPolarAngle={0.15}
           maxPolarAngle={1.3}
           zoomToCursor
-          zoomSpeed={2}
+          zoomSpeed={ZOOM_SPEED}
           minDistance={0.2}
           maxDistance={reach * 1.5}
         />
