@@ -9,10 +9,10 @@ type PaintPanelProps = {
   onClose: () => void
 }
 
-// How big the squares painted with one tap are, metres.
+// How big the paint squares are, metres.
 const SIZES = [0.05, 0.1, 0.25, 0.5]
 
-/** The paint tool: pick a colour, then tap a wall to paint a square of it or drag to paint a block of squares. */
+/** The paint tool: pick a colour, then click a wall where a block of squares starts and again where it ends. */
 export const PaintPanel = ({ brush, onBrush, onClose }: PaintPanelProps) => (
   <>
     <PanelHead
@@ -20,8 +20,8 @@ export const PaintPanel = ({ brush, onBrush, onClose }: PaintPanelProps) => (
       title="Paint walls"
       sub={
         brush.erase
-          ? 'Tap or drag to take paint off in squares. Shift-tap takes a whole wall back to white.'
-          : 'Tap a wall to paint a square, drag to paint a block of them. Shift-tap paints the whole wall.'
+          ? 'Click where to start taking paint off and again where to stop; Esc lets go. Shift-click takes a whole wall back to white.'
+          : 'Click a wall where to start and again where to stop (twice in one place for a square); Esc lets go. Shift-click paints the whole wall.'
       }
       onClose={onClose}
       closeLabel="Stop painting (P)"

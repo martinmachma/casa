@@ -1,6 +1,6 @@
 import { useThree, type ThreeElements, type ThreeEvent } from '@react-three/fiber'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Plane, Vector3, type Object3D } from 'three'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { Plane, Raycaster, Vector2, Vector3, type Object3D, type Ray } from 'three'
 import {
   cornerCuts,
   endPart,
@@ -44,7 +44,7 @@ const AREA_PROUD = 0.0008
 // How long the paint square stays after the pointer leaves the wall.
 const PREVIEW_LINGER_MS = 80
 
-/** What a tap or drag on a wall does while painting: brush on a colour in squares `size` across, or take it off. */
+/** What a stroke on a wall does while painting: brush on a colour in squares `size` across, or take it off. */
 export type Brush = { color: string; erase: boolean; size: number }
 
 /** A block of paint squares on a part of a wall side, before it has a colour. */
@@ -56,8 +56,16 @@ export type PaintFace = { wallId: string; side: WallFace; part: number }
 /** Where a stroke goes on, and for an end whether it's the far one, facing the way the wall runs. */
 type PaintTarget = PaintFace & { far?: boolean }
 
-/** Where painting would go: the square under the pointer, or the block being dragged out. */
-type PaintPreview = PaintStroke & { dragging: boolean }
+/** Where painting would go: the square under the pointer, or the block from where it was started. */
+type PaintPreview = PaintStroke & { started: boolean }
+
+/** A block of paint started with a click and finished with the next, the camera free to turn in between. */
+type PaintStart = {
+  /** The block from where it was started to where the ray meets that face. */
+  to: (ray: Ray) => PaintStroke
+  /** The click that started it, which doesn't also finish it. */
+  click: Event
+}
 
 const samePreview = (a: PaintPreview | undefined, b: PaintPreview | undefined) =>
   a === b || (!!a && !!b && (Object.keys(a) as (keyof PaintPreview)[]).every((k) => a[k] === b[k]))
@@ -101,7 +109,7 @@ type FloorWallsProps = {
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
   focus?: Focus
   onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
-  /** While painting: a tap paints the square under it, a drag a block of squares, a Shift-tap the whole wall. */
+  /** While painting: a click starts a block of squares and the next finishes it; a Shift-click paints the whole wall. */
   brush?: Brush
   onPaint?: (stroke: PaintStroke) => void
   onPaintWall?: (face: PaintFace) => void
@@ -143,6 +151,57 @@ export const FloorWalls = ({
       if (document.body.style.cursor === 'crosshair') document.body.style.cursor = ''
     }, PREVIEW_LINGER_MS)
   }, [])
+
+  // A started block follows the pointer anywhere over the scene, even off the wall or while the camera turns, and
+  // the next click (not a turn of the camera) finishes it. Esc lets it go.
+  const getState = useThree((s) => s.get)
+  const start = useRef<PaintStart>(undefined)
+  const pressed = useRef<[number, number]>(undefined)
+  const painting = !!brush
+  useEffect(() => {
+    if (!painting) start.current = undefined
+  }, [painting])
+  useEffect(() => {
+    const el = getState().events.connected as HTMLElement | undefined
+    if (!painting || !el) return
+    const raycaster = new Raycaster()
+    const ray = (e: MouseEvent) => {
+      const { camera, gl } = getState()
+      const r = gl.domElement.getBoundingClientRect()
+      const at = new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+      raycaster.setFromCamera(at, camera)
+      return raycaster.ray
+    }
+    const move = (e: PointerEvent) => {
+      if (start.current) showPreview({ ...start.current.to(ray(e)), started: true })
+    }
+    const press = (e: PointerEvent) => (pressed.current = [e.clientX, e.clientY])
+    const click = (e: MouseEvent) => {
+      const s = start.current
+      const p = pressed.current
+      if (!s || e === s.click || !p || Math.hypot(e.clientX - p[0], e.clientY - p[1]) > CLICK_SLOP_PX) return
+      start.current = undefined
+      showPreview(undefined)
+      onPaint?.(s.to(ray(e)))
+    }
+    // Ahead of the app's own Esc, which would put the paint tool away.
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !start.current) return
+      e.stopImmediatePropagation()
+      start.current = undefined
+      showPreview(undefined)
+    }
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerdown', press)
+    el.addEventListener('click', click)
+    window.addEventListener('keydown', key, { capture: true })
+    return () => {
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerdown', press)
+      el.removeEventListener('click', click)
+      window.removeEventListener('keydown', key, { capture: true })
+    }
+  }, [painting, getState, showPreview, onPaint])
   return (
     <group>
       {floor.walls.map((wall) => (
@@ -169,7 +228,7 @@ export const FloorWalls = ({
           brush={brush}
           preview={brush && preview?.wallId === wallOwner(wall, floor).id ? preview : undefined}
           onPreview={showPreview}
-          onPaint={onPaint}
+          startRef={start}
           onPaintWall={onPaintWall}
         />
       ))}
@@ -200,7 +259,8 @@ type WallMeshProps = {
   /** Where painting would go on this wall. */
   preview?: PaintPreview
   onPreview: (preview: PaintPreview | undefined) => void
-  onPaint?: (stroke: PaintStroke) => void
+  /** The block being painted, on any wall. */
+  startRef: RefObject<PaintStart | undefined>
   onPaintWall?: (face: PaintFace) => void
 }
 
@@ -227,7 +287,7 @@ const WallMesh = ({
   brush,
   preview,
   onPreview,
-  onPaint,
+  startRef,
   onPaintWall,
 }: WallMeshProps) => {
   const owner = wallOwner(wall, floor)
@@ -310,14 +370,8 @@ const WallMesh = ({
     else if (Math.abs(n.x) > 0.5) onPick(owner.id, 'end', endPart((n.x > 0 ? p.u1 : p.u0) + offset))
   }
 
-  // Painting goes on in squares on a side's or an end's face: hovering shows the square under the pointer, a drag
-  // the block of squares from where it was pressed, across the plane of that face, in the wall's own space.
-  const getState = useThree((s) => s.get)
-  const drag = useRef<{ target: PaintTarget; group: Object3D; plane: Plane; start: [number, number] }>(undefined)
-  const setControlsEnabled = (enabled: boolean) => {
-    const controls = getState().controls as { enabled: boolean } | null
-    if (controls) controls.enabled = enabled
-  }
+  // Painting goes on in squares on a side's or an end's face: hovering shows the square under the pointer, and a
+  // click starts the block of squares from there, across the plane of that face, in the wall's own space.
   /** A point in the world on the target's face: along the owning wall (or across an end) and up. */
   const local = (target: PaintTarget, group: Object3D, p: Vector3): [number, number] => {
     const l = group.worldToLocal(p.clone())
@@ -345,61 +399,50 @@ const WallMesh = ({
           to,
         )),
   })
-  const pointerDown = (e: ThreeEvent<PointerEvent>, target: PaintTarget) => {
+  const startStroke = (e: ThreeEvent<MouseEvent>, target: PaintTarget) => {
     const group = wallGroup(e.object)
-    if (!group) return
+    if (startRef.current || e.delta > CLICK_SLOP_PX || !group) return
     e.stopPropagation()
-    // Shift paints the whole wall, as one tap.
+    // Shift paints the whole wall, as one click.
     if (e.nativeEvent.shiftKey) {
       onPreview(undefined)
       return onPaintWall?.(target)
     }
-    const start = local(target, group, e.point)
+    const from = local(target, group, e.point)
     const normal = (
       target.side === 'end' ? new Vector3(target.far ? 1 : -1, 0, 0) : new Vector3(0, 0, target.side === 'a' ? 1 : -1)
     ).transformDirection(group.matrixWorld)
-    drag.current = { target, group, plane: new Plane().setFromNormalAndCoplanarPoint(normal, e.point), start }
-    ;(e.target as Element).setPointerCapture(e.pointerId)
-    setControlsEnabled(false)
-    onPreview({ ...cells(target, start, start), dragging: true })
+    const plane = new Plane().setFromNormalAndCoplanarPoint(normal, e.point)
+    let to = from
+    startRef.current = {
+      click: e.nativeEvent,
+      to: (ray) => {
+        const hit = ray.intersectPlane(plane, new Vector3())
+        if (hit) to = local(target, group, hit)
+        return cells(target, from, to)
+      },
+    }
+    onPreview({ ...cells(target, from, from), started: true })
   }
   const pointerMove = (e: ThreeEvent<PointerEvent>, target: PaintTarget | undefined) => {
-    const d = drag.current
-    if (d) {
-      e.stopPropagation()
-      const hit = e.ray.intersectPlane(d.plane, new Vector3())
-      if (hit) onPreview({ ...cells(d.target, d.start, local(d.target, d.group, hit)), dragging: true })
-      return
-    }
+    // A started block follows the pointer on its own.
+    if (startRef.current) return
     const group = wallGroup(e.object)
     if (!target || !group) return onPreview(undefined)
     e.stopPropagation()
     const at = local(target, group, e.point)
-    onPreview({ ...cells(target, at, at), dragging: false })
+    onPreview({ ...cells(target, at, at), started: false })
   }
-  const endStroke = (e: ThreeEvent<PointerEvent>, cancel = false) => {
-    const d = drag.current
-    if (!d) return
-    drag.current = undefined
-    ;(e.target as Element).releasePointerCapture(e.pointerId)
-    setControlsEnabled(true)
-    onPreview(undefined)
-    if (cancel) return
-    const hit = e.ray.intersectPlane(d.plane, new Vector3())
-    onPaint?.(cells(d.target, d.start, hit ? local(d.target, d.group, hit) : d.start))
-  }
-  const strokeHandlers = (target: (e: ThreeEvent<PointerEvent>) => PaintTarget | undefined): MeshHandlers => ({
-    onPointerDown: (e) => {
+  const strokeHandlers = (target: (e: ThreeEvent<MouseEvent>) => PaintTarget | undefined): MeshHandlers => ({
+    onClick: (e) => {
       const t = target(e)
-      if (t) pointerDown(e, t)
+      if (t) startStroke(e, t)
     },
     onPointerMove: (e) => pointerMove(e, target(e)),
-    onPointerUp: (e) => endStroke(e),
-    onPointerCancel: (e) => endStroke(e, true),
     onPointerOver: (e) => (e.stopPropagation(), (document.body.style.cursor = 'crosshair')),
     // The cursor goes back with the square.
     onPointerOut: () => {
-      if (!drag.current) onPreview(undefined)
+      if (!startRef.current) onPreview(undefined)
     },
   })
   const paintHandlers = (p: WallPiece): MeshHandlers =>
@@ -492,7 +535,7 @@ const WallMesh = ({
     // Taking paint off shows as the selection wash.
     const look = brush && {
       color: brush.erase ? SELECTED_OUTLINE : brush.color,
-      opacity: brush.erase ? 0.45 : preview?.dragging ? 0.9 : 0.6,
+      opacity: brush.erase ? 0.45 : preview?.started ? 0.9 : 0.6,
     }
     return (
       <>
