@@ -51,6 +51,8 @@ type FloorWallsProps = {
   onPickShade?: (id: string) => void
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
+  /** The shade pointed at in the scene or its controls, drawn solid. */
+  hoveredShade?: string
   /** Hide the walls between the camera and the middle of the floor, so you can see in. */
   cutaway: boolean
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
@@ -69,6 +71,7 @@ export const FloorWalls = ({
   shades,
   onPickShade,
   onHoverShade,
+  hoveredShade,
   cutaway,
   focus,
   onPick,
@@ -93,6 +96,7 @@ export const FloorWalls = ({
           shades={shades}
           onPickShade={onPickShade}
           onHoverShade={onHoverShade}
+          hoveredShade={hoveredShade}
           onPick={onPick}
         />
       ))}
@@ -116,6 +120,7 @@ type WallMeshProps = {
   onPickShade?: (id: string) => void
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
+  hoveredShade?: string
   onPick: (wallId: string, side: WallFace, part: number) => void
 }
 
@@ -136,6 +141,7 @@ const WallMesh = ({
   shades,
   onPickShade,
   onHoverShade,
+  hoveredShade,
   onPick,
 }: WallMeshProps) => {
   const owner = wallOwner(wall, floor)
@@ -257,6 +263,7 @@ const WallMesh = ({
         shades={shades}
         onPickShade={onPickShade}
         onHoverShade={onHoverShade}
+        hoveredShade={hoveredShade}
         ghostShades={cutaway}
         top={top}
       />

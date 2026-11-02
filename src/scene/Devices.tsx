@@ -20,6 +20,8 @@ type DevicesProps = {
   floor: Floor
   devices: Device[]
   selectedId: string | undefined
+  /** Pointed at in the scene or its controls: shown solid even on a cut-away wall. */
+  hoveredId?: string
   /** How brightly each ceiling light is lit, 0 (off) to 1. */
   glow: (id: string) => number
   /** The colour each ceiling light gives off. */
@@ -50,6 +52,7 @@ export const Devices = ({
   floor,
   devices,
   selectedId,
+  hoveredId,
   glow,
   tint,
   plan,
@@ -70,6 +73,7 @@ export const Devices = ({
         device={device}
         floor={floor}
         selected={device.id === selectedId}
+        hoveredId={hoveredId}
         glow={glow(device.id)}
         tint={tint(device.id)}
         plan={plan}
@@ -98,6 +102,7 @@ const DeviceMesh = ({
   device,
   floor,
   selected,
+  hoveredId,
   glow,
   tint,
   plan,
@@ -120,7 +125,7 @@ const DeviceMesh = ({
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
   const outside = useMemo(() => wall && wallOutside(wall, floor), [wall, floor])
   const opacity = (camera: Camera) =>
-    wall && wallCut(wall, floor, outside, camera, cutaway, focus) ? GHOST_OPACITY : 1
+    hoveredId !== device.id && wall && wallCut(wall, floor, outside, camera, cutaway, focus) ? GHOST_OPACITY : 1
   // Reapply after a render adds model parts, preserving any fade inherited from the floor.
   useLayoutEffect(() => {
     const g = model.current

@@ -83,6 +83,7 @@ export const OpeningFills = ({
   shades,
   onPickShade,
   onHoverShade,
+  hoveredShade,
   ghostShades,
 }: {
   wallId: string
@@ -99,6 +100,8 @@ export const OpeningFills = ({
   onPickShade?: (id: string) => void
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
+  /** The shade pointed at in the scene or its controls, drawn solid. */
+  hoveredShade?: string
   /** Walls cut away to see in: the shades are drawn whole and see-through, even where the wall is cut down. */
   ghostShades?: boolean
   /** Whether a tap on a door opens or closes it. */
@@ -121,7 +124,7 @@ export const OpeningFills = ({
         y1={y0 + o.height}
         z={(outside === 'a' ? 1 : -1) * (thickness / 2 - SHADE_INSET)}
         section={section && !ghostShades}
-        opacity={ghostShades ? GHOST_OPACITY : undefined}
+        opacity={ghostShades && hoveredShade !== id ? GHOST_OPACITY : undefined}
         state={shades[id] ?? SHADE_UP}
         onPick={onPickShade && (() => onPickShade(id))}
         onHover={(on) => onHoverShade?.(on ? id : undefined)}

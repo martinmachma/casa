@@ -397,6 +397,7 @@ export const HouseScene = ({
               shades={shades}
               onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? onPickShade : undefined}
               onHoverShade={onHoverItem}
+              hoveredShade={hovered}
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
               onPick={pickWall}
@@ -411,6 +412,7 @@ export const HouseScene = ({
         {floors.map((f) => (
           <Devices
             key={`electrical-${f.id}`}
+            hoveredId={hovered}
             floor={f}
             cutaway={cutWalls && f.id === floor.id}
             focus={focusPoint}
@@ -461,6 +463,7 @@ export const HouseScene = ({
           <Fade key={f.id} shown={furnished(f)}>
             <Devices
               floor={f}
+              hoveredId={hovered}
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
               devices={data.devices.filter((d) => !d.plan && d.floor === f.id && (outside || f.id === floor.id))}
