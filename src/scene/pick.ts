@@ -10,7 +10,8 @@ export const shown = (o: Object3D) => {
 
 /**
  * Drawn solid where the ray meets it: not an invisible hit box or a plane that only takes the pointer (colorWrite
- * off), not faded (a wall seen through as it fades out is looked past), and not cut away there.
+ * off), not faded (a wall seen through as it fades out is looked past), and not cut away there. Overlays laid on a
+ * surface (where paint would go, the selection wash) aren't either.
  */
 const solid = (h: Intersection) => {
   const materials = materialsOf(h.object as Mesh)
@@ -26,7 +27,7 @@ const solid = (h: Intersection) => {
 export const solidHits = (scene: Object3D, ray: Raycaster) => {
   const hits: Intersection[] = []
   scene.traverse((o) => {
-    if (o instanceof Mesh && !o.userData.debugTint && !o.userData.outside && shown(o))
+    if (o instanceof Mesh && !o.userData.debugTint && !o.userData.overlay && !o.userData.outside && shown(o))
       Mesh.prototype.raycast.call(o, ray, hits)
   })
   return hits.sort((a, b) => a.distance - b.distance).filter(solid)

@@ -38,7 +38,8 @@ const CORNER_INSET = 0.002
 const CLICK_SLOP_PX = 5
 // The selection wash sits this far off the wall face, so it doesn't flicker against it.
 const PROUD = 0.006
-// Painted areas sit just off the face, each later one a step further out, all under the selection wash.
+// Painted areas sit just off the face (they never overlap), where painting would go a step further out, both
+// under the selection wash.
 const AREA_PROUD = 0.0008
 // How long the paint square stays after the pointer leaves the wall.
 const PREVIEW_LINGER_MS = 80
@@ -495,13 +496,13 @@ const WallMesh = ({
     }
     return (
       <>
-        {areas.map((area, k) =>
+        {areas.map((area) =>
           area.side === 'end' ? (
             <EndPaint
               key={area.id}
               rects={endPieces(area, list)}
               color={area.color}
-              proud={AREA_PROUD * (k + 1)}
+              proud={AREA_PROUD}
               handlers={(far) => handlers(area, far)}
             />
           ) : (
@@ -510,7 +511,7 @@ const WallMesh = ({
               pieces={areaPieces(area, list)}
               side={area.side}
               color={area.color}
-              z={thickness / 2 + AREA_PROUD * (k + 1)}
+              z={thickness / 2 + AREA_PROUD}
               handlers={handlers(area)}
             />
           ),
@@ -518,13 +519,13 @@ const WallMesh = ({
         {shown &&
           look &&
           (shown.side === 'end' ? (
-            <EndPaint rects={endPieces(shown, list)} {...look} proud={AREA_PROUD * (areas.length + 1)} />
+            <EndPaint rects={endPieces(shown, list)} {...look} proud={2 * AREA_PROUD} />
           ) : (
             <AreaPaint
               pieces={areaPieces(shown, list)}
               side={shown.side}
               {...look}
-              z={thickness / 2 + AREA_PROUD * (areas.length + 1)}
+              z={thickness / 2 + 2 * AREA_PROUD}
             />
           ))}
       </>
@@ -645,6 +646,8 @@ const AreaPaint = ({
       <mesh
         key={i}
         position={[((p.u0 + p.u1) / 2) * (side === 'a' ? 1 : -1), (p.y0 + p.y1) / 2, z]}
+        // A see-through one is laid over the wall, not something the pointer stops at.
+        userData={{ overlay: opacity !== undefined }}
         receiveShadow
         raycast={handlers ? raycastIfShown : noRaycast}
         {...handlers}
@@ -701,6 +704,7 @@ const EndPaint = ({
           key={i}
           position={[r.u + (r.far ? proud : -proud), (r.y0 + r.y1) / 2, (r.z0 + r.z1) / 2]}
           rotation-y={r.far ? Math.PI / 2 : -Math.PI / 2}
+          userData={{ overlay: opacity !== undefined }}
           receiveShadow={!wash}
           raycast={h ? raycastIfShown : noRaycast}
           {...h}
@@ -732,6 +736,7 @@ const SideHighlight = ({ pieces, side, thickness }: { pieces: WallPiece[]; side:
         <mesh
           key={i}
           position={[((p.u0 + p.u1) / 2) * (side === 'a' ? 1 : -1), (p.y0 + p.y1) / 2, Math.abs(z)]}
+          userData={{ overlay: true }}
           raycast={noRaycast}
         >
           <planeGeometry args={[p.u1 - p.u0, p.y1 - p.y0]} />
@@ -763,6 +768,7 @@ const EndHighlight = ({
             key={`${i}:${u}`}
             position={[u + (u === p.u1 ? PROUD : -PROUD), (p.y0 + p.y1) / 2, 0]}
             rotation-y={u === p.u1 ? Math.PI / 2 : -Math.PI / 2}
+            userData={{ overlay: true }}
             raycast={noRaycast}
           >
             <planeGeometry args={[thickness, p.y1 - p.y0]} />
