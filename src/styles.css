@@ -990,7 +990,7 @@ p {
 .modebar .history {
   display: inline-flex;
   gap: 2px;
-  padding: 5px;
+  padding: 4px;
   border-radius: 10px;
 }
 
@@ -2811,6 +2811,7 @@ input[type='range'].kelvin::-moz-range-thumb {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Closed or open, as tall as the Planning toggle and the history beside it. */
   padding: 4px;
 }
 
@@ -2824,8 +2825,12 @@ input[type='range'].kelvin::-moz-range-thumb {
   margin-right: 4px;
 }
 
+.toolbar .segmented {
+  padding: 2px;
+}
+
 .toolbar .segmented button {
-  min-height: 30px;
+  min-height: 26px;
 }
 
 .toolbar-icon {
