@@ -16,10 +16,10 @@ import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorRegions, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
-import { wallFace, wallHeight } from './layout/geometry'
+import { wallEnd, wallFace, wallHeight, wallThickness } from './layout/geometry'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
-import { DEFAULT_WALL, FURNITURE_SWATCHES } from './scene/palette'
+import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
@@ -365,7 +365,9 @@ export const House = ({ backend, account }: HouseProps) => {
   }
   // Paint in the wall's own colour is no paint: it just covers what was there.
   const paint = (stroke: PaintStroke) => {
-    const base = wallPartColor(data.wallColors, stroke.wallId, stroke.side, stroke.part) ?? DEFAULT_WALL
+    const base =
+      wallPartColor(data.wallColors, stroke.wallId, stroke.side, stroke.part) ??
+      (stroke.side === 'end' ? WALL_CAP : DEFAULT_WALL)
     data.paintArea(stroke, brush.erase || brush.color.toLowerCase() === base.toLowerCase() ? undefined : brush.color)
   }
   const paintWall = ({ wallId, side, part }: PaintFace) =>
@@ -578,8 +580,14 @@ export const House = ({ backend, account }: HouseProps) => {
       const wall = home.walls.find((w) => w.id === selection.wallId)
       const { wallId, side, part } = selection
       const color = wallPartColor(data.wallColors, wallId, side, part)
-      const face =
-        wall && side !== 'end' ? { ...wallFace(wall, home, side, part), height: wallHeight(wall, home) } : undefined
+      const end = wall && side === 'end' && wallEnd(wall, home, part)
+      const half = end ? wallThickness(end.wall, home) / 2 : 0
+      // An end runs across its wall, from the left as you face it.
+      const face = end
+        ? { u0: -half, u1: half, height: wallHeight(end.wall, home), mirrored: end.far }
+        : wall && side !== 'end'
+          ? { ...wallFace(wall, home, side, part), height: wallHeight(wall, home), mirrored: side === 'b' }
+          : undefined
       const areas = data.wallAreas.filter((a) => a.wallId === wallId && a.side === side && a.part === part)
       const area = areas.find((a) => a.id === selection.area)
       const pickArea = (id: string | undefined) => setSelection({ ...selection, area: id })

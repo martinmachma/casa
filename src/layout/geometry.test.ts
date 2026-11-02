@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   blocksView,
   cornerCuts,
+  endPart,
   floorBounds,
   paintCells,
   sidePart,
   splitPieces,
   validateLayout,
+  wallEnd,
   wallEndExtensions,
   wallFace,
   wallJoints,
@@ -30,6 +32,17 @@ it('paints a shaft with its room while preserving saved part numbers beyond the 
   expect(partAt(3)).toBe(0)
   expect(partAt(4)).toBe(sidePart(joints.a, 4)) // the other room keeps its saved paint key
   expect(parts.b).toEqual([0, 1])
+})
+
+it("finds the shaft an end belongs to, so its side is painted across the shaft's own thickness", () => {
+  const floor = house.floors[1]
+  const owner = floor.walls.find((w) => w.id === 'u-middle')!
+  const shaft = floor.walls.find((w) => w.id === 'u-shaft-s15')!
+  const offset = shaft.from[0] - owner.from[0]
+  const near = wallEnd(owner, floor, endPart(offset))
+  expect(near.wall.id).toBe('u-shaft-s15')
+  expect(near.far).toBe(false)
+  expect(wallEnd(owner, floor, endPart(offset + 0.45)).far).toBe(true)
 })
 
 describe('wallPieces', () => {

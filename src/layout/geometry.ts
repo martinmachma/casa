@@ -335,6 +335,26 @@ export const cornerCuts = (wall: Wall, floor: Floor): { at: number; wall: string
     .map(({ at, wall }) => ({ at, wall }))
 }
 
+/** An end face is told apart by where it is along its owner wall, in millimetres. */
+export const endPart = (u: number) => Math.round(u * 1000)
+
+/**
+ * The wall an end belongs to (the owner itself or one of its members), and whether it's the far end, where it
+ * faces the way the wall runs.
+ */
+export const wallEnd = (owner: Wall, floor: Floor, part: number): { wall: Wall; far: boolean } => {
+  let best = { wall: owner, far: false, gap: Infinity }
+  for (const wall of floor.walls) {
+    if (wall.id !== owner.id && wall.partOf !== owner.id) continue
+    const offset = wallOwnerOffset(wall, owner)
+    for (const far of [false, true]) {
+      const gap = Math.abs(offset + (far ? wallLength(wall) : 0) - part / 1000)
+      if (gap < best.gap) best = { wall, far, gap }
+    }
+  }
+  return { wall: best.wall, far: best.far }
+}
+
 /** Which part of a side, counted from `from`, the point `u` along the wall falls in. */
 export const sidePart = (joints: number[], u: number): number => joints.filter((j) => j < u).length
 
@@ -414,7 +434,7 @@ export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
 /**
  * The block of paint squares, `size` across, from the one under `from` to the one under `to`, as distances along
  * the wall and above the floor. Squares are counted from the left end of the face as you look at it and from
- * the floor; those at the far edges are cut short by the face.
+ * the floor; those at the far edges are cut short by the face. 'b' is any face whose left end is at `u1`.
  */
 export const paintCells = (
   side: WallSide,

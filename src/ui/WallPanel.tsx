@@ -12,8 +12,11 @@ const MIN_SIZE = 0.01
 
 const cm = (m: number) => Math.round(m * 100)
 
-/** The stretch of the picked part you can see, along the wall from its `from` point, and how high it is. */
-export type WallFaceSpan = { u0: number; u1: number; height: number }
+/**
+ * The stretch of the picked part you can see, along the wall from its `from` point (across it, on an end), and
+ * how high it is. Mirrored when its left end, as you face it, is at `u1`.
+ */
+export type WallFaceSpan = { u0: number; u1: number; height: number; mirrored: boolean }
 
 type WallPanelProps = {
   side: WallFace
@@ -21,7 +24,6 @@ type WallPanelProps = {
   details: string
   color: string | undefined
   onColor: (color: string | undefined) => void
-  /** A side's part can have areas painted on it; an end can't. */
   face?: WallFaceSpan
   /** The areas painted on this part, in the order they're painted. */
   areas: WallArea[]
@@ -35,8 +37,8 @@ type WallPanelProps = {
 }
 
 /** Where an area is as you face it: from the left end of the part you can see, and from the floor. */
-const placement = (area: WallArea, side: WallFace, face: WallFaceSpan) => ({
-  left: side === 'b' ? face.u1 - area.u1 : area.u0 - face.u0,
+const placement = (area: WallArea, face: WallFaceSpan) => ({
+  left: face.mirrored ? face.u1 - area.u1 : area.u0 - face.u0,
   width: area.u1 - area.u0,
   bottom: area.y0,
   height: area.y1 - area.y0,
@@ -44,7 +46,6 @@ const placement = (area: WallArea, side: WallFace, face: WallFaceSpan) => ({
 
 /** An area placed as you face it, kept on the part. */
 const place = (
-  side: WallFace,
   face: WallFaceSpan,
   { left, width, bottom, height }: ReturnType<typeof placement>,
 ): Partial<WallArea> => {
@@ -53,7 +54,7 @@ const place = (
   const w = Math.min(Math.max(width, MIN_SIZE), span - l)
   const b = Math.min(Math.max(bottom, 0), face.height - MIN_SIZE)
   const h = Math.min(Math.max(height, MIN_SIZE), face.height - b)
-  const u0 = side === 'b' ? face.u1 - l - w : face.u0 + l
+  const u0 = face.mirrored ? face.u1 - l - w : face.u0 + l
   return { u0, u1: u0 + w, y0: b, y1: b + h }
 }
 
@@ -72,9 +73,9 @@ export const WallPanel = ({
 }: WallPanelProps) => {
   const current = area?.color ?? color ?? DEFAULT_WALL
   const paint = (c: string) => (area ? onPatchArea({ color: c }, 'color') : onColor(c))
-  const at = area && face && placement(area, side, face)
+  const at = area && face && placement(area, face)
   const move = (patch: Partial<NonNullable<typeof at>>, key: string) =>
-    area && face && at && onPatchArea(place(side, face, { ...at, ...patch }), key)
+    area && face && at && onPatchArea(place(face, { ...at, ...patch }), key)
   return (
     <>
       <PanelHead
@@ -146,7 +147,7 @@ export const WallPanel = ({
               Full height
             </button>
           </div>
-          <p className="muted">Measured as you face this side, from its left end.</p>
+          <p className="muted">Measured as you face it, from its left edge.</p>
           <button className="btn btn-danger btn-block" onClick={onRemoveArea}>
             <Trash2 size={16} />
             Remove area

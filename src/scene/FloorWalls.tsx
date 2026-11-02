@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { Plane, Vector3, type Object3D } from 'three'
 import {
   cornerCuts,
+  endPart,
   isExteriorWall,
   outsideFace,
   paintCells,
@@ -39,20 +40,17 @@ const PROUD = 0.006
 // Painted areas sit just off the face, each later one a step further out, all under the selection wash.
 const AREA_PROUD = 0.0008
 
-/** An end face is told apart by where it is along the wall, in millimetres. */
-const endPart = (u: number) => Math.round(u * 1000)
-
 /** What a tap or drag on a wall does while painting: brush on a colour in squares `size` across, or take it off. */
 export type Brush = { color: string; erase: boolean; size: number }
 
 /** A block of paint squares on a part of a wall side, before it has a colour. */
 export type PaintStroke = Omit<NewWallArea, 'color'>
 
-/** A part of a wall side, painted in squares. */
-export type PaintTarget = { wallId: string; side: WallSide; part: number }
-
-/** A part of a side painted whole with Shift, or a wall end, always painted whole. */
+/** A part of a wall side, or a wall end, painted in squares, or whole with Shift. */
 export type PaintFace = { wallId: string; side: WallFace; part: number }
+
+/** Where a stroke goes on, and for an end whether it's the far one, facing the way the wall runs. */
+type PaintTarget = PaintFace & { far?: boolean }
 
 /** Where painting would go: the square under the pointer, or the block being dragged out. */
 type PaintPreview = PaintStroke & { dragging: boolean }
@@ -244,10 +242,24 @@ const WallMesh = ({
     wallPartColor(colors, wall.id, 'end', endPart(u)) ??
     WALL_CAP
   const areas = useMemo(() => allAreas.filter((a) => a.wallId === owner.id), [allAreas, owner.id])
+  // Where an area lies on the end faces of the given pieces at its part.
+  const endPieces = (area: WallArea, list: WallPiece[]): EndRect[] =>
+    area.side !== 'end'
+      ? []
+      : list.flatMap((p) =>
+          ([p.u0, p.u1] as const).flatMap((u) => {
+            if (endPart(u + offset) !== area.part) return []
+            const z0 = Math.max(-thickness / 2, area.u0)
+            const z1 = Math.min(thickness / 2, area.u1)
+            const y0 = Math.max(p.y0, area.y0)
+            const y1 = Math.min(p.y1, area.y1)
+            return z1 - z0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u, far: u === p.u1, z0, z1, y0, y1 }] : []
+          }),
+        )
   // Where an area lies on the given pieces of its part: the pieces leave out the openings.
   const areaPieces = (area: WallArea, list: WallPiece[]) =>
     list.flatMap((p) => {
-      if (partOf(p, area.side) !== area.part) return []
+      if (area.side === 'end' || partOf(p, area.side) !== area.part) return []
       const u0 = Math.max(p.u0, area.u0 - offset)
       const u1 = Math.min(p.u1, area.u1 - offset)
       const y0 = Math.max(p.y0, area.y0)
@@ -274,29 +286,39 @@ const WallMesh = ({
     else if (Math.abs(n.x) > 0.5) onPick(owner.id, 'end', endPart((n.x > 0 ? p.u1 : p.u0) + offset))
   }
 
-  // Painting goes on in squares on a side's face: hovering shows the square under the pointer, a drag the block of
-  // squares from where it was pressed, across the plane of that face, in the wall's own space.
+  // Painting goes on in squares on a side's or an end's face: hovering shows the square under the pointer, a drag
+  // the block of squares from where it was pressed, across the plane of that face, in the wall's own space.
   const getState = useThree((s) => s.get)
   const drag = useRef<{ target: PaintTarget; group: Object3D; plane: Plane; start: [number, number] }>(undefined)
   const setControlsEnabled = (enabled: boolean) => {
     const controls = getState().controls as { enabled: boolean } | null
     if (controls) controls.enabled = enabled
   }
-  /** A point in the world, along the owning wall and up. */
-  const local = (group: Object3D, p: Vector3): [number, number] => {
+  /** A point in the world on the target's face: along the owning wall (or across an end) and up. */
+  const local = (target: PaintTarget, group: Object3D, p: Vector3): [number, number] => {
     const l = group.worldToLocal(p.clone())
-    return [l.x + offset, l.y]
+    return [target.side === 'end' ? l.z : l.x + offset, l.y]
   }
-  const cells = (target: PaintTarget, from: [number, number], to: [number, number]): PaintStroke => ({
+  const cells = ({ far, ...target }: PaintTarget, from: [number, number], to: [number, number]): PaintStroke => ({
     ...target,
-    ...paintCells(
-      target.side,
-      wallFace(owner, floor, target.side, target.part),
-      wallHeight(owner, floor),
-      brush?.size ?? 1,
-      from,
-      to,
-    ),
+    ...(target.side === 'end'
+      ? // Facing the far end, side a is on the left.
+        paintCells(
+          far ? 'b' : 'a',
+          { u0: -thickness / 2, u1: thickness / 2 },
+          wallHeight(wall, floor),
+          brush?.size ?? 1,
+          from,
+          to,
+        )
+      : paintCells(
+          target.side,
+          wallFace(owner, floor, target.side, target.part),
+          wallHeight(owner, floor),
+          brush?.size ?? 1,
+          from,
+          to,
+        )),
   })
   const pointerDown = (e: ThreeEvent<PointerEvent>, target: PaintTarget) => {
     const group = wallGroup(e.object)
@@ -307,8 +329,10 @@ const WallMesh = ({
       onPreview(undefined)
       return onPaintWall?.(target)
     }
-    const start = local(group, e.point)
-    const normal = new Vector3(0, 0, target.side === 'a' ? 1 : -1).transformDirection(group.matrixWorld)
+    const start = local(target, group, e.point)
+    const normal = (
+      target.side === 'end' ? new Vector3(target.far ? 1 : -1, 0, 0) : new Vector3(0, 0, target.side === 'a' ? 1 : -1)
+    ).transformDirection(group.matrixWorld)
     drag.current = { target, group, plane: new Plane().setFromNormalAndCoplanarPoint(normal, e.point), start }
     ;(e.target as Element).setPointerCapture(e.pointerId)
     setControlsEnabled(false)
@@ -319,13 +343,13 @@ const WallMesh = ({
     if (d) {
       e.stopPropagation()
       const hit = e.ray.intersectPlane(d.plane, new Vector3())
-      if (hit) onPreview({ ...cells(d.target, d.start, local(d.group, hit)), dragging: true })
+      if (hit) onPreview({ ...cells(d.target, d.start, local(d.target, d.group, hit)), dragging: true })
       return
     }
     const group = wallGroup(e.object)
     if (!target || !group) return onPreview(undefined)
     e.stopPropagation()
-    const at = local(group, e.point)
+    const at = local(target, group, e.point)
     onPreview({ ...cells(target, at, at), dragging: false })
   }
   const endStroke = (e: ThreeEvent<PointerEvent>, cancel = false) => {
@@ -337,7 +361,7 @@ const WallMesh = ({
     onPreview(undefined)
     if (cancel) return
     const hit = e.ray.intersectPlane(d.plane, new Vector3())
-    onPaint?.(cells(d.target, d.start, hit ? local(d.group, hit) : d.start))
+    onPaint?.(cells(d.target, d.start, hit ? local(d.target, d.group, hit) : d.start))
   }
   const strokeHandlers = (target: (e: ThreeEvent<PointerEvent>) => PaintTarget | undefined): MeshHandlers => ({
     onPointerDown: (e) => {
@@ -353,28 +377,19 @@ const WallMesh = ({
       if (!drag.current) onPreview(undefined)
     },
   })
-  const paintHandlers = (p: WallPiece): MeshHandlers => {
-    const sideAt = (e: ThreeEvent<PointerEvent>): PaintTarget | undefined => {
+  const paintHandlers = (p: WallPiece): MeshHandlers =>
+    strokeHandlers((e) => {
       const n = e.face?.normal
-      const side = n && n.z > 0.5 ? 'a' : n && n.z < -0.5 ? 'b' : undefined
-      return side && { wallId: owner.id, side, part: partOf(p, side) }
-    }
-    return {
-      ...strokeHandlers(sideAt),
-      // An end is too narrow for squares: a tap paints it whole.
-      onPointerDown: (e) => {
-        const n = e.face?.normal
-        const side = sideAt(e)
-        if (side) return pointerDown(e, side)
-        if (!n || Math.abs(n.x) < 0.5) return
-        e.stopPropagation()
-        onPaintWall?.({ wallId: owner.id, side: 'end', part: endPart((n.x > 0 ? p.u1 : p.u0) + offset) })
-      },
-    }
-  }
+      if (!n) return undefined
+      if (n.z > 0.5) return { wallId: owner.id, side: 'a', part: partOf(p, 'a') }
+      if (n.z < -0.5) return { wallId: owner.id, side: 'b', part: partOf(p, 'b') }
+      if (Math.abs(n.x) < 0.5) return undefined
+      const far = n.x > 0
+      return { wallId: owner.id, side: 'end', part: endPart((far ? p.u1 : p.u0) + offset), far }
+    })
   const boxHandlers = (p: WallPiece): MeshHandlers =>
     interactive ? { onClick: handleClick(p), ...hover('pointer') } : brush ? paintHandlers(p) : {}
-  const areaHandlers = (area: WallArea): MeshHandlers =>
+  const areaHandlers = (area: WallArea, far?: boolean): MeshHandlers =>
     interactive
       ? {
           onClick: (e) => {
@@ -385,7 +400,7 @@ const WallMesh = ({
           ...hover('pointer'),
         }
       : brush
-        ? strokeHandlers(() => ({ wallId: owner.id, side: area.side, part: area.part }))
+        ? strokeHandlers(() => ({ wallId: owner.id, side: area.side, part: area.part, far }))
         : {}
 
   // The block at a corner, shared with the wall met there: a room view keeps it with either wall.
@@ -446,30 +461,60 @@ const WallMesh = ({
   }
 
   // Areas don't overlap; where painting would go shows over them.
-  const paint = (list: WallPiece[]) => (
-    <>
-      {areas.map((area, k) => (
-        <AreaPaint
-          key={area.id}
-          pieces={areaPieces(area, list)}
-          side={area.side}
-          color={area.color}
-          z={thickness / 2 + AREA_PROUD * (k + 1)}
-          handlers={interactive || brush ? areaHandlers(area) : undefined}
-        />
-      ))}
-      {preview && brush && (
-        <AreaPaint
-          pieces={areaPieces({ ...preview, id: '', color: '' }, list)}
-          side={preview.side}
-          // Taking paint off shows as the selection wash.
-          color={brush.erase ? SELECTED_OUTLINE : brush.color}
-          opacity={brush.erase ? 0.45 : preview.dragging ? 0.9 : 0.6}
-          z={thickness / 2 + AREA_PROUD * (areas.length + 1)}
-        />
-      )}
-    </>
-  )
+  const paint = (list: WallPiece[]) => {
+    const handlers = (area: WallArea, far?: boolean) => (interactive || brush ? areaHandlers(area, far) : undefined)
+    const shown = preview && brush && { ...preview, id: '', color: '' }
+    // Taking paint off shows as the selection wash.
+    const look = brush && {
+      color: brush.erase ? SELECTED_OUTLINE : brush.color,
+      opacity: brush.erase ? 0.45 : preview?.dragging ? 0.9 : 0.6,
+    }
+    return (
+      <>
+        {areas.map((area, k) =>
+          area.side === 'end' ? (
+            <EndPaint
+              key={area.id}
+              rects={endPieces(area, list)}
+              color={area.color}
+              proud={AREA_PROUD * (k + 1)}
+              handlers={(far) => handlers(area, far)}
+            />
+          ) : (
+            <AreaPaint
+              key={area.id}
+              pieces={areaPieces(area, list)}
+              side={area.side}
+              color={area.color}
+              z={thickness / 2 + AREA_PROUD * (k + 1)}
+              handlers={handlers(area)}
+            />
+          ),
+        )}
+        {shown &&
+          look &&
+          (shown.side === 'end' ? (
+            <EndPaint rects={endPieces(shown, list)} {...look} proud={AREA_PROUD * (areas.length + 1)} />
+          ) : (
+            <AreaPaint
+              pieces={areaPieces(shown, list)}
+              side={shown.side}
+              {...look}
+              z={thickness / 2 + AREA_PROUD * (areas.length + 1)}
+            />
+          ))}
+      </>
+    )
+  }
+  // A picked area on an end is washed on its own; else the whole end at that point.
+  const endSelection = (list: WallPiece[]) => {
+    const area = selected?.area && areas.find((a) => a.id === selected.area)
+    return area ? (
+      <EndPaint rects={endPieces(area, list)} color={SELECTED_OUTLINE} opacity={0.6} wash proud={PROUD} />
+    ) : (
+      <EndHighlight pieces={list} part={selected!.part} offset={offset} thickness={thickness} />
+    )
+  }
 
   const ownStub = stubPieces(own, STUB_HEIGHT)
   const outside = useMemo(() => (isExteriorWall(wall, floor) ? outsideFace(wall, floor) : undefined), [wall, floor])
@@ -507,9 +552,7 @@ const WallMesh = ({
             {selected && selected.side !== 'end' && (
               <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
             )}
-            {selected?.side === 'end' && (
-              <EndHighlight pieces={pieces} part={selected.part} offset={offset} thickness={thickness} />
-            )}
+            {selected?.side === 'end' && endSelection(pieces)}
             {opening()}
           </>
         }
@@ -520,9 +563,7 @@ const WallMesh = ({
             {selected && selected.side !== 'end' && (
               <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
             )}
-            {selected?.side === 'end' && (
-              <EndHighlight pieces={stub} part={selected.part} offset={offset} thickness={thickness} />
-            )}
+            {selected?.side === 'end' && endSelection(stub)}
             {opening(STUB_HEIGHT)}
           </>
         }
@@ -598,6 +639,64 @@ const AreaPaint = ({
       </mesh>
     ))}
   </group>
+)
+
+/** A rectangle on an end face: `u` is where the end is along the wall, `z0`–`z1` across it. */
+type EndRect = { u: number; far: boolean; z0: number; z1: number; y0: number; y1: number }
+
+/** Paint on wall ends, lit like the end under it, or the selection wash over it. */
+const EndPaint = ({
+  rects,
+  color,
+  proud,
+  handlers,
+  opacity,
+  wash,
+}: {
+  rects: EndRect[]
+  color: string
+  /** How far off the end face it sits. */
+  proud: number
+  /** Taps and drags on it, by which end it's on; none and it can't be pointed at. */
+  handlers?: (far: boolean) => MeshHandlers | undefined
+  opacity?: number
+  /** Unlit, as the selection wash. */
+  wash?: boolean
+}) => (
+  <>
+    {rects.map((r, i) => {
+      const h = handlers?.(r.far)
+      const material = {
+        color,
+        transparent: opacity !== undefined,
+        opacity: opacity ?? 1,
+        depthWrite: opacity === undefined,
+      }
+      return (
+        <mesh
+          key={i}
+          position={[r.u + (r.far ? proud : -proud), (r.y0 + r.y1) / 2, (r.z0 + r.z1) / 2]}
+          rotation-y={r.far ? Math.PI / 2 : -Math.PI / 2}
+          receiveShadow={!wash}
+          raycast={h ? raycastIfShown : noRaycast}
+          {...h}
+        >
+          <planeGeometry args={[r.z1 - r.z0, r.y1 - r.y0]} />
+          {wash ? (
+            <meshBasicMaterial {...material} />
+          ) : (
+            <meshStandardMaterial
+              roughness={1}
+              {...material}
+              polygonOffset
+              polygonOffsetFactor={-1}
+              polygonOffsetUnits={-1}
+            />
+          )}
+        </mesh>
+      )
+    })}
+  </>
 )
 
 /** The picked side's face washed in the accent colour, as when measuring. */
