@@ -1,5 +1,5 @@
 import { useThree, type ThreeElements, type ThreeEvent } from '@react-three/fiber'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plane, Vector3, type Object3D } from 'three'
 import {
   cornerCuts,
@@ -40,6 +40,8 @@ const CLICK_SLOP_PX = 5
 const PROUD = 0.006
 // Painted areas sit just off the face, each later one a step further out, all under the selection wash.
 const AREA_PROUD = 0.0008
+// How long the paint square stays after the pointer leaves the wall.
+const PREVIEW_LINGER_MS = 80
 
 /** What a tap or drag on a wall does while painting: brush on a colour in squares `size` across, or take it off. */
 export type Brush = { color: string; erase: boolean; size: number }
@@ -125,10 +127,21 @@ export const FloorWalls = ({
   onPaintWall,
 }: FloorWallsProps) => {
   const [preview, setPreview] = useState<PaintPreview>()
-  const showPreview = useCallback(
-    (next: PaintPreview | undefined) => setPreview((now) => (samePreview(now, next) ? now : next)),
-    [],
-  )
+  // The pointer slips off the wall for a moment between its pieces and painted areas: only take the square
+  // away once it has stayed off, so it doesn't blink.
+  const clearing = useRef<number>(undefined)
+  useEffect(() => () => window.clearTimeout(clearing.current), [])
+  const showPreview = useCallback((next: PaintPreview | undefined) => {
+    window.clearTimeout(clearing.current)
+    if (next) {
+      document.body.style.cursor = 'crosshair'
+      return setPreview((now) => (samePreview(now, next) ? now : next))
+    }
+    clearing.current = window.setTimeout(() => {
+      setPreview(undefined)
+      if (document.body.style.cursor === 'crosshair') document.body.style.cursor = ''
+    }, PREVIEW_LINGER_MS)
+  }, [])
   return (
     <group>
       {floor.walls.map((wall) => (
@@ -383,8 +396,8 @@ const WallMesh = ({
     onPointerUp: (e) => endStroke(e),
     onPointerCancel: (e) => endStroke(e, true),
     onPointerOver: (e) => (e.stopPropagation(), (document.body.style.cursor = 'crosshair')),
+    // The cursor goes back with the square.
     onPointerOut: () => {
-      document.body.style.cursor = ''
       if (!drag.current) onPreview(undefined)
     },
   })
