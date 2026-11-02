@@ -160,6 +160,9 @@ export const HouseScene = ({
   pinRefs,
 }: HouseSceneProps) => {
   const noPins = useRef(new Map<string, HTMLElement | null>())
+  useEffect(() => {
+    if (!focusRoom && camera === 'walk') lastView.returnFrom = undefined
+  }, [focusRoom, camera])
   const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
   const toggleDoor = (id: string) =>
     setOpenDoors((current) => {
@@ -293,7 +296,13 @@ export const HouseScene = ({
                 : undefined
             }
             onView={(position, target) => {
-              if (temporaryFocus) return
+              if (temporaryFocus) {
+                lastView.returnFrom ??= { position: new Vector3(), target: new Vector3() }
+                lastView.returnFrom.position.copy(position)
+                lastView.returnFrom.target.copy(target)
+                return
+              }
+              lastView.returnFrom = undefined
               Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: floor.elevation })
               lastView.position.copy(position)
               lastView.target.copy(target)
@@ -612,12 +621,22 @@ const FLOOR_ZOOM = {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 const ZOOM_EASE_SECONDS = 0.6
+const RETURN_SECONDS = 1.1
 
 /**
  * The last orbit or top camera, so switching floors or to the whole house keeps the view.
  * `elevation` is the floor it was looking at, or NaN for the whole house from outside.
  */
-const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1, elevation: NaN }
+const lastView = {
+  mode: '',
+  viewKey: -1,
+  position: new Vector3(),
+  target: new Vector3(),
+  zoom: 1,
+  elevation: NaN,
+  /** The item's last camera pose, for the flight back to the saved house view. */
+  returnFrom: undefined as Pose | undefined,
+}
 
 const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   const size = useThree((s) => s.size)
@@ -637,7 +656,16 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
             zoom: Math.min(size.width, size.height) / (span * 1.35),
           }
         : { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
-    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return { ...own, ease: undefined }
+    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return { ...own, ease: undefined, from: undefined }
+    // Restore the exact saved framing, including a zoom beyond the usual floor-switch bounds.
+    if (lastView.returnFrom)
+      return {
+        position: lastView.position.clone(),
+        target: lastView.target.clone(),
+        zoom: lastView.zoom,
+        ease: undefined,
+        from: { position: lastView.returnFrom.position.clone(), target: lastView.returnFrom.target.clone() },
+      }
     // Carried over, then eased within this floor's bounds so it ends neither lost in a corner nor far off:
     // `ease` runs the plan's zoom (top) or the distance to the target (3D) from what it was to the bound.
     // From one floor to another, the 3D view moves up or down with the floor, so it sees the new one as it saw
@@ -657,8 +685,13 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
             own.position.distanceTo(own.target) * FLOOR_ZOOM.orbit.furthest,
           ]
     const to = clamp(from, lo, hi)
-    return { ...carried, ease: to === from ? undefined : { from, to } }
+    return { ...carried, ease: to === from ? undefined : { from, to }, from: undefined }
   })
+  useEffect(() => {
+    lastView.returnFrom = undefined
+  }, [])
+  const flight = useRef(start.from ? 0 : 1)
+  const [flying, setFlying] = useState(!!start.from)
   const easing = useRef(start.ease ? 0 : 1)
   // Zooming or dragging meanwhile takes over from the ease.
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
@@ -670,6 +703,17 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   }, [controls])
   useFrame(({ camera, controls, invalidate }, delta) => {
     const orbit = controls as OrbitControlsImpl | null
+    if (orbit && start.from && flight.current < 1) {
+      // A view that's been idle carries a large first delta; keep the return flight from skipping ahead.
+      flight.current = Math.min(1, flight.current + Math.min(delta, 1 / 30) / RETURN_SECONDS)
+      const k = easeInOut(flight.current)
+      camera.position.lerpVectors(start.from.position, start.position, k)
+      orbit.target.lerpVectors(start.from.target, start.target, k)
+      orbit.update()
+      invalidate()
+      if (flight.current >= 1) setFlying(false)
+      return
+    }
     if (!orbit || !start.ease || easing.current >= 1) return
     easing.current = Math.min(1, easing.current + delta / ZOOM_EASE_SECONDS)
     const value = MathUtils.lerp(start.ease.from, start.ease.to, easeInOut(easing.current))
@@ -697,13 +741,14 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
 
   if (mode === 'top') {
     // The plan stays put sideways and in zoom; only its height follows the floor.
-    const position = start.position.clone().setY(floor.elevation + 40)
-    const target = start.target.clone().setY(floor.elevation)
+    const position = flying && start.from ? start.from.position : start.position.clone().setY(floor.elevation + 40)
+    const target = flying && start.from ? start.from.target : start.target.clone().setY(floor.elevation)
     return (
       <>
         <OrthographicCamera makeDefault position={position.toArray()} zoom={start.zoom} near={0.1} far={200} />
         <OrbitControls
           makeDefault
+          enabled={!flying}
           target={target.toArray()}
           enableRotate={false}
           screenSpacePanning
@@ -716,8 +761,20 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={start.position.toArray()} fov={45} near={0.1} far={200} />
-      <OrbitControls makeDefault target={start.target.toArray()} maxPolarAngle={Math.PI / 2.05} minDistance={0.5} />
+      <PerspectiveCamera
+        makeDefault
+        position={(flying && start.from ? start.from.position : start.position).toArray()}
+        fov={45}
+        near={0.1}
+        far={200}
+      />
+      <OrbitControls
+        makeDefault
+        enabled={!flying}
+        target={(flying && start.from ? start.from.target : start.target).toArray()}
+        maxPolarAngle={Math.PI / 2.05}
+        minDistance={0.5}
+      />
       <IntroFlight />
     </>
   )
