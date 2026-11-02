@@ -28,7 +28,14 @@ float pointPlaneShadowSample(samplerCubeShadow map, vec3 ray, float centreDepth,
 }
 `
 
-export const receiverPlaneShadows = ShaderChunk.shadowmap_pars_fragment
+/** While the view moves, bulbs' cube shadows take one hardware-filtered tap instead of five (see MotionQuality). */
+export const fastShadows = { value: false }
+
+export const receiverPlaneShadows = ('uniform bool casaFastShadows;\n' + ShaderChunk.shadowmap_pars_fragment)
+  .replace(
+    /shadow = \(\s*texture\( shadowMap, vec4\( bd3D/,
+    'if ( casaFastShadows ) shadow = texture( shadowMap, vec4( bd3D, dp ) );\nelse shadow = (\ntexture( shadowMap, vec4( bd3D',
+  )
   .replace('float getPointShadow( samplerCubeShadow', planeSample + '\nfloat getPointShadow( samplerCubeShadow')
   .replace(
     'float texelSize = shadowRadius / shadowMapSize.x;',

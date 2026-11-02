@@ -41,6 +41,7 @@ import { intro } from './intro'
 import { ItemOutline } from './ItemOutline'
 import { daylight, Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
+import { MotionQuality } from './MotionQuality'
 import { Outdoor } from './Outdoor'
 import { COLLIDING, DOOR_SWEEP, FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
 import { OVERLAY, reachable } from './pick'
@@ -291,6 +292,7 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
       >
         <InputInvalidator />
+        <MotionQuality />
         <PointerReach />
         <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
         {focusRoom || closeUp ? (

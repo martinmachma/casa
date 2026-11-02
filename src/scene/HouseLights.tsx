@@ -15,9 +15,10 @@ const LAMP_INTENSITY = 2.5 / 1.5
 // Past this, light is cut off so far rooms cost nothing.
 const REACH = 9
 // Point-light shadows are six renders each and use a texture unit, so only as many lights as the GPU has units to
-// spare cast them (without one, light goes through walls, floors and the roof). Units kept for the sun's shadow and
-// the materials' own textures:
-const KEEP_UNITS = 4
+// spare cast them (without one, light goes through walls, floors and the roof). Units kept: the sun's and the moon's
+// shadows (both at dusk), the ambient-occlusion and BRDF lookup textures, and a textured floor's colour and bump maps.
+// One short and that floor's shader doesn't compile, so the floor isn't drawn.
+const KEEP_UNITS = 6
 const SHADOW_MAP = 512
 
 /** Where a lamp's bulb sits, as a share of the lamp's height. */
