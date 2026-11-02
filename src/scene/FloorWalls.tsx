@@ -322,6 +322,7 @@ const WallMesh = ({
     wallPartColor(colors, owner.id, 'end', endPart(u + offset)) ??
     wallPartColor(colors, wall.id, 'end', endPart(u)) ??
     WALL_CAP
+  const outside = useMemo(() => (isExteriorWall(wall, floor) ? outsideFace(wall, floor) : undefined), [wall, floor])
   const areas = useMemo(() => allAreas.filter((a) => a.wallId === owner.id), [allAreas, owner.id])
   // Paint sits `grow` off the face, so where it reaches the wall's edge it goes on that far round the corner, to
   // meet the paint on the other face there instead of leaving the bare edge showing between them.
@@ -548,8 +549,9 @@ const WallMesh = ({
     strokeHandlers((e) => {
       const n = e.face?.normal
       if (!n) return undefined
-      if (n.z > 0.5) return { wallId: owner.id, side: 'a', part: partOf(p, 'a') }
-      if (n.z < -0.5) return { wallId: owner.id, side: 'b', part: partOf(p, 'b') }
+      // Only the inside of the house is painted.
+      if (n.z > 0.5) return outside === 'a' ? undefined : { wallId: owner.id, side: 'a', part: partOf(p, 'a') }
+      if (n.z < -0.5) return outside === 'b' ? undefined : { wallId: owner.id, side: 'b', part: partOf(p, 'b') }
       if (Math.abs(n.y) > 0.5) {
         const face = n.y > 0 ? 'sill' : 'head'
         const part = revealOf(p, face)
@@ -571,7 +573,7 @@ const WallMesh = ({
           },
           ...hover('pointer'),
         }
-      : brush
+      : brush && area.side !== outside
         ? strokeHandlers(() => ({ wallId: owner.id, side: area.side, part: area.part, far }))
         : {}
 
@@ -726,7 +728,6 @@ const WallMesh = ({
   }
 
   const ownStub = stubPieces(own, STUB_HEIGHT)
-  const outside = useMemo(() => (isExteriorWall(wall, floor) ? outsideFace(wall, floor) : undefined), [wall, floor])
   const opening = (top?: number) =>
     wall.openings && (
       <OpeningFills
