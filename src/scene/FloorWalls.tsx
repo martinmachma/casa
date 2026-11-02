@@ -7,11 +7,11 @@ import {
   isExteriorWall,
   outsideFace,
   paintCells,
+  paintStretch,
   sidePart,
   splitPieces,
   stubPieces,
   wallEndExtensions,
-  wallFace,
   wallHeight,
   wallJoints,
   wallLength,
@@ -313,7 +313,8 @@ const WallMesh = ({
         )
       : paintCells(
           target.side,
-          wallFace(owner, floor, target.side, target.part),
+          // Squares stay on the flat stretch the stroke started on.
+          paintStretch(owner, floor, target.side, target.part, from[0]),
           wallHeight(owner, floor),
           brush?.size ?? 1,
           from,

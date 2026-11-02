@@ -423,6 +423,35 @@ export const wallFace = (wall: Wall, floor: Floor, side: WallSide, part: number)
   return { u0, u1 }
 }
 
+/**
+ * The flat stretch of a part's face at `u` along the wall: a shaft standing on that side has a face of its own,
+ * out in front of the wall's, so each is painted apart from the other.
+ */
+export const paintStretch = (
+  wall: Wall,
+  floor: Floor,
+  side: WallSide,
+  part: number,
+  u: number,
+): { u0: number; u1: number } => {
+  const face = wallFace(wall, floor, side, part)
+  const n = wallNormal(wall)
+  const out = side === 'a' ? 1 : -1
+  let { u0, u1 } = face
+  for (const member of floor.walls) {
+    if (member.partOf !== wall.id) continue
+    const across = (member.from[0] - wall.from[0]) * n[0] + (member.from[1] - wall.from[1]) * n[1]
+    if (across * out <= 1e-6) continue
+    const ext = wallEndExtensions(member, floor)
+    const m0 = wallOwnerOffset(member, wall) - ext.from
+    const m1 = m0 + ext.from + wallLength(member) + ext.to
+    if (u >= m0 && u <= m1) return { u0: Math.max(u0, m0), u1: Math.min(u1, m1) }
+    if (m1 <= u) u0 = Math.max(u0, m1)
+    else u1 = Math.min(u1, m0)
+  }
+  return { u0, u1 }
+}
+
 /** Pieces cut at the given distances along the wall, so no piece spans one of them. */
 export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
   pieces.flatMap((p) => {

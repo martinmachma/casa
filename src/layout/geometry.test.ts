@@ -5,6 +5,7 @@ import {
   endPart,
   floorBounds,
   paintCells,
+  paintStretch,
   sidePart,
   splitPieces,
   validateLayout,
@@ -43,6 +44,20 @@ it("finds the shaft an end belongs to, so its side is painted across the shaft's
   expect(near.wall.id).toBe('u-shaft-s15')
   expect(near.far).toBe(false)
   expect(wallEnd(owner, floor, endPart(offset + 0.45)).far).toBe(true)
+})
+
+it("keeps paint on the wall apart from paint on a shaft's front", () => {
+  const floor = house.floors[1]
+  const owner = floor.walls.find((w) => w.id === 'u-middle')!
+  const side = floor.walls.find((w) => w.id === 'u-shaft-s15')!.from[1] > owner.from[1] ? 'a' : 'b'
+  const face = wallFace(owner, floor, side, 0)
+  const before = paintStretch(owner, floor, side, 0, 1.9)
+  const front = paintStretch(owner, floor, side, 0, 2.2)
+  expect(before.u0).toBeCloseTo(face.u0)
+  expect(before.u1).toBeCloseTo(1.9635)
+  expect(front.u0).toBeCloseTo(1.9635)
+  expect(front.u1).toBeCloseTo(2.5635)
+  expect(paintStretch(owner, floor, side, 0, 2.7).u0).toBeCloseTo(2.5635)
 })
 
 describe('wallPieces', () => {
