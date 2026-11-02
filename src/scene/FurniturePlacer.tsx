@@ -2,7 +2,7 @@ import { useThree } from '@react-three/fiber'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Plane, Raycaster, Vector2, Vector3 } from 'three'
 import type { FurnitureItem, NewFurnitureItem } from '../data/types'
-import { colliding } from '../furniture/collision'
+import { colliding, type Solid } from '../furniture/collision'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import type { Floor, Point, Rect } from '../layout/types'
 import { FurnitureBox } from './FurnitureBox'
@@ -23,6 +23,7 @@ type FurniturePlacerProps = {
   furnitureSnap: boolean
   snapWalls: SnapWall[]
   items: FurnitureItem[]
+  obstacles: Solid[]
   wallRects: Rect[]
   onPlace: (at: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
 }
@@ -36,6 +37,7 @@ export const FurniturePlacer = ({
   furnitureSnap,
   snapWalls,
   items,
+  obstacles,
   wallRects,
   onPlace,
 }: FurniturePlacerProps) => {
@@ -122,7 +124,7 @@ export const FurniturePlacer = ({
           elevation={floor.elevation}
           ground={ground([placed.x, placed.y])}
           selected
-          colliding={colliding([...items, placed], wallRects).has(PLACING)}
+          colliding={colliding([...items, placed], wallRects, obstacles).has(PLACING)}
           showActions={false}
           interactive={false}
           wallSnap={false}

@@ -4,7 +4,14 @@ import type { Floor, Point, Rect } from '../layout/types'
 import FOOTPRINTS from './footprints.json'
 
 export type Solid = Pick<FurnitureItem, 'id' | 'floor' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height' | 'z'> &
-  Partial<Pick<FurnitureItem, 'model'>>
+  Partial<Pick<FurnitureItem, 'model'>> & {
+    /** Built-in equipment cannot use the chair-under-table overlap allowance. */
+    fixed?: boolean
+  }
+
+/** Built-in equipment occupies space in every furnishing version, at its actual mounting height. */
+export const fixtureSolids = (floor: Floor): Solid[] =>
+  (floor.fixtures ?? []).map((fixture) => ({ ...fixture, floor: floor.id, fixed: true }))
 
 // Overlaps under a centimetre (pieces seated flush, plans measured to the centimetre) don't count.
 const TOLERANCE = 0.01
@@ -67,7 +74,9 @@ const overlaps = (a: Box, b: Box) => {
 
 const isSeat = (s: Solid) => s.model !== undefined && SEATS.has(s.model)
 const tucks = (a: Solid, b: Solid) =>
-  (isSeat(a) && !isSeat(b) && b.height <= TABLE_HEIGHT) || (isSeat(b) && !isSeat(a) && a.height <= TABLE_HEIGHT)
+  !a.fixed &&
+  !b.fixed &&
+  ((isSeat(a) && !isSeat(b) && b.height <= TABLE_HEIGHT) || (isSeat(b) && !isSeat(a) && a.height <= TABLE_HEIGHT))
 
 const stacked = (a: Solid, b: Solid) => {
   const az = a.z ?? 0
@@ -90,9 +99,11 @@ export const hits = (piece: Solid, others: Solid[], walls: Rect[]): string[] => 
   return result
 }
 
-/** Every piece on the floor that runs into a wall or another piece. */
-export const colliding = (items: Solid[], walls: Rect[]): Set<string> =>
-  new Set(items.filter((item) => hits(item, items, walls).length).map((item) => item.id))
+/** Movable pieces that run into walls, each other or fixed equipment. */
+export const colliding = (items: Solid[], walls: Rect[], obstacles: Solid[] = []): Set<string> => {
+  const others = [...items, ...obstacles]
+  return new Set(items.filter((item) => hits(item, others, walls).length).map((item) => item.id))
+}
 
 /**
  * The plan area a hinged door's leaf sweeps, as drawn in 3D: it pivots on the wall's centre line at `hinge`, lies

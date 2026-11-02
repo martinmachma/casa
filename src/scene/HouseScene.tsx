@@ -7,7 +7,7 @@ import type { Device, DeviceKind, FurnitureItem, NewFurnitureItem } from '../dat
 import type { HouseData } from '../data/useHouseData'
 import { lightColor, lightLevel, type LightState } from '../devices/lights'
 import type { ShadeState } from '../devices/shades'
-import { blockedDoors, colliding, doorSweeps, sweepOutline } from '../furniture/collision'
+import { blockedDoors, colliding, doorSweeps, fixtureSolids, sweepOutline } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds, shadeWall } from '../layout/geometry'
 import { groundLevel } from '../layout/ground'
@@ -192,6 +192,7 @@ export const HouseScene = ({
   const cz = (min[1] + max[1]) / 2
 
   const items = data.furniture.filter((f) => camera === 'walk' || f.floor === furnitureFloor.id)
+  const fixtures = useMemo(() => floors.flatMap(fixtureSolids), [floors])
   // After dark the house's own lights come on, on every floor that's shown.
   const dark = 1 - daylight(sun)
   const level = (id: string) => lightLevel(lights[id], dark)
@@ -211,8 +212,8 @@ export const HouseScene = ({
   // While arranging, anything that runs into a wall or another piece, or stands where a door swings, is marked.
   const sweeps = useMemo(() => doorSweeps(furnitureFloor), [furnitureFloor])
   const showSweeps = pickable && !outside
-  const blocked = showSweeps ? blockedDoors(items, sweeps, furnitureFloor.id) : NO_BLOCKED
-  const clashes = pickable ? colliding(items, wallRects) : new Set<string>()
+  const blocked = showSweeps ? blockedDoors([...items, ...fixtures], sweeps, furnitureFloor.id) : NO_BLOCKED
+  const clashes = pickable ? colliding(items, wallRects, fixtures) : new Set<string>()
   for (const ids of blocked.values()) for (const id of ids) clashes.add(id)
   const gaps = selectedItem ? clearances(selectedItem, wallRects).filter((g) => g.distance > 0.005) : []
   const gapY = (selectedItem ? ground(furnitureFloor, [selectedItem.x, selectedItem.y]) : floor.elevation) + 0.05
@@ -433,6 +434,7 @@ export const HouseScene = ({
             furnitureSnap={furnitureSnap}
             snapWalls={snapWalls}
             items={items}
+            obstacles={fixtures}
             wallRects={wallRects}
             onPlace={onPlacePiece}
           />

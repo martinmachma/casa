@@ -1,11 +1,23 @@
 import { openingId, openingSill, wallAngle, wallEndExtensions, wallPieces, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
+import type { Solid } from '../furniture/collision'
 
 /** A solid rectangle in the plan: centre, half sizes along its own axes, and its angle. */
 export type Obstacle = { cx: number; cy: number; hu: number; hv: number; angle: number }
 
 // Anything lower than this can't be walked through (sills, furniture); door openings start at 0.
 const FOOT_HEIGHT = 0.3
+
+/** Items intersecting the walker's body, in world height so other storeys and raised fixtures stay clear. */
+export const solidObstacles = (items: Solid[], floors: Floor[], bottom: number, top: number): Obstacle[] =>
+  items
+    .filter((item) => {
+      const floor = floors.find((f) => f.id === item.floor)
+      if (!floor) return false
+      const base = floor.elevation + (item.z ?? 0)
+      return base < top && base + item.height > bottom
+    })
+    .map((item) => ({ cx: item.x, cy: item.y, hu: item.width / 2, hv: item.depth / 2, angle: item.rotation }))
 
 /** Solid walls, closed doors and glass down to the floor block walking. Unlisted doors are closed. */
 export const wallObstacles = (

@@ -74,6 +74,11 @@ on feet in front of the full-height glazing. The towel rail is shown as 0.65 × 
 ribbed panels, top grilles, valves and brackets, or ladder tubes; they do not specify heating output,
 products or the heating pipe routes.
 
+Radiators, the towel rail, boiler and hot-water tank are fixed collision obstacles. Furniture overlaps are
+highlighted both while placing a new piece and while editing existing furniture; chairs cannot use the
+under-table overlap allowance against a low radiator. Door-swing checks and walking also include these
+fixtures. Mounting heights and storeys are respected, so objects below or above a fixture remain clear.
+
 ## Implementation
 
 `src/devices/electrical.ts` contains the trace with stable IDs and source metadata. It is combined with saved

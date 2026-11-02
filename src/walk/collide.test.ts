@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { openingId } from '../layout/geometry'
 import type { Floor } from '../layout/types'
-import { resolveCollisions, wallObstacles } from './collide'
+import { house } from '../layout/layout'
+import { fixtureSolids } from '../furniture/collision'
+import { resolveCollisions, solidObstacles, wallObstacles } from './collide'
 
 const floor: Floor = {
   id: 'f',
@@ -41,6 +43,23 @@ describe('walking into walls', () => {
     const [, y] = resolveCollisions([3, 0.05], 0.25, obstacles)
     expect(y).toBeCloseTo(0.35)
   })
+})
+
+it('blocks walking through radiators and the rotated towel rail only at their world heights', () => {
+  const fixtures = house.floors.flatMap(fixtureSolids)
+  for (const id of ['g-dining-radiator', 'u-bath-towel-rail']) {
+    const fixture = fixtures.find((f) => f.id === id)!
+    const floor = house.floors.find((f) => f.id === fixture.floor)!
+    const obstacles = solidObstacles(fixtures, house.floors, floor.elevation + 0.15, floor.elevation + 1.6)
+    const normal = [-Math.sin(fixture.rotation), Math.cos(fixture.rotation)]
+    const at: [number, number] = [fixture.x + normal[0] * 0.1, fixture.y + normal[1] * 0.1]
+    const resolved = resolveCollisions(at, 0.22, obstacles)
+    expect((resolved[0] - fixture.x) * normal[0] + (resolved[1] - fixture.y) * normal[1]).toBeCloseTo(
+      fixture.depth / 2 + 0.22,
+    )
+    expect(solidObstacles([fixture], house.floors, floor.elevation + 2, floor.elevation + 3)).toEqual([])
+  }
+  expect(solidObstacles(fixtureSolids(house.floors[1]), house.floors, 0.15, 1.6)).toEqual([])
 })
 
 describe.each(['door', 'sliding'] as const)('%s collisions', (type) => {

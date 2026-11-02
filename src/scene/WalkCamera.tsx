@@ -3,12 +3,13 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { PerspectiveCamera as Camera } from 'three'
 import type { FurnitureItem } from '../data/types'
+import { fixtureSolids } from '../furniture/collision'
 import { floorRegions, roomAt } from '../layout/rooms'
 import { floorBounds, insidePolygon } from '../layout/geometry'
 import { groundLevel } from '../layout/ground'
 import type { Floor, Outdoor, Point, Rect } from '../layout/types'
 import { isTyping } from '../ui/isTyping'
-import { resolveCollisions, wallObstacles, type Obstacle } from '../walk/collide'
+import { resolveCollisions, solidObstacles, wallObstacles, type Obstacle } from '../walk/collide'
 import { stairHeight, stairRuns, type StairRun } from '../walk/stairs'
 import type { CameraNudge } from './cameraNudge'
 
@@ -107,18 +108,14 @@ export const WalkCamera = ({
   // The eye follows the elevation, easing over steps.
   const eye = useRef(startElevation)
   const runs = useMemo(() => stairRuns(floors), [floors])
+  const solids = useMemo(() => [...furniture, ...floors.flatMap(fixtureSolids)], [furniture, floors])
   const keys = useRef(new Set<string>())
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
   const obstaclesAt = (elevation: number): Obstacle[] => [
     ...floors.flatMap((f) => wallObstacles(f, openDoors, elevation)),
-    ...furniture
-      .filter((item) => {
-        const base = floors.find((f) => f.id === item.floor)?.elevation
-        return base !== undefined && base < elevation + EYE_HEIGHT && base + item.height > elevation + STEP_OVER
-      })
-      .map((f) => ({ cx: f.x, cy: f.y, hu: f.width / 2, hv: f.depth / 2, angle: f.rotation })),
+    ...solidObstacles(solids, floors, elevation + STEP_OVER, elevation + EYE_HEIGHT),
     ...(outdoor ? [...outdoor.sheds, ...(outdoor.blocks ?? [])].map(rectObstacle) : []),
   ]
 
