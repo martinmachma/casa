@@ -1,6 +1,19 @@
 import { useThree, type ThreeElements, type ThreeEvent } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Plane, Raycaster, Vector2, Vector3, type Object3D, type Ray } from 'three'
+import {
+  BoxGeometry,
+  BufferAttribute,
+  Color,
+  MeshStandardMaterial,
+  Plane,
+  Raycaster,
+  Vector2,
+  Vector3,
+  type Material,
+  type Mesh,
+  type Object3D,
+  type Ray,
+} from 'three'
 import {
   cornerCuts,
   endPart,
@@ -565,46 +578,26 @@ const WallMesh = ({
     const part = revealOf(p, face)
     return (part !== undefined && wallPartColor(colors, owner.id, face, part)) || WALL_CAP
   }
-  const boxes = (list: WallPiece[], cut = false) => {
-    return list.map((p, i) => (
-      <mesh
-        key={i}
-        position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
-        userData={{ corner: isCorner(p) }}
-        receiveShadow
-        raycast={interactive || brush ? raycastIfShown : noRaycast}
-        {...boxHandlers(p)}
-      >
-        <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
-        {/* At a flush passage return, a wall side can share the end cap's plane. Keep the side in front. */}
-        <meshStandardMaterial
-          roughness={1}
-          attach="material-0"
-          color={endColor(p.u1)}
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
-        <meshStandardMaterial
-          roughness={1}
-          attach="material-1"
-          color={endColor(p.u0)}
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
-        <meshStandardMaterial
-          attach="material-2"
-          color={revealColor(p, 'sill')}
-          roughness={1}
-          userData={{ section: (cut && p.y1 === STUB_HEIGHT) || p.y1 >= floor.height }}
-        />
-        <meshStandardMaterial roughness={1} attach="material-3" color={revealColor(p, 'head')} />
-        <meshStandardMaterial roughness={1} attach="material-4" color={colorOf(p, 'a')} />
-        <meshStandardMaterial roughness={1} attach="material-5" color={colorOf(p, 'b')} />
-      </mesh>
-    ))
-  }
+  const boxes = (list: WallPiece[], cut = false) => (
+    <WallBoxes
+      boxes={list.map((p) => ({
+        size: [p.u1 - p.u0, p.y1 - p.y0, thickness],
+        position: [(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0],
+        colors: [
+          endColor(p.u1),
+          endColor(p.u0),
+          revealColor(p, 'sill'),
+          revealColor(p, 'head'),
+          colorOf(p, 'a'),
+          colorOf(p, 'b'),
+        ],
+        section: (cut && p.y1 === STUB_HEIGHT) || p.y1 >= floor.height,
+        userData: { corner: isCorner(p) },
+        raycast: interactive || brush ? raycastIfShown : noRaycast,
+        handlers: boxHandlers(p),
+      }))}
+    />
+  )
 
   // Areas don't overlap; where painting would go shows over them.
   const paint = (list: WallPiece[]) => {
@@ -731,6 +724,92 @@ const WallMesh = ({
         )
       })}
     </>
+  )
+}
+
+/** A wall piece: its size, where its middle is, and its faces' colours in BoxGeometry's order (+x, -x, top, bottom, a, b). */
+type WallBox = {
+  size: [number, number, number]
+  position: [number, number, number]
+  colors: string[]
+  /** Whether its top is the artificial section face (cut, or at the ceiling). */
+  section: boolean
+  userData: Record<string, unknown>
+  raycast: Mesh['raycast']
+  handlers: MeshHandlers
+}
+
+// The faces drawn with each of a box's materials: the ends, the rest, and a section face on top.
+const END_FACES = [0, 1]
+const BODY_FACES = [4, 5, 3]
+const TOP_FACE = 2
+
+/** A box with its faces coloured from its vertices and put in order by the material each is drawn with. */
+const wallBoxGeometry = ([w, h, t]: WallBox['size'], colors: string[], section: boolean) => {
+  const g = new BoxGeometry(w, h, t)
+  const rgb = new Float32Array(24 * 3)
+  const color = new Color()
+  // Each face is 4 vertices, in face order.
+  colors.forEach((c, f) => {
+    color.set(c)
+    for (let v = 0; v < 4; v++) color.toArray(rgb, (f * 4 + v) * 3)
+  })
+  g.setAttribute('color', new BufferAttribute(rgb, 3))
+  const old = g.index!.array
+  const index: number[] = []
+  g.clearGroups()
+  const groups = [END_FACES, section ? BODY_FACES : [...BODY_FACES, TOP_FACE], section ? [TOP_FACE] : []]
+  groups.forEach((faces, material) => {
+    if (!faces.length) return
+    g.addGroup(index.length, faces.length * 6, material)
+    for (const f of faces) index.push(...old.slice(f * 6, f * 6 + 6))
+  })
+  g.setIndex(index)
+  return g
+}
+
+/**
+ * A wall's pieces, each drawn in two or three goes rather than one per face: the ends, kept behind a flush side; the
+ * rest; and the section face on top. The colours are in the vertices, so all the pieces share these materials (and
+ * fade together, as they do anyway).
+ */
+const WallBoxes = ({ boxes }: { boxes: WallBox[] }) => {
+  const materials = useMemo(() => {
+    // At a flush passage return, a wall side can share the end cap's plane. Keep the side in front.
+    const end = new MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 1,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    })
+    const body = new MeshStandardMaterial({ vertexColors: true, roughness: 1 })
+    const section = new MeshStandardMaterial({ vertexColors: true, roughness: 1 })
+    section.userData.section = true
+    return [end, body, section]
+  }, [])
+  useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
+  return boxes.map((b, i) => <WallBoxMesh key={i} box={b} materials={materials} />)
+}
+
+const WallBoxMesh = ({ box, materials }: { box: WallBox; materials: Material[] }) => {
+  const [w, h, t] = box.size
+  const colors = box.colors.join('|')
+  const geometry = useMemo(
+    () => wallBoxGeometry([w, h, t], colors.split('|'), box.section),
+    [w, h, t, colors, box.section],
+  )
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return (
+    <mesh
+      position={box.position}
+      geometry={geometry}
+      material={materials}
+      userData={box.userData}
+      receiveShadow
+      raycast={box.raycast}
+      {...box.handlers}
+    />
   )
 }
 

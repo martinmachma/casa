@@ -9,6 +9,7 @@ import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight, wallCut, type Focus } from './CutawayWall'
 import { DeviceModel } from './DeviceModel'
+import { MergeParts } from './MergeParts'
 import { applyFade, GHOST_OPACITY } from './Fade'
 
 const CLICK_SLOP_PX = 5
@@ -262,7 +263,9 @@ const DeviceMesh = ({
           debug: `${device.name} · ${device.id.slice(0, 4)}`,
         }}
       >
-        <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
+        <MergeParts>
+          <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
+        </MergeParts>
         {hitSphere(device.plan?.area === 'roof' ? [0, 0, 0] : [0, 0, 0.03])}
       </group>
       {marker}

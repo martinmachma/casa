@@ -10,6 +10,10 @@ type Own = { opacity: number; transparent: boolean; depthWrite: boolean }
 // Each faded material's own settings, to go back to once it's fully shown again.
 const own = new Map<Material, Own>()
 
+/** A material's own opacity settings, as they are when it isn't faded. */
+export const unfaded = (m: Material): Own =>
+  own.get(m) ?? { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite }
+
 /**
  * Shows everything under the object as much as its fades allow. A fade is `userData.fade` (0 gone, 1
  * there) on any object; nested fades multiply, so a wall fading inside a floor that fades works out.

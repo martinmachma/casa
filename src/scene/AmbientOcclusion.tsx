@@ -10,6 +10,7 @@ import {
   MeshStandardMaterial,
   NearestFilter,
   PerspectiveCamera,
+  Plane,
   ShaderMaterial,
   UniformsUtils,
   Vector2,
@@ -115,7 +116,10 @@ const restoreMaterial = (m: Material, p: Patched) => {
 /** Half-resolution SSAO, applied in the material before tone mapping, including the layered room view. */
 export const AmbientOcclusion = () => {
   const tools = useMemo(() => makeTools(), [])
-  const normalsRef = useRef(new Map<Material, MeshNormalMaterial>())
+  // One normal material per way of drawing (side, clipping, offset), shared by every mesh drawn that way: the
+  // pass then switches materials only between groups of them.
+  const normalsRef = useRef(new Map<string, MeshNormalMaterial>())
+  const clipIds = useMemo(() => ({ ids: new WeakMap<object, number>(), next: 0 }), [])
   const patchedRef = useRef(new Map<Material, Patched>())
   const viewport = useMemo(() => new Vector4(), [])
   const viewportSize = useMemo(() => ({ value: new Vector2(1, 1) }), [])
@@ -211,21 +215,24 @@ export const AmbientOcclusion = () => {
         }
         replaced.set(o, o.material)
         const depthMaterials = materials.map((m) => {
-          active.add(m)
-          let normal = normals.get(m)
-          if (!normal) {
-            normal = new MeshNormalMaterial()
-            normals.set(m, normal)
-          }
-          if (normal.side !== m.side || normal.clippingPlanes !== m.clippingPlanes) normal.needsUpdate = true
-          normal.side = m.side
-          normal.visible = m.visible && !m.userData.section
-          normal.clippingPlanes = m.clippingPlanes
+          const clip: Plane[] | null = m.clippingPlanes
+          for (const p of clip ?? []) if (!clipIds.ids.has(p)) clipIds.ids.set(p, clipIds.next++)
+          const visible = m.visible && !m.userData.section
           // The normal/depth pass must resolve flush wall sides and end caps like the visible pass.
-          normal.polygonOffset = m.polygonOffset
-          normal.polygonOffsetFactor = m.polygonOffsetFactor
-          normal.polygonOffsetUnits = m.polygonOffsetUnits
-
+          const key = `${m.side}:${clip?.map((p) => clipIds.ids.get(p)).join(',') ?? '-'}:${visible}:${m.polygonOffset ? `${m.polygonOffsetFactor},${m.polygonOffsetUnits}` : ''}`
+          let normal = normals.get(key)
+          if (!normal) {
+            normal = new MeshNormalMaterial({
+              side: m.side,
+              visible,
+              polygonOffset: m.polygonOffset,
+              polygonOffsetFactor: m.polygonOffsetFactor,
+              polygonOffsetUnits: m.polygonOffsetUnits,
+            })
+            normal.clippingPlanes = clip
+            normals.set(key, normal)
+          }
+          active.add(normal)
           return normal
         })
         o.material = Array.isArray(o.material) ? depthMaterials : depthMaterials[0]
@@ -287,10 +294,10 @@ export const AmbientOcclusion = () => {
       gl.setClearColor(clearColor, clearAlpha)
       gl.setRenderTarget(target)
     }
-    for (const [m, normal] of normals)
-      if (!active.has(m)) {
+    for (const [key, normal] of normals)
+      if (!active.has(normal)) {
         normal.dispose()
-        normals.delete(m)
+        normals.delete(key)
       }
     for (const [m, p] of patched)
       if (!active.has(m)) {

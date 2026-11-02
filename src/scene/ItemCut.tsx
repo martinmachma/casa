@@ -96,7 +96,8 @@ export const useItemCut = (
         }
         if (m.visible) opaque ||= !m.transparent
       }
-      if (cut && opaque)
+      // Parts drawn merged (MergeParts) are cut as themselves, each in its own colour.
+      if (cut && opaque && !o.userData.mergedParts)
         sources.push({ mesh: o, matrix: new Matrix4().multiplyMatrices(section.inverse, o.matrixWorld) })
     })
     if (!cut) return
