@@ -7,6 +7,7 @@ import {
   measuredLine,
   pickFace,
   rectOutline,
+  snapToOutlines,
   snapToWallFaces,
 } from './measure'
 
@@ -15,6 +16,22 @@ const walls: Rect[] = [
   { x0: -0.1, x1: 4.1, y0: -0.1, y1: 0.1 },
   { x0: -0.1, x1: 0.1, y0: -0.1, y1: 3.1 },
 ]
+
+describe('snapToOutlines', () => {
+  const table = [rectOutline({ x0: 1, x1: 2, y0: 1, y1: 1.5 })]
+
+  it('prefers a nearby corner over the side it is on', () => {
+    expect(snapToOutlines([1.05, 1.08], table)).toEqual([1, 1])
+  })
+
+  it('lands on a side away from the corners', () => {
+    expect(snapToOutlines([1.5, 1.6], table)).toEqual([1.5, 1.5])
+  })
+
+  it('leaves points in the open alone', () => {
+    expect(snapToOutlines([3, 3], table)).toBeUndefined()
+  })
+})
 
 describe('snapToWallFaces', () => {
   it('lands on a nearby face', () => {

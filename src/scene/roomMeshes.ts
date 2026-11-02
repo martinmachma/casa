@@ -36,6 +36,8 @@ export const roomMeshClassifier = (floor: Floor, roomId: string) => {
     // Stairs belong to the rooms they're open onto, on the floor they rise from and the one they reach.
     const rooms = m.userData.rooms as string[] | undefined
     if (rooms) return rooms.includes(roomId)
+    // A pointer catcher laid over the whole floor (measuring) is part of whichever room is looked at.
+    if (m.userData.everyRoom) return true
     if (mid.y < floor.elevation - 0.1 || mid.y > floor.elevation + floor.height + 0.1) return false
     // A wall's corner block belongs to both walls that meet there: it goes with any room it touches.
     if (m.userData.corner)

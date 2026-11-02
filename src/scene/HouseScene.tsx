@@ -43,7 +43,7 @@ import { daylight, Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
 import { Outdoor } from './Outdoor'
 import { COLLIDING, DOOR_SWEEP, FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
-import { reachable } from './pick'
+import { OVERLAY, reachable } from './pick'
 import { slabGeometry } from './prism'
 import { Roof } from './Roof'
 import { RoomBlur } from './RoomBlur'
@@ -502,6 +502,7 @@ export const HouseScene = ({
                   ]}
                   color={SELECTED_OUTLINE}
                   lineWidth={3}
+                  userData={OVERLAY}
                 />
               ))}
             {data.furniture
@@ -543,7 +544,10 @@ export const HouseScene = ({
             items={items}
             measure={measure}
             onPick={onMeasurePick}
-            cutaway={cutaway && camera === 'orbit' && !outside}
+            cutaway={cutWalls}
+            focus={focusPoint}
+            wallSnap={wallSnap}
+            furnitureSnap={furnitureSnap}
           />
         )}
 
@@ -560,6 +564,7 @@ export const HouseScene = ({
             dashed
             dashSize={0.08}
             gapSize={0.05}
+            userData={OVERLAY}
           />
         ))}
         {showSweeps &&

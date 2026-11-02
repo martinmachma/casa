@@ -8,6 +8,9 @@ export const shown = (o: Object3D) => {
   return true
 }
 
+/** userData for marks laid over the scene (measuring dots and lines) that mustn't hide it from the pointer. */
+export const OVERLAY = { overlay: true }
+
 /**
  * Drawn solid where the ray meets it: not an invisible hit box or a plane that only takes the pointer (colorWrite
  * off), not faded (a wall seen through as it fades out is looked past), and not cut away there. Overlays laid on a

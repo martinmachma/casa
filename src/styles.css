@@ -1087,6 +1087,7 @@ p {
   padding: 4px 10px;
   font-size: 13px;
   background: var(--ink);
+  color: var(--surface);
 }
 
 .annotation-measure:has(.annotation-remove) {
