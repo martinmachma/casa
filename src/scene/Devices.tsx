@@ -1,7 +1,6 @@
-import { Edges } from '@react-three/drei'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
-import { FrontSide, Mesh, Plane, Vector3 } from 'three'
+import { Mesh, Plane, Vector3 } from 'three'
 import type { Device, DeviceKind } from '../data/types'
 import { DEVICE_KINDS } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
@@ -9,32 +8,10 @@ import { wallAngle } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
-import { RoofDrain } from './RoofDrain'
+import { DeviceModel } from './DeviceModel'
 
 const CLICK_SLOP_PX = 5
 
-/** Plate sizes on the wall, metres: width, height, depth off the face. */
-const PLATES: Record<DeviceKind, [number, number, number]> = {
-  light: [0.14, 0.14, 0.05],
-  switch: [0.086, 0.086, 0.012],
-  socket: [0.086, 0.086, 0.02],
-  sensor: [0.06, 0.06, 0.04],
-  thermostat: [0.1, 0.1, 0.025],
-  blind: [0.12, 0.07, 0.03],
-  data: [0.086, 0.086, 0.02],
-  tv: [0.086, 0.086, 0.02],
-  connection: [0.07, 0.07, 0.02],
-  panel: [0.3, 0.4, 0.09],
-  fan: [0.16, 0.16, 0.07],
-  bell: [0.1, 0.15, 0.04],
-  earth: [0.06, 0.08, 0.03],
-  other: [0.08, 0.08, 0.03],
-}
-
-// A lit light's face is far brighter than anything it lights.
-const LIT_GLOW = 4
-const LIGHT_RADIUS = 0.11
-const LIGHT_DEPTH = 0.04
 /** Taps this close to a device pick it, though the device itself is much smaller. */
 const HIT_RADIUS = 0.12
 
@@ -199,16 +176,6 @@ const DeviceMesh = ({
         }
       : { raycast: () => null }
 
-  const material = (
-    <meshStandardMaterial
-      shadowSide={FrontSide}
-      color={color}
-      roughness={0.5}
-      emissive={device.kind !== 'light' ? '#000000' : glow > 0 ? tint : color}
-      emissiveIntensity={device.kind === 'light' ? Math.max(0.35, glow * LIT_GLOW) : 0}
-    />
-  )
-  const outline = selected && <Edges color={SELECTED_OUTLINE} lineWidth={2} />
   // From above, a marker on top of the wall (or just under the ceiling) where the device is.
   const offset = wall && device.plan ? 0.1 + device.z * 0.1 : 0
   const angle = wall ? wallAngle(wall) : 0
@@ -235,67 +202,28 @@ const DeviceMesh = ({
     </mesh>
   )
 
-  if (!wall) {
-    return (
-      <>
-        <group
-          position={[device.x, level, device.y]}
-          userData={{ itemId: device.id, debug: `${device.name} · ${device.id.slice(0, 4)}` }}
-        >
-          {device.plan?.area === 'roof' && device.kind === 'connection' ? (
-            <RoofDrain selected={selected} />
-          ) : (
-            <mesh position={[0, -LIGHT_DEPTH / 2, 0]} castShadow raycast={() => null}>
-              {device.kind === 'light' ? (
-                <cylinderGeometry args={[LIGHT_RADIUS, LIGHT_RADIUS * 0.9, LIGHT_DEPTH, 24]} />
-              ) : device.plan?.area === 'roof' && device.kind === 'earth' ? (
-                <cylinderGeometry args={[0.012, 0.018, 2, 12]} />
-              ) : device.plan?.area === 'roof' && device.kind === 'tv' ? (
-                <cylinderGeometry args={[0.012, 0.012, 1, 12]} />
-              ) : (
-                <boxGeometry args={PLATES[device.kind]} />
-              )}
-              {material}
-              {outline}
-            </mesh>
-          )}
-          {hitSphere([0, -LIGHT_DEPTH / 2, 0])}
-        </group>
-        {marker}
-      </>
-    )
-  }
-
-  // Wall-local axes: x along the wall, +z out of side 'a' (as in FloorWalls).
-  const [w, h, depth] = PLATES[device.kind]
-  const out = device.wall!.side === 'a' ? 1 : -1
+  const ceiling =
+    !wall &&
+    (device.kind === 'light' ||
+      device.kind === 'fan' ||
+      (device.kind === 'sensor' && (device.plan?.symbol.startsWith('OK') || /smoke/i.test(device.name))))
+  const pillar = !wall && device.plan?.area === 'outside' && (device.kind === 'panel' || device.kind === 'bell')
+  const rotation: [number, number, number] = wall
+    ? [0, -wallAngle(wall) + (device.wall!.side === 'b' ? Math.PI : 0), 0]
+    : ceiling
+      ? [Math.PI / 2, 0, 0]
+      : pillar
+        ? [0, -Math.PI / 2, 0]
+        : [0, 0, 0]
   return (
     <>
       <group
         position={[device.x, level, device.y]}
-        rotation={[0, -wallAngle(wall), 0]}
+        rotation={rotation}
         userData={{ itemId: device.id, debug: `${device.name} · ${device.id.slice(0, 4)}` }}
       >
-        <mesh position={[0, 0, (out * depth) / 2]} castShadow raycast={() => null}>
-          <boxGeometry args={[w, h, depth]} />
-          {material}
-          {outline}
-        </mesh>
-        {(device.kind === 'socket' || device.kind === 'tv') &&
-          [-0.017, 0.017].map((x) => (
-            <mesh key={x} position={[x, 0, out * (depth + 0.001)]} rotation-x={Math.PI / 2} raycast={() => null}>
-              <cylinderGeometry args={[0.005, 0.005, 0.003, 12]} />
-              <meshStandardMaterial color="#4b4d50" />
-            </mesh>
-          ))}
-        {device.kind === 'data' &&
-          [-0.017, 0.017].map((x) => (
-            <mesh key={x} position={[x, 0, out * (depth + 0.001)]} raycast={() => null}>
-              <boxGeometry args={[0.022, 0.017, 0.003]} />
-              <meshStandardMaterial color="#263b46" />
-            </mesh>
-          ))}
-        {hitSphere()}
+        <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
+        {hitSphere(device.plan?.area === 'roof' ? [0, 0, 0] : [0, 0, 0.03])}
       </group>
       {marker}
     </>

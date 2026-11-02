@@ -159,7 +159,10 @@ export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean
     const walk = (o: Object3D) => {
       if (!o.visible) return
       const m = o as Mesh
-      const drawn = m.isMesh && [m.material].flat().find((x) => x.visible)
+      // Thick selection lines are instanced quads, not solid surfaces. A plain mask material turns
+      // their screen-space geometry into a large rectangle in the scene.
+      const drawn =
+        m.isMesh && !(o as { isLineSegments2?: boolean }).isLineSegments2 && [m.material].flat().find((x) => x.visible)
       if (drawn) {
         swapped.push([m, m.material])
         m.material = tools.whiteFor(drawn)

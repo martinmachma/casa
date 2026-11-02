@@ -68,6 +68,15 @@ devices at read time, so existing versions and the bare house gain the infrastru
 migration. Fixed points cannot be dragged or deleted. Plan lights have the app's smart-light controls;
 passive sockets and cable outlets remain separate from those controls.
 
+Physical fittings use generic models in `src/scene/DeviceModel.tsx`: vented circular smoke alarms,
+grilled extractor fans, PIR lenses, outdoor sensor housings, switches and timer buttons, Czech-style
+power sockets and weatherproof covers, three-phase sockets, RJ45 and coaxial connectors, distribution
+cabinets, electricity meters, doorbells, earth terminals and capped service ducts. Ceiling and wall
+lights have white housings and diffusers; the roof antenna has a metal mast and elements. These are
+representative forms rather than specifications of the installed products. Category colours are kept
+on the electrical-plan markers. Models keep the traced positions and face out of their mounting wall
+or down from the ceiling. Small details receive shadows; main housings cast them.
+
 Core tests verify room assignment, wall mounting clear of openings, and correct room/port assignment for the
 four media banks. Browser verification covers both floor plans, picking a data marker, the towel rail's
 details, and the exterior inventory.
