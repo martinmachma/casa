@@ -413,7 +413,7 @@ export const HouseScene = ({
             onHoverLight={onHoverItem}
           />
         ))}
-        {electrical && <ElectricalRoutes outside={outside} floor={floor} />}
+        {electrical && outside && <ElectricalRoutes />}
 
         {interaction === 'edit' && placing && !outside && (
           <DevicePlacer

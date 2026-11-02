@@ -90,8 +90,8 @@ export const ElectricalPanel = ({
       <Section>
         <h3 className="smart-group">Cable routes & provisions</h3>
         <p className="hint">
-          Only the drawn service routes and risers are shown. Room-to-room power, TV and Ethernet cable paths are not
-          specified.
+          Cable routes and risers are kept as notes below. Room-to-room power, TV and Ethernet cable paths are not
+          specified. Roof lightning conductors are visible in the exterior view.
         </p>
         {ELECTRICAL_ROUTES.filter((r) => (outside ? r.area !== 'inside' : r.area === 'inside')).map((r) => (
           <p className="hint" key={r.id}>

@@ -577,7 +577,7 @@ export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
       [0.62, 1.5, 9.15],
     ],
     notes:
-      '2 × Ø63 mm foundation ducts for power and MET earthing. Drawing requires 1000 mm cover beneath parking; the displayed line is schematic.',
+      '2 × Ø63 mm foundation ducts for power and MET earthing. Drawing requires 1000 mm cover beneath parking; the route is indicative.',
   },
   {
     id: 'fibre-feed',

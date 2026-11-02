@@ -42,11 +42,13 @@ including appliance connections, wall lighting, panels, fans and sensors. Kitche
 coordinated with the final cabinets and appliance design. Model dimensions of electrical accessories are
 illustrative, not specified products.
 
-Service routes, power/low-voltage risers, roof conductors and the two down conductors are shown as schematic
-lines. Foundation duct quantities, the 1000 mm cover requirement beneath parking, fibre provision and earth
-conductor specifications are retained in the inventory notes. Intermediate riser paths and service depths
-are not installation measurements. Internal Ethernet, coaxial and room circuit cable paths are not drawn in
-the source and are not invented. Neighbouring air terminals are not counted as this house's equipment.
+The dashed service, power/low-voltage riser and down-conductor lines are hidden from the scene. Their source
+routes and notes remain in the electrical inventory. Roof lightning conductors remain visible as solid lines
+in the exterior electrical view. Foundation duct quantities, the 1000 mm cover requirement beneath parking,
+fibre provision and earth conductor specifications are retained in the inventory notes. Intermediate riser
+paths and service depths are not installation measurements. Internal Ethernet, coaxial and room circuit
+cable paths are not drawn in the source and are not invented. Neighbouring air terminals are not counted
+as this house's equipment.
 
 ## Heating shown in the drawings
 
