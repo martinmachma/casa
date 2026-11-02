@@ -14,7 +14,7 @@ export const OVERLAY = { overlay: true }
 /**
  * Drawn solid where the ray meets it: not an invisible hit box or a plane that only takes the pointer (colorWrite
  * off), not faded (a wall seen through as it fades out is looked past), and not cut away there. Overlays laid on a
- * surface (where paint would go, the selection wash) aren't either.
+ * surface (where paint would go) aren't either.
  */
 const solid = (h: Intersection) => {
   const materials = materialsOf(h.object as Mesh)

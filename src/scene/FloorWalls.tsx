@@ -31,17 +31,13 @@ import type { ShadeState } from '../devices/shades'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
 import { raycastIfShown } from './raycast'
-import type { Selection } from './selection'
 import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 
 // Keep overlapping end caps just inside the neighbouring wall's face to avoid z-fighting.
 const CORNER_INSET = 0.002
 // A pointer that moved further than this between down and up was an orbit/pan, not a click.
 const CLICK_SLOP_PX = 5
-// The selection wash sits this far off the wall face, so it doesn't flicker against it.
-const PROUD = 0.006
-// Painted areas sit just off the face (they never overlap), where painting would go a step further out, both
-// under the selection wash.
+// Painted areas sit just off the face (they never overlap), where painting would go a step further out.
 const AREA_PROUD = 0.0008
 // How long the paint square stays after the pointer leaves the wall.
 const PREVIEW_LINGER_MS = 80
@@ -97,7 +93,7 @@ type FloorWallsProps = {
   floor: Floor
   colors: Map<string, string>
   areas: WallArea[]
-  selection: Selection | undefined
+  /** Whether walls stop taps (so nothing behind them is picked) while editing. */
   interactive: boolean
   /** Whether taps open and close doors. */
   doors: boolean
@@ -114,7 +110,8 @@ type FloorWallsProps = {
   cutaway: boolean
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
   focus?: Focus
-  onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
+  /** A tap on a wall while editing, which lets go of what's picked as a tap off everything does. */
+  onTap: () => void
   /** While painting: a click starts a block of squares and the next finishes it; a Shift-click paints the whole wall. */
   brush?: Brush
   onPaint?: (stroke: PaintStroke) => void
@@ -125,7 +122,6 @@ export const FloorWalls = ({
   floor,
   colors,
   areas,
-  selection,
   interactive,
   doors,
   openDoors,
@@ -136,7 +132,7 @@ export const FloorWalls = ({
   hoveredShade,
   cutaway,
   focus,
-  onPick,
+  onTap,
   brush,
   onPaint,
   onPaintWall,
@@ -219,9 +215,6 @@ export const FloorWalls = ({
           floor={floor}
           colors={colors}
           areas={areas}
-          selected={
-            selection?.kind === 'wall' && selection.wallId === wallOwner(wall, floor).id ? selection : undefined
-          }
           interactive={interactive}
           doors={doors}
           openDoors={openDoors}
@@ -230,7 +223,7 @@ export const FloorWalls = ({
           onPickShade={onPickShade}
           onHoverShade={onHoverShade}
           hoveredShade={hoveredShade}
-          onPick={onPick}
+          onTap={onTap}
           brush={brush}
           preview={brush && preview?.wallId === wallOwner(wall, floor).id ? preview : undefined}
           onPreview={showPreview}
@@ -249,7 +242,6 @@ type WallMeshProps = {
   floor: Floor
   colors: Map<string, string>
   areas: WallArea[]
-  selected: { side: WallFace; part: number; area?: string } | undefined
   interactive: boolean
   doors: boolean
   openDoors: ReadonlySet<string>
@@ -260,7 +252,7 @@ type WallMeshProps = {
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
   hoveredShade?: string
-  onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
+  onTap: () => void
   brush?: Brush
   /** Where painting would go on this wall. */
   preview?: PaintPreview
@@ -280,7 +272,6 @@ const WallMesh = ({
   floor,
   colors,
   areas: allAreas,
-  selected,
   interactive,
   doors,
   openDoors,
@@ -289,7 +280,7 @@ const WallMesh = ({
   onPickShade,
   onHoverShade,
   hoveredShade,
-  onPick,
+  onTap,
   brush,
   preview,
   onPreview,
@@ -425,30 +416,6 @@ const WallMesh = ({
     }
     return spans.filter(([u0, u1]) => u1 - u0 > 1e-6)
   }
-  const inSelection = (list: WallPiece[]) => {
-    const side = selected?.side
-    if (!side || side === 'end' || isReveal(side)) return []
-    const area = selected.area && areas.find((a) => a.id === selected.area)
-    if (area) return areaPieces(area, list)
-    return list.filter((p) => partOf(p, side) === selected?.part)
-  }
-  const stub = useMemo(() => stubPieces(pieces, STUB_HEIGHT), [pieces])
-
-  // Box faces in wall-local space: +z is side 'a', -z is side 'b', ±x the ends at u1 and u0.
-  const handleClick = (p: WallPiece) => (e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > CLICK_SLOP_PX) return
-    const n = e.face?.normal
-    if (!n) return
-    e.stopPropagation()
-    if (n.z > 0.5) onPick(owner.id, 'a', partOf(p, 'a'))
-    else if (n.z < -0.5) onPick(owner.id, 'b', partOf(p, 'b'))
-    else if (Math.abs(n.x) > 0.5) onPick(owner.id, 'end', endPart((n.x > 0 ? p.u1 : p.u0) + offset))
-    else {
-      const face = n.y > 0 ? 'sill' : 'head'
-      const part = revealOf(p, face)
-      if (part !== undefined) onPick(owner.id, face, part)
-    }
-  }
 
   // Painting goes on in squares on a side's, an end's or a reveal's face: hovering shows the square under the pointer, and a
   // click starts the block of squares from there, across the plane of that face, in the wall's own space.
@@ -561,18 +528,19 @@ const WallMesh = ({
       const far = n.x > 0
       return { wallId: owner.id, side: 'end', part: endPart((far ? p.u1 : p.u0) + offset), far }
     })
-  const boxHandlers = (p: WallPiece): MeshHandlers =>
-    interactive ? { onClick: handleClick(p), ...hover('pointer') } : brush ? paintHandlers(p) : {}
+  // While editing, walls stand in front of what's behind them: a tap or hover stops there.
+  const blocker: MeshHandlers = {
+    onClick: (e) => {
+      if (e.delta > CLICK_SLOP_PX) return
+      e.stopPropagation()
+      onTap()
+    },
+    ...hover(''),
+  }
+  const boxHandlers = (p: WallPiece): MeshHandlers => (interactive ? blocker : brush ? paintHandlers(p) : {})
   const areaHandlers = (area: WallArea, far?: boolean): MeshHandlers =>
     interactive
-      ? {
-          onClick: (e) => {
-            if (e.delta > CLICK_SLOP_PX) return
-            e.stopPropagation()
-            onPick(owner.id, area.side, area.part, area.id)
-          },
-          ...hover('pointer'),
-        }
+      ? blocker
       : brush && area.side !== outside
         ? strokeHandlers(() => ({ wallId: owner.id, side: area.side, part: area.part, far }))
         : {}
@@ -642,7 +610,7 @@ const WallMesh = ({
   const paint = (list: WallPiece[]) => {
     const handlers = (area: WallArea, far?: boolean) => (interactive || brush ? areaHandlers(area, far) : undefined)
     const shown = preview && brush && { ...preview, id: '', color: '' }
-    // Taking paint off shows as the selection wash.
+    // Taking paint off shows in the accent colour.
     const look = brush && {
       color: brush.erase ? SELECTED_OUTLINE : brush.color,
       opacity: brush.erase ? 0.45 : preview?.started ? 0.9 : 0.6,
@@ -694,39 +662,6 @@ const WallMesh = ({
       </>
     )
   }
-  // A picked area on a sill or head is washed on its own; else the whole of it.
-  const revealSelection = (list: WallPiece[]) => {
-    if (!selected || !isReveal(selected.side)) return null
-    const area = (selected.area && areas.find((a) => a.id === selected.area)) || {
-      ...selected,
-      id: '',
-      wallId: owner.id,
-      color: '',
-      u0: -Infinity,
-      u1: Infinity,
-      y0: 0,
-      y1: thickness,
-    }
-    return <RevealPaint rects={revealPieces(area, list)} color={SELECTED_OUTLINE} opacity={0.6} wash proud={PROUD} />
-  }
-  const highlight = (list: WallPiece[]) =>
-    !selected ? null : selected.side === 'end' ? (
-      endSelection(list)
-    ) : isReveal(selected.side) ? (
-      revealSelection(list)
-    ) : (
-      <SideHighlight pieces={inSelection(list)} side={selected.side} thickness={thickness} />
-    )
-  // A picked area on an end is washed on its own; else the whole end at that point.
-  const endSelection = (list: WallPiece[]) => {
-    const area = selected?.area && areas.find((a) => a.id === selected.area)
-    return area ? (
-      <EndPaint rects={endPieces(area, list)} color={SELECTED_OUTLINE} opacity={0.6} wash proud={PROUD} />
-    ) : (
-      <EndHighlight pieces={list} part={selected!.part} offset={offset} thickness={thickness} />
-    )
-  }
-
   const ownStub = stubPieces(own, STUB_HEIGHT)
   const opening = (top?: number) =>
     wall.openings && (
@@ -759,7 +694,6 @@ const WallMesh = ({
           <>
             {boxes(own)}
             {paint(own)}
-            {highlight(pieces)}
             {opening()}
           </>
         }
@@ -767,7 +701,6 @@ const WallMesh = ({
           <>
             {boxes(ownStub, true)}
             {paint(ownStub)}
-            {highlight(stub)}
             {opening(STUB_HEIGHT)}
           </>
         }
@@ -850,14 +783,13 @@ const AreaPaint = ({
 /** A rectangle on an end face: `u` is where the end is along the wall, `z0`–`z1` across it. */
 type EndRect = { u: number; far: boolean; z0: number; z1: number; y0: number; y1: number }
 
-/** Paint on wall ends, lit like the end under it, or the selection wash over it. */
+/** Paint on wall ends, lit like the end under it. */
 const EndPaint = ({
   rects,
   color,
   proud,
   handlers,
   opacity,
-  wash,
 }: {
   rects: EndRect[]
   color: string
@@ -866,8 +798,6 @@ const EndPaint = ({
   /** Taps and drags on it, by which end it's on; none and it can't be pointed at. */
   handlers?: (far: boolean) => MeshHandlers | undefined
   opacity?: number
-  /** Unlit, as the selection wash. */
-  wash?: boolean
 }) => (
   <>
     {rects.map((r, i) => {
@@ -878,12 +808,12 @@ const EndPaint = ({
           position={[r.u + (r.far ? proud : -proud), (r.y0 + r.y1) / 2, (r.z0 + r.z1) / 2]}
           rotation-y={r.far ? Math.PI / 2 : -Math.PI / 2}
           userData={{ overlay: opacity !== undefined }}
-          receiveShadow={!wash}
+          receiveShadow
           raycast={h ? raycastIfShown : noRaycast}
           {...h}
         >
           <planeGeometry args={[r.z1 - r.z0, r.y1 - r.y0]} />
-          <PaintMaterial color={color} opacity={opacity} wash={wash} />
+          <PaintMaterial color={color} opacity={opacity} />
         </mesh>
       )
     })}
@@ -893,14 +823,13 @@ const EndPaint = ({
 /** A rectangle on a sill (facing up) or a head (facing down) at height `y`: `u0`–`u1` along the wall, `z0`–`z1` across. */
 type RevealRect = { u0: number; u1: number; z0: number; z1: number; y: number; up: boolean }
 
-/** Paint on sills and heads, lit like the face under it, or the selection wash over it. */
+/** Paint on sills and heads, lit like the face under it. */
 const RevealPaint = ({
   rects,
   color,
   proud,
   handlers,
   opacity,
-  wash,
 }: {
   rects: RevealRect[]
   color: string
@@ -909,8 +838,6 @@ const RevealPaint = ({
   /** Taps on it; none and it can't be pointed at. */
   handlers?: MeshHandlers
   opacity?: number
-  /** Unlit, as the selection wash. */
-  wash?: boolean
 }) => (
   <>
     {rects.map((r, i) => (
@@ -919,80 +846,27 @@ const RevealPaint = ({
         position={[(r.u0 + r.u1) / 2, r.y + (r.up ? proud : -proud), (r.z0 + r.z1) / 2]}
         rotation-x={r.up ? -Math.PI / 2 : Math.PI / 2}
         userData={{ overlay: opacity !== undefined }}
-        receiveShadow={!wash}
+        receiveShadow
         raycast={handlers ? raycastIfShown : noRaycast}
         {...handlers}
       >
         <planeGeometry args={[r.u1 - r.u0, r.z1 - r.z0]} />
-        <PaintMaterial color={color} opacity={opacity} wash={wash} />
+        <PaintMaterial color={color} opacity={opacity} />
       </mesh>
     ))}
   </>
 )
 
-/** Paint lit like the face under it and kept in front of it, or unlit as the selection wash. */
-const PaintMaterial = ({ color, opacity, wash }: { color: string; opacity?: number; wash?: boolean }) => {
-  const material = {
-    color,
-    transparent: opacity !== undefined,
-    opacity: opacity ?? 1,
-    depthWrite: opacity === undefined,
-  }
-  return wash ? (
-    <meshBasicMaterial {...material} />
-  ) : (
-    <meshStandardMaterial roughness={1} {...material} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
-  )
-}
-
-/** The picked side's face washed in the accent colour, as when measuring. */
-const SideHighlight = ({ pieces, side, thickness }: { pieces: WallPiece[]; side: WallSide; thickness: number }) => {
-  const z = (side === 'a' ? 1 : -1) * (thickness / 2 + PROUD)
-  return (
-    <group rotation-y={side === 'a' ? 0 : Math.PI}>
-      {pieces.map((p, i) => (
-        <mesh
-          key={i}
-          position={[((p.u0 + p.u1) / 2) * (side === 'a' ? 1 : -1), (p.y0 + p.y1) / 2, Math.abs(z)]}
-          userData={{ overlay: true }}
-          raycast={noRaycast}
-        >
-          <planeGeometry args={[p.u1 - p.u0, p.y1 - p.y0]} />
-          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={0.6} depthWrite={false} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-/** A picked wall end washed like a side: every piece's end face at that point along the wall. */
-const EndHighlight = ({
-  pieces,
-  part,
-  thickness,
-  offset = 0,
-}: {
-  pieces: WallPiece[]
-  part: number
-  thickness: number
-  offset?: number
-}) => (
-  <>
-    {pieces.flatMap((p, i) =>
-      ([p.u0, p.u1] as const)
-        .filter((u) => endPart(u + offset) === part)
-        .map((u) => (
-          <mesh
-            key={`${i}:${u}`}
-            position={[u + (u === p.u1 ? PROUD : -PROUD), (p.y0 + p.y1) / 2, 0]}
-            rotation-y={u === p.u1 ? Math.PI / 2 : -Math.PI / 2}
-            userData={{ overlay: true }}
-            raycast={noRaycast}
-          >
-            <planeGeometry args={[thickness, p.y1 - p.y0]} />
-            <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={0.6} depthWrite={false} />
-          </mesh>
-        )),
-    )}
-  </>
+/** Paint lit like the face under it and kept in front of it. */
+const PaintMaterial = ({ color, opacity }: { color: string; opacity?: number }) => (
+  <meshStandardMaterial
+    roughness={1}
+    color={color}
+    transparent={opacity !== undefined}
+    opacity={opacity ?? 1}
+    depthWrite={opacity === undefined}
+    polygonOffset
+    polygonOffsetFactor={-1}
+    polygonOffsetUnits={-1}
+  />
 )

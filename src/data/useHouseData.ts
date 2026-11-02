@@ -210,9 +210,6 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
       h.future.length ? { draft: h.future[0], past: [...h.past, h.draft], future: h.future.slice(1) } : h,
     )
 
-  const setWallColor = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
-    edit((s) => applyWallColor(s, wallId, side, part, color), `wall:${wallId}:${side}:${part}`)
-
   /** Paints a rectangle on a part of a wall side; no colour takes the paint there off. */
   const paintArea = (at: Omit<NewWallArea, 'color'>, color: string | undefined) =>
     edit((s) => ({ ...s, wallAreas: paintWallArea(s.wallAreas ?? [], at, color) }))
@@ -224,13 +221,6 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
       const onPart = (a: WallArea) => a.wallId === wallId && a.side === side && a.part === part
       return { ...painted, wallAreas: (s.wallAreas ?? []).filter((a) => !onPart(a)) }
     })
-
-  /** Changes a painted area; changes with the same `key` (one colour being picked) undo as one step. */
-  const patchWallArea = (id: string, patch: Partial<WallArea>, key?: string) =>
-    edit((s) => ({ ...s, wallAreas: (s.wallAreas ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)) }), key)
-
-  const removeWallArea = (id: string) =>
-    edit((s) => ({ ...s, wallAreas: (s.wallAreas ?? []).filter((a) => a.id !== id) }))
 
   /** Adds pieces as one undo step. */
   const addFurniture = (...items: NewFurnitureItem[]): FurnitureItem[] => {
@@ -330,12 +320,9 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     renameVersion: (id: string, name: string) => change.mutate(() => backend.renameVersion(id, name)),
     deleteVersion: (id: string) => change.mutate(() => backend.deleteVersion(id)),
     wallColors,
-    setWallColor,
     wallAreas: state.wallAreas ?? EMPTY_AREAS,
     paintArea,
     paintWall,
-    patchWallArea,
-    removeWallArea,
     roomNames,
     furniture: state.furniture,
     addFurniture,

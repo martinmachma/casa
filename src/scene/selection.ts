@@ -1,8 +1,4 @@
-import type { WallFace } from '../layout/types'
-
 export type Selection =
-  /** A part of a wall side or end; with `area`, one painted area on it. */
-  | { kind: 'wall'; wallId: string; side: WallFace; part: number; area?: string }
   /** One piece, or several picked with Shift/⌘ to move, turn, copy or remove together. */
   | { kind: 'furniture'; ids: string[] }
   | { kind: 'device'; id: string }

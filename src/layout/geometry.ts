@@ -17,7 +17,7 @@ export const wallAngle = (wall: Wall): number => Math.atan2(wall.to[1] - wall.fr
 export const wallThickness = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): number =>
   wall.thickness ?? floor.wallThickness
 
-/** The selectable/paintable wall a structural projection belongs to. Physical footprints remain separate. */
+/** The paintable wall a structural projection belongs to. Physical footprints remain separate. */
 export const wallOwner = (wall: Wall, floor: Pick<Floor, 'walls'>): Wall =>
   (wall.partOf && floor.walls.find((w) => w.id === wall.partOf)) || wall
 

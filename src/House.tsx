@@ -16,7 +16,6 @@ import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorRegions, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
-import { openingAt, wallEnd, wallFace, wallHeight, wallThickness } from './layout/geometry'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
 import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
@@ -33,12 +32,10 @@ import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
 import { FurniturePanel, type NewPiece } from './ui/FurniturePanel'
 import { sunNow, type SunSettings } from './sun/useSun'
 import { sunPosition, zonedTime } from './sun/sun'
-import { wallText } from './measure/dimensions'
 import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } from './measure/measure'
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
 import { ViewDock } from './ui/ViewDock'
-import { WallPanel } from './ui/WallPanel'
 import { PaintPanel } from './ui/PaintPanel'
 import type { Brush, PaintFace, PaintStroke } from './scene/FloorWalls'
 import { wallPartColor } from './data/types'
@@ -570,63 +567,6 @@ export const House = ({ backend, account }: HouseProps) => {
           entity={device?.entity}
           light={lightSettings(lights.states[selection.id], dark)}
           onChange={(patch) => lights.set(selection.id, patch, dark)}
-          onClose={() => setSelection(undefined)}
-        />
-      )
-    }
-    if (selection?.kind === 'wall') {
-      // From outside, the wall can be on any floor.
-      const home = house.floors.find((f) => f.walls.some((w) => w.id === selection.wallId)) ?? floor
-      const wall = home.walls.find((w) => w.id === selection.wallId)
-      const { wallId, side, part } = selection
-      const color = wallPartColor(data.wallColors, wallId, side, part)
-      const sided = side === 'a' || side === 'b'
-      // The side of an opening is an end too, told apart by the opening having an edge there.
-      const reveal = wall && !sided ? openingAt(wall, home, part) : undefined
-      const end = wall && side === 'end' ? (reveal ?? wallEnd(wall, home, part)) : undefined
-      const half = end ? wallThickness(end.wall, home) / 2 : 0
-      const kind =
-        reveal && (reveal.opening.type === 'window' ? 'Window' : reveal.opening.type === 'passage' ? 'Opening' : 'Door')
-      // An end runs across its wall, from the left as you face it; a sill or head along it, and across from side b.
-      const face = end
-        ? { u0: -half, u1: half, height: wallHeight(end.wall, home), mirrored: end.far }
-        : wall && sided
-          ? { ...wallFace(wall, home, side, part), height: wallHeight(wall, home), mirrored: side === 'b' }
-          : reveal
-            ? {
-                u0: reveal.u0,
-                u1: reveal.u0 + reveal.opening.width,
-                height: wallThickness(reveal.wall, home),
-                mirrored: false,
-                across: true,
-              }
-            : undefined
-      const title = sided
-        ? `Side ${side.toUpperCase()}`
-        : side === 'end'
-          ? reveal
-            ? `${kind} reveal`
-            : 'Wall end'
-          : `${kind ?? 'Opening'} ${side}`
-      const areas = data.wallAreas.filter((a) => a.wallId === wallId && a.side === side && a.part === part)
-      const area = areas.find((a) => a.id === selection.area)
-      const pickArea = (id: string | undefined) => setSelection({ ...selection, area: id })
-      return (
-        <WallPanel
-          title={title}
-          details={wall ? wallText(wall, home) : ''}
-          color={color}
-          onColor={(color) => data.setWallColor(wallId, side, part, color)}
-          face={face}
-          areas={areas}
-          area={area}
-          onSelectArea={pickArea}
-          onPatchArea={(patch, key) => area && data.patchWallArea(area.id, patch, `area:${area.id}:${key}`)}
-          onRemoveArea={() => {
-            if (!area) return
-            data.removeWallArea(area.id)
-            pickArea(undefined)
-          }}
           onClose={() => setSelection(undefined)}
         />
       )

@@ -14,7 +14,7 @@ import { floorBounds, shadeWall } from '../layout/geometry'
 import { groundLevel } from '../layout/ground'
 import { house } from '../layout/layout'
 import { floorRegions, floorWallRects } from '../layout/rooms'
-import type { Floor, WallFace } from '../layout/types'
+import type { Floor } from '../layout/types'
 import { clearances } from '../measure/clearance'
 import { distance, formatLength, type MeasuredLine, type Measurement, type MeasurePick } from '../measure/measure'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
@@ -254,8 +254,6 @@ export const HouseScene = ({
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
 
-  const pickWall = (wallId: string, side: WallFace, part: number, area?: string) =>
-    onSelect({ kind: 'wall', wallId, side, part, area })
   // A group moves together by however far the grabbed piece went.
   // Pieces may overlap walls and each other; overlaps are only highlighted.
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
@@ -398,7 +396,6 @@ export const HouseScene = ({
               floor={f}
               colors={data.wallColors}
               areas={data.wallAreas}
-              selection={selection}
               interactive={pickable && (outside || f.id === floor.id)}
               doors={!measure && interaction !== 'paint' && !placingPiece && !placing && (outside || f.id === floor.id)}
               openDoors={openDoors}
@@ -409,7 +406,7 @@ export const HouseScene = ({
               hoveredShade={hovered}
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
-              onPick={pickWall}
+              onTap={() => onSelect(undefined)}
               brush={interaction === 'paint' && (outside || f.id === floor.id) ? brush : undefined}
               onPaint={onPaint}
               onPaintWall={onPaintWall}
