@@ -7,6 +7,24 @@ import type { WallFace, WallSide } from '../layout/types'
  */
 export type WallColor = { wallId: string; side: WallFace; part?: number; color: string }
 
+/**
+ * Paint over a rectangle of one part of a wall side (a dado, a stripe, a patch behind the bed), on top of the
+ * part's own. Metres: `u0`–`u1` along the wall from its `from` point, `y0`–`y1` above the floor.
+ */
+export type WallArea = {
+  id: string
+  wallId: string
+  side: WallSide
+  part: number
+  u0: number
+  u1: number
+  y0: number
+  y1: number
+  color: string
+}
+
+export type NewWallArea = Omit<WallArea, 'id'>
+
 export type FurnitureItem = {
   id: string
   /** Layout floor id. */
@@ -81,6 +99,8 @@ export type NewDevice = Omit<Device, 'id'>
 /** Everything placed in the house: what a version records. */
 export type HouseState = {
   walls: WallColor[]
+  /** Absent in versions saved before parts of walls could be painted. */
+  wallAreas?: WallArea[]
   furniture: FurnitureItem[]
   /** Absent in versions saved before rooms could be renamed. */
   rooms?: RoomName[]
@@ -88,7 +108,7 @@ export type HouseState = {
   devices?: Device[]
 }
 
-export const EMPTY_STATE: HouseState = { walls: [], furniture: [], rooms: [], devices: [] }
+export const EMPTY_STATE: HouseState = { walls: [], wallAreas: [], furniture: [], rooms: [], devices: [] }
 
 /** A saved snapshot of the house; once saved only its name can change. */
 export type Version = {

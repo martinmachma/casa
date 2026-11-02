@@ -1,7 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { WallFace } from '../layout/types'
-import type { Backend, Device, FurnitureItem, HouseState, NewDevice, NewFurnitureItem, Version } from './types'
+import type {
+  Backend,
+  Device,
+  FurnitureItem,
+  HouseState,
+  NewDevice,
+  NewFurnitureItem,
+  NewWallArea,
+  Version,
+  WallArea,
+} from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
 import { ELECTRICAL_DEVICES } from '../devices/electrical'
 
@@ -60,11 +70,15 @@ const writeDraft = (backend: Backend, draft: Draft | undefined) => {
   }
 }
 
+const EMPTY_AREAS: WallArea[] = []
+
 /** Whether two states are the same house; the order wall paints are listed in doesn't matter. */
 const sameHouse = (a: HouseState, b: HouseState) => {
   const paints = (s: HouseState) =>
     Object.fromEntries(s.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color]))
-  return sameJson({ ...a, walls: undefined }, { ...b, walls: undefined }) && sameJson(paints(a), paints(b))
+  // No painted areas is the same whether the list is empty or, in older versions, absent.
+  const rest = (s: HouseState) => ({ ...s, walls: undefined, wallAreas: s.wallAreas?.length ? s.wallAreas : undefined })
+  return sameJson(rest(a), rest(b)) && sameJson(paints(a), paints(b))
 }
 
 /**
@@ -189,6 +203,19 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
         : { ...s, walls: [...s.walls, paint] }
     }, `wall:${wallId}:${side}:${part}`)
 
+  const addWallArea = (area: NewWallArea): WallArea => {
+    const created = { ...area, id: crypto.randomUUID() }
+    edit((s) => ({ ...s, wallAreas: [...(s.wallAreas ?? []), created] }))
+    return created
+  }
+
+  /** Changes a painted area; changes with the same `key` (one colour being picked) undo as one step. */
+  const patchWallArea = (id: string, patch: Partial<WallArea>, key?: string) =>
+    edit((s) => ({ ...s, wallAreas: (s.wallAreas ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)) }), key)
+
+  const removeWallArea = (id: string) =>
+    edit((s) => ({ ...s, wallAreas: (s.wallAreas ?? []).filter((a) => a.id !== id) }))
+
   /** Adds pieces as one undo step. */
   const addFurniture = (...items: NewFurnitureItem[]): FurnitureItem[] => {
     const created = items.map((item) => ({ ...item, id: crypto.randomUUID() }))
@@ -288,6 +315,10 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     deleteVersion: (id: string) => change.mutate(() => backend.deleteVersion(id)),
     wallColors,
     setWallColor,
+    wallAreas: state.wallAreas ?? EMPTY_AREAS,
+    addWallArea,
+    patchWallArea,
+    removeWallArea,
     roomNames,
     furniture: state.furniture,
     addFurniture,

@@ -16,6 +16,7 @@ import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
 import { floorRegions, roomAt } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
+import { wallFace, wallHeight } from './layout/geometry'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
 import { FURNITURE_SWATCHES } from './scene/palette'
@@ -537,12 +538,38 @@ export const House = ({ backend, account }: HouseProps) => {
       // From outside, the wall can be on any floor.
       const home = house.floors.find((f) => f.walls.some((w) => w.id === selection.wallId)) ?? floor
       const wall = home.walls.find((w) => w.id === selection.wallId)
+      const { wallId, side, part } = selection
+      const color = wallPartColor(data.wallColors, wallId, side, part)
+      const face =
+        wall && side !== 'end' ? { ...wallFace(wall, home, side, part), height: wallHeight(wall, home) } : undefined
+      const areas = data.wallAreas.filter((a) => a.wallId === wallId && a.side === side && a.part === part)
+      const area = areas.find((a) => a.id === selection.area)
+      const pickArea = (id: string | undefined) => setSelection({ ...selection, area: id })
       return (
         <WallPanel
-          side={selection.side}
+          side={side}
           details={wall ? wallText(wall, home) : ''}
-          color={wallPartColor(data.wallColors, selection.wallId, selection.side, selection.part)}
-          onColor={(color) => data.setWallColor(selection.wallId, selection.side, selection.part, color)}
+          color={color}
+          onColor={(color) => data.setWallColor(wallId, side, part, color)}
+          face={face}
+          areas={areas}
+          area={area}
+          onSelectArea={pickArea}
+          onAddArea={() => {
+            if (!face || side === 'end') return
+            // A dado across the whole part to start with, in a colour that stands out from the wall's.
+            const accent = color?.toLowerCase() === '#7f9172' ? '#4f6d7a' : '#7f9172'
+            const height = Math.round(face.height * 50) / 100
+            pickArea(
+              data.addWallArea({ wallId, side, part, u0: face.u0, u1: face.u1, y0: 0, y1: height, color: accent }).id,
+            )
+          }}
+          onPatchArea={(patch, key) => area && data.patchWallArea(area.id, patch, `area:${area.id}:${key}`)}
+          onRemoveArea={() => {
+            if (!area) return
+            data.removeWallArea(area.id)
+            pickArea(undefined)
+          }}
           onClose={() => setSelection(undefined)}
         />
       )

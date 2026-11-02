@@ -247,7 +247,8 @@ export const HouseScene = ({
   const needle = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef(new Map<string, HTMLDivElement | null>())
 
-  const pickWall = (wallId: string, side: WallFace, part: number) => onSelect({ kind: 'wall', wallId, side, part })
+  const pickWall = (wallId: string, side: WallFace, part: number, area?: string) =>
+    onSelect({ kind: 'wall', wallId, side, part, area })
   // A group moves together by however far the grabbed piece went.
   // Pieces may overlap walls and each other; overlaps are only highlighted.
   const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
@@ -389,6 +390,7 @@ export const HouseScene = ({
             <FloorWalls
               floor={f}
               colors={data.wallColors}
+              areas={data.wallAreas}
               selection={selection}
               interactive={pickable && (outside || f.id === floor.id)}
               doors={!measure && !placingPiece && !placing && (outside || f.id === floor.id)}

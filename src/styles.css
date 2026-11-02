@@ -263,6 +263,10 @@ p {
   display: flex;
 }
 
+.segmented-wrap {
+  flex-wrap: wrap;
+}
+
 .segmented-block button {
   flex: 1;
   justify-content: center;

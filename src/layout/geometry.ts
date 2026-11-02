@@ -338,6 +338,71 @@ export const cornerCuts = (wall: Wall, floor: Floor): { at: number; wall: string
 /** Which part of a side, counted from `from`, the point `u` along the wall falls in. */
 export const sidePart = (joints: number[], u: number): number => joints.filter((j) => j < u).length
 
+/** Where along the line `a + b·u` the value stays within lo–hi; undefined if nowhere. */
+const within = (a: number, b: number, lo: number, hi: number): [number, number] | undefined => {
+  if (Math.abs(b) < 1e-9) return a >= lo && a <= hi ? [-Infinity, Infinity] : undefined
+  const p = (lo - a) / b
+  const q = (hi - a) / b
+  return [Math.min(p, q), Math.max(p, q)]
+}
+
+/**
+ * The stretch of one paint part of a side you can see, as distances along the wall from `from`: running between
+ * the walls that meet it there (their faces, not centre lines) and the floor-to-ceiling gaps that end it.
+ */
+export const wallFace = (wall: Wall, floor: Floor, side: WallSide, part: number): { u0: number; u1: number } => {
+  const length = wallLength(wall)
+  const ext = wallEndExtensions(wall, floor)
+  const joints = wallJoints(wall, floor)[side]
+  const parts = wallPaintParts(wall, floor)[side]
+  const edges = [-ext.from, ...joints, length + ext.to]
+  const mine = parts.flatMap((id, i) => (id === part ? [i] : []))
+  if (!mine.length || length === 0) return { u0: 0, u1: 0 }
+  let u0 = edges[mine[0]]
+  let u1 = edges[mine[mine.length - 1] + 1]
+
+  // Just off the face, so a wall that stops at it still counts as covering it.
+  const dir: Point = [(wall.to[0] - wall.from[0]) / length, (wall.to[1] - wall.from[1]) / length]
+  const n = wallNormal(wall)
+  const out = (side === 'a' ? 1 : -1) * (wallThickness(wall, floor) / 2 + 0.001)
+  const start: Point = [wall.from[0] + n[0] * out, wall.from[1] + n[1] * out]
+  const covers: [number, number][] = []
+  for (const other of floor.walls) {
+    if (other.id === wall.id || other.partOf === wall.id) continue
+    const ol = wallLength(other)
+    if (ol === 0) continue
+    const od: Point = [(other.to[0] - other.from[0]) / ol, (other.to[1] - other.from[1]) / ol]
+    const on = wallNormal(other)
+    const dx = start[0] - other.from[0]
+    const dz = start[1] - other.from[1]
+    const t = wallThickness(other, floor) / 2
+    const along = within(dx * od[0] + dz * od[1], dir[0] * od[0] + dir[1] * od[1], 0, ol)
+    const across = within(dx * on[0] + dz * on[1], dir[0] * on[0] + dir[1] * on[1], -t, t)
+    if (!along || !across) continue
+    const lo = Math.max(along[0], across[0])
+    const hi = Math.min(along[1], across[1])
+    if (lo < hi) covers.push([lo, hi])
+  }
+  for (const o of wall.openings ?? [])
+    if (openingSill(o) <= 0 && o.height >= floor.height) covers.push([o.offset, o.offset + o.width])
+
+  // Trim from either end until no cover overlaps it.
+  for (let changed = true; changed;) {
+    changed = false
+    for (const [lo, hi] of covers) {
+      if (lo <= u0 + 1e-6 && hi > u0 + 1e-6 && hi < u1) {
+        u0 = hi
+        changed = true
+      }
+      if (hi >= u1 - 1e-6 && lo < u1 - 1e-6 && lo > u0) {
+        u1 = lo
+        changed = true
+      }
+    }
+  }
+  return { u0, u1 }
+}
+
 /** Pieces cut at the given distances along the wall, so no piece spans one of them. */
 export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
   pieces.flatMap((p) => {

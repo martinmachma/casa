@@ -21,6 +21,7 @@ const fromRow = (r: VersionRow): Version => ({
   ...(r.based_on ? { basedOn: r.based_on } : {}),
   data: {
     walls: r.data?.walls ?? [],
+    wallAreas: r.data?.wallAreas ?? [],
     furniture: r.data?.furniture ?? [],
     rooms: r.data?.rooms ?? [],
     devices: r.data?.devices ?? [],

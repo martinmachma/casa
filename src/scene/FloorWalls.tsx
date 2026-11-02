@@ -19,7 +19,7 @@ import {
   type WallPiece,
 } from '../layout/geometry'
 import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
-import { wallPartColor } from '../data/types'
+import { wallPartColor, type WallArea } from '../data/types'
 import type { ShadeState } from '../devices/shades'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
@@ -33,6 +33,8 @@ const CORNER_INSET = 0.002
 const CLICK_SLOP_PX = 5
 // The selection wash sits this far off the wall face, so it doesn't flicker against it.
 const PROUD = 0.006
+// Painted areas sit just off the face, each later one a step further out, all under the selection wash.
+const AREA_PROUD = 0.0008
 
 /** An end face is told apart by where it is along the wall, in millimetres. */
 const endPart = (u: number) => Math.round(u * 1000)
@@ -40,6 +42,7 @@ const endPart = (u: number) => Math.round(u * 1000)
 type FloorWallsProps = {
   floor: Floor
   colors: Map<string, string>
+  areas: WallArea[]
   selection: Selection | undefined
   interactive: boolean
   /** Whether taps open and close doors. */
@@ -57,12 +60,13 @@ type FloorWallsProps = {
   cutaway: boolean
   /** The middle of the room being looked at: only walls between it and the camera are cut. */
   focus?: Focus
-  onPick: (wallId: string, side: WallFace, part: number) => void
+  onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
 }
 
 export const FloorWalls = ({
   floor,
   colors,
+  areas,
   selection,
   interactive,
   doors,
@@ -86,6 +90,7 @@ export const FloorWalls = ({
           wall={wall}
           floor={floor}
           colors={colors}
+          areas={areas}
           selected={
             selection?.kind === 'wall' && selection.wallId === wallOwner(wall, floor).id ? selection : undefined
           }
@@ -110,7 +115,8 @@ type WallMeshProps = {
   wall: Wall
   floor: Floor
   colors: Map<string, string>
-  selected: { side: WallFace; part: number } | undefined
+  areas: WallArea[]
+  selected: { side: WallFace; part: number; area?: string } | undefined
   interactive: boolean
   doors: boolean
   openDoors: ReadonlySet<string>
@@ -121,7 +127,7 @@ type WallMeshProps = {
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
   hoveredShade?: string
-  onPick: (wallId: string, side: WallFace, part: number) => void
+  onPick: (wallId: string, side: WallFace, part: number, area?: string) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
@@ -133,6 +139,7 @@ const WallMesh = ({
   wall,
   floor,
   colors,
+  areas: allAreas,
   selected,
   interactive,
   doors,
@@ -170,9 +177,22 @@ const WallMesh = ({
     wallPartColor(colors, owner.id, 'end', endPart(u + offset)) ??
     wallPartColor(colors, wall.id, 'end', endPart(u)) ??
     WALL_CAP
+  const areas = useMemo(() => allAreas.filter((a) => a.wallId === owner.id), [allAreas, owner.id])
+  // Where an area lies on the given pieces of its part: the pieces leave out the openings.
+  const areaPieces = (area: WallArea, list: WallPiece[]) =>
+    list.flatMap((p) => {
+      if (partOf(p, area.side) !== area.part) return []
+      const u0 = Math.max(p.u0, area.u0 - offset)
+      const u1 = Math.min(p.u1, area.u1 - offset)
+      const y0 = Math.max(p.y0, area.y0)
+      const y1 = Math.min(p.y1, area.y1)
+      return u1 - u0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u0, u1, y0, y1 }] : []
+    })
   const inSelection = (list: WallPiece[]) => {
     const side = selected?.side
     if (!side || side === 'end') return []
+    const area = selected.area && areas.find((a) => a.id === selected.area)
+    if (area) return areaPieces(area, list)
     return list.filter((p) => partOf(p, side) === selected?.part)
   }
   const stub = useMemo(() => stubPieces(pieces, STUB_HEIGHT), [pieces])
@@ -247,6 +267,24 @@ const WallMesh = ({
     ))
   }
 
+  // Later areas are painted over earlier ones.
+  const paint = (list: WallPiece[]) =>
+    areas.map((area, k) => (
+      <AreaPaint
+        key={area.id}
+        pieces={areaPieces(area, list)}
+        side={area.side}
+        color={area.color}
+        z={thickness / 2 + AREA_PROUD * (k + 1)}
+        interactive={interactive}
+        onClick={(e) => {
+          if (e.delta > CLICK_SLOP_PX) return
+          e.stopPropagation()
+          onPick(owner.id, area.side, area.part, area.id)
+        }}
+      />
+    ))
+
   const ownStub = stubPieces(own, STUB_HEIGHT)
   const outside = useMemo(() => (isExteriorWall(wall, floor) ? outsideFace(wall, floor) : undefined), [wall, floor])
   const opening = (top?: number) =>
@@ -279,6 +317,7 @@ const WallMesh = ({
         full={
           <>
             {boxes(own)}
+            {paint(own)}
             {selected && selected.side !== 'end' && (
               <SideHighlight pieces={inSelection(pieces)} side={selected.side} thickness={thickness} />
             )}
@@ -291,6 +330,7 @@ const WallMesh = ({
         stub={
           <>
             {boxes(ownStub, true)}
+            {paint(ownStub)}
             {selected && selected.side !== 'end' && (
               <SideHighlight pieces={inSelection(stub)} side={selected.side} thickness={thickness} />
             )}
@@ -311,14 +351,65 @@ const WallMesh = ({
             cutaway={cutaway}
             focus={focus}
             decider={floor.walls.find((w) => w.id === id)}
-            full={boxes(corner)}
-            stub={boxes(stubPieces(corner, STUB_HEIGHT), true)}
+            full={
+              <>
+                {boxes(corner)}
+                {paint(corner)}
+              </>
+            }
+            stub={
+              <>
+                {boxes(stubPieces(corner, STUB_HEIGHT), true)}
+                {paint(stubPieces(corner, STUB_HEIGHT))}
+              </>
+            }
           />
         )
       })}
     </>
   )
 }
+
+/** A painted area on a side's face, lit like the wall under it. */
+const AreaPaint = ({
+  pieces,
+  side,
+  color,
+  z,
+  interactive,
+  onClick,
+}: {
+  pieces: WallPiece[]
+  side: WallSide
+  color: string
+  /** How far out from the wall's centre the face sits. */
+  z: number
+  interactive: boolean
+  onClick: (e: ThreeEvent<MouseEvent>) => void
+}) => (
+  <group rotation-y={side === 'a' ? 0 : Math.PI}>
+    {pieces.map((p, i) => (
+      <mesh
+        key={i}
+        position={[((p.u0 + p.u1) / 2) * (side === 'a' ? 1 : -1), (p.y0 + p.y1) / 2, z]}
+        receiveShadow
+        raycast={interactive ? raycastIfShown : noRaycast}
+        onClick={interactive ? onClick : undefined}
+        onPointerOver={interactive ? (e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer')) : undefined}
+        onPointerOut={interactive ? () => (document.body.style.cursor = '') : undefined}
+      >
+        <planeGeometry args={[p.u1 - p.u0, p.y1 - p.y0]} />
+        <meshStandardMaterial
+          roughness={1}
+          color={color}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
+      </mesh>
+    ))}
+  </group>
+)
 
 /** The picked side's face washed in the accent colour, as when measuring. */
 const SideHighlight = ({ pieces, side, thickness }: { pieces: WallPiece[]; side: WallSide; thickness: number }) => {

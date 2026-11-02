@@ -7,6 +7,7 @@ import {
   splitPieces,
   validateLayout,
   wallEndExtensions,
+  wallFace,
   wallJoints,
   wallOutside,
   wallPaintParts,
@@ -244,5 +245,38 @@ describe('splitPieces', () => {
       [2, 5.9],
       [5.9, 6],
     ])
+  })
+})
+
+describe('wallFace', () => {
+  // A 5 m wall, side a facing +y, with a corner wall at its start and a partition butting into side a at 3 m.
+  const floor = {
+    id: 'f',
+    name: 'F',
+    elevation: 0,
+    height: 2.5,
+    wallThickness: 0.2,
+    rooms: [],
+    walls: [
+      { id: 'w', from: [0, 0], to: [5, 0] },
+      { id: 'corner', from: [0, 0], to: [0, 4] },
+      { id: 'partition', from: [3, 0], to: [3, 4], thickness: 0.1 },
+    ],
+  } as unknown as Floor
+  const w = floor.walls[0]
+
+  it('runs between the faces of the walls that meet it', () => {
+    const face = wallFace(w, floor, 'a', 0)
+    expect(face.u0).toBeCloseTo(0.1)
+    expect(face.u1).toBeCloseTo(2.95)
+    const next = wallFace(w, floor, 'a', 1)
+    expect(next.u0).toBeCloseTo(3.05)
+    expect(next.u1).toBeCloseTo(5.1) // a free end shows its overlap cap
+  })
+
+  it('shows the whole outside, corner block included', () => {
+    const face = wallFace(w, floor, 'b', 0)
+    expect(face.u0).toBeCloseTo(-0.1)
+    expect(face.u1).toBeCloseTo(5.1)
   })
 })
