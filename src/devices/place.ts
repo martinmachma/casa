@@ -93,6 +93,15 @@ export const placeDevice = (kind: DeviceKind, p: Point, floor: Floor): Omit<Devi
   return mount && { floor: floor.id, kind, z, ...mount }
 }
 
+/** Emit in front of a wall fitting or beneath a ceiling fitting, clear of the casing and wall. */
+export const lightPosition = (device: Device, floor: Floor): [number, number, number] => {
+  const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
+  if (!wall) return [device.x, floor.elevation + device.z - 0.08, device.y]
+  const { n } = frameOf(wall, floor)
+  const out = device.wall!.side === 'a' ? 0.12 : -0.12
+  return [device.x + n[0] * out, floor.elevation + device.z, device.y + n[1] * out]
+}
+
 /** The room a device is in; a wall-mounted one belongs to the room its face looks into. */
 export const deviceRoom = (device: Device, floor: Floor, regions: Map<string, RoomRegion>): string | undefined => {
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)

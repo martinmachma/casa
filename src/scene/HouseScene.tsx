@@ -289,7 +289,7 @@ export const HouseScene = ({
                 : undefined
             }
             onView={(position, target) => {
-              Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1 })
+              Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: floor.elevation })
               lastView.position.copy(position)
               lastView.target.copy(target)
             }}
@@ -398,15 +398,19 @@ export const HouseScene = ({
             devices={data.devices.filter(
               (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside' ? furnished(f) : outside),
             )}
-            selectedId={selection?.kind === 'device' ? selection.id : undefined}
+            selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
             glow={level}
             tint={tint}
-            plan={electrical}
+            plan={electrical || camera === 'top'}
             interactive={false}
             onSelect={() => {}}
             onMove={() => {}}
             onMoveEnd={() => {}}
+            onPickLight={pickable
+              ? (id) => onSelect({ kind: 'device', id })
+              : interaction === 'view' ? onPickLight : undefined}
             onPickDevice={electrical && !measure ? (id) => onSelect({ kind: 'device', id }) : undefined}
+            onHoverLight={onHoverItem}
           />
         ))}
         {electrical && <ElectricalRoutes outside={outside} floor={floor} />}
@@ -603,8 +607,11 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 const ZOOM_EASE_SECONDS = 0.6
 
-/** The last orbit or top camera, so switching floors or to the whole house keeps the view. */
-const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1 }
+/**
+ * The last orbit or top camera, so switching floors or to the whole house keeps the view.
+ * `elevation` is the floor it was looking at, or NaN for the whole house from outside.
+ */
+const lastView = { mode: '', viewKey: -1, position: new Vector3(), target: new Vector3(), zoom: 1, elevation: NaN }
 
 const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   const size = useThree((s) => s.size)
@@ -627,7 +634,14 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     if (lastView.mode !== mode || lastView.viewKey !== viewKey) return { ...own, ease: undefined }
     // Carried over, then eased within this floor's bounds so it ends neither lost in a corner nor far off:
     // `ease` runs the plan's zoom (top) or the distance to the target (3D) from what it was to the bound.
-    const carried = { position: lastView.position.clone(), target: lastView.target.clone(), zoom: lastView.zoom }
+    // From one floor to another, the 3D view moves up or down with the floor, so it sees the new one as it saw
+    // the old; left where it was, it would end down among the new floor's walls.
+    const rise = mode === 'orbit' && !houseHeight ? floor.elevation - lastView.elevation || 0 : 0
+    const carried = {
+      position: lastView.position.clone().setY(lastView.position.y + rise),
+      target: lastView.target.clone().setY(lastView.target.y + rise),
+      zoom: lastView.zoom,
+    }
     const [from, lo, hi] =
       mode === 'top'
         ? [carried.zoom, own.zoom * FLOOR_ZOOM.top.out, own.zoom * FLOOR_ZOOM.top.in]
@@ -670,7 +684,7 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       orbit.panSpeed = boost
       orbit.zoomSpeed = boost
     }
-    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom })
+    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation: houseHeight ? NaN : floor.elevation })
     lastView.position.copy(camera.position)
     lastView.target.copy(orbit.target)
   })

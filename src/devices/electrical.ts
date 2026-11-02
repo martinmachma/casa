@@ -72,13 +72,13 @@ const ceiling = (id: string, name: string, floorId: string, at: Point, symbol = 
   const floor = house.floors.find((f) => f.id === floorId)!
   point(
     id,
-    'connection',
+    'light',
     name,
     floorId,
     at,
     floor.height,
     symbol,
-    'Lighting connection shown in the drawing. The light fitting is chosen separately.',
+    'Smart light at the lighting position shown in the drawing.',
   )
 }
 const media = (id: string, wallId: string, side: WallSide, tv: number, data: number) => {
@@ -127,8 +127,8 @@ sw('g-terrace-switch', 'Terrace light switch', 'g-north', 'a', 2.46)
 sockets('g-dining-north', 'Dining socket', 'g-north', 'a', [5.36, 5.51])
 wall(
   'g-worktop-light',
-  'connection',
-  'Kitchen worktop lighting supply',
+  'light',
+  'Kitchen worktop light',
   'g-west',
   'a',
   0.58,
@@ -162,9 +162,9 @@ sw(
   2.31,
   'Double two-way switch',
 )
-ceiling('g-kitchen-light', 'Kitchen ceiling lighting point', 'ground', [1.48, 2.03])
-ceiling('g-dining-light', 'Dining ceiling lighting point', 'ground', [4.04, 2.03])
-ceiling('g-living-light', 'Living ceiling lighting point', 'ground', [4.49, 5.55], 'Multiwire ceiling outlet')
+ceiling('g-kitchen-light', 'Kitchen ceiling light', 'ground', [1.48, 2.03])
+ceiling('g-dining-light', 'Dining ceiling light', 'ground', [4.04, 2.03])
+ceiling('g-living-light', 'Living ceiling light', 'ground', [4.49, 5.55], 'Multiwire ceiling outlet')
 sockets('g-living-east', 'Living wall socket', 'g-east-south', 'a', [3.85, 4.0])
 sockets('g-living-media', 'Living media socket', 'g-east-south', 'a', [5.27, 5.42, 5.57])
 media('g-living', 'g-east-south', 'a', 5.8, 6.02)
@@ -221,7 +221,7 @@ wall(
 // Exterior points on drawing 2. Mount above the entrance opening where the architectural door differs.
 wall(
   'g-terrace-light',
-  'connection',
+  'light',
   'Terrace wall light',
   'g-north',
   'b',
@@ -273,7 +273,7 @@ wall(
 )
 wall(
   'g-entrance-light',
-  'connection',
+  'light',
   'Entrance wall light',
   'g-entrance-east',
   'b',
@@ -362,12 +362,12 @@ sockets('u-205-ne', "Sara's room corner socket", 'u-north', 'a', [2.82, 2.97])
 sockets('u-205-west', "Sara's room bedside socket", 'u-west', 'a', [1.82, 1.98])
 wall('u-205-door-socket', 'socket', "Sara's room doorway socket", 'u-205-south', 'b', 2.58, '230 V / 16 A')
 sw('u-205-switch', "Sara's room light switch", 'u-205-south', 'b', 2.68)
-ceiling('u-205-light', "Sara's room ceiling lighting point", 'upper', [1.95, 1.55])
+ceiling('u-205-light', "Sara's room ceiling light", 'upper', [1.95, 1.55])
 sw('u-hall-north-1', 'Landing two-gang two-way switch 1', 'u-205-south', 'a', 2.52, 'Double two-way switch')
 sw('u-hall-north-2', 'Landing two-gang two-way switch 2', 'u-205-south', 'a', 2.68, 'Double two-way switch')
 wall(
   'u-stairs-light',
-  'connection',
+  'light',
   'Staircase wall light',
   'u-west',
   'a',
@@ -398,18 +398,18 @@ sw('u-bedroom-south-switch', 'Bedroom bedside two-way switch · south', 'u-west'
 sockets('u-bedroom-sw', 'Bedroom corner socket', 'u-west', 'a', [8.9, 9.05])
 sockets('u-bedroom-media', 'Bedroom media socket', 'u-204-203', 'a', [8.45, 8.6, 8.75])
 media('u-bedroom', 'u-204-203', 'a', 8.96, 9.12)
-ceiling('u-bedroom-light', 'Bedroom ceiling lighting point', 'upper', [1.95, 7.5])
+ceiling('u-bedroom-light', 'Bedroom ceiling light', 'upper', [1.95, 7.5])
 sw('u-203-switch', "Martin's room light switch", 'u-middle', 'a', 4.62)
 wall('u-203-door-socket', 'socket', "Martin's room doorway socket", 'u-middle', 'a', 4.62, '230 V / 16 A')
 sockets('u-203-ne', "Martin's room bedside socket", 'u-east-south', 'a', [5.6, 5.75])
 sockets('u-203-se', "Martin's room corner socket", 'u-east-south', 'a', [8.9, 9.05])
 sockets('u-203-media', "Martin's room media socket", 'u-204-203', 'b', [8.45, 8.6, 8.75])
 media('u-203', 'u-204-203', 'b', 8.96, 9.12)
-ceiling('u-203-light', "Martin's room ceiling lighting point", 'upper', [4.9, 7.15])
+ceiling('u-203-light', "Martin's room ceiling light", 'upper', [4.9, 7.15])
 wall(
   'u-bath-mirror',
-  'connection',
-  'Bathroom mirror lighting supply',
+  'light',
+  'Bathroom mirror light',
   'u-205-bath',
   'b',
   0.8,

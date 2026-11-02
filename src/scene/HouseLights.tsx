@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import { PointLight, Vector3 } from 'three'
 import type { Device, FurnitureItem } from '../data/types'
+import { lightPosition } from '../devices/place'
 import { groundLevel } from '../layout/ground'
 import { house } from '../layout/layout'
 import type { Floor } from '../layout/types'
@@ -48,8 +49,8 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       if (d.floor === f.id && d.kind === 'light' && level(d.id) > 0)
         bulbs.push({
           id: d.id,
-          downlight: true,
-          position: [d.x, f.elevation + d.z - 0.08, d.y],
+          downlight: !d.wall,
+          position: lightPosition(d, f),
           intensity: CEILING_INTENSITY * level(d.id),
           color: tint(d.id),
         })

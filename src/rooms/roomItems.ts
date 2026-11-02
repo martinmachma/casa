@@ -31,7 +31,7 @@ export const floorItems = (
   const regions = floorRegions(floor)
   return [
     ...devices
-      .filter((d) => d.floor === floor.id && !d.plan)
+      .filter((d) => d.floor === floor.id && (!d.plan || d.kind === 'light'))
       .map((d) => ({
         id: d.id,
         name: d.name,

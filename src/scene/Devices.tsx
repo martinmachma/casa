@@ -13,7 +13,8 @@ import { visibleWallHeight } from './CutawayWall'
 const CLICK_SLOP_PX = 5
 
 /** Plate sizes on the wall, metres: width, height, depth off the face. */
-const PLATES: Record<Exclude<DeviceKind, 'light'>, [number, number, number]> = {
+const PLATES: Record<DeviceKind, [number, number, number]> = {
+  light: [0.14, 0.14, 0.05],
   switch: [0.086, 0.086, 0.012],
   socket: [0.086, 0.086, 0.02],
   sensor: [0.06, 0.06, 0.04],
@@ -233,7 +234,7 @@ const DeviceMesh = ({
     </mesh>
   )
 
-  if (device.kind === 'light' || !wall) {
+  if (!wall) {
     return (
       <>
         <group

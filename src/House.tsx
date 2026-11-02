@@ -479,7 +479,7 @@ export const House = ({ backend, account }: HouseProps) => {
       const room = home.rooms.find((r) => r.id === roomId)
       return (
         <LightPanel
-          kind={device ? 'Ceiling light' : 'Lamp'}
+          kind={device ? device.wall ? 'Smart wall light' : 'Smart ceiling light' : 'Lamp'}
           name={device?.name ?? lamp!.name}
           room={room && roomLabel(room, data.roomNames).name}
           entity={device?.entity}
