@@ -1,6 +1,6 @@
 import { useThree, type ThreeEvent } from '@react-three/fiber'
-import { useMemo, useRef, useState } from 'react'
-import { Mesh, Plane, Vector3 } from 'three'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Mesh, Plane, Vector3, type Group } from 'three'
 import type { Device, DeviceKind } from '../data/types'
 import { DEVICE_KINDS } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
@@ -9,6 +9,7 @@ import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
 import { DeviceModel } from './DeviceModel'
+import { applyFade, GHOST_OPACITY } from './Fade'
 
 const CLICK_SLOP_PX = 5
 
@@ -25,6 +26,8 @@ type DevicesProps = {
   tint: (id: string) => string
   /** Seen from straight above: wall plates get a marker on top of the wall, where they can be seen and picked. */
   plan: boolean
+  /** See-through in the cutaway view, like the window shades; plan markers stay solid. */
+  ghost?: boolean
   /** False unless the devices tool is on. */
   interactive: boolean
   onSelect: (id: string) => void
@@ -48,6 +51,7 @@ export const Devices = ({
   glow,
   tint,
   plan,
+  ghost,
   interactive,
   onSelect,
   onMove,
@@ -66,6 +70,7 @@ export const Devices = ({
         glow={glow(device.id)}
         tint={tint(device.id)}
         plan={plan}
+        ghost={ghost}
         interactive={interactive}
         onSelect={onSelect}
         onMove={onMove}
@@ -92,6 +97,7 @@ const DeviceMesh = ({
   glow,
   tint,
   plan,
+  ghost,
   interactive,
   onSelect,
   onMove,
@@ -100,6 +106,11 @@ const DeviceMesh = ({
   onPickDevice,
   onHoverLight,
 }: DeviceMeshProps) => {
+  const model = useRef<Group>(null)
+  // Reapply after a render adds model parts, preserving any fade inherited from the floor.
+  useLayoutEffect(() => {
+    if (model.current) applyFade(model.current)
+  })
   const getState = useThree((s) => s.get)
   const level = floor.elevation + device.z
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -level), [level])
@@ -218,9 +229,14 @@ const DeviceMesh = ({
   return (
     <>
       <group
+        ref={model}
         position={[device.x, level, device.y]}
         rotation={rotation}
-        userData={{ itemId: device.id, debug: `${device.name} · ${device.id.slice(0, 4)}` }}
+        userData={{
+          itemId: device.id,
+          debug: `${device.name} · ${device.id.slice(0, 4)}`,
+          fade: ghost ? GHOST_OPACITY : 1,
+        }}
       >
         <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
         {hitSphere(device.plan?.area === 'roof' ? [0, 0, 0] : [0, 0, 0.03])}
@@ -296,6 +312,7 @@ export const DevicePlacer = ({ floor, kind, onPlace, cutaway, plan }: DevicePlac
           glow={0}
           tint={DEVICE_KINDS[kind].color}
           plan={plan}
+          ghost={cutaway && !plan}
           interactive={false}
           onSelect={() => {}}
           onMove={() => {}}

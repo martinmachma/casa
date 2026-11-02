@@ -409,6 +409,7 @@ export const HouseScene = ({
           <Devices
             key={`electrical-${f.id}`}
             floor={f}
+            ghost={cutWalls && f.id === floor.id}
             devices={data.devices.filter(
               (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside' ? furnished(f) : outside),
             )}
@@ -456,6 +457,7 @@ export const HouseScene = ({
           <Fade key={f.id} shown={furnished(f)}>
             <Devices
               floor={f}
+              ghost={cutWalls && f.id === floor.id}
               devices={data.devices.filter((d) => !d.plan && d.floor === f.id && (outside || f.id === floor.id))}
               selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
               glow={level}

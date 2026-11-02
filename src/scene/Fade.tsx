@@ -3,6 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import type { Group, Material, Mesh, Object3D } from 'three'
 
 export const FADE_SECONDS = 0.35
+/** How much of a shade or device shows while the walls are cut away to see inside. */
+export const GHOST_OPACITY = 0.35
 
 type Own = { opacity: number; transparent: boolean; depthWrite: boolean }
 // Each faded material's own settings, to go back to once it's fully shown again.

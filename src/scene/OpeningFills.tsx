@@ -5,6 +5,7 @@ import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill, shadeId } f
 import { SHADE_INSET, SHADE_UP, type ShadeState } from '../devices/shades'
 import type { Opening, WallSide } from '../layout/types'
 import { raycastIfShown } from './raycast'
+import { GHOST_OPACITY } from './Fade'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME, SHADE } from './palette'
 
 const FRAME_DEPTH = 0.08
@@ -120,7 +121,7 @@ export const OpeningFills = ({
         y1={y0 + o.height}
         z={(outside === 'a' ? 1 : -1) * (thickness / 2 - SHADE_INSET)}
         section={section && !ghostShades}
-        opacity={ghostShades ? GHOST_SHADE : undefined}
+        opacity={ghostShades ? GHOST_OPACITY : undefined}
         state={shades[id] ?? SHADE_UP}
         onPick={onPickShade && (() => onPickShade(id))}
         onHover={(on) => onHoverShade?.(on ? id : undefined)}
@@ -288,8 +289,6 @@ const SlidingDoor = ({ inner, section, ...state }: { inner: Inner } & DoorState)
 }
 
 /** How far in from the wall's outer face the shade's slats are centred, in the reveal outside the glazing. */
-/** How much of a see-through shade shows, looking into a room. */
-const GHOST_SHADE = 0.35
 /** Zetta 70: 70 mm Z-shaped slats on a 63 mm pitch, stacking to about 9 mm each when raised. */
 const SLAT_DEPTH = 0.07
 const SLAT_PITCH = 0.063
