@@ -317,15 +317,17 @@ const WallMesh = ({
     wallPartColor(colors, wall.id, 'end', endPart(u)) ??
     WALL_CAP
   const areas = useMemo(() => allAreas.filter((a) => a.wallId === owner.id), [allAreas, owner.id])
+  // Paint sits `grow` off the face, so where it reaches the wall's edge it goes on that far round the corner, to
+  // meet the paint on the other face there instead of leaving the bare edge showing between them.
   // Where an area lies on the end faces of the given pieces at its part.
-  const endPieces = (area: WallArea, list: WallPiece[]): EndRect[] =>
+  const endPieces = (area: WallArea, list: WallPiece[], grow = AREA_PROUD): EndRect[] =>
     area.side !== 'end'
       ? []
       : list.flatMap((p) =>
           ([p.u0, p.u1] as const).flatMap((u) => {
             if (endPart(u + offset) !== area.part) return []
-            const z0 = Math.max(-thickness / 2, area.u0)
-            const z1 = Math.min(thickness / 2, area.u1)
+            const z0 = area.u0 <= -thickness / 2 + 1e-6 ? -thickness / 2 - grow : area.u0
+            const z1 = area.u1 >= thickness / 2 - 1e-6 ? thickness / 2 + grow : area.u1
             const y0 = Math.max(p.y0, area.y0)
             const y1 = Math.min(p.y1, area.y1)
             return z1 - z0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u, far: u === p.u1, z0, z1, y0, y1 }] : []
@@ -337,17 +339,30 @@ const WallMesh = ({
     [wall, floor],
   )
   // Where an area lies on the given pieces of its part: the pieces leave out the openings.
-  const areaPieces = (area: WallArea, list: WallPiece[]) =>
+  const areaPieces = (area: WallArea, list: WallPiece[], grow = AREA_PROUD) =>
     list.flatMap((p) => {
       if (area.side === 'end' || partOf(p, area.side) !== area.part) return []
       const y0 = Math.max(p.y0, area.y0)
       const y1 = Math.min(p.y1, area.y1)
-      let spans: [number, number][] = [[Math.max(p.u0, area.u0 - offset), Math.min(p.u1, area.u1 - offset)]]
-      for (const [m0, m1] of behindShafts[area.side])
-        spans = spans.flatMap(([u0, u1]): [number, number][] => [
-          [u0, Math.min(u1, m0 - offset)],
-          [Math.max(u0, m1 - offset), u1],
-        ])
+      // An end of the piece with no piece carrying on from it is an edge of the wall.
+      const edge = (u: number) =>
+        !list.some((q) => q !== p && (Math.abs(q.u0 - u) < 1e-6 || Math.abs(q.u1 - u) < 1e-6) && q.y0 < y1 && q.y1 > y0)
+      const u0 = area.u0 - offset <= p.u0 + 1e-6 ? p.u0 - (edge(p.u0) ? grow : 0) : area.u0 - offset
+      const u1 = area.u1 - offset >= p.u1 - 1e-6 ? p.u1 + (edge(p.u1) ? grow : 0) : area.u1 - offset
+      let spans: [number, number][] = [[u0, u1]]
+      for (const [m0, m1] of behindShafts[area.side]) {
+        // The shaft is drawn just inside its outline, so paint that stops at its edge carries on to meet it.
+        const [o0, o1] = [m0 - offset, m1 - offset]
+        const [s0, s1] = [o0 + CORNER_INSET, o1 - CORNER_INSET]
+        spans = spans.flatMap(([u0, u1]): [number, number][] =>
+          u0 >= o0 - 1e-6 && u1 <= o1 + 1e-6
+            ? []
+            : [
+                [u0, Math.abs(u1 - o0) < 1e-6 ? s0 : Math.min(u1, s0)],
+                [Math.abs(u0 - o1) < 1e-6 ? s1 : Math.max(u0, s1), u1],
+              ],
+        )
+      }
       return spans.flatMap(([u0, u1]) => (u1 - u0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u0, u1, y0, y1 }] : []))
     })
   const inSelection = (list: WallPiece[]) => {
@@ -562,10 +577,10 @@ const WallMesh = ({
         {shown &&
           look &&
           (shown.side === 'end' ? (
-            <EndPaint rects={endPieces(shown, list)} {...look} proud={2 * AREA_PROUD} />
+            <EndPaint rects={endPieces(shown, list, 2 * AREA_PROUD)} {...look} proud={2 * AREA_PROUD} />
           ) : (
             <AreaPaint
-              pieces={areaPieces(shown, list)}
+              pieces={areaPieces(shown, list, 2 * AREA_PROUD)}
               side={shown.side}
               {...look}
               z={thickness / 2 + 2 * AREA_PROUD}
