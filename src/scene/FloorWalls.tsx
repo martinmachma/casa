@@ -8,6 +8,7 @@ import {
   outsideFace,
   paintCells,
   paintStretch,
+  shaftSpans,
   sidePart,
   splitPieces,
   stubPieces,
@@ -256,15 +257,24 @@ const WallMesh = ({
             return z1 - z0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u, far: u === p.u1, z0, z1, y0, y1 }] : []
           }),
         )
+  // The face behind a shaft is hidden, and paint on the shaft's front mustn't peek out round its edges.
+  const behindShafts = useMemo(
+    () => (wall.partOf ? { a: [], b: [] } : { a: shaftSpans(wall, floor, 'a'), b: shaftSpans(wall, floor, 'b') }),
+    [wall, floor],
+  )
   // Where an area lies on the given pieces of its part: the pieces leave out the openings.
   const areaPieces = (area: WallArea, list: WallPiece[]) =>
     list.flatMap((p) => {
       if (area.side === 'end' || partOf(p, area.side) !== area.part) return []
-      const u0 = Math.max(p.u0, area.u0 - offset)
-      const u1 = Math.min(p.u1, area.u1 - offset)
       const y0 = Math.max(p.y0, area.y0)
       const y1 = Math.min(p.y1, area.y1)
-      return u1 - u0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u0, u1, y0, y1 }] : []
+      let spans: [number, number][] = [[Math.max(p.u0, area.u0 - offset), Math.min(p.u1, area.u1 - offset)]]
+      for (const [m0, m1] of behindShafts[area.side])
+        spans = spans.flatMap(([u0, u1]): [number, number][] => [
+          [u0, Math.min(u1, m0 - offset)],
+          [Math.max(u0, m1 - offset), u1],
+        ])
+      return spans.flatMap(([u0, u1]) => (u1 - u0 > 1e-6 && y1 - y0 > 1e-6 ? [{ u0, u1, y0, y1 }] : []))
     })
   const inSelection = (list: WallPiece[]) => {
     const side = selected?.side
