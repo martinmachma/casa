@@ -419,8 +419,10 @@ export const House = ({ backend, account }: HouseProps) => {
   // While looking round, it opens only for a picked light (in a room, its card does that).
   const rightOpen = (editing || (selection?.kind === 'light' && !focus)) && !rightTucked
   const floorTags =
-    !focus && !planning && !rightOpen && !outside && camera !== 'walk'
-      ? floorItems(floor, data.devices, data.furniture)
+    !focus && !planning && !rightOpen && camera !== 'walk'
+      ? (outside ? house.floors : [floor])
+          .flatMap((f) => floorItems(f, data.devices, data.furniture))
+          .filter((item) => !outside || (!item.room && item.kind === 'light'))
       : []
   const closeRight = () => setRightOpen(false)
   const modeBar = (
@@ -696,13 +698,16 @@ export const House = ({ backend, account }: HouseProps) => {
           />
         )}
 
-        {/* Between rooms, every smart item on the floor in view keeps its tag. */}
+        {/* Between rooms, smart items keep their tags; outside, so do lights without a room. */}
         {floorTags.length > 0 && (
           <HouseTags
             items={floorTags}
             light={(id) => lightSettings(lights.states[id], dark)}
             shade={(id) => shades.states[id] ?? SHADE_UP}
-            onOpen={openRoom}
+            onOpen={(item) => {
+              if (item.room) openRoom(item.room, item.id)
+              else if (item.kind === 'light') select({ kind: 'light', id: item.id })
+            }}
             onHover={setHoveredItem}
             hovered={hoveredItem}
             pinRefs={pinRefs}

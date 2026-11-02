@@ -204,7 +204,7 @@ export const HouseScene = ({
   const level = (id: string) => lightLevel(lights[id], dark)
   const tint = (id: string) => lightColor(lights[id])
   // While looking round, a tap on a light or lamp picks it, to switch and set it.
-  const lightPick = interaction === 'view' && !outside ? onPickLight : undefined
+  const lightPick = interaction === 'view' ? onPickLight : undefined
   const pickedLight = selection?.kind === 'light' ? selection.id : undefined
   const litFloors = floors.slice(0, outside || camera === 'walk' ? floors.length : floorIndex + 1)
 

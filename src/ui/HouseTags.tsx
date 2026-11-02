@@ -5,12 +5,12 @@ import type { SmartItem } from '../rooms/roomItems'
 import { SmartTag } from './SmartList'
 
 type HouseTagsProps = {
-  /** The smart items on the floor in view, with the room each is in. */
+  /** The smart items in view, with the room each is in (if any). */
   items: (SmartItem & { room: string | undefined })[]
   light: (id: string) => LightState
   shade: (id: string) => ShadeState
-  /** Opens an item's card, temporarily focusing its room. */
-  onOpen: (room: string, item: string) => void
+  /** Opens an item's controls, borrowing its room's view when it has one. */
+  onOpen: (item: SmartItem & { room: string | undefined }) => void
   onHover: (id: string | undefined) => void
   hovered: string | undefined
   /** Each tag, moved over its item every frame. */
@@ -33,7 +33,7 @@ export const HouseTags = ({ items, light, shade, onOpen, onHover, hovered, pinRe
           item={item}
           light={item.kind === 'light' ? light(item.id) : undefined}
           shade={item.kind === 'blind' ? shade(item.id) : undefined}
-          onOpen={() => item.room && onOpen(item.room, item.id)}
+          onOpen={() => onOpen(item)}
           onHover={(h) => onHover(h ? item.id : undefined)}
         />
       </div>
