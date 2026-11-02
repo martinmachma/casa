@@ -104,6 +104,8 @@ type HouseSceneProps = {
   itemActions: ItemActions
   /** A room seen on its own: the camera is fixed on it and the rest of the house blurred. */
   focusRoom?: string
+  /** An item opened from outside a room: keep the house's camera to return to after closing it. */
+  temporaryFocus?: boolean
   /** Elements kept over points in the focused room. */
   pins?: Pin[]
   /** The smart item opened in the focused room: everything else is dimmed behind it. */
@@ -150,6 +152,7 @@ export const HouseScene = ({
   onSelect,
   itemActions,
   focusRoom,
+  temporaryFocus,
   pins = [],
   open,
   hovered,
@@ -290,6 +293,7 @@ export const HouseScene = ({
                 : undefined
             }
             onView={(position, target) => {
+              if (temporaryFocus) return
               Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: floor.elevation })
               lastView.position.copy(position)
               lastView.target.copy(target)

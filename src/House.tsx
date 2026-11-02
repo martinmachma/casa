@@ -124,6 +124,13 @@ export const House = ({ backend, account }: HouseProps) => {
   // A room on its own, from the menu: a fixed view of it with its smart items alongside.
   const [roomView, setRoomView] = useState<string>()
   const [popover, setPopover] = useState<string>()
+  // Opening an item borrows its room's view; closing it returns to where it was opened.
+  const [itemOrigin, setItemOrigin] = useState<{
+    room: string | undefined
+    floor: number
+    outside: boolean
+    camera: CameraMode
+  }>()
   const [hoveredItem, setHoveredItem] = useState<string>()
   const pinRefs = useRef(new Map<string, HTMLElement | null>())
   const rooms = useMemo(() => roomViews(house, data.roomNames), [data.roomNames])
@@ -240,30 +247,46 @@ export const House = ({ backend, account }: HouseProps) => {
     select({ kind: 'furniture', ids: [created.id] })
   }
 
-  // Leaving a room, the camera stays where the room left it, on the room's floor.
+  // An explicit room leaves its camera in place; a temporary item view returns to its starting view.
   const leaveRoom = () => {
+    if (itemOrigin && !itemOrigin.room) {
+      setFloorIndex(itemOrigin.floor)
+      setOutside(itemOrigin.outside)
+      setCamera(itemOrigin.camera)
+    }
+    setItemOrigin(undefined)
     setRoomView(undefined)
     setPopover(undefined)
     setHoveredItem(undefined)
   }
-  const openRoom = (id: string) => {
+  const openRoom = (id: string, item?: string) => {
     const view = rooms.find((r) => r.id === id)
     const index = house.floors.findIndex((f) => f.id === view?.floor)
     if (!view || index < 0) return
+    setItemOrigin(item ? (itemOrigin ?? { room: roomView, floor: floorIndex, outside, camera: planCamera }) : undefined)
     setFloorIndex(index)
     setOutside(false)
     setCamera('orbit')
     setSelection(undefined)
-    setPopover(undefined)
+    setPopover(item)
     setRoomView(id)
   }
+  const openPopover = (id: string | undefined) => {
+    setPopover(id)
+    if (id || !itemOrigin) return
+    setRoomView(itemOrigin.room)
+    setFloorIndex(itemOrigin.floor)
+    setOutside(itemOrigin.outside)
+    setCamera(itemOrigin.camera)
+    setHoveredItem(undefined)
+    setItemOrigin(undefined)
+  }
 
-  /** A tapped shade opens its controls, in its room's view. */
+  /** A tapped shade borrows its room's view while its controls are open. */
   const pickShade = (id: string) => {
     const room = house.floors.flatMap((f) => floorShades(f, floorRegions(f))).find((s) => s.id === id)?.room
     if (!room) return
-    if (focus?.room !== room) openRoom(room)
-    setPopover(id)
+    openRoom(room, id)
   }
 
   const switchFloor = (index: number) => {
@@ -367,7 +390,7 @@ export const House = ({ backend, account }: HouseProps) => {
       }
       // Esc first steps back out of what's being done in the room, then out of the room.
       if (focus && e.key === 'Escape' && !typing && !selection && !placing && !placingPiece && !measure)
-        return popover ? setPopover(undefined) : leaveRoom()
+        return popover ? openPopover(undefined) : leaveRoom()
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return
       if (key === 'e') return changeSection(planning ? 'home' : 'planning')
       if (locked) return
@@ -621,7 +644,7 @@ export const House = ({ backend, account }: HouseProps) => {
           placingPiece={placingPiece}
           onPlacePiece={placePiece}
           lights={lights.states}
-          onPickLight={(id) => (focus ? setPopover(id) : select({ kind: 'light', id }))}
+          onPickLight={(id) => (focus ? openPopover(id) : select({ kind: 'light', id }))}
           shades={shades.states}
           onPickShade={pickShade}
           onPlaceDevice={placeDevice}
@@ -634,6 +657,7 @@ export const House = ({ backend, account }: HouseProps) => {
             onDelete: deleteSelection,
           }}
           focusRoom={focus?.room}
+          temporaryFocus={!!itemOrigin && !itemOrigin.room}
           pins={[
             ...(focus ? focusItems : floorTags).map((i) => ({
               key: `tag:${i.id}`,
@@ -659,7 +683,7 @@ export const House = ({ backend, account }: HouseProps) => {
             shade={(id) => shades.states[id] ?? SHADE_UP}
             onShade={shades.set}
             open={popover}
-            onOpen={setPopover}
+            onOpen={openPopover}
             onHover={setHoveredItem}
             hovered={hoveredItem}
             pinRefs={pinRefs}
@@ -678,10 +702,7 @@ export const House = ({ backend, account }: HouseProps) => {
             items={floorTags}
             light={(id) => lightSettings(lights.states[id], dark)}
             shade={(id) => shades.states[id] ?? SHADE_UP}
-            onOpen={(room, item) => {
-              openRoom(room)
-              setPopover(item)
-            }}
+            onOpen={openRoom}
             onHover={setHoveredItem}
             hovered={hoveredItem}
             pinRefs={pinRefs}

@@ -9,7 +9,7 @@ type HouseTagsProps = {
   items: (SmartItem & { room: string | undefined })[]
   light: (id: string) => LightState
   shade: (id: string) => ShadeState
-  /** Opens a room, with an item's card open in it. */
+  /** Opens an item's card, temporarily focusing its room. */
   onOpen: (room: string, item: string) => void
   onHover: (id: string | undefined) => void
   hovered: string | undefined
@@ -17,7 +17,7 @@ type HouseTagsProps = {
   pinRefs: RefObject<Map<string, HTMLElement | null>>
 }
 
-/** A tag by each smart item on the floor, between rooms; picking one opens its room with the item's card. */
+/** A tag by each smart item on the floor, between rooms; picking one opens the item's card. */
 export const HouseTags = ({ items, light, shade, onOpen, onHover, hovered, pinRefs }: HouseTagsProps) => (
   <div className="overlay">
     {items.map((item) => (
