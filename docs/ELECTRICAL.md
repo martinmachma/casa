@@ -60,8 +60,19 @@ thermostats with the heating supplier; unlocated thermostat points have not been
 
 The architectural background also sketches panel radiators beneath windows, including in the upstairs
 bedrooms. Heater positions can therefore be read from the drawing, but radiator sizes, heating pipework and
-underfloor heating loops are not specified. The electrical import records their electrical connections;
-it does not add radiator models with invented dimensions.
+underfloor heating loops are not specified.
+
+Casa models the six panel radiators shown in that background: two in the living/dining room (by the terrace
+glazing and beneath the front window), one on the hall's entrance wall beside the window, and one beneath
+the window in each upstairs bedroom. A ladder towel rail sits on the bathroom's west wall at the marked
+**žebřík** position. These are permanent fixtures visible in every version and with electrical mode off.
+
+Positions and approximate widths follow sheets 2 and 3. Panel widths are 1.2 m (dining), 2 m (living),
+0.7 m (hall), 1 m (Sara), 1.4 m (bedroom) and 1 m (Martin). Heights and depths are illustrative: the living
+and bedroom radiators fit below the existing architectural sills, and the terrace radiator is a low panel
+on feet in front of the full-height glazing. The towel rail is shown as 0.65 × 1.2 m. Models include white
+ribbed panels, top grilles, valves and brackets, or ladder tubes; they do not specify heating output,
+products or the heating pipe routes.
 
 ## Implementation
 

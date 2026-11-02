@@ -102,9 +102,9 @@ export const ElectricalPanel = ({
       <Section>
         <h3 className="smart-group">Heating</h3>
         <p className="hint">
-          Radiator outlines appear beneath windows in the background drawing. The plans also mark a bathroom towel rail
-          connection, boiler and circulation pump sockets, and two heated roof drains. Radiator sizes, pipework and
-          underfloor heating circuits are not specified.
+          Six panel radiators and a bathroom towel rail follow the background drawing. Positions and approximate widths
+          are traced; heights and depths are illustrative. The plan also marks boiler and circulation pump sockets, and
+          two heated roof drains. Heating pipework and underfloor heating circuits are not specified.
         </p>
       </Section>
     </>

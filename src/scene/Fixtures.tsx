@@ -4,6 +4,7 @@ import { FrontSide, Quaternion, Vector2, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import type { Fixture, Floor } from '../layout/types'
 import { useItemCut } from './ItemCut'
+import { Radiator } from './Radiator'
 
 // Viessmann's casings are white with an anthracite control strip; the plumbing runs in copper.
 const CASING = '#f1f1ef'
@@ -162,12 +163,18 @@ const FixtureModel = ({ fixture, floor, cutaway }: { fixture: Fixture; floor: Fl
       position={[fixture.x, floor.elevation + (fixture.z ?? 0), fixture.y]}
       rotation={[0, -fixture.rotation, 0]}
     >
-      {fixture.kind === 'boiler' ? <Boiler fixture={fixture} /> : <WaterTank fixture={fixture} />}
+      {fixture.kind === 'boiler' ? (
+        <Boiler fixture={fixture} />
+      ) : fixture.kind === 'waterTank' ? (
+        <WaterTank fixture={fixture} />
+      ) : (
+        <Radiator fixture={fixture} />
+      )}
     </group>
   )
 }
 
-/** The floor's built-in equipment, like the boiler and hot water tank in the upstairs storeroom. */
+/** The floor's built-in heating equipment, shared by every saved version. */
 export const Fixtures = ({ floor, cutaway }: { floor: Floor; cutaway: boolean }) => (
   <>
     {(floor.fixtures ?? []).map((f) => (

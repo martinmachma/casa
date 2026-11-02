@@ -79,7 +79,7 @@ export type Floor = {
 export type Fixture = {
   id: string
   name: string
-  kind: 'boiler' | 'waterTank'
+  kind: 'boiler' | 'waterTank' | 'radiator' | 'towelRail'
   x: number
   y: number
   /** Plan angle, radians. */
@@ -89,6 +89,8 @@ export type Fixture = {
   height: number
   /** Height of its underside above the floor; absent: standing on it. */
   z?: number
+  /** Radiators in front of full-height glazing stand on feet instead of wall brackets. */
+  mount?: 'floor' | 'wall'
 }
 
 /** Steps in walking order, each a plan polygon; they rise evenly to the next floor, the last one flush with it. */

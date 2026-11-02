@@ -199,6 +199,45 @@
           ]
         }
       ],
+      "fixtures": [
+        {
+          "id": "g-dining-radiator",
+          "name": "Dining radiator by the terrace glazing",
+          "kind": "radiator",
+          "x": 4.3,
+          "y": 0.4355,
+          "rotation": 0,
+          "width": 1.2,
+          "depth": 0.12,
+          "height": 0.3,
+          "z": 0.12,
+          "mount": "floor"
+        },
+        {
+          "id": "g-living-radiator",
+          "name": "Living room radiator beneath the front window",
+          "kind": "radiator",
+          "x": 4.45,
+          "y": 7.5145,
+          "rotation": 3.141592653589793,
+          "width": 2,
+          "depth": 0.12,
+          "height": 0.45,
+          "z": 0.12
+        },
+        {
+          "id": "g-hall-radiator",
+          "name": "Hall radiator beside the entrance window",
+          "kind": "radiator",
+          "x": 1.8,
+          "y": 9.0645,
+          "rotation": 3.141592653589793,
+          "width": 0.7,
+          "depth": 0.12,
+          "height": 0.6,
+          "z": 0.15
+        }
+      ],
       "stairs": {
         "name": "Stairs to the first floor",
         "rooms": ["g-living", "g-storage", "u-hall"],
@@ -345,6 +384,54 @@
         }
       ],
       "fixtures": [
+        {
+          "id": "u-sara-radiator",
+          "name": "Sara's room radiator beneath the garden window",
+          "kind": "radiator",
+          "x": 1.7955,
+          "y": 0.4355,
+          "rotation": 0,
+          "width": 1,
+          "depth": 0.12,
+          "height": 0.6,
+          "z": 0.15
+        },
+        {
+          "id": "u-bedroom-radiator",
+          "name": "Bedroom radiator beneath the front window",
+          "kind": "radiator",
+          "x": 1.85,
+          "y": 9.0645,
+          "rotation": 3.141592653589793,
+          "width": 1.4,
+          "depth": 0.12,
+          "height": 0.3,
+          "z": 0.12
+        },
+        {
+          "id": "u-martin-radiator",
+          "name": "Martin's room radiator beneath the front window",
+          "kind": "radiator",
+          "x": 4.6,
+          "y": 9.0645,
+          "rotation": 3.141592653589793,
+          "width": 1,
+          "depth": 0.12,
+          "height": 0.6,
+          "z": 0.15
+        },
+        {
+          "id": "u-bath-towel-rail",
+          "name": "Bathroom heated towel rail",
+          "kind": "towelRail",
+          "x": 3.8805,
+          "y": 1.85,
+          "rotation": -1.5707963267948966,
+          "width": 0.65,
+          "depth": 0.08,
+          "height": 1.2,
+          "z": 0.3
+        },
         {
           "id": "u-boiler",
           "name": "Gas boiler (Viessmann Vitodens 050-W B0HA)",
