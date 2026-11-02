@@ -1,13 +1,13 @@
-import { useThree, type ThreeEvent } from '@react-three/fiber'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Mesh, Plane, Vector3, type Group } from 'three'
+import { Mesh, Plane, Vector3, type Camera, type Group } from 'three'
 import type { Device } from '../data/types'
 import { defaultHeight, DEVICE_KINDS, onCeiling, type DevicePlacement } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
-import { wallAngle, wallLength, wallThickness } from '../layout/geometry'
+import { wallAngle, wallLength, wallOutside, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
-import { visibleWallHeight } from './CutawayWall'
+import { visibleWallHeight, wallCut, type Focus } from './CutawayWall'
 import { DeviceModel } from './DeviceModel'
 import { applyFade, GHOST_OPACITY } from './Fade'
 
@@ -26,8 +26,10 @@ type DevicesProps = {
   tint: (id: string) => string
   /** Seen from straight above: wall plates get a marker on top of the wall, where they can be seen and picked. */
   plan: boolean
-  /** See-through in the cutaway view, like the window shades; plan markers stay solid. */
-  ghost?: boolean
+  /** Fittings on a wall cut away to see inside become see-through; other devices stay solid. */
+  cutaway?: boolean
+  /** The room whose walls the cutaway follows, if one is being looked at. */
+  focus?: Focus
   /** False unless the devices tool is on. */
   interactive: boolean
   onSelect: (id: string) => void
@@ -51,7 +53,8 @@ export const Devices = ({
   glow,
   tint,
   plan,
-  ghost,
+  cutaway,
+  focus,
   interactive,
   onSelect,
   onMove,
@@ -70,7 +73,8 @@ export const Devices = ({
         glow={glow(device.id)}
         tint={tint(device.id)}
         plan={plan}
-        ghost={ghost}
+        cutaway={cutaway}
+        focus={focus}
         interactive={interactive}
         onSelect={onSelect}
         onMove={onMove}
@@ -97,7 +101,8 @@ const DeviceMesh = ({
   glow,
   tint,
   plan,
-  ghost,
+  cutaway = false,
+  focus,
   interactive,
   onSelect,
   onMove,
@@ -107,16 +112,31 @@ const DeviceMesh = ({
   onHoverLight,
 }: DeviceMeshProps) => {
   const model = useRef<Group>(null)
-  // Reapply after a render adds model parts, preserving any fade inherited from the floor.
-  useLayoutEffect(() => {
-    if (model.current) applyFade(model.current)
-  })
   const getState = useThree((s) => s.get)
   const level = floor.elevation + device.z
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -level), [level])
   const drag = useRef<{ dx: number; dy: number; moved: boolean }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
+  const outside = useMemo(() => wall && wallOutside(wall, floor), [wall, floor])
+  const opacity = (camera: Camera) =>
+    wall && wallCut(wall, floor, outside, camera, cutaway, focus) ? GHOST_OPACITY : 1
+  // Reapply after a render adds model parts, preserving any fade inherited from the floor.
+  useLayoutEffect(() => {
+    const g = model.current
+    if (!g) return
+    g.userData.fade = opacity(getState().camera)
+    applyFade(g)
+  })
+  // Orbiting doesn't re-render React: follow the same camera-dependent cut as the mounting wall each frame.
+  useFrame(({ camera }) => {
+    const g = model.current
+    if (!g) return
+    const amount = opacity(camera)
+    if (g.userData.fade === amount) return
+    g.userData.fade = amount
+    applyFade(g)
+  })
   const color = device.plan && device.kind === 'socket' && plan ? '#ba7c31' : DEVICE_KINDS[device.kind].color
   const pick = device.kind === 'light' ? onPickLight : onPickDevice
 
@@ -235,7 +255,6 @@ const DeviceMesh = ({
         userData={{
           itemId: device.id,
           debug: `${device.name} · ${device.id.slice(0, 4)}`,
-          fade: ghost ? GHOST_OPACITY : 1,
         }}
       >
         <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
@@ -334,7 +353,7 @@ export const DevicePlacer = ({ floor, placement, onPlace, cutaway, plan }: Devic
           glow={0}
           tint={DEVICE_KINDS[kind].color}
           plan={plan}
-          ghost={cutaway && !plan}
+          cutaway={cutaway && !plan}
           interactive={false}
           onSelect={() => {}}
           onMove={() => {}}
