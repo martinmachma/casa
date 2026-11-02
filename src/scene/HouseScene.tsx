@@ -31,7 +31,7 @@ import { ElectricalRoutes } from './ElectricalRoutes'
 import { Fade } from './Fade'
 import { Fixtures } from './Fixtures'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
-import { FloorWalls, type Brush, type PaintStroke, type PaintTarget } from './FloorWalls'
+import { FloorWalls, type Brush, type PaintFace, type PaintStroke } from './FloorWalls'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { FurniturePlacer } from './FurniturePlacer'
 import { HouseLights, isLamp } from './HouseLights'
@@ -75,7 +75,7 @@ type HouseSceneProps = {
   /** What painting puts on the walls. */
   brush: Brush
   onPaint: (stroke: PaintStroke) => void
-  onPaintWall: (target: PaintTarget) => void
+  onPaintWall: (face: PaintFace) => void
   selection: Selection | undefined
   wallSnap: boolean
   furnitureSnap: boolean

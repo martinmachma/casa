@@ -40,7 +40,7 @@ import { SunPanel } from './ui/SunPanel'
 import { ViewDock } from './ui/ViewDock'
 import { WallPanel } from './ui/WallPanel'
 import { PaintPanel } from './ui/PaintPanel'
-import type { Brush, PaintStroke, PaintTarget } from './scene/FloorWalls'
+import type { Brush, PaintFace, PaintStroke } from './scene/FloorWalls'
 import { wallPartColor } from './data/types'
 import { ModeBar } from './ui/ModeBar'
 import { TopBar } from './ui/TopBar'
@@ -368,7 +368,7 @@ export const House = ({ backend, account }: HouseProps) => {
     const base = wallPartColor(data.wallColors, stroke.wallId, stroke.side, stroke.part) ?? DEFAULT_WALL
     data.paintArea(stroke, brush.erase || brush.color.toLowerCase() === base.toLowerCase() ? undefined : brush.color)
   }
-  const paintWall = ({ wallId, side, part }: PaintTarget) =>
+  const paintWall = ({ wallId, side, part }: PaintFace) =>
     data.paintWall(wallId, side, part, brush.erase ? undefined : brush.color)
   const stopMeasuring = () => {
     setMeasure(undefined)

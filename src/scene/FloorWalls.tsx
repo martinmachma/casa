@@ -48,8 +48,11 @@ export type Brush = { color: string; erase: boolean; size: number }
 /** A block of paint squares on a part of a wall side, before it has a colour. */
 export type PaintStroke = Omit<NewWallArea, 'color'>
 
-/** A part of a wall side, painted whole with Shift. */
+/** A part of a wall side, painted in squares. */
 export type PaintTarget = { wallId: string; side: WallSide; part: number }
+
+/** A part of a side painted whole with Shift, or a wall end, always painted whole. */
+export type PaintFace = { wallId: string; side: WallFace; part: number }
 
 /** Where painting would go: the square under the pointer, or the block being dragged out. */
 type PaintPreview = PaintStroke & { dragging: boolean }
@@ -99,7 +102,7 @@ type FloorWallsProps = {
   /** While painting: a tap paints the square under it, a drag a block of squares, a Shift-tap the whole wall. */
   brush?: Brush
   onPaint?: (stroke: PaintStroke) => void
-  onPaintWall?: (target: PaintTarget) => void
+  onPaintWall?: (face: PaintFace) => void
 }
 
 export const FloorWalls = ({
@@ -185,7 +188,7 @@ type WallMeshProps = {
   preview?: PaintPreview
   onPreview: (preview: PaintPreview | undefined) => void
   onPaint?: (stroke: PaintStroke) => void
-  onPaintWall?: (target: PaintTarget) => void
+  onPaintWall?: (face: PaintFace) => void
 }
 
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
@@ -350,16 +353,27 @@ const WallMesh = ({
       if (!drag.current) onPreview(undefined)
     },
   })
+  const paintHandlers = (p: WallPiece): MeshHandlers => {
+    const sideAt = (e: ThreeEvent<PointerEvent>): PaintTarget | undefined => {
+      const n = e.face?.normal
+      const side = n && n.z > 0.5 ? 'a' : n && n.z < -0.5 ? 'b' : undefined
+      return side && { wallId: owner.id, side, part: partOf(p, side) }
+    }
+    return {
+      ...strokeHandlers(sideAt),
+      // An end is too narrow for squares: a tap paints it whole.
+      onPointerDown: (e) => {
+        const n = e.face?.normal
+        const side = sideAt(e)
+        if (side) return pointerDown(e, side)
+        if (!n || Math.abs(n.x) < 0.5) return
+        e.stopPropagation()
+        onPaintWall?.({ wallId: owner.id, side: 'end', part: endPart((n.x > 0 ? p.u1 : p.u0) + offset) })
+      },
+    }
+  }
   const boxHandlers = (p: WallPiece): MeshHandlers =>
-    interactive
-      ? { onClick: handleClick(p), ...hover('pointer') }
-      : brush
-        ? strokeHandlers((e) => {
-            const n = e.face?.normal
-            const side = n && n.z > 0.5 ? 'a' : n && n.z < -0.5 ? 'b' : undefined
-            return side && { wallId: owner.id, side, part: partOf(p, side) }
-          })
-        : {}
+    interactive ? { onClick: handleClick(p), ...hover('pointer') } : brush ? paintHandlers(p) : {}
   const areaHandlers = (area: WallArea): MeshHandlers =>
     interactive
       ? {

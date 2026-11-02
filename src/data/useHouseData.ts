@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { WallFace, WallSide } from '../layout/types'
+import type { WallFace } from '../layout/types'
 import { paintWallArea } from './wallAreas'
 import type {
   Backend,
@@ -217,8 +217,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const paintArea = (at: Omit<NewWallArea, 'color'>, color: string | undefined) =>
     edit((s) => ({ ...s, wallAreas: paintWallArea(s.wallAreas ?? [], at, color) }))
 
-  /** Paints the whole of a part of a wall side, over any areas on it; no colour takes it back to white. */
-  const paintWall = (wallId: string, side: WallSide, part: number, color: string | undefined) =>
+  /** Paints the whole of a part of a wall side or an end, over any areas on it; no colour takes it back to white. */
+  const paintWall = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
     edit((s) => {
       const painted = applyWallColor(s, wallId, side, part, color)
       const onPart = (a: WallArea) => a.wallId === wallId && a.side === side && a.part === part
