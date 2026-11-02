@@ -1,8 +1,8 @@
 import { Plus, Search } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
-import type { DeviceKind } from '../data/types'
-import { DEVICE_KINDS } from '../devices/kinds'
+import type { Device } from '../data/types'
+import { DEVICE_KINDS, type DevicePlacement } from '../devices/kinds'
 import { DeviceIcon } from './deviceIcons'
 import { NumberField } from './NumberField'
 import { Section } from './kit'
@@ -11,18 +11,23 @@ import { Section } from './kit'
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
 // Smart devices that can be put in by hand; the rest (sockets, blinds…) are fixed in the house's layout.
-const DEVICES: { kind: DeviceKind; name: string }[] = [{ kind: 'light', name: 'Ceiling light' }]
+const DEVICES: { kind: DevicePlacement; name: string }[] = [
+  { kind: 'light', name: 'Ceiling light' },
+  { kind: 'wall-light', name: 'Wall light' },
+]
 const DEVICES_GROUP = 'Devices'
 
 type FurniturePanelProps = {
   onAdd: (piece: NewPiece) => void
   /** The device kind the next tap places, if one is picked. */
-  placing: DeviceKind | undefined
-  onPlacing: (kind: DeviceKind | undefined) => void
+  placing: DevicePlacement | undefined
+  onPlacing: (kind: DevicePlacement | undefined) => void
+  devices: Device[]
+  onSelectDevice: (id: string) => void
 }
 
 /** Furniture creation shown while editing with nothing selected. */
-export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProps) => {
+export const FurniturePanel = ({ onAdd, placing, onPlacing, devices: placed, onSelectDevice }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
   const [group, setGroup] = useState<CatalogGroup | typeof DEVICES_GROUP>('Living')
@@ -46,6 +51,7 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
   const q = query.trim().toLowerCase()
   const entries = CATALOG.filter((e) => (q ? e.name.toLowerCase().includes(q) : e.group === group))
   const devices = DEVICES.filter((d) => (q ? d.name.toLowerCase().includes(q) : group === DEVICES_GROUP))
+  const placedDevices = placed.filter((d) => (q ? d.name.toLowerCase().includes(q) : group === DEVICES_GROUP))
 
   return (
     <>
@@ -126,7 +132,13 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
           </div>
         )}
 
-        {placing && <p className="hint">Tap the floor where the light should hang from the ceiling.</p>}
+        {placing && (
+          <p className="hint">
+            {placing === 'wall-light'
+              ? 'Tap a wall where the light should be mounted.'
+              : 'Tap the floor where the light should hang from the ceiling.'}
+          </p>
+        )}
 
         <div className="catalog">
           {(q || group !== DEVICES_GROUP) && (
@@ -142,8 +154,8 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
               aria-pressed={placing === d.kind}
               onClick={() => onPlacing(placing === d.kind ? undefined : d.kind)}
             >
-              <span className="device-swatch" style={{ background: DEVICE_KINDS[d.kind].color }}>
-                <DeviceIcon kind={d.kind} size={18} />
+              <span className="device-swatch" style={{ background: DEVICE_KINDS.light.color }}>
+                <DeviceIcon kind="light" size={18} />
               </span>
               <span>{d.name}</span>
             </button>
@@ -171,6 +183,25 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
           ))}
         </div>
       </Section>
+      {placedDevices.length > 0 && (
+        <Section title="Placed lights">
+          <ul className="electrical-list">
+            {placedDevices.map((device) => (
+              <li key={device.id}>
+                <button className="smart-item" onClick={() => onSelectDevice(device.id)}>
+                  <span className="smart-tile">
+                    <DeviceIcon kind={device.kind} />
+                  </span>
+                  <span className="smart-item-text">
+                    <span>{device.name}</span>
+                    <span className="muted">{device.wall ? 'Wall light' : 'Ceiling light'}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
     </>
   )
 }

@@ -1,8 +1,8 @@
-import type { Device, DeviceKind } from '../data/types'
+import type { Device } from '../data/types'
 import { openingSill, wallLength, wallThickness } from '../layout/geometry'
 import { roomAt, type RoomRegion } from '../layout/rooms'
 import type { Floor, Point, Wall, WallSide } from '../layout/types'
-import { defaultHeight, onCeiling } from './kinds'
+import { defaultHeight, onCeiling, type DevicePlacement } from './kinds'
 
 /** Where a device sits on a wall: the wall and face, and its plan position on that face. */
 export type WallMount = { wall: { wallId: string; side: WallSide }; x: number; y: number }
@@ -86,9 +86,14 @@ export const snapToWall = (
  * Where a device of `kind` tapped at plan point `p` goes: a light on the ceiling right there, anything else on the
  * nearest wall face within reach (undefined when there's none).
  */
-export const placeDevice = (kind: DeviceKind, p: Point, floor: Floor): Omit<Device, 'id' | 'name'> | undefined => {
-  const z = defaultHeight(kind, floor.height)
-  if (onCeiling(kind)) return { floor: floor.id, kind, x: p[0], y: p[1], z }
+export const placeDevice = (
+  placement: DevicePlacement,
+  p: Point,
+  floor: Floor,
+): Omit<Device, 'id' | 'name'> | undefined => {
+  const kind = placement === 'wall-light' ? 'light' : placement
+  const z = defaultHeight(placement, floor.height)
+  if (onCeiling(placement)) return { floor: floor.id, kind, x: p[0], y: p[1], z }
   const mount = snapToWall(p, floor, z)
   return mount && { floor: floor.id, kind, z, ...mount }
 }

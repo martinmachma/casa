@@ -1,10 +1,10 @@
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Mesh, Plane, Vector3, type Group } from 'three'
-import type { Device, DeviceKind } from '../data/types'
-import { DEVICE_KINDS } from '../devices/kinds'
+import type { Device } from '../data/types'
+import { defaultHeight, DEVICE_KINDS, onCeiling, type DevicePlacement } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
-import { wallAngle } from '../layout/geometry'
+import { wallAngle, wallLength, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
 import { visibleWallHeight } from './CutawayWall'
@@ -248,7 +248,7 @@ const DeviceMesh = ({
 
 type DevicePlacerProps = {
   floor: Floor
-  kind: DeviceKind
+  placement: DevicePlacement
   onPlace: (device: Omit<Device, 'id' | 'name'>) => void
   cutaway: boolean
   /** Seen from straight above, as for Devices. */
@@ -260,25 +260,42 @@ type DevicePlacerProps = {
  * the kind's height (a socket's tap on a wall lands on that wall), then a light goes on the ceiling there and
  * anything else onto the nearest wall face.
  */
-export const DevicePlacer = ({ floor, kind, onPlace, cutaway, plan }: DevicePlacerProps) => {
+export const DevicePlacer = ({ floor, placement, onPlace, cutaway, plan }: DevicePlacerProps) => {
   const camera = useThree((s) => s.camera)
-  const kindHeight = DEVICE_KINDS[kind].height
+  const kind = placement === 'wall-light' ? 'light' : placement
+  const ceiling = onCeiling(placement)
+  const kindHeight = defaultHeight(placement, floor.height)
   // Lights are placed where the floor was tapped, the way a plan is read.
-  const level = floor.elevation + (kindHeight === 'ceiling' ? 0 : kindHeight)
+  const level = floor.elevation + (ceiling ? 0 : kindHeight)
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -level), [level])
   const hit = useMemo(() => new Vector3(), [])
   const [preview, setPreview] = useState<Omit<Device, 'id' | 'name'>>()
 
-  const placement = (e: ThreeEvent<PointerEvent | MouseEvent>) => {
-    if (!e.ray.intersectPlane(plane, hit)) return undefined
+  const placedAt = (e: ThreeEvent<PointerEvent | MouseEvent>) => {
+    if (ceiling && !e.ray.intersectPlane(plane, hit)) return undefined
     const visibleFloor =
-      cutaway && kindHeight !== 'ceiling'
+      cutaway && !ceiling
         ? {
             ...floor,
             walls: floor.walls.filter((wall) => visibleWallHeight(wall, floor, camera, cutaway) >= kindHeight),
           }
         : floor
-    return placeDevice(kind, [hit.x, hit.z], visibleFloor)
+    return placeDevice(placement, ceiling ? [hit.x, hit.z] : [e.point.x, e.point.z], visibleFloor)
+  }
+
+  const handlers = {
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      if (e.delta > CLICK_SLOP_PX) return
+      e.stopPropagation()
+      const placed = placedAt(e)
+      if (placed) onPlace(placed)
+    },
+    onPointerMove: (e: ThreeEvent<PointerEvent>) => setPreview(placedAt(e)),
+    onPointerOver: () => (document.body.style.cursor = 'crosshair'),
+    onPointerOut: () => {
+      document.body.style.cursor = ''
+      setPreview(undefined)
+    },
   }
 
   return (
@@ -287,23 +304,28 @@ export const DevicePlacer = ({ floor, kind, onPlace, cutaway, plan }: DevicePlac
         rotation-x={-Math.PI / 2}
         position={[0, floor.elevation + 0.01, 0]}
         // A light hangs over a sofa or table as easily as over bare floor.
-        userData={{ pastFurniture: kind === 'light' }}
-        onClick={(e) => {
-          if (e.delta > CLICK_SLOP_PX) return
-          e.stopPropagation()
-          const placed = placement(e)
-          if (placed) onPlace(placed)
-        }}
-        onPointerMove={(e) => setPreview(placement(e))}
-        onPointerOver={() => (document.body.style.cursor = 'crosshair')}
-        onPointerOut={() => {
-          document.body.style.cursor = ''
-          setPreview(undefined)
-        }}
+        userData={{ pastFurniture: ceiling }}
+        {...handlers}
       >
         <planeGeometry args={[400, 400]} />
         <meshBasicMaterial visible={false} />
       </mesh>
+      {!ceiling &&
+        floor.walls.map((wall) => (
+          <mesh
+            key={wall.id}
+            position={[
+              (wall.from[0] + wall.to[0]) / 2,
+              floor.elevation + floor.height / 2,
+              (wall.from[1] + wall.to[1]) / 2,
+            ]}
+            rotation-y={-wallAngle(wall)}
+            {...handlers}
+          >
+            <boxGeometry args={[wallLength(wall), floor.height, wallThickness(wall, floor) + 0.002]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
+        ))}
       {preview && (
         <DeviceMesh
           device={{ ...preview, id: 'placing', name: '' }}

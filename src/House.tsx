@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Account } from './auth/AuthGate'
 import type { Backend, Device, DeviceKind, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
-import { DEVICE_KINDS } from './devices/kinds'
+import { DEVICE_KINDS, type DevicePlacement } from './devices/kinds'
 import { deviceRoom } from './devices/place'
 import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
@@ -50,7 +50,7 @@ import { floorItems, roomItems } from './rooms/roomItems'
 import { floorShades, SHADE_UP, useShades } from './devices/shades'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
-import { HouseTags } from './ui/HouseTags'
+import { ItemPins } from './ui/ItemPins'
 import { RoomOverview } from './ui/RoomOverview'
 import { ElectricalPanel } from './ui/ElectricalPanel'
 
@@ -90,7 +90,7 @@ export const House = ({ backend, account }: HouseProps) => {
   const [tool, setTool] = useState<Exclude<Interaction, 'view' | 'measure'>>('edit')
   const interaction: Interaction = planning ? tool : 'view'
   const [selection, setSelection] = useState<Selection>()
-  const [placing, setPlacing] = useState<DeviceKind>()
+  const [placing, setPlacing] = useState<DevicePlacement>()
   // A new piece from the catalog, carried under the pointer until it's put down.
   const [placingPiece, setPlacingPiece] = useState<Omit<NewFurnitureItem, 'x' | 'y'>>()
   const [todosOpen, setTodosOpen] = useState(false)
@@ -282,6 +282,23 @@ export const House = ({ backend, account }: HouseProps) => {
     setItemOrigin(undefined)
   }
 
+  /** Every light opens the same card and close-up, borrowing a room only when it has one. */
+  const openItem = (id: string | undefined) => {
+    if (!id || focus) return openPopover(id)
+    for (const f of house.floors) {
+      const item = floorItems(f, data.devices, data.furniture).find((i) => i.id === id)
+      if (!item) continue
+      if (item.room) return openRoom(item.room, id)
+      setItemOrigin(itemOrigin ?? { room: roomView, floor: floorIndex, outside, camera: planCamera })
+      setFloorIndex(house.floors.indexOf(f))
+      setOutside(true)
+      setCamera('orbit')
+      setSelection(undefined)
+      setPopover(id)
+      return
+    }
+  }
+
   /** A tapped shade borrows its room's view while its controls are open. */
   const pickShade = (id: string) => {
     const room = house.floors.flatMap((f) => floorShades(f, floorRegions(f))).find((s) => s.id === id)?.room
@@ -311,6 +328,7 @@ export const House = ({ backend, account }: HouseProps) => {
       if (data.dirty && !confirm('Leave planning? Your unsaved changes will be lost.')) return
       data.discardDraft()
     }
+    if (popover) openPopover(undefined)
     setSelection(undefined)
     setPlacing(undefined)
     setPlacingPiece(undefined)
@@ -391,6 +409,7 @@ export const House = ({ backend, account }: HouseProps) => {
       // Esc first steps back out of what's being done in the room, then out of the room.
       if (focus && e.key === 'Escape' && !typing && !selection && !placing && !placingPiece && !measure)
         return popover ? openPopover(undefined) : leaveRoom()
+      if (popover && !focus && e.key === 'Escape' && !typing) return openPopover(undefined)
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return
       if (key === 'e') return changeSection(planning ? 'home' : 'planning')
       if (locked) return
@@ -590,13 +609,15 @@ export const House = ({ backend, account }: HouseProps) => {
       return (
         <FurniturePanel
           onAdd={addPiece}
+          devices={data.devices.filter((d) => d.kind === 'light' && (outside || d.floor === floor.id))}
+          onSelectDevice={(id) => select({ kind: 'device', id })}
           placing={placing}
           onPlacing={(kind) => {
             setSelection(undefined)
             setPlacingPiece(undefined)
             setPlacing(kind)
             // Lights hang from a floor's ceiling, so it's placed from inside.
-            if (kind && outside) setOutside(false)
+            if (kind && kind !== 'wall-light' && outside) setOutside(false)
             // On a phone the sheet covers the house; tuck it away so there's room to tap.
             if (kind && isNarrow()) setRightOpen(false)
           }}
@@ -609,8 +630,8 @@ export const House = ({ backend, account }: HouseProps) => {
     <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
       <TopBar
         // Already home, the name puts the camera back where it started.
-        onHome={focus ? leaveRoom : () => setViewKey((k) => k + 1)}
-        inRoom={!!focus}
+        onHome={focus || popover ? leaveRoom : () => setViewKey((k) => k + 1)}
+        inRoom={!!focus || !!popover}
         versions={planning && <VersionMenu data={data} />}
         onWeather={() => setWeatherOpen(true)}
         onTodos={() => setTodosOpen(true)}
@@ -646,7 +667,7 @@ export const House = ({ backend, account }: HouseProps) => {
           placingPiece={placingPiece}
           onPlacePiece={placePiece}
           lights={lights.states}
-          onPickLight={(id) => (focus ? openPopover(id) : select({ kind: 'light', id }))}
+          onPickLight={openItem}
           shades={shades.states}
           onPickShade={pickShade}
           onPlaceDevice={placeDevice}
@@ -700,14 +721,14 @@ export const House = ({ backend, account }: HouseProps) => {
 
         {/* Between rooms, smart items keep their tags; outside, so do lights without a room. */}
         {floorTags.length > 0 && (
-          <HouseTags
+          <ItemPins
             items={floorTags}
             light={(id) => lightSettings(lights.states[id], dark)}
+            onLight={(id, patch) => lights.set(id, patch, dark)}
             shade={(id) => shades.states[id] ?? SHADE_UP}
-            onOpen={(item) => {
-              if (item.room) openRoom(item.room, item.id)
-              else if (item.kind === 'light') select({ kind: 'light', id: item.id })
-            }}
+            onShade={shades.set}
+            open={popover}
+            onOpen={openItem}
             onHover={setHoveredItem}
             hovered={hoveredItem}
             pinRefs={pinRefs}
@@ -723,7 +744,7 @@ export const House = ({ backend, account }: HouseProps) => {
           camera={camera}
           onCamera={setCamera}
           canPlan={planning}
-          inRoom={!!focus}
+          inRoom={!!focus || !!popover}
         >
           {camera !== 'walk' && roomOrder.ready && (
             <RoomNav

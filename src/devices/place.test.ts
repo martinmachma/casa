@@ -85,4 +85,16 @@ describe('deviceRoom', () => {
     const ceiling = device(placeDevice('light', [3, 1], floor)!)
     expect(lightPosition(ceiling, floor)).toEqual([3, 2.42, 1])
   })
+
+  it('places smart wall lights on either face, including outside without a room', () => {
+    const regions = roomRegions(floor)
+    const inside = device(placeDevice('wall-light', [1, 0.2], floor)!)
+    const outside = device(placeDevice('wall-light', [1, -0.2], floor)!)
+    expect(inside).toMatchObject({ kind: 'light', z: 2.2, wall: { wallId: 'n', side: 'a' } })
+    expect(outside).toMatchObject({ kind: 'light', z: 2.2, wall: { wallId: 'n', side: 'b' } })
+    expect(deviceRoom(inside, floor, regions)).toBe('west')
+    expect(deviceRoom(outside, floor, regions)).toBeUndefined()
+    expect(lightPosition(inside, floor)[2]).toBeCloseTo(0.22)
+    expect(lightPosition(outside, floor)[2]).toBeCloseTo(-0.22)
+  })
 })

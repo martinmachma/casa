@@ -3,8 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Device, DeviceKind, FurnitureItem, NewFurnitureItem } from '../data/types'
+import type { Device, FurnitureItem, NewFurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
+import type { DevicePlacement } from '../devices/kinds'
 import { lightColor, lightLevel, type LightState } from '../devices/lights'
 import type { ShadeState } from '../devices/shades'
 import { blockedDoors, colliding, doorSweeps, fixtureSolids, sweepOutline } from '../furniture/collision'
@@ -52,6 +53,7 @@ import type { CameraMode, Interaction, Selection } from './selection'
 import { ShadowUpdates } from './ShadowUpdates'
 import { Railings, Stairs } from './Stairs'
 import { WalkCamera } from './WalkCamera'
+import { ZoomToSurface } from './ZoomToSurface'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
 const SLAB = 0.3
@@ -83,7 +85,7 @@ type HouseSceneProps = {
   measurements: MeasuredLine[]
   onRemoveMeasurement: (id: string) => void
   /** The device kind the next tap places, while the devices tool is on. */
-  placing: DeviceKind | undefined
+  placing: DevicePlacement | undefined
   /** Lights switched by hand, by device or lamp id; the rest come on after dark. */
   lights: Readonly<Record<string, LightState>>
   /** A light or lamp tapped while looking round. */
@@ -174,6 +176,7 @@ export const HouseScene = ({
   const floor = floors[floorIndex]
   // A window's shade opened is seen from outside on the whole house: every floor and the roof, nothing cut or dimmed.
   const whole = !!open && !!shadeWall(open)
+  const closeUp = open ? pins.find((p) => p.key === `tag:${open}`) : undefined
   // Floors above the one looked at are left off; one taken off fades out, one put back fades in.
   const shownCount = camera === 'walk' || whole ? floors.length : floorIndex + 1
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
@@ -284,12 +287,12 @@ export const HouseScene = ({
         <InputInvalidator />
         <PointerReach />
         <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
-        {focusRoom ? (
+        {focusRoom || closeUp ? (
           <RoomCamera
             floor={floor}
             roomId={focusRoom}
             furniture={data.furniture}
-            closeUp={open ? pins?.find((p) => p.key === `tag:${open}`) : undefined}
+            closeUp={closeUp}
             from={
               lastView.mode === 'orbit'
                 ? { position: lastView.position.clone(), target: lastView.target.clone() }
@@ -332,9 +335,9 @@ export const HouseScene = ({
         <DebugHover copies={interaction === 'view'} />
         {focusRoom ? (
           !whole && <RoomBlur floor={floor} roomId={focusRoom} open={open} />
-        ) : (
+        ) : !closeUp ? (
           <CameraNudger nudge={nudge} />
-        )}
+        ) : null}
         <ItemOutline
           item={hovered}
           over={!!focusRoom && !whole}
@@ -430,10 +433,10 @@ export const HouseScene = ({
         ))}
         {electrical && outside && <ElectricalRoutes />}
 
-        {interaction === 'edit' && placing && !outside && (
+        {interaction === 'edit' && placing && (!outside || placing === 'wall-light') && (
           <DevicePlacer
-            floor={floor}
-            kind={placing}
+            floor={furnitureFloor}
+            placement={placing}
             onPlace={onPlaceDevice}
             cutaway={cutaway && camera === 'orbit'}
             plan={camera === 'top'}
@@ -732,9 +735,9 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     // Panning and zooming scale with the distance to the target, so close in they'd crawl.
     // Speed them up there to keep the pace they have this far out.
     if (mode === 'orbit') {
-      const boost = Math.max(1, NEAR_PACE / camera.position.distanceTo(orbit.target))
-      orbit.panSpeed = boost
-      orbit.zoomSpeed = boost
+      const boost = NEAR_PACE / camera.position.distanceTo(orbit.target)
+      orbit.panSpeed = Math.max(1, boost)
+      orbit.zoomSpeed = Math.max(2, boost)
     }
     Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation: houseHeight ? NaN : floor.elevation })
     lastView.position.copy(camera.position)
@@ -753,6 +756,8 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
           enabled={!flying}
           target={target.toArray()}
           enableRotate={false}
+          zoomToCursor
+          zoomSpeed={2}
           screenSpacePanning
           mouseButtons={{ LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
           touches={{ ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_PAN }}
@@ -775,8 +780,10 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
         enabled={!flying}
         target={(flying && start.from ? start.from.target : start.target).toArray()}
         maxPolarAngle={Math.PI / 2.05}
-        minDistance={0.5}
+        zoomToCursor
+        minDistance={0.2}
       />
+      <ZoomToSurface />
       <IntroFlight />
     </>
   )

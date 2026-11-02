@@ -1,5 +1,8 @@
 import type { DeviceKind } from '../data/types'
 
+/** Lights can be added on a ceiling or a wall; both remain the same smart device kind. */
+export type DevicePlacement = DeviceKind | 'wall-light'
+
 type KindInfo = {
   label: string
   /** Default height above the floor, metres; `ceiling` hangs it from the ceiling instead of a wall. */
@@ -24,10 +27,11 @@ export const DEVICE_KINDS: Record<DeviceKind, KindInfo> = {
   other: { label: 'Other', height: 1.1, color: '#a597b5' },
 }
 
-export const onCeiling = (kind: DeviceKind) => DEVICE_KINDS[kind].height === 'ceiling'
+export const onCeiling = (kind: DevicePlacement) => kind !== 'wall-light' && DEVICE_KINDS[kind].height === 'ceiling'
 
 /** The kind's usual height above the floor, the ceiling being the floor's wall height. */
-export const defaultHeight = (kind: DeviceKind, ceiling: number) => {
+export const defaultHeight = (kind: DevicePlacement, ceiling: number) => {
+  if (kind === 'wall-light') return Math.min(2.2, ceiling - 0.15)
   const h = DEVICE_KINDS[kind].height
   return h === 'ceiling' ? ceiling : h
 }

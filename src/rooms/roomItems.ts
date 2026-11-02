@@ -1,6 +1,7 @@
 import type { Device, DeviceKind, FurnitureItem } from '../data/types'
 import { deviceRoom } from '../devices/place'
 import { floorShades } from '../devices/shades'
+import { wallAngle } from '../layout/geometry'
 import { floorRegions, roomAt } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 import { isLamp } from '../scene/HouseLights'
@@ -32,15 +33,23 @@ export const floorItems = (
   return [
     ...devices
       .filter((d) => d.floor === floor.id && (!d.plan || d.kind === 'light'))
-      .map((d) => ({
-        id: d.id,
-        name: d.name,
-        kind: d.kind,
-        lamp: false,
-        entity: d.entity,
-        at: [d.x, floor.elevation + d.z, d.y] as SmartItem['at'],
-        room: deviceRoom(d, floor, regions),
-      })),
+      .map((d) => {
+        const room = deviceRoom(d, floor, regions)
+        const wall = !room && d.wall && floor.walls.find((w) => w.id === d.wall!.wallId)
+        const angle = wall ? wallAngle(wall) : 0
+        const side = d.wall?.side === 'a' ? 1 : -1
+        return {
+          id: d.id,
+          name: d.name,
+          kind: d.kind,
+          lamp: false,
+          entity: d.entity,
+          at: [d.x, floor.elevation + d.z, d.y] as SmartItem['at'],
+          room,
+          // A light without a room is approached from the face it shines out of.
+          facing: wall ? ([-Math.sin(angle) * side, Math.cos(angle) * side] as [number, number]) : undefined,
+        }
+      }),
     ...furniture
       .filter((f) => f.floor === floor.id && isLamp(f.model))
       .map((f) => ({
