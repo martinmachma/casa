@@ -3322,6 +3322,8 @@ input[type='range'].kelvin::-moz-range-thumb {
   position: absolute;
   top: 0;
   left: 0;
+  /* The projector reveals each pin after placing it with the current camera. */
+  visibility: hidden;
 }
 
 /* A smart item's tag: a line leaving the item at an angle, turning flat into a small pill. */

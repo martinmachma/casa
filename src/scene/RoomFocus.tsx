@@ -150,6 +150,9 @@ export const FocusProjector = ({ pins, pinRefs }: FocusProjectorProps) => {
       if (!pinEl) continue
       v.set(...pin.at).project(camera)
       pinEl.style.transform = `translate(${((v.x + 1) / 2) * size.width}px, ${((1 - v.y) / 2) * size.height}px)`
+      // New labels start hidden, so a camera switch can't paint them at their unprojected position.
+      // Points behind the camera (or outside its depth range) mustn't leave mirrored labels on screen.
+      pinEl.style.visibility = v.z >= -1 && v.z <= 1 ? 'visible' : 'hidden'
     }
   })
   return null
