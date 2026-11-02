@@ -451,7 +451,6 @@ point(
   'V · 230 V, up to 100 W',
   'Shown in the suspended ceiling; exact ceiling height is not dimensioned.',
 )
-point('u-bath-bond', 'earth', 'Bathtub protective bonding', 'upper', [5.7, 1.4], 0.25, 'CYA 4 mm² protective bonding')
 sw('u-bath-switch', 'Bathroom light switch', 'u-bath-south', 'b', 4.78)
 sw('u-bath-timer', 'Bathroom fan timer button', 'u-bath-south', 'b', 4.95, 'Push button with run-on relay')
 sw('u-store-switch', 'Boiler room light switch', 'u-storage-west', 'b', 4.86)
