@@ -173,7 +173,17 @@ wall('g-living-door-socket', 'socket', 'Living doorway socket', 'g-core', 'b', 6
 sw('g-living-door-switch', 'Living two-gang two-way switch', 'g-core', 'b', 6.25, 'Double two-way switch')
 wall('g-bell', 'bell', 'Entrance chime', 'g-core', 'b', 6.45, 'Doorbell chime', 2.1)
 wall('g-store-socket', 'socket', 'Under-stair storage socket', 'g-kitchen-storage', 'a', 0.55, '230 V / 16 A')
-ceiling('g-store-light', 'Under-stair storage light', 'ground', [1.3, 3.6], 'Ceiling light · max. 100 W, IP20')
+wall(
+  'g-store-light',
+  'light',
+  'Under-stair storage light',
+  'g-kitchen-storage',
+  'a',
+  1.3,
+  'Wall light · max. 100 W, IP20',
+  1.8,
+  'Wall-mounted on the storage side of the kitchen partition, beneath the upper stair flight. The drawing does not dimension its height; 1.8 m is indicative.',
+)
 sw('g-store-switch', 'Storage light switch', 'g-core', 'a', 4.04)
 sw('g-stairs-two-way', 'Staircase two-way switch', 'g-storage-wc', 'b', 2.03, 'Two-way switch')
 sw('g-stairs-intermediate', 'Staircase intermediate switch', 'g-storage-wc', 'b', 2.28, 'Intermediate switch')

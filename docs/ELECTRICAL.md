@@ -33,6 +33,10 @@ height. The microwave socket uses the kitchen shaft face and the bedroom doorway
 projection beside the door. The entrance light sits above the architectural entrance door. The existing
 architectural geometry is retained where the electrical plan differs.
 
+The under-stair storage fixture uses the wall-light symbol (cross with a mounting bar), on the storage
+face of the kitchen partition. It is mounted beneath the upper stair flight at an indicative 1.8 m;
+the electrical drawing does not specify its height.
+
 The plan note assumes sockets 250 mm and switches 1100 mm above the floor. Other heights are indicative,
 including appliance connections, wall lighting, panels, fans and sensors. Kitchen positions/heights must be
 coordinated with the final cabinets and appliance design. Model dimensions of electrical accessories are
