@@ -20,6 +20,11 @@ added from the Devices palette. They appear in their rooms and lighting scenes. 
 markers have been replaced, preserving their positions and source IDs. Ceiling lights emit downward; wall
 lights emit in front of their wall face. Other electrical connections remain passive.
 
+On 2026-11-02, the 11 older, manually placed lights were removed in a new live version named
+**Electrical plan lights only**. The previous version remains in the history. Manually added lights are
+listed separately under **Additional lights**, marked **Outside electrical plan**, so they can be inspected
+and removed without touching the 17 plan lights.
+
 ## Placement and routes
 
 The drawings show schematic positions, not dimensioned installation coordinates. Points are projected onto

@@ -36,13 +36,15 @@ export const ElectricalPanel = ({
           (d) => d.floor === floor.id && d.plan?.area === 'inside' && deviceRoom(d, floor, regions) === room.id,
         ),
       }))
+  const additionalLights = devices.filter((d) => !d.plan && d.kind === 'light' && (outside || d.floor === floor.id))
+  if (additionalLights.length) groups.push({ name: 'Additional lights', devices: additionalLights })
   const count = groups.reduce((n, g) => n + g.devices.length, 0)
   return (
     <>
       <PanelHead
         eyebrow="Electrical plan"
         title={outside ? 'Exterior & roof' : floor.name}
-        sub={`${count} fixed electrical points`}
+        sub={`${count} electrical points`}
         onClose={onClose}
       />
       <Section>
@@ -77,7 +79,7 @@ export const ElectricalPanel = ({
                     </span>
                     <span className="smart-item-text">
                       <span>{d.name}</span>
-                      <span className="muted">{d.plan?.symbol}</span>
+                      <span className="muted">{d.plan?.symbol ?? 'Outside electrical plan'}</span>
                     </span>
                   </button>
                 </li>
