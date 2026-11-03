@@ -3396,6 +3396,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 .smart-tag-icon {
+  position: relative;
   display: grid;
   place-items: center;
   width: 20px;
@@ -3403,6 +3404,29 @@ input[type='range'].kelvin::-moz-range-thumb {
   border-radius: 999px;
   background: var(--surface-3);
   color: var(--ink-2);
+}
+
+/* A light's tag is just its icon, ringed. */
+.smart-tag[data-ring] {
+  padding: 0 3px;
+}
+
+.smart-tag-ring {
+  position: absolute;
+  inset: -3px;
+  rotate: -90deg;
+  overflow: visible;
+}
+
+.smart-tag-ring circle {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3.5;
+}
+
+.smart-tag-ring circle + circle {
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
 .smart-tag-icon[style] {

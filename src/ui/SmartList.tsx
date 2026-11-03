@@ -157,7 +157,10 @@ export const TagLine = ({ reach = 0 }: { reach?: number }) => (
   </svg>
 )
 
-/** The tag over an item in the room's view: its icon, lit in the light's colour, and how bright it is. */
+const RING = 2 * Math.PI * 12
+
+/** The tag over an item in the room's view: its icon, lit in the light's colour; a light's in a dark ring with an arc
+    in its colour as far round as it's bright. */
 export const SmartTag = ({ item, light, shade, onOpen, onHover }: SmartTagProps) => {
   const on = !!light?.on
   return (
@@ -166,15 +169,29 @@ export const SmartTag = ({ item, light, shade, onOpen, onHover }: SmartTagProps)
       <button
         className="smart-tag"
         data-off={(light && !on) || undefined}
-        aria-label={item.name}
+        data-ring={light ? true : undefined}
+        aria-label={light ? `${item.name}, ${on ? `${Math.round(light.brightness * 100)} %` : 'off'}` : item.name}
         onClick={onOpen}
         onPointerEnter={() => onHover(true)}
         onPointerLeave={() => onHover(false)}
       >
         <span className="smart-tag-icon" style={on ? { background: lightColor(light) } : undefined}>
+          {light && (
+            <svg className="smart-tag-ring" width="26" height="26" viewBox="0 0 26 26" aria-hidden>
+              <circle cx="13" cy="13" r="12" />
+              {on && (
+                <circle
+                  cx="13"
+                  cy="13"
+                  r="12"
+                  style={{ stroke: lightColor(light) }}
+                  strokeDasharray={`${light.brightness * RING} ${RING}`}
+                />
+              )}
+            </svg>
+          )}
           <DeviceIcon kind={item.kind} size={12} />
         </span>
-        {light && <span className="muted">{on ? `${Math.round(light.brightness * 100)} %` : 'Off'}</span>}
         {shade && <span className="muted">{shadeText(shade)}</span>}
       </button>
     </>
