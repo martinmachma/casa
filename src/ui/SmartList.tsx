@@ -159,40 +159,46 @@ export const TagLine = ({ reach = 0 }: { reach?: number }) => (
 
 const RING = 2 * Math.PI * 12
 
-/** The tag over an item in the room's view: its icon, lit in the light's colour; a light's in a dark ring with an arc
-    in its colour as far round as it's bright. */
+/** The tag over an item in the room's view: just its icon, lit in a light's colour, in a dark ring with an arc as far
+    round as a light is bright, in its colour, or as far as a shade is down. */
 export const SmartTag = ({ item, light, shade, onOpen, onHover }: SmartTagProps) => {
   const on = !!light?.on
+  const level = light ? (on ? light.brightness : 0) : shade?.position
   return (
     <>
       <TagLine />
       <button
         className="smart-tag"
         data-off={(light && !on) || undefined}
-        data-ring={light ? true : undefined}
-        aria-label={light ? `${item.name}, ${on ? `${Math.round(light.brightness * 100)} %` : 'off'}` : item.name}
+        data-ring={level !== undefined || undefined}
+        aria-label={
+          light
+            ? `${item.name}, ${on ? `${Math.round(light.brightness * 100)} %` : 'off'}`
+            : shade
+              ? `${item.name}, ${shadeText(shade)}`
+              : item.name
+        }
         onClick={onOpen}
         onPointerEnter={() => onHover(true)}
         onPointerLeave={() => onHover(false)}
       >
         <span className="smart-tag-icon" style={on ? { background: lightColor(light) } : undefined}>
-          {light && (
+          {level !== undefined && (
             <svg className="smart-tag-ring" width="26" height="26" viewBox="0 0 26 26" aria-hidden>
               <circle cx="13" cy="13" r="12" />
-              {on && (
+              {level > 0.005 && (
                 <circle
                   cx="13"
                   cy="13"
                   r="12"
-                  style={{ stroke: lightColor(light) }}
-                  strokeDasharray={`${light.brightness * RING} ${RING}`}
+                  style={on ? { stroke: lightColor(light) } : undefined}
+                  strokeDasharray={`${level * RING} ${RING}`}
                 />
               )}
             </svg>
           )}
           <DeviceIcon kind={item.kind} size={12} />
         </span>
-        {shade && <span className="muted">{shadeText(shade)}</span>}
       </button>
     </>
   )

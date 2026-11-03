@@ -3425,6 +3425,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 .smart-tag-ring circle + circle {
+  stroke: var(--surface);
   stroke-width: 2;
   stroke-linecap: round;
 }
