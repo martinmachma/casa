@@ -3340,7 +3340,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 .smart-tag-line {
   position: absolute;
   left: -2px;
-  top: -30px;
+  top: -32px;
   overflow: visible;
   filter: drop-shadow(0 0 1.5px rgb(34 26 18 / 0.45));
 }
@@ -3353,8 +3353,9 @@ input[type='range'].kelvin::-moz-range-thumb {
 
 .smart-tag {
   position: absolute;
-  left: 32px;
-  top: -35px;
+  left: 0;
+  top: -56px;
+  translate: -50% 0;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3413,7 +3414,7 @@ input[type='range'].kelvin::-moz-range-thumb {
 .room-popover {
   position: absolute;
   left: 98px;
-  top: -22px;
+  top: -30px;
   translate: 0 -50%;
   width: 260px;
   padding: 12px;
@@ -3424,12 +3425,12 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 .room-pin:has(.room-popover) .smart-tag-line polyline {
-  stroke-dasharray: 100 200;
+  stroke-dasharray: 122 200;
   animation: tag-line-grow 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .room-pin:has(.room-popover[data-closing]) .smart-tag-line polyline {
-  stroke-dasharray: 34 200;
+  stroke-dasharray: 24 200;
   /* The card plays its growth backwards; this is that curve, played forwards. */
   animation: tag-line-shrink 0.2s cubic-bezier(0.2, 0.8, 0.6, 1);
 }
@@ -3437,13 +3438,13 @@ input[type='range'].kelvin::-moz-range-thumb {
 /* From as long as a tag's line to as long as the open card's, and back. */
 @keyframes tag-line-grow {
   from {
-    stroke-dasharray: 34 200;
+    stroke-dasharray: 24 200;
   }
 }
 
 @keyframes tag-line-shrink {
   from {
-    stroke-dasharray: 100 200;
+    stroke-dasharray: 122 200;
   }
 }
 
@@ -3463,8 +3464,8 @@ input[type='range'].kelvin::-moz-range-thumb {
 @keyframes tag-to-card {
   from {
     clip-path: inset(calc(50% - 13px) calc(100% - 76px) calc(50% - 13px) 0 round 13px);
-    /* Where the tag stood, sliding out along the line as it grows. */
-    translate: -66px -50%;
+    /* Where the tag stood, above its item, sliding out along the line as it grows. */
+    translate: -136px calc(-50% - 13px);
   }
   to {
     clip-path: inset(0 0 0 0 round 14px);

@@ -64,7 +64,7 @@ export const ItemPins = ({
   }, [open, onOpen])
   return (
     <div className="overlay">
-      {/* A tag by each item, on a bent line that stops short of it; the open one's tag grows into its card, and
+      {/* A tag by each item, on a line straight up from it; the open one's tag grows into its card, and
           shrinks back into the tag as it closes. */}
       {items.map((item) => {
         // Controls standing beside their item (a window's shade) take the place of its tag while open.
@@ -116,7 +116,7 @@ export const ItemPins = ({
           >
             {carded ? (
               // Longer to the open card, which stands clear of its item; it grows and shrinks with the card.
-              <TagLine key={item.id === open ? 'line-open' : 'line-closing'} reach={80} />
+              <TagLine key={item.id === open ? 'line-open' : 'line-closing'} reach={98} />
             ) : (
               <SmartTag
                 item={item}
