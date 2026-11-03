@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import { blockedDoors, doorSweeps, fixtureSolids, hits } from '../furniture/collision'
 import { house } from './layout'
+import { wallEndExtensions } from './geometry'
 import { floorRegions, floorWallRects, roomAt } from './rooms'
 
 const floor = house.floors.find((f) => f.id === 'upper')!
@@ -27,11 +28,17 @@ it('fits the bathroom fittings inside the room, clear of walls, each other and t
   expect(blockedDoors(bathroom, doorSweeps(floor), floor.id).size).toBe(0)
 })
 
-it('places the shower beside the WC boxing, leaving the window and basin approach clear', () => {
+it('fits the 110 × 90 shower flush with the WC partition, leaving the window and basin approach clear', () => {
   const shower = bathroom.find((f) => f.id === 'u-bath-shower')!
   const partition = floor.walls.find((w) => w.id === 'u-bath-shaft')!
   const vanity = bathroom.find((f) => f.id === 'u-bath-vanity')!
-  // Its south edge meets the existing partition next to the WC, rather than the window corner.
+  expect(shower.width).toBe(1.1)
+  expect(shower.depth).toBe(0.9)
+  // The partition's visible free end includes its cap, inset 2 mm like the rendered wall pieces.
+  const wallFront = partition.from[0] - wallEndExtensions(partition, floor, 0.002).from
+  const showerFront = shower.x - shower.depth / 2
+  expect(wallFront).toBeCloseTo(showerFront, 5)
+  // Its south edge meets the partition next to the WC, rather than the window corner.
   expect(shower.y + shower.width / 2).toBeCloseTo(partition.from[1] - floor.wallThickness / 2)
   expect(shower.y - shower.width / 2).toBeGreaterThan(0.9)
   expect(shower.x - shower.depth / 2 - (vanity.x + vanity.depth / 2)).toBeGreaterThan(0.85)

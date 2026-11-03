@@ -100,6 +100,8 @@ export type NewDevice = Omit<Device, 'id'>
 
 /** Everything placed in the house: what a version records. */
 export type HouseState = {
+  /** Built-in fittings whose older catalog equivalents have already been retired from this state. */
+  builtInFixtures?: string[]
   walls: WallColor[]
   /** Absent in versions saved before parts of walls could be painted. */
   wallAreas?: WallArea[]

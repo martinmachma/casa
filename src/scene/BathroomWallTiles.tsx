@@ -70,7 +70,7 @@ export const BathroomWallTiles = ({
       ? 'b'
       : undefined
   if (!side) return null
-  const finish = wall.id === 'u-east' ? BATHROOM_TRAVERTINE : BATHROOM_MARBLE
+  const finish = ['u-east', 'u-bath-shaft'].includes(wall.id) ? BATHROOM_TRAVERTINE : BATHROOM_MARBLE
   const direction = side === 'a' ? 1 : -1
   return pieces.map((p, i) => {
     // The north wall is shared with Sara's room. Stop exactly at the bathroom's partition and east wall.
@@ -101,7 +101,7 @@ export const BathroomWallTiles = ({
             height={height}
             u={u0}
             v={p.y0}
-            finish={finish}
+            finish={BATHROOM_MARBLE}
           />
         )}
         {/* The WC ledge is a real tiled top; artificial cut faces keep the wall's section colour. */}

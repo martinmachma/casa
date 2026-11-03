@@ -89,6 +89,8 @@ export type Fixture = {
   height: number
   /** Height of its underside above the floor; absent: standing on it. */
   z?: number
+  /** Catalog fittings in this room superseded when this equipment became built in. Applied once per saved state. */
+  replaces?: { room: string; models: string[] }
   /** The finish of exposed metal, such as the bathroom's black towel rail. */
   color?: string
   /** Radiators in front of full-height glazing stand on feet instead of wall brackets. */

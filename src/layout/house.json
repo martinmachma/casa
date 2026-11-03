@@ -437,10 +437,11 @@
           "id": "u-bath-shower",
           "name": "Black-framed shower beside the WC",
           "kind": "shower",
+          "replaces": { "room": "u-bath", "models": ["shower", "showerRound"] },
           "x": 5.6005,
-          "y": 1.54,
+          "y": 1.59,
           "rotation": 1.5707963267948966,
-          "width": 1.2,
+          "width": 1.1,
           "depth": 0.9,
           "height": 2.22
         },
@@ -448,6 +449,7 @@
           "id": "u-bath-vanity",
           "name": "Floating walnut vanity with inset basin",
           "kind": "vanity",
+          "replaces": { "room": "u-bath", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
           "x": 4.0405,
           "y": 0.91,
           "rotation": -1.5707963267948966,
@@ -460,6 +462,7 @@
           "id": "u-bath-toilet",
           "name": "Wall-hung WC",
           "kind": "toilet",
+          "replaces": { "room": "u-bath", "models": ["toilet"] },
           "x": 5.245,
           "y": 2.7,
           "rotation": 1.5707963267948966,
@@ -658,7 +661,7 @@
         },
         {
           "id": "u-bath-shaft",
-          "from": [5.26, 2.19],
+          "from": [5.1985, 2.19],
           "to": [6.0505, 2.19]
         }
       ],

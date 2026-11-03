@@ -15,6 +15,8 @@ import type {
 } from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
 import { ELECTRICAL_DEVICES } from '../devices/electrical'
+import { house } from '../layout/layout'
+import { withBuiltInFixtures } from './builtInFixtures'
 
 /** What is being looked at: whichever version is live, the bare house, or one version by id. */
 export type Viewing = typeof LIVE | typeof BARE | string
@@ -36,6 +38,7 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 const HISTORY_LIMIT = 100
 
 const NO_VERSIONS: Version[] = []
+const BARE_STATE = withBuiltInFixtures(EMPTY_STATE, house.floors)
 
 /** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
 export const sameJson = (a: unknown, b: unknown): boolean => {
@@ -56,7 +59,9 @@ const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
 const readDraft = (backend: Backend): Draft | undefined => {
   try {
     const raw = localStorage.getItem(draftKey(backend))
-    return raw ? (JSON.parse(raw) as Draft) : undefined
+    if (!raw) return undefined
+    const draft = JSON.parse(raw) as Draft
+    return { ...draft, state: withBuiltInFixtures(draft.state, house.floors) }
   } catch {
     return undefined
   }
@@ -109,7 +114,15 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const client = useQueryClient()
   const queryKey = useMemo(() => ['versions', backend.kind], [backend.kind])
   const query = useQuery({ queryKey, queryFn: backend.loadVersions })
-  const versions = query.data?.versions ?? NO_VERSIONS
+  const savedVersions = query.data?.versions ?? NO_VERSIONS
+  const versions = useMemo(
+    () =>
+      savedVersions.map((version) => {
+        const data = withBuiltInFixtures(version.data, house.floors)
+        return data === version.data ? version : { ...version, data }
+      }),
+    [savedVersions],
+  )
   const liveId = query.data?.liveId
   const [failed, setError] = useState<string>()
   const error = failed ?? query.error?.message
@@ -144,7 +157,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   // Edits that end up back where the version was (moved there and back, say) leave nothing to save.
   const dirty = useMemo(() => {
     if (!draft) return false
-    const base = versions.find((v) => v.id === draft.basedOn)?.data ?? EMPTY_STATE
+    const base = versions.find((v) => v.id === draft.basedOn)?.data ?? BARE_STATE
     return !sameHouse(draft.state, base)
   }, [draft, versions])
 
@@ -169,7 +182,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
           ? viewing
           : liveId
   const viewed = versions.find((v) => v.id === viewedId)
-  const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? EMPTY_STATE
+  const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? BARE_STATE
   // Built-in electrical infrastructure is shared by every version, including old snapshots and the bare house.
   const devices = useMemo(() => [...ELECTRICAL_DEVICES, ...(state.devices ?? [])], [state.devices])
 
