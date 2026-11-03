@@ -18,8 +18,8 @@ const FOV = 45
 /** Looking at an item from a given way, how far the camera rises for each metre it stands back. */
 const FACING_RISE = 0.15
 /** How far below a ceiling light the camera comes in to, and how far off straight up it looks. */
-const CLOSE_UNDER = 1.6
-const UNDER = 0.3
+const CLOSE_UNDER = 2
+const UNDER = 0.9
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
