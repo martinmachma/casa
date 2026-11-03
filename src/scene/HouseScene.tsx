@@ -722,13 +722,14 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   // Zooming or dragging meanwhile takes over from the ease.
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   useEffect(() => {
-    if (!controls) return
+    // Walk mode's stand-in for the controls can still be in the store on the render that leaves it.
+    if (!controls?.addEventListener) return
     const stop = () => (easing.current = 1)
     controls.addEventListener('start', stop)
     return () => controls.removeEventListener('start', stop)
   }, [controls])
   useFrame(({ camera, controls, invalidate }, delta) => {
-    const orbit = controls as OrbitControlsImpl | null
+    const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
     if (orbit && start.from && flight.current < 1) {
       // A view that's been idle carries a large first delta; keep the return flight from skipping ahead.
       flight.current = Math.min(1, flight.current + Math.min(delta, 1 / 30) / RETURN_SECONDS)
