@@ -3,6 +3,21 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  build: {
+    rolldownOptions: {
+      output: {
+        // Libraries in their own chunks, so a deploy of the app's code doesn't re-download three.js and React.
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            { name: 'three', test: /node_modules[\\/](three[^\\/]*|@react-three)[\\/]/ },
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'vendor', test: /node_modules[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -24,7 +39,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // The three.js bundle is large; let the service worker cache it.
+        // The three.js chunk is large; let the service worker cache it.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/auth/],
         // Furniture models and thumbnails load on demand; keep them once seen so the app works offline.

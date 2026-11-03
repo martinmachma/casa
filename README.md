@@ -152,8 +152,8 @@ The two panel buttons in the top bar tuck either side away (on a phone they slid
   floor. Rooms come from the `rooms` label points in the layout (named "Hall 1.01": the trailing number is what's
   shown): the floor is flood-filled from each label, so a room needs closed walls around it (two labels in one open
   space, like stairs and landing, split it halfway between them).
-- **Tap a wall** (Edit) to paint it; **Paint the other side** switches to the opposite face. Colours save
-  automatically. The panel also shows the wall's length, thickness and height.
+- **Paint walls** (P): pick a colour, click a wall where a block of squares starts and again where it ends;
+  Shift-click paints the whole wall. Walls can't be selected in Edit. Colours save automatically.
 - **Tap a room's floor**, or its legend row (Edit), to pick its finish: wood, tiles, carpet or concrete (drawn in the
   app, no downloads). Saved per colour scheme like the walls.
 - **Furniture**: in Edit with nothing selected, the right panel lists what's on the floor and adds more: pick a piece

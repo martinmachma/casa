@@ -1,9 +1,73 @@
 import { describe, expect, it } from 'vitest'
-import { blocksView, floorBounds, sidePart, validateLayout, wallJoints, wallOutside, wallPieces } from './geometry'
+import {
+  blocksView,
+  cornerCuts,
+  endPart,
+  openingAt,
+  floorBounds,
+  paintCells,
+  paintStretch,
+  sidePart,
+  splitPieces,
+  validateLayout,
+  wallEnd,
+  wallEndExtensions,
+  wallFace,
+  wallJoints,
+  wallOutside,
+  wallPaintParts,
+  wallPieces,
+} from './geometry'
 import { house } from './layout'
 import type { Floor, HouseLayout, Point, Wall } from './types'
 
 const wall = (openings: Wall['openings']): Wall => ({ id: 'w', from: [0, 0], to: [5, 0], openings })
+
+it('paints a shaft with its room while preserving saved part numbers beyond the next partition', () => {
+  const floor = house.floors[1]
+  const wall = floor.walls.find((w) => w.id === 'u-middle')!
+  const joints = wallJoints(wall, floor)
+  const parts = wallPaintParts(wall, floor)
+  const partAt = (u: number) => parts.a[sidePart(joints.a, u)]
+  expect(partAt(1)).toBe(0)
+  expect(partAt(2.2635)).toBe(0) // shaft front
+  expect(partAt(3)).toBe(0)
+  expect(partAt(4)).toBe(sidePart(joints.a, 4)) // the other room keeps its saved paint key
+  expect(parts.b).toEqual([0, 1])
+})
+
+it("finds the shaft an end belongs to, so its side is painted across the shaft's own thickness", () => {
+  const floor = house.floors[1]
+  const owner = floor.walls.find((w) => w.id === 'u-middle')!
+  const shaft = floor.walls.find((w) => w.id === 'u-shaft-s15')!
+  const offset = shaft.from[0] - owner.from[0]
+  const near = wallEnd(owner, floor, endPart(offset))
+  expect(near.wall.id).toBe('u-shaft-s15')
+  expect(near.far).toBe(false)
+  expect(wallEnd(owner, floor, endPart(offset + 0.45)).far).toBe(true)
+})
+
+it("tells an opening's reveals apart from the wall's ends", () => {
+  const w = wall([{ type: 'window', offset: 1, width: 1.2, height: 1.4 }])
+  const floor: Floor = { id: 'f', name: 'Test', elevation: 0, height: 2.7, wallThickness: 0.2, rooms: [], walls: [w] }
+  expect(openingAt(w, floor, endPart(1))).toMatchObject({ u0: 1, far: true })
+  expect(openingAt(w, floor, endPart(2.2))).toMatchObject({ u0: 1, far: false })
+  expect(openingAt(w, floor, endPart(5))).toBeUndefined()
+})
+
+it("keeps paint on the wall apart from paint on a shaft's front", () => {
+  const floor = house.floors[1]
+  const owner = floor.walls.find((w) => w.id === 'u-middle')!
+  const side = floor.walls.find((w) => w.id === 'u-shaft-s15')!.from[1] > owner.from[1] ? 'a' : 'b'
+  const face = wallFace(owner, floor, side, 0)
+  const before = paintStretch(owner, floor, side, 0, 1.9)
+  const front = paintStretch(owner, floor, side, 0, 2.2)
+  expect(before.u0).toBeCloseTo(face.u0)
+  expect(before.u1).toBeCloseTo(1.9635)
+  expect(front.u0).toBeCloseTo(1.9635)
+  expect(front.u1).toBeCloseTo(2.5635)
+  expect(paintStretch(owner, floor, side, 0, 2.7).u0).toBeCloseTo(2.5635)
+})
 
 describe('wallPieces', () => {
   it('is one full piece without openings', () => {
@@ -61,6 +125,13 @@ describe('validateLayout', () => {
       const { min, max } = floorBounds(floor)
       expect(max[0] - min[0]).toBeCloseTo(6.2)
     }
+  })
+
+  it('rejects dangling compound members and members turned away from their parent', () => {
+    const layout = layoutWith({ ...wall([]), partOf: 'missing' })
+    expect(() => validateLayout(layout)).toThrow(/owner/)
+    layout.floors[0].walls.push({ id: 'missing', from: [1, 0], to: [1, 2] })
+    expect(() => validateLayout(layout)).toThrow(/direction/)
   })
 
   it('rejects an opening past the wall end', () => {
@@ -139,5 +210,137 @@ describe('wallJoints', () => {
     expect(joints).toEqual({ a: [1.5], b: [] })
     expect(sidePart(joints.a, 1)).toBe(0)
     expect(sidePart(joints.a, 3)).toBe(1)
+  })
+})
+
+describe('cornerCuts', () => {
+  it("cuts a wall at the other wall's inner face where they meet at a corner", () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [4, 0] }
+    const corner: Wall = { id: 'c', from: [4, 0], to: [4, 3], thickness: 0.3 }
+    const floor = { wallThickness: 0.1, walls: [wall, corner] } as unknown as Floor
+    expect(cornerCuts(wall, floor)).toEqual([{ at: 4 - 0.15, wall: 'c' }])
+  })
+})
+
+describe('wall end joins', () => {
+  it('reaches the far face of a different thickness at each T join, in either direction', () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [0, 4], thickness: 0.1 }
+    const floor = {
+      wallThickness: 0.1,
+      walls: [
+        wall,
+        { id: 'n', from: [-2, 0], to: [2, 0], thickness: 0.2 },
+        { id: 's', from: [2, 4], to: [-2, 4], thickness: 0.4 },
+      ],
+    } as Floor
+    expect(wallEndExtensions(wall, floor)).toEqual({ from: 0.1, to: 0.2 })
+    expect(wallEndExtensions({ ...wall, from: wall.to, to: wall.from }, floor)).toEqual({ from: 0.2, to: 0.1 })
+    expect(wallPieces(wall, 2.6, wallEndExtensions(wall, floor))).toEqual([{ u0: -0.1, u1: 4.2, y0: 0, y1: 2.6 }])
+    expect(cornerCuts(wall, floor)).toEqual([
+      { at: 0.1, wall: 'n' },
+      { at: 3.8, wall: 's' },
+    ])
+  })
+
+  it('fills the three cutaway joins in the upstairs south wall without widening the house', () => {
+    const floor = house.floors[1]
+    const byId = (id: string) => floor.walls.find((w) => w.id === id)!
+    const south = byId('u-south')
+    const southHalf = south.thickness! / 2
+    expect(wallEndExtensions(byId('u-west'), floor).from).toBeCloseTo(southHalf)
+    expect(wallEndExtensions(byId('u-east-south'), floor).to).toBeCloseTo(southHalf)
+    const partition = byId('u-204-203')
+    expect(wallEndExtensions(partition, floor).to).toBeCloseTo(southHalf)
+    expect(wallEndExtensions(partition, floor).from).toBeCloseTo(byId('u-middle').thickness! / 2)
+    const extension = wallEndExtensions(south, floor)
+    const { min, max } = floorBounds(floor)
+    expect(south.from[0] + extension.from).toBeCloseTo(max[0])
+    expect(south.to[0] - extension.to).toBeCloseTo(min[0])
+    expect(cornerCuts(byId('u-west'), floor)).toContainEqual({ at: southHalf, wall: south.id })
+  })
+
+  it('ignores nearby parallel walls and transverse walls that stop short of the join', () => {
+    const wall: Wall = { id: 'w', from: [0, 0], to: [4, 0], thickness: 0.1 }
+    const floor = {
+      wallThickness: 0.1,
+      walls: [
+        wall,
+        { id: 'parallel', from: [0, 0.1], to: [4, 0.1], thickness: 0.4 },
+        { id: 'short', from: [4, 0.5], to: [4, 2], thickness: 0.4 },
+      ],
+    } as Floor
+    expect(wallEndExtensions(wall, floor)).toEqual({ from: 0.05, to: 0.05 })
+    expect(cornerCuts(wall, floor)).toEqual([])
+  })
+})
+
+describe('splitPieces', () => {
+  it('cuts in order along the wall, whatever order the cuts come in', () => {
+    const pieces = splitPieces([{ u0: 0, u1: 6, y0: 0, y1: 2.6 }], [2, 0.1, 5.9])
+    expect(pieces.map((p) => [p.u0, p.u1])).toEqual([
+      [0, 0.1],
+      [0.1, 2],
+      [2, 5.9],
+      [5.9, 6],
+    ])
+  })
+})
+
+describe('wallFace', () => {
+  // A 5 m wall, side a facing +y, with a corner wall at its start and a partition butting into side a at 3 m.
+  const floor = {
+    id: 'f',
+    name: 'F',
+    elevation: 0,
+    height: 2.5,
+    wallThickness: 0.2,
+    rooms: [],
+    walls: [
+      { id: 'w', from: [0, 0], to: [5, 0] },
+      { id: 'corner', from: [0, 0], to: [0, 4] },
+      { id: 'partition', from: [3, 0], to: [3, 4], thickness: 0.1 },
+    ],
+  } as unknown as Floor
+  const w = floor.walls[0]
+
+  it('runs between the faces of the walls that meet it', () => {
+    const face = wallFace(w, floor, 'a', 0)
+    expect(face.u0).toBeCloseTo(0.1)
+    expect(face.u1).toBeCloseTo(2.95)
+    const next = wallFace(w, floor, 'a', 1)
+    expect(next.u0).toBeCloseTo(3.05)
+    expect(next.u1).toBeCloseTo(5.1) // a free end shows its overlap cap
+  })
+
+  it('shows the whole outside, corner block included', () => {
+    const face = wallFace(w, floor, 'b', 0)
+    expect(face.u0).toBeCloseTo(-0.1)
+    expect(face.u1).toBeCloseTo(5.1)
+  })
+})
+
+describe('paintCells', () => {
+  const face = { u0: 0.1, u1: 3.05 }
+
+  it('is the square under a tap, counted from the left end and the floor', () => {
+    const r = paintCells('a', face, 2.54, 0.1, [0.43, 1.27], [0.43, 1.27])
+    expect(r.u0).toBeCloseTo(0.4)
+    expect(r.u1).toBeCloseTo(0.5)
+    expect(r.y0).toBeCloseTo(1.2)
+    expect(r.y1).toBeCloseTo(1.3)
+  })
+
+  it('covers every square a drag spans, cut short at the edges of the face', () => {
+    const r = paintCells('a', face, 2.54, 0.1, [3.02, 2.6], [1.62, 2.31])
+    expect(r.u0).toBeCloseTo(1.6)
+    expect(r.u1).toBeCloseTo(3.05)
+    expect(r.y0).toBeCloseTo(2.3)
+    expect(r.y1).toBeCloseTo(2.54)
+  })
+
+  it('counts from the other end on side b', () => {
+    const r = paintCells('b', face, 2.54, 0.25, [3, 0.1], [3, 0.1])
+    expect(r.u0).toBeCloseTo(2.8)
+    expect(r.u1).toBeCloseTo(3.05)
   })
 })

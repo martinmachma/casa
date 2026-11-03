@@ -1,3 +1,4 @@
+import type { RoomOrder } from '../rooms/roomOrder'
 import type { Backend, Version } from './types'
 
 // The demo keeps everything in this browser's localStorage.
@@ -26,16 +27,20 @@ const write = (key: string, value: unknown) => {
 const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('casa.demo')
 const announce = () => channel?.postMessage('changed')
 
+let demoRoomOrder: RoomOrder | undefined
+
 const versions = () => read<Version[]>(VERSIONS_KEY, [])
+
+/** The live version's id; one that was deleted leaves the bare house live. */
+const liveId = () => {
+  const live = read<string | undefined>(LIVE_KEY, undefined)
+  return versions().some((v) => v.id === live) ? live : undefined
+}
 
 export const localBackend: Backend = {
   kind: 'local',
 
-  loadVersions: async () => {
-    const all = versions()
-    const live = read<string | undefined>(LIVE_KEY, undefined)
-    return { versions: all, liveId: all.some((v) => v.id === live) ? live : undefined }
-  },
+  loadVersions: async () => ({ versions: versions(), liveId: liveId() }),
 
   saveVersion: async (name, data, basedOn) => {
     const created: Version = {
@@ -71,6 +76,19 @@ export const localBackend: Backend = {
   setLive: async (id) => {
     write(LIVE_KEY, id)
     announce()
+  },
+
+  replaceLive: async (id, current) => {
+    if (liveId() !== current) return false
+    write(LIVE_KEY, id)
+    announce()
+    return true
+  },
+
+  // The demo has no one signed in, so the room order lasts until the page is reloaded.
+  loadRoomOrder: async () => demoRoomOrder,
+  saveRoomOrder: async (order) => {
+    demoRoomOrder = order
   },
 
   subscribe: (onChange) => {

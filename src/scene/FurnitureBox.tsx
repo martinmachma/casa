@@ -2,13 +2,16 @@ import { Html, Line } from '@react-three/drei'
 import { Copy, RotateCw, Trash2 } from 'lucide-react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
-import { Mesh, Plane, Vector3 } from 'three'
+import { FrontSide, Plane, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { footprint, footprintOutline } from '../furniture/collision'
 import type { Point } from '../layout/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
+import type { Floor } from '../layout/types'
 import { FurnitureModel } from './FurnitureModel'
+import { useItemCut } from './ItemCut'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
+import { raycastIfShown } from './raycast'
 
 type FurnitureBoxProps = {
   item: FurnitureItem
@@ -16,7 +19,13 @@ type FurnitureBoxProps = {
   glow?: number
   /** The colour a lamp gives off. */
   glowColor?: string
+  /** The floor's level, which it's dragged across. */
   elevation: number
+  /** What it stands on, when that isn't the floor: the lawn or terrace outside the ground floor. */
+  ground?: number
+  /** The floor it stands on, and whether its walls are cut ): a tall piece is cut with them. */
+  floor?: Floor
+  cutaway?: boolean
   selected: boolean
   /** Runs into a wall or another piece. */
   colliding?: boolean
@@ -36,6 +45,8 @@ type FurnitureBoxProps = {
   onTap: (id: string) => void
   /** Set for a lamp while looking round: a tap picks it, to switch and set it. */
   onPickLight?: (id: string) => void
+  /** The lamp pointed at, while lamps can be picked. */
+  onHoverLight?: (id: string | undefined) => void
   actions: ItemActions
 }
 
@@ -56,6 +67,9 @@ export const FurnitureBox = ({
   glow,
   glowColor,
   elevation,
+  ground = elevation,
+  floor,
+  cutaway = false,
   selected,
   colliding,
   showActions,
@@ -66,6 +80,7 @@ export const FurnitureBox = ({
   snapItems,
   onSelect,
   onPickLight,
+  onHoverLight,
   onMove,
   onMoveEnd,
   onTap,
@@ -76,11 +91,15 @@ export const FurnitureBox = ({
   const plane = useMemo(() => new Plane(new Vector3(0, 1, 0), -(elevation + z)), [elevation, z])
   const press = useRef<{
     pointerId: number
-    offset?: { dx: number; dy: number }
+    offset: { dx: number; dy: number }
     moved: boolean
     add: boolean
   }>(undefined)
+  /** A press on a piece that isn't picked up: a tap selects it, a drag turns the camera as usual. */
+  const tap = useRef<{ add: boolean }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
+  const group = useRef<Group>(null)
+  useItemCut(group, item, floor, cutaway)
 
   // Stops the camera from orbiting/panning along with a drag.
   const setControlsEnabled = (enabled: boolean) => {
@@ -95,6 +114,8 @@ export const FurnitureBox = ({
     // Only a piece already in the selection can be picked up. Modifier-clicks only change selection.
     const offset =
       selected && !add && e.ray.intersectPlane(plane, hit) ? { dx: hit.x - item.x, dy: hit.z - item.y } : undefined
+    tap.current = offset ? undefined : { add }
+    if (!offset) return
     press.current = {
       pointerId: e.pointerId,
       offset,
@@ -109,7 +130,6 @@ export const FurnitureBox = ({
     const d = press.current
     if (!d || d.pointerId !== e.pointerId) return
     e.stopPropagation()
-    if (!d.offset) return
     if (!e.ray.intersectPlane(plane, hit)) return
     const free = { x: hit.x - d.offset.dx, y: hit.z - d.offset.dy, rotation: item.rotation }
     const placement = snapFurniture({ ...item, ...free }, snapWalls, snapItems, {
@@ -138,13 +158,20 @@ export const FurnitureBox = ({
   const handlers = interactive
     ? {
         // Named, not left out: R3F wouldn't restore it after the item was non-interactive.
-        raycast: Mesh.prototype.raycast,
+        raycast: raycastIfShown,
         onPointerDown,
         onPointerMove,
         onPointerUp: endDrag,
         onPointerCancel: endDrag,
         // The release would otherwise click through to the floor beneath and change the selection.
-        onClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
+        onClick: (e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation()
+          const t = tap.current
+          tap.current = undefined
+          if (!t || e.delta > CLICK_SLOP_PX) return
+          onSelect(item.id, t.add)
+          if (!t.add) onTap(item.id)
+        },
         onPointerOver: (e: ThreeEvent<PointerEvent>) => (
           e.stopPropagation(),
           (document.body.style.cursor = selected ? 'grab' : 'pointer')
@@ -153,17 +180,21 @@ export const FurnitureBox = ({
       }
     : onPickLight
       ? {
-          raycast: Mesh.prototype.raycast,
+          raycast: raycastIfShown,
           onClick: (e: ThreeEvent<MouseEvent>) => {
             if (e.delta > CLICK_SLOP_PX) return
             e.stopPropagation()
             onPickLight(item.id)
           },
-          onPointerOver: (e: ThreeEvent<PointerEvent>) => (
-            e.stopPropagation(),
-            (document.body.style.cursor = 'pointer')
-          ),
-          onPointerOut: () => (document.body.style.cursor = ''),
+          onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation()
+            document.body.style.cursor = 'pointer'
+            onHoverLight?.(item.id)
+          },
+          onPointerOut: () => {
+            document.body.style.cursor = ''
+            onHoverLight?.(undefined)
+          },
         }
       : { raycast: () => null }
   // Rugs are nearly flat; keep their hit box tappable.
@@ -181,7 +212,12 @@ export const FurnitureBox = ({
   }, [shape, item.width, item.depth, hitHeight])
 
   return (
-    <group position={[item.x, elevation + z, item.y]} rotation={[0, -item.rotation, 0]}>
+    <group
+      ref={group}
+      position={[item.x, ground + z, item.y]}
+      rotation={[0, -item.rotation, 0]}
+      userData={{ itemId: item.id, debug: `${item.name} · ${item.id.slice(0, 4)}` }}
+    >
       {/* The boxes are the item itself, or, for a model, its invisible hit boxes, following its footprint. */}
       {shape.map(([u0, u1, v0, v1], i) => (
         <mesh
@@ -195,7 +231,7 @@ export const FurnitureBox = ({
           {item.model ? (
             <meshBasicMaterial visible={false} />
           ) : (
-            <meshStandardMaterial color={item.color} roughness={0.8} />
+            <meshStandardMaterial color={item.color} roughness={0.8} shadowSide={FrontSide} />
           )}
         </mesh>
       ))}

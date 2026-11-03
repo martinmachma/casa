@@ -30,6 +30,26 @@ export const snapToWallFaces = (p: Point, walls: Rect[], tolerance = SNAP_DISTAN
   return [x, y]
 }
 
+/**
+ * Moves a point onto the nearest corner of an outline within `tolerance`, or failing that onto the nearest side
+ * within it. Undefined when nothing is that close.
+ */
+export const snapToOutlines = (p: Point, outlines: Outline[], tolerance = SNAP_DISTANCE): Point | undefined => {
+  let corner: Point | undefined
+  let side: Point | undefined
+  let bestCorner = tolerance
+  let bestSide = tolerance
+  for (const outline of outlines)
+    outline.forEach((a, i) => {
+      const dc = distance(p, a)
+      if (dc < bestCorner) [bestCorner, corner] = [dc, a]
+      const at = closestOnSegment(p, a, outline[(i + 1) % outline.length])
+      const ds = distance(p, at)
+      if (ds < bestSide) [bestSide, side] = [ds, at]
+    })
+  return corner ?? side
+}
+
 /** Squares `b` up with `a` when the line between them is nearly horizontal or vertical in the plan. */
 export const alignWith = (a: Point, b: Point): Point => {
   const dx = b[0] - a[0]

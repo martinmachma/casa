@@ -1,0 +1,73 @@
+import type { Device, DeviceKind, FurnitureItem } from '../data/types'
+import { deviceRoom } from '../devices/place'
+import { floorShades } from '../devices/shades'
+import { wallAngle } from '../layout/geometry'
+import { floorRegions, roomAt } from '../layout/rooms'
+import type { Floor } from '../layout/types'
+import { isLamp } from '../scene/HouseLights'
+
+/** A smart item in a room: a placed device, a lamp (switched like a ceiling light), or a window's outside shade. */
+export type SmartItem = {
+  id: string
+  name: string
+  kind: DeviceKind
+  lamp: boolean
+  entity: string | undefined
+  /** Where its popover points, in the scene. */
+  at: [number, number, number]
+  /** The way (plan) its close-up looks at it from, for one only seen from one side, like a window's shade. */
+  facing?: [number, number]
+  /** Where its close-up is centred, if not on `at`. */
+  look?: [number, number, number]
+  /** For a light, how it hangs: its close-up looks into it (from below for one on the ceiling). */
+  mount?: 'ceiling' | 'wall' | 'lamp'
+  /** Where its controls stand, if beside it rather than at the end of its tag's line. */
+  beside?: [number, number, number]
+}
+
+/** Every smart item on a floor, with the room it's in (if any). */
+export const floorItems = (
+  floor: Floor,
+  devices: Device[],
+  furniture: FurnitureItem[],
+): (SmartItem & { room: string | undefined })[] => {
+  const regions = floorRegions(floor)
+  return [
+    ...devices
+      .filter((d) => d.floor === floor.id && (!d.plan || d.kind === 'light'))
+      .map((d) => {
+        const room = deviceRoom(d, floor, regions)
+        const wall = d.wall && floor.walls.find((w) => w.id === d.wall!.wallId)
+        const angle = wall ? wallAngle(wall) : 0
+        const side = d.wall?.side === 'a' ? 1 : -1
+        return {
+          id: d.id,
+          name: d.name,
+          kind: d.kind,
+          lamp: false,
+          entity: d.entity,
+          at: [d.x, floor.elevation + d.z, d.y] as SmartItem['at'],
+          room,
+          // A wall light is approached from the face it shines out of.
+          facing: wall ? ([-Math.sin(angle) * side, Math.cos(angle) * side] as [number, number]) : undefined,
+          mount: d.kind === 'light' ? (d.wall ? ('wall' as const) : ('ceiling' as const)) : undefined,
+        }
+      }),
+    ...furniture
+      .filter((f) => f.floor === floor.id && isLamp(f.model))
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        kind: 'light' as DeviceKind,
+        lamp: true,
+        mount: 'lamp' as const,
+        entity: undefined,
+        at: [f.x, floor.elevation + (f.z ?? 0) + f.height, f.y] as SmartItem['at'],
+        room: roomAt(regions, f.x, f.y),
+      })),
+    ...floorShades(floor, regions).map((s) => ({ ...s, kind: 'blind' as DeviceKind, lamp: false, entity: undefined })),
+  ]
+}
+
+export const roomItems = (floor: Floor, roomId: string, devices: Device[], furniture: FurnitureItem[]): SmartItem[] =>
+  floorItems(floor, devices, furniture).filter((i) => i.room === roomId)

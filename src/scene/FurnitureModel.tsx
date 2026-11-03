@@ -1,6 +1,6 @@
 import { useGLTF } from '@react-three/drei'
-import { useLayoutEffect, useMemo } from 'react'
-import { Box3, Mesh, MeshStandardMaterial, Vector3, type Material } from 'three'
+import { useEffect, useLayoutEffect, useMemo } from 'react'
+import { Box3, FrontSide, Mesh, MeshDistanceMaterial, MeshStandardMaterial, Vector3, type Material } from 'three'
 import { modelUrl } from '../furniture/catalog'
 import { isLamp } from './HouseLights'
 import { lightColor } from '../devices/lights'
@@ -44,14 +44,21 @@ export const FurnitureModel = ({
     const object = scene.clone(true)
     object.traverse((o) => {
       if (!(o instanceof Mesh)) return
-      // A lamp's bulb sits inside its shade, which would otherwise swallow its light.
-      o.castShadow = !isLamp(model)
+      o.castShadow = true
+      // The shade blocks sunlight, but its embedded point bulb must be able to light the room.
+      // Only the shade opts out of point-light depth writes; the base/stem still cast real shadows.
+      if (isLamp(model) && [o.material].flat().some((m) => m.name === SHADE))
+        o.customDistanceMaterial = new MeshDistanceMaterial({ depthWrite: false, colorWrite: false })
       o.receiveShadow = true
       const tint = (m: Material) => {
         const fabric = FABRIC.has(m.name)
         const shade = m.name === SHADE && isLamp(model)
-        if (!(fabric || shade) || !(m instanceof MeshStandardMaterial)) return m
+        // Every piece has its own materials, so one can fade without the others.
         const copy = m.clone()
+        // Shadows are cast by the faces towards the light: by default it's those facing away, here the underside,
+        // which sits so close to the floor that the floor right by the piece came out lit.
+        copy.shadowSide = FrontSide
+        if (!(fabric || shade) || !(m instanceof MeshStandardMaterial)) return copy
         copy.userData.fabric = fabric
         copy.userData.shade = shade
         return copy
@@ -63,6 +70,17 @@ export const FurnitureModel = ({
     const center = box.getCenter(new Vector3())
     return { object, size, offset: new Vector3(-center.x, -box.min.y, -center.z) }
   }, [scene, model])
+
+  useEffect(
+    () => () => {
+      object.traverse((o) => {
+        if (!(o instanceof Mesh)) return
+        for (const m of [o.material].flat()) m.dispose()
+        o.customDistanceMaterial?.dispose()
+      })
+    },
+    [object],
+  )
 
   useLayoutEffect(() => {
     object.traverse((o) => {

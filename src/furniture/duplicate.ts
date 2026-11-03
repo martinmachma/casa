@@ -67,8 +67,7 @@ export const duplicateOffset = (items: Footprint[], walls: SnapWall[]): Point =>
           const normal: Point = [-Math.sin(wall.rotation), Math.cos(wall.rotation)]
           const side = (f: Footprint) => Math.sign(dot([f.x - wall.x, f.y - wall.y], normal))
           return overlaps(copy, wall) || side(item) !== side(copy)
-        }) ||
-        items.some((original) => overlaps(copy, original))
+        }) || items.some((original) => overlaps(copy, original))
       )
     })
     if (!blocked) return offset

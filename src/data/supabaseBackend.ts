@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { RoomOrder } from '../rooms/roomOrder'
 import type { Backend, HouseState, Version } from './types'
 
 type VersionRow = {
@@ -19,8 +20,9 @@ const fromRow = (r: VersionRow): Version => ({
   createdAt: r.created_at,
   ...(r.based_on ? { basedOn: r.based_on } : {}),
   data: {
+    builtInFixtures: r.data?.builtInFixtures,
     walls: r.data?.walls ?? [],
-    floors: r.data?.floors ?? [],
+    wallAreas: r.data?.wallAreas ?? [],
     furniture: r.data?.furniture ?? [],
     rooms: r.data?.rooms ?? [],
     devices: r.data?.devices ?? [],
@@ -72,6 +74,25 @@ export const supabaseBackend: Backend = {
         .update({ version_id: id ?? null })
         .eq('id', true),
     )
+  },
+
+  // One conditional update, so two people making versions live at once can't both win.
+  replaceLive: async (id, current) => {
+    const update = supabase
+      .from('live_version')
+      .update({ version_id: id ?? null })
+      .eq('id', true)
+    const rows = check(await (current ? update.eq('version_id', current) : update.is('version_id', null)).select('id'))
+    return (rows ?? []).length > 0
+  },
+
+  loadRoomOrder: async () => {
+    const row = check(await supabase.from('room_orders').select('main, minor').maybeSingle()) as RoomOrder | null
+    return row ?? undefined
+  },
+
+  saveRoomOrder: async ({ main, minor }) => {
+    check(await supabase.from('room_orders').upsert({ main, minor, updated_at: new Date().toISOString() }))
   },
 
   // Needs the tables in the `supabase_realtime` publication (see the migrations).

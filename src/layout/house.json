@@ -16,23 +16,27 @@
       "rooms": [
         {
           "id": "g-hall",
+          "minor": true,
           "name": "Hall 1.01",
           "label": [1.27, 7.9]
         },
         {
           "id": "g-wc",
+          "minor": true,
           "name": "WC 1.02",
           "label": [1.3, 5.92]
         },
         {
           "id": "g-living",
-          "name": "Living + kitchen 1.03",
+          "name": "Living room / Kitchen 1.03",
           "label": [4.2, 4.3]
         },
         {
           "id": "g-storage",
+          "minor": true,
           "name": "Storage 1.04",
-          "label": [1.7, 3.7]
+          "label": [1.7, 3.7],
+          "view": "door"
         }
       ],
       "walls": [
@@ -60,6 +64,19 @@
         {
           "id": "g-east",
           "from": [6.138, 0.168],
+          "to": [6.138, 2.42],
+          "thickness": 0.175
+        },
+        {
+          "id": "g-east-chimney",
+          "against": "g-east",
+          "from": [5.913, 2.7325],
+          "to": [5.913, 2.8575],
+          "thickness": 0.625
+        },
+        {
+          "id": "g-east-south",
+          "from": [6.138, 3.17],
           "to": [6.138, 7.782],
           "thickness": 0.175
         },
@@ -149,29 +166,27 @@
         },
         {
           "id": "g-stair-wall",
+          "notIn": ["g-living"],
           "from": [1.21, 4.23],
           "to": [2.385, 4.23]
         },
         {
           "id": "g-shaft-s14",
+          "against": "g-kitchen-storage",
           "from": [0.299, 3.031],
           "to": [0.701, 3.031],
           "thickness": 0.298
         },
         {
-          "id": "g-chimney",
-          "from": [5.85, 2.62],
-          "to": [5.85, 2.87],
-          "thickness": 0.5
-        },
-        {
           "id": "g-storage-wc",
+          "notIn": ["g-living"],
           "from": [0.113, 5.291],
           "to": [2.385, 5.291],
           "thickness": 0.15
         },
         {
           "id": "g-wc-hall",
+          "notIn": ["g-living"],
           "from": [0.113, 6.538],
           "to": [2.385, 6.538],
           "openings": [
@@ -184,8 +199,48 @@
           ]
         }
       ],
+      "fixtures": [
+        {
+          "id": "g-dining-radiator",
+          "name": "Dining radiator by the terrace glazing",
+          "kind": "radiator",
+          "x": 4.3,
+          "y": 0.4355,
+          "rotation": 0,
+          "width": 1.2,
+          "depth": 0.12,
+          "height": 0.3,
+          "z": 0.12,
+          "mount": "floor"
+        },
+        {
+          "id": "g-living-radiator",
+          "name": "Living room radiator beneath the front window",
+          "kind": "radiator",
+          "x": 4.45,
+          "y": 7.5145,
+          "rotation": 3.141592653589793,
+          "width": 2,
+          "depth": 0.12,
+          "height": 0.45,
+          "z": 0.12
+        },
+        {
+          "id": "g-hall-radiator",
+          "name": "Hall radiator beside the entrance window",
+          "kind": "radiator",
+          "x": 1.8,
+          "y": 9.0645,
+          "rotation": 3.141592653589793,
+          "width": 0.7,
+          "depth": 0.12,
+          "height": 0.6,
+          "z": 0.15
+        }
+      ],
       "stairs": {
         "name": "Stairs to the first floor",
+        "rooms": ["g-living", "g-storage", "u-hall"],
         "steps": [
           [
             [2.116, 4.28],
@@ -292,22 +347,18 @@
       "id": "upper",
       "name": "First floor",
       "elevation": 3.01,
-      "height": 2.65,
+      "height": 2.545,
       "wallThickness": 0.1,
       "rooms": [
         {
-          "id": "u-stairs",
-          "name": "Stairs 2.01",
-          "label": [1.35, 4.25]
-        },
-        {
           "id": "u-hall",
+          "minor": true,
           "name": "Landing 2.02",
           "label": [3.6, 4.2]
         },
         {
           "id": "u-room-203",
-          "name": "Room 2.03",
+          "name": "Martin's room 2.03",
           "label": [4.9, 7.3]
         },
         {
@@ -317,7 +368,7 @@
         },
         {
           "id": "u-room-205",
-          "name": "Room 2.05",
+          "name": "Sara's room 2.05",
           "label": [1.9, 1.7]
         },
         {
@@ -327,8 +378,121 @@
         },
         {
           "id": "u-storage",
+          "minor": true,
           "name": "Storage / boiler 2.07",
           "label": [5.45, 4.25]
+        }
+      ],
+      "fixtures": [
+        {
+          "id": "u-sara-radiator",
+          "name": "Sara's room radiator beneath the garden window",
+          "kind": "radiator",
+          "x": 1.7955,
+          "y": 0.4355,
+          "rotation": 0,
+          "width": 1,
+          "depth": 0.12,
+          "height": 0.6,
+          "z": 0.15
+        },
+        {
+          "id": "u-bedroom-radiator",
+          "name": "Bedroom radiator beneath the front window",
+          "kind": "radiator",
+          "x": 1.85,
+          "y": 9.0645,
+          "rotation": 3.141592653589793,
+          "width": 1.4,
+          "depth": 0.12,
+          "height": 0.3,
+          "z": 0.12
+        },
+        {
+          "id": "u-martin-radiator",
+          "name": "Martin's room radiator beneath the front window",
+          "kind": "radiator",
+          "x": 4.6,
+          "y": 9.0645,
+          "rotation": 3.141592653589793,
+          "width": 1,
+          "depth": 0.12,
+          "height": 0.6,
+          "z": 0.15
+        },
+        {
+          "id": "u-bath-towel-rail",
+          "name": "Bathroom heated towel rail",
+          "kind": "towelRail",
+          "x": 3.8805,
+          "y": 1.85,
+          "rotation": -1.5707963267948966,
+          "width": 0.5,
+          "depth": 0.08,
+          "height": 1.5,
+          "z": 0.25,
+          "color": "#17191a"
+        },
+        {
+          "id": "u-bath-shower",
+          "name": "Black-framed shower beside the WC",
+          "kind": "shower",
+          "replaces": { "room": "u-bath", "models": ["shower", "showerRound"] },
+          "x": 5.6005,
+          "y": 1.59,
+          "rotation": 1.5707963267948966,
+          "width": 1.1,
+          "depth": 0.9,
+          "height": 2.22
+        },
+        {
+          "id": "u-bath-vanity",
+          "name": "Floating walnut vanity with inset basin",
+          "kind": "vanity",
+          "replaces": { "room": "u-bath", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
+          "x": 4.0405,
+          "y": 0.91,
+          "rotation": -1.5707963267948966,
+          "width": 1,
+          "depth": 0.46,
+          "height": 0.5,
+          "z": 0.35
+        },
+        {
+          "id": "u-bath-toilet",
+          "name": "Wall-hung WC",
+          "kind": "toilet",
+          "replaces": { "room": "u-bath", "models": ["toilet"] },
+          "x": 5.245,
+          "y": 2.7,
+          "rotation": 1.5707963267948966,
+          "width": 0.37,
+          "depth": 0.54,
+          "height": 0.26,
+          "z": 0.18
+        },
+        {
+          "id": "u-boiler",
+          "name": "Gas boiler (Viessmann Vitodens 050-W B0HA)",
+          "kind": "boiler",
+          "x": 5.76,
+          "y": 3.41,
+          "rotation": 0,
+          "width": 0.4,
+          "depth": 0.3,
+          "height": 0.7,
+          "z": 1.2
+        },
+        {
+          "id": "u-water-tank",
+          "name": "Hot water tank (Viessmann Vitocell 100-W, 160 l)",
+          "kind": "waterTank",
+          "x": 5.73,
+          "y": 4.895,
+          "rotation": 1.5708,
+          "width": 0.581,
+          "depth": 0.581,
+          "height": 1.189
         }
       ],
       "walls": [
@@ -357,6 +521,26 @@
         {
           "id": "u-east",
           "from": [6.138, 0.168],
+          "to": [6.138, 2.19],
+          "thickness": 0.175
+        },
+        {
+          "id": "u-east-shaft",
+          "from": [5.92, 2.4955],
+          "to": [5.92, 2.9045],
+          "thickness": 0.611
+        },
+        {
+          "id": "u-wc-frame",
+          "against": "u-east-shaft",
+          "from": [5.565, 2.24],
+          "to": [5.565, 3.16],
+          "thickness": 0.1,
+          "height": 1.2
+        },
+        {
+          "id": "u-east-south",
+          "from": [6.138, 3.21],
           "to": [6.138, 9.332],
           "thickness": 0.175
         },
@@ -463,31 +647,22 @@
         },
         {
           "id": "u-shaft-s14",
+          "against": "u-205-south",
           "from": [0.2005, 3.01],
           "to": [0.6155, 3.01],
           "thickness": 0.3
         },
         {
           "id": "u-shaft-s15",
+          "partOf": "u-middle",
           "from": [2.1515, 5.441],
           "to": [2.6015, 5.441],
           "thickness": 0.15
         },
         {
           "id": "u-bath-shaft",
-          "from": [5.26, 2.19],
+          "from": [5.1985, 2.19],
           "to": [6.0505, 2.19]
-        },
-        {
-          "id": "u-bath-shaft-west",
-          "from": [5.515, 2.24],
-          "to": [5.515, 3.16]
-        },
-        {
-          "id": "u-chimney",
-          "from": [5.85, 2.62],
-          "to": [5.85, 2.87],
-          "thickness": 0.5
         }
       ],
       "voids": [

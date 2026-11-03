@@ -4,6 +4,10 @@ import type { Floor, HouseLayout, Opening, Point, Wall, WallSide } from './types
 export type WallPiece = { u0: number; u1: number; y0: number; y1: number }
 
 export const DEFAULT_WINDOW_SILL = 0.9
+/** Width of the frame round a door or window, inside the opening. */
+export const OPENING_FRAME = 0.06
+/** How far a hinged door swings open. */
+export const DOOR_SWING = (Math.PI / 180) * 95
 
 export const wallLength = (wall: Wall): number => Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
 
@@ -13,20 +17,47 @@ export const wallAngle = (wall: Wall): number => Math.atan2(wall.to[1] - wall.fr
 export const wallThickness = (wall: Wall, floor: Pick<Floor, 'wallThickness'>): number =>
   wall.thickness ?? floor.wallThickness
 
+/** The paintable wall a structural projection belongs to. Physical footprints remain separate. */
+export const wallOwner = (wall: Wall, floor: Pick<Floor, 'walls'>): Wall =>
+  (wall.partOf && floor.walls.find((w) => w.id === wall.partOf)) || wall
+
+/** Distance along the owner's axis where this member starts (members run parallel in the same direction). */
+export const wallOwnerOffset = (wall: Wall, owner: Wall): number => {
+  const length = wallLength(owner)
+  return (
+    ((wall.from[0] - owner.from[0]) * (owner.to[0] - owner.from[0]) +
+      (wall.from[1] - owner.from[1]) * (owner.to[1] - owner.from[1])) /
+    length
+  )
+}
+
+/** How tall a wall stands: its own height, else the floor's. */
+export const wallHeight = (wall: Wall, floor: Pick<Floor, 'height'>): number => wall.height ?? floor.height
+
 export const openingSill = (o: Opening): number => o.sill ?? (o.type === 'window' ? DEFAULT_WINDOW_SILL : 0)
 
 /** Openings have no stored id; wall ids are unique and openings retain their layout order. */
 export const openingId = (wallId: string, index: number): string => `${wallId}:${index}`
 
+/** The outside shade over a window or sliding door. */
+export const shadeId = (openingKey: string): string => `${openingKey}:shade`
+
+/** The wall a shade's window is in, if the id is a shade's. */
+export const shadeWall = (id: string): string | undefined => (id.endsWith(':shade') ? id.split(':')[0] : undefined)
+
 /**
- * Splits a wall into solid boxes around its openings. The two ends are pushed out by `endExtension`
- * so walls meeting at a corner overlap instead of leaving a notch.
+ * Splits a wall into solid boxes around its openings. Each end can extend independently to close its join.
  */
-export const wallPieces = (wall: Wall, height: number, endExtension = 0): WallPiece[] => {
+export const wallPieces = (
+  wall: Wall,
+  height: number,
+  endExtension: number | { from: number; to: number } = 0,
+): WallPiece[] => {
   const length = wallLength(wall)
+  const extension = typeof endExtension === 'number' ? { from: endExtension, to: endExtension } : endExtension
   const openings = [...(wall.openings ?? [])].sort((p, q) => p.offset - q.offset)
   const pieces: WallPiece[] = []
-  let cursor = 0 - endExtension
+  let cursor = 0 - extension.from
 
   for (const o of openings) {
     const start = o.offset
@@ -39,7 +70,7 @@ export const wallPieces = (wall: Wall, height: number, endExtension = 0): WallPi
     cursor = end
   }
 
-  const end = length + endExtension
+  const end = length + extension.to
   if (end > cursor) pieces.push({ u0: cursor, u1: end, y0: 0, y1: height })
   return pieces
 }
@@ -58,6 +89,13 @@ export const validateLayout = (layout: HouseLayout): void => {
     for (const wall of floor.walls) {
       claim(wall.id, 'wall')
       const length = wallLength(wall)
+      if (wall.partOf) {
+        const owner = wallOwner(wall, floor)
+        if (owner === wall || owner.partOf) throw new Error(`Bad owner for wall "${wall.id}"`)
+        const angle = wallAngle(wall) - wallAngle(owner)
+        if (Math.abs(Math.sin(angle)) > 1e-6 || Math.cos(angle) < 0)
+          throw new Error(`Wall "${wall.id}" must run in its owner's direction`)
+      }
       if (length === 0) throw new Error(`Wall "${wall.id}" has zero length`)
       const openings = [...(wall.openings ?? [])].sort((p, q) => p.offset - q.offset)
       let previousEnd = 0
@@ -67,8 +105,8 @@ export const validateLayout = (layout: HouseLayout): void => {
         if (o.offset + o.width > length + 1e-9)
           throw new Error(`${label} runs past the wall end (wall is ${length.toFixed(2)} m)`)
         if (o.offset < previousEnd - 1e-9) throw new Error(`${label} overlaps the previous opening`)
-        if (openingSill(o) + o.height > floor.height + 1e-9)
-          throw new Error(`${label} is taller than the floor height ${floor.height} m`)
+        if (openingSill(o) + o.height > wallHeight(wall, floor) + 1e-9)
+          throw new Error(`${label} is taller than the wall (${wallHeight(wall, floor)} m)`)
         previousEnd = o.offset + o.width
       }
     }
@@ -104,7 +142,7 @@ const CUTAWAY_FACING = 0.5
 /** How far past a wall's face to look for the outside of the house. */
 const OUTSIDE_PROBE = 0.05
 
-const insidePolygon = (p: Point, polygon: Point[]): boolean => {
+export const insidePolygon = (p: Point, polygon: Point[]): boolean => {
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const [xi, zi] = polygon[i]
@@ -123,6 +161,9 @@ const wallNormal = (wall: Wall): Point => {
 /** For an outer wall, the unit normal pointing out of the house; undefined for walls with rooms on both sides. */
 export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
   if (wallLength(wall) === 0) return undefined
+  const parent = wall.partOf ?? wall.against
+  const backing = parent && floor.walls.find((w) => w.id === parent)
+  if (backing) return wallOutside(backing, floor)
   const { min, max } = floorBounds(floor)
   const outline = floor.outline ?? [min, [max[0], min[1]], max, [min[0], max[1]]]
   const [nx, nz] = wallNormal(wall)
@@ -133,6 +174,14 @@ export const wallOutside = (wall: Wall, floor: Floor): Point | undefined => {
     if (!insidePolygon([mx + sign * nx * reach, mz + sign * nz * reach], outline)) return [sign * nx, sign * nz]
   }
   return undefined
+}
+
+/** Which face of an outer wall looks out of the house; undefined for walls with rooms on both sides. */
+export const outsideFace = (wall: Wall, floor: Floor): WallSide | undefined => {
+  const out = wallOutside(wall, floor)
+  if (!out) return undefined
+  const [nx, nz] = wallNormal(wall)
+  return out[0] * nx + out[1] * nz > 0 ? 'a' : 'b'
 }
 
 /**
@@ -154,12 +203,67 @@ export const blocksView = (wall: Wall, outside: Point | undefined, eye: Point, v
   return Math.abs(nx * view[0] + nz * view[1]) / v > CUTAWAY_FACING
 }
 
+/** Whether the wall's line runs between the camera and a point it looks at, so it stands in the way. */
+export const separates = (wall: Wall, eye: Point, focus: Point): boolean => {
+  if (wallLength(wall) === 0) return false
+  const [nx, nz] = wallNormal(wall)
+  const side = (p: Point) => nx * (p[0] - wall.from[0]) + nz * (p[1] - wall.from[1])
+  return side(eye) * side(focus) < 0
+}
+
 /** The parts of a wall's pieces below `height`, for a wall cut down to a stub. */
 export const stubPieces = (pieces: WallPiece[], height: number): WallPiece[] =>
   pieces.filter((p) => p.y0 < height).map((p) => ({ ...p, y1: Math.min(p.y1, height) }))
 
 /** How far an end can sit off a wall's face and still count as butting into it. */
 const JOINT_SLACK = 0.02
+
+/** Transverse walls touching either end, including T joins and offset centre lines at exterior corners. */
+const wallEndJoints = (wall: Wall, floor: Floor) => {
+  const length = wallLength(wall)
+  if (length === 0) return []
+  const dir: Point = [(wall.to[0] - wall.from[0]) / length, (wall.to[1] - wall.from[1]) / length]
+  const ownHalf = wallThickness(wall, floor) / 2
+  return floor.walls.flatMap((other) => {
+    if (other.id === wall.id || wallLength(other) === 0) return []
+    const normal = wallNormal(other)
+    const across = dir[0] * normal[0] + dir[1] * normal[1]
+    if (Math.abs(across) < 1e-6) return []
+    const center = ((other.from[0] - wall.from[0]) * normal[0] + (other.from[1] - wall.from[1]) * normal[1]) / across
+    const half = wallThickness(other, floor) / 2 / Math.abs(across)
+    // The intersection must fall within the other wall, allowing for its overlap with this wall's thickness.
+    const along =
+      (wall.from[0] + center * dir[0] - other.from[0]) * normal[1] -
+      (wall.from[1] + center * dir[1] - other.from[1]) * normal[0]
+    const reach = ownHalf / Math.abs(across) + JOINT_SLACK
+    if (along < -reach || along > wallLength(other) + reach) return []
+    return (['from', 'to'] as const).flatMap((end) => {
+      const u = end === 'from' ? 0 : length
+      if (Math.abs(center - u) > half + JOINT_SLACK / Math.abs(across)) return []
+      return [
+        {
+          end,
+          wall: other.id,
+          at: end === 'from' ? center + half : center - half,
+          extension: end === 'from' ? half - center : half + (center - length),
+        },
+      ]
+    })
+  })
+}
+
+/** Reach the connecting wall's far face at each end; keep the usual half-thickness cap at a free end. */
+export const wallEndExtensions = (wall: Wall, floor: Floor, inset = 0): { from: number; to: number } => {
+  const joints = wallEndJoints(wall, floor)
+  const extension = (end: 'from' | 'to') => {
+    const touching = joints.filter((j) => j.end === end)
+    return Math.max(
+      0,
+      (touching.length ? Math.max(...touching.map((j) => j.extension)) : wallThickness(wall, floor) / 2) - inset,
+    )
+  }
+  return { from: extension('from'), to: extension('to') }
+}
 
 /**
  * Where each side of a wall is split into parts that read as separate walls, painted apart: where other
@@ -202,13 +306,209 @@ export const wallJoints = (wall: Wall, floor: Floor): Record<WallSide, number[]>
   return joints
 }
 
+/**
+ * A shaft belonging to a wall does not divide that wall into separately painted rooms. Keep the old
+ * part numbers after real partitions, so saved paint on the rest of the wall does not move to another room.
+ */
+export const wallPaintParts = (wall: Wall, floor: Floor): Record<WallSide, number[]> => {
+  const legacy = wallJoints(wall, floor)
+  const room = wallJoints(wall, {
+    ...floor,
+    walls: floor.walls.filter((other) => other.partOf !== wall.id),
+  })
+  const parts = (side: WallSide) => {
+    const ids = [0]
+    legacy[side].forEach((at, i) => ids.push(room[side].includes(at) ? i + 1 : ids[i]))
+    return ids
+  }
+  return { a: parts('a'), b: parts('b') }
+}
+
+/**
+ * Where a wall meets another at a corner, the distance along it of the other wall's inner face: the block
+ * past it is the corner itself, shared by both walls, and is cut off as a piece of its own.
+ */
+export const cornerCuts = (wall: Wall, floor: Floor): { at: number; wall: string }[] => {
+  const length = wallLength(wall)
+  return wallEndJoints(wall, floor)
+    .filter(({ at }) => at > 0 && at < length)
+    .map(({ at, wall }) => ({ at, wall }))
+}
+
+/** An end face is told apart by where it is along its owner wall, in millimetres. */
+export const endPart = (u: number) => Math.round(u * 1000)
+
+/**
+ * The opening with an edge at `part` along its owner wall (see `endPart`), in the owner or one of its members, and
+ * whether that edge's reveal faces the way the wall runs (the opening's near edge). A sill or head is told apart by
+ * the opening's near edge too.
+ */
+export const openingAt = (
+  owner: Wall,
+  floor: Floor,
+  part: number,
+): { wall: Wall; opening: Opening; u0: number; far: boolean } | undefined => {
+  for (const wall of floor.walls) {
+    if (wall.id !== owner.id && wall.partOf !== owner.id) continue
+    const offset = wallOwnerOffset(wall, owner)
+    for (const opening of wall.openings ?? []) {
+      const u0 = opening.offset + offset
+      if (endPart(u0) === part) return { wall, opening, u0, far: true }
+      if (endPart(u0 + opening.width) === part) return { wall, opening, u0, far: false }
+    }
+  }
+  return undefined
+}
+
+/**
+ * The wall an end belongs to (the owner itself or one of its members), and whether it's the far end, where it
+ * faces the way the wall runs.
+ */
+export const wallEnd = (owner: Wall, floor: Floor, part: number): { wall: Wall; far: boolean } => {
+  let best = { wall: owner, far: false, gap: Infinity }
+  for (const wall of floor.walls) {
+    if (wall.id !== owner.id && wall.partOf !== owner.id) continue
+    const offset = wallOwnerOffset(wall, owner)
+    for (const far of [false, true]) {
+      const gap = Math.abs(offset + (far ? wallLength(wall) : 0) - part / 1000)
+      if (gap < best.gap) best = { wall, far, gap }
+    }
+  }
+  return { wall: best.wall, far: best.far }
+}
+
 /** Which part of a side, counted from `from`, the point `u` along the wall falls in. */
 export const sidePart = (joints: number[], u: number): number => joints.filter((j) => j < u).length
+
+/** Where along the line `a + b·u` the value stays within lo–hi; undefined if nowhere. */
+const within = (a: number, b: number, lo: number, hi: number): [number, number] | undefined => {
+  if (Math.abs(b) < 1e-9) return a >= lo && a <= hi ? [-Infinity, Infinity] : undefined
+  const p = (lo - a) / b
+  const q = (hi - a) / b
+  return [Math.min(p, q), Math.max(p, q)]
+}
+
+/**
+ * The stretch of one paint part of a side you can see, as distances along the wall from `from`: running between
+ * the walls that meet it there (their faces, not centre lines) and the floor-to-ceiling gaps that end it.
+ */
+export const wallFace = (wall: Wall, floor: Floor, side: WallSide, part: number): { u0: number; u1: number } => {
+  const length = wallLength(wall)
+  const ext = wallEndExtensions(wall, floor)
+  const joints = wallJoints(wall, floor)[side]
+  const parts = wallPaintParts(wall, floor)[side]
+  const edges = [-ext.from, ...joints, length + ext.to]
+  const mine = parts.flatMap((id, i) => (id === part ? [i] : []))
+  if (!mine.length || length === 0) return { u0: 0, u1: 0 }
+  let u0 = edges[mine[0]]
+  let u1 = edges[mine[mine.length - 1] + 1]
+
+  // Just off the face, so a wall that stops at it still counts as covering it.
+  const dir: Point = [(wall.to[0] - wall.from[0]) / length, (wall.to[1] - wall.from[1]) / length]
+  const n = wallNormal(wall)
+  const out = (side === 'a' ? 1 : -1) * (wallThickness(wall, floor) / 2 + 0.001)
+  const start: Point = [wall.from[0] + n[0] * out, wall.from[1] + n[1] * out]
+  const covers: [number, number][] = []
+  for (const other of floor.walls) {
+    if (other.id === wall.id || other.partOf === wall.id) continue
+    const ol = wallLength(other)
+    if (ol === 0) continue
+    const od: Point = [(other.to[0] - other.from[0]) / ol, (other.to[1] - other.from[1]) / ol]
+    const on = wallNormal(other)
+    const dx = start[0] - other.from[0]
+    const dz = start[1] - other.from[1]
+    const t = wallThickness(other, floor) / 2
+    const along = within(dx * od[0] + dz * od[1], dir[0] * od[0] + dir[1] * od[1], 0, ol)
+    const across = within(dx * on[0] + dz * on[1], dir[0] * on[0] + dir[1] * on[1], -t, t)
+    if (!along || !across) continue
+    const lo = Math.max(along[0], across[0])
+    const hi = Math.min(along[1], across[1])
+    if (lo < hi) covers.push([lo, hi])
+  }
+  for (const o of wall.openings ?? [])
+    if (openingSill(o) <= 0 && o.height >= floor.height) covers.push([o.offset, o.offset + o.width])
+
+  // Trim from either end until no cover overlaps it.
+  for (let changed = true; changed;) {
+    changed = false
+    for (const [lo, hi] of covers) {
+      if (lo <= u0 + 1e-6 && hi > u0 + 1e-6 && hi < u1) {
+        u0 = hi
+        changed = true
+      }
+      if (hi >= u1 - 1e-6 && lo < u1 - 1e-6 && lo > u0) {
+        u1 = lo
+        changed = true
+      }
+    }
+  }
+  return { u0, u1 }
+}
+
+/** Where the shafts standing on one side of a wall stand along it: its face behind them is hidden. */
+export const shaftSpans = (wall: Wall, floor: Floor, side: WallSide): [number, number][] => {
+  const n = wallNormal(wall)
+  const out = side === 'a' ? 1 : -1
+  return floor.walls.flatMap((member) => {
+    if (member.partOf !== wall.id) return []
+    const across = (member.from[0] - wall.from[0]) * n[0] + (member.from[1] - wall.from[1]) * n[1]
+    if (across * out <= 1e-6) return []
+    const ext = wallEndExtensions(member, floor)
+    const m0 = wallOwnerOffset(member, wall) - ext.from
+    return [[m0, m0 + ext.from + wallLength(member) + ext.to] as [number, number]]
+  })
+}
+
+/**
+ * The flat stretch of a part's face at `u` along the wall: a shaft standing on that side has a face of its own,
+ * out in front of the wall's, so each is painted apart from the other.
+ */
+export const paintStretch = (
+  wall: Wall,
+  floor: Floor,
+  side: WallSide,
+  part: number,
+  u: number,
+): { u0: number; u1: number } => {
+  let { u0, u1 } = wallFace(wall, floor, side, part)
+  for (const [m0, m1] of shaftSpans(wall, floor, side)) {
+    if (u >= m0 && u <= m1) return { u0: Math.max(u0, m0), u1: Math.min(u1, m1) }
+    if (m1 <= u) u0 = Math.max(u0, m1)
+    else u1 = Math.min(u1, m0)
+  }
+  return { u0, u1 }
+}
 
 /** Pieces cut at the given distances along the wall, so no piece spans one of them. */
 export const splitPieces = (pieces: WallPiece[], cuts: number[]): WallPiece[] =>
   pieces.flatMap((p) => {
-    const inside = cuts.filter((c) => c > p.u0 && c < p.u1)
+    const inside = cuts.filter((c) => c > p.u0 && c < p.u1).sort((a, b) => a - b)
     const edges = [p.u0, ...inside, p.u1]
     return edges.slice(1).map((u1, i) => ({ ...p, u0: edges[i], u1 }))
   })
+
+/**
+ * The block of paint squares, `size` across, from the one under `from` to the one under `to`, as distances along
+ * the wall and above the floor. Squares are counted from the left end of the face as you look at it and from
+ * the floor; those at the far edges are cut short by the face. 'b' is any face whose left end is at `u1`.
+ */
+export const paintCells = (
+  side: WallSide,
+  face: { u0: number; u1: number },
+  height: number,
+  size: number,
+  from: [u: number, y: number],
+  to: [u: number, y: number],
+): { u0: number; u1: number; y0: number; y1: number } => {
+  const span = face.u1 - face.u0
+  const cell = (v: number, max: number) =>
+    Math.min(Math.max(Math.floor(v / size), 0), Math.max(Math.ceil(max / size - 1e-6) - 1, 0))
+  const left = (u: number) => cell(side === 'a' ? u - face.u0 : face.u1 - u, span)
+  const [l0, l1] = [left(from[0]), left(to[0])].sort((p, q) => p - q)
+  const [c0, c1] = [cell(from[1], height), cell(to[1], height)].sort((p, q) => p - q)
+  const l = l0 * size
+  const r = Math.min((l1 + 1) * size, span)
+  const y0 = c0 * size
+  const y1 = Math.min((c1 + 1) * size, height)
+  return side === 'a' ? { u0: face.u0 + l, u1: face.u0 + r, y0, y1 } : { u0: face.u1 - r, u1: face.u1 - l, y0, y1 }
+}

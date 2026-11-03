@@ -1,12 +1,15 @@
 import { PerspectiveCamera } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { PerspectiveCamera as Camera } from 'three'
 import type { FurnitureItem } from '../data/types'
+import { fixtureSolids } from '../furniture/collision'
 import { floorRegions, roomAt } from '../layout/rooms'
-import type { Floor, Point } from '../layout/types'
+import { floorBounds, insidePolygon } from '../layout/geometry'
+import { groundLevel } from '../layout/ground'
+import type { Floor, Outdoor, Point, Rect } from '../layout/types'
 import { isTyping } from '../ui/isTyping'
-import { resolveCollisions, wallObstacles, type Obstacle } from '../walk/collide'
+import { resolveCollisions, solidObstacles, wallObstacles, type Obstacle } from '../walk/collide'
 import { stairHeight, stairRuns, type StairRun } from '../walk/stairs'
 import type { CameraNudge } from './cameraNudge'
 
@@ -20,6 +23,8 @@ const MAX_PITCH = 1.2
 // Furniture lower than this (rugs) can be walked over.
 const STEP_OVER = 0.15
 const START_BACKOFF = 0.9
+// Steps between paving, lawn and slab are eased rather than jumped.
+const STEP_EASE = 12 // 1/s
 
 type WalkCameraProps = {
   floor: Floor
@@ -28,6 +33,31 @@ type WalkCameraProps = {
   furniture: FurnitureItem[]
   nudge: RefObject<CameraNudge>
   openDoors: ReadonlySet<string>
+  /** The garden round the ground floor, walkable within its outline. */
+  outdoor?: Outdoor
+  /** Start in the garden instead of indoors. */
+  outside?: boolean
+}
+
+const rectObstacle = (r: Rect): Obstacle => ({
+  cx: (r.x0 + r.x1) / 2,
+  cy: (r.y0 + r.y1) / 2,
+  hu: (r.x1 - r.x0) / 2,
+  hv: (r.y1 - r.y0) / 2,
+  angle: 0,
+})
+
+/** Where to stand outside: in front of the house (plan-down from it), halfway to the garden's edge, facing it. */
+const gardenStart = (floor: Floor, outdoor: Outdoor): { at: Point; yaw: number } => {
+  const { min, max } = floorBounds(floor)
+  const edge = Math.max(...outdoor.garden.map((p) => p[1]))
+  const at: Point = [(min[0] + max[0]) / 2, (max[1] + edge) / 2]
+  if (insidePolygon(at, outdoor.garden)) return { at, yaw: 0 }
+  const n = outdoor.garden.length
+  return {
+    at: [outdoor.garden.reduce((a, p) => a + p[0], 0) / n, outdoor.garden.reduce((a, p) => a + p[1], 0) / n],
+    yaw: 0,
+  }
 }
 
 /** Where to stand at first: at one end of the biggest room, looking down its length. */
@@ -51,30 +81,42 @@ const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
  * First-person camera at eye height: drag to look around, WASD/arrow keys or the on-screen buttons to walk.
  * Walls block the way except through open doors and passages; furniture does too.
  */
-export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, openDoors }: WalkCameraProps) => {
+export const WalkCamera = ({
+  floor,
+  floors,
+  onFloorChange,
+  furniture,
+  nudge,
+  openDoors,
+  outdoor,
+  outside,
+}: WalkCameraProps) => {
   const camera = useRef<Camera>(null)
   const gl = useThree((s) => s.gl)
   const set = useThree((s) => s.set)
-  const start = useMemo(() => startingPoint(floor), [floor])
+  const [start] = useState(() => (outside && outdoor ? gardenStart(floors[0], outdoor) : startingPoint(floor)))
   const pose = useRef({ x: start.at[0], y: start.at[1], yaw: start.yaw, pitch: 0 })
+  /** The surface underfoot when not on a stair: the ground floor's slab, paving or lawn, or an upper floor. */
+  const surface = (index: number, p: Point) =>
+    index === 0 ? groundLevel(floors[0], outdoor, p) : floors[index].elevation
+  const startElevation = outside && outdoor ? groundLevel(floors[0], outdoor, start.at) : floor.elevation
   const walking = useRef({
-    floorIndex: floors.indexOf(floor),
-    elevation: floor.elevation,
+    floorIndex: outside && outdoor ? 0 : floors.indexOf(floor),
+    elevation: startElevation,
     stair: undefined as StairRun | undefined,
   })
+  // The eye follows the elevation, easing over steps.
+  const eye = useRef(startElevation)
   const runs = useMemo(() => stairRuns(floors), [floors])
+  const solids = useMemo(() => [...furniture, ...floors.flatMap(fixtureSolids)], [furniture, floors])
   const keys = useRef(new Set<string>())
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
   const obstaclesAt = (elevation: number): Obstacle[] => [
     ...floors.flatMap((f) => wallObstacles(f, openDoors, elevation)),
-    ...furniture
-      .filter((item) => {
-        const base = floors.find((f) => f.id === item.floor)?.elevation
-        return base !== undefined && base < elevation + EYE_HEIGHT && base + item.height > elevation + STEP_OVER
-      })
-      .map((f) => ({ cx: f.x, cy: f.y, hu: f.width / 2, hv: f.depth / 2, angle: f.rotation })),
+    ...solidObstacles(solids, floors, elevation + STEP_OVER, elevation + EYE_HEIGHT),
+    ...(outdoor ? [...outdoor.sheds, ...(outdoor.blocks ?? [])].map(rectObstacle) : []),
   ]
 
   useEffect(() => {
@@ -133,7 +175,7 @@ export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, ope
     }
   }, [])
 
-  useFrame((_, delta) => {
+  useFrame(({ invalidate }, delta) => {
     const cam = camera.current
     if (!cam) return
     const dt = Math.min(delta, 0.1)
@@ -144,6 +186,7 @@ export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, ope
     const forward = n.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
     const strafe = n.right + axis(k.has('d'), k.has('a'))
     const turn = n.turn + axis(k.has('arrowright'), k.has('arrowleft'))
+    if (forward || strafe || turn || n.tilt) invalidate()
 
     p.yaw += turn * TURN_SPEED * dt
     p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch + n.tilt * LOOK_SPEED * dt))
@@ -191,10 +234,12 @@ export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, ope
           resolved[1] > v.y0 - RADIUS &&
           resolved[1] < v.y1 + RADIUS,
       )
-      if (supported || ((!stair || (atEnd && height === undefined)) && !inVoid)) {
+      // Outside, the garden's outline is the edge of the world.
+      const inGarden = !outdoor || insidePolygon(resolved, outdoor.garden)
+      if (inGarden && (supported || ((!stair || (atEnd && height === undefined)) && !inVoid))) {
         ;[p.x, p.y] = resolved
         w.stair = supported ? stair : undefined
-        w.elevation = supported ? height! : floors[w.floorIndex].elevation
+        w.elevation = supported ? height! : surface(w.floorIndex, resolved)
         if (stair && supported) {
           const next =
             Math.abs(w.elevation - floors[stair.upper].elevation) < 1e-6
@@ -210,7 +255,12 @@ export const WalkCamera = ({ floor, floors, onFloorChange, furniture, nudge, ope
       }
     }
 
-    cam.position.set(p.x, walking.current.elevation + EYE_HEIGHT, p.y)
+    const target = walking.current.elevation
+    if (Math.abs(eye.current - target) > 1e-4) {
+      eye.current += (target - eye.current) * Math.min(1, STEP_EASE * dt)
+      invalidate()
+    } else eye.current = target
+    cam.position.set(p.x, eye.current + EYE_HEIGHT, p.y)
     cam.rotation.set(p.pitch, -p.yaw, 0, 'YXZ')
   })
 

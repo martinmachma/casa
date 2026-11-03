@@ -1,8 +1,8 @@
-import type { Device, DeviceKind } from '../data/types'
+import type { Device } from '../data/types'
 import { openingSill, wallLength, wallThickness } from '../layout/geometry'
 import { roomAt, type RoomRegion } from '../layout/rooms'
 import type { Floor, Point, Wall, WallSide } from '../layout/types'
-import { defaultHeight, onCeiling } from './kinds'
+import { defaultHeight, onCeiling, type DevicePlacement } from './kinds'
 
 /** Where a device sits on a wall: the wall and face, and its plan position on that face. */
 export type WallMount = { wall: { wallId: string; side: WallSide }; x: number; y: number }
@@ -86,28 +86,25 @@ export const snapToWall = (
  * Where a device of `kind` tapped at plan point `p` goes: a light on the ceiling right there, anything else on the
  * nearest wall face within reach (undefined when there's none).
  */
-export const placeDevice = (kind: DeviceKind, p: Point, floor: Floor): Omit<Device, 'id' | 'name'> | undefined => {
-  const z = defaultHeight(kind, floor.height)
-  if (onCeiling(kind)) return { floor: floor.id, kind, x: p[0], y: p[1], z }
+export const placeDevice = (
+  placement: DevicePlacement,
+  p: Point,
+  floor: Floor,
+): Omit<Device, 'id' | 'name'> | undefined => {
+  const kind = placement === 'wall-light' ? 'light' : placement
+  const z = defaultHeight(placement, floor.height)
+  if (onCeiling(placement)) return { floor: floor.id, kind, x: p[0], y: p[1], z }
   const mount = snapToWall(p, floor, z)
   return mount && { floor: floor.id, kind, z, ...mount }
 }
 
-/** The changes that turn a device into another kind: off the wall onto the ceiling, or onto the nearest wall. */
-export const changeKind = (device: Device, kind: DeviceKind, floor: Floor): Partial<Device> => {
-  const z = defaultHeight(kind, floor.height)
-  if (onCeiling(kind)) {
-    // Step out from the wall into the room, so the light isn't stuck to the wall's top edge.
-    const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
-    if (!wall) return { kind, z, wall: undefined }
-    const { n } = frameOf(wall, floor)
-    const s = device.wall!.side === 'a' ? 0.3 : -0.3
-    return { kind, z, wall: undefined, x: device.x + n[0] * s, y: device.y + n[1] * s }
-  }
-  const mount = device.wall
-    ? snapToWall([device.x, device.y], floor, z, Infinity, device.wall)
-    : snapToWall([device.x, device.y], floor, z, Infinity)
-  return { kind, z, ...mount }
+/** Emit in front of a wall fitting or beneath a ceiling fitting, clear of the casing and wall. */
+export const lightPosition = (device: Device, floor: Floor): [number, number, number] => {
+  const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
+  if (!wall) return [device.x, floor.elevation + device.z - 0.08, device.y]
+  const { n } = frameOf(wall, floor)
+  const out = device.wall!.side === 'a' ? 0.12 : -0.12
+  return [device.x + n[0] * out, floor.elevation + device.z, device.y + n[1] * out]
 }
 
 /** The room a device is in; a wall-mounted one belongs to the room its face looks into. */

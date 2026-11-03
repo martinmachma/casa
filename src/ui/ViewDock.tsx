@@ -1,59 +1,73 @@
-import { Box, Footprints, Map as PlanIcon, SquareBottomDashedScissors } from 'lucide-react'
+import { Box, Footprints, House, Map as PlanIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import type { Floor } from '../layout/types'
 import type { CameraMode } from '../scene/selection'
-import { IconButton, Segmented } from './kit'
+import { Segmented } from './kit'
 
 type ViewDockProps = {
+  floors: Floor[]
+  floorIndex: number
+  onFloor: (index: number) => void
+  /** Looking at the whole house from outside instead of one floor. */
+  outside: boolean
+  onOutside: () => void
   camera: CameraMode
   onCamera: (camera: CameraMode) => void
   /** The plan view is for planning; at home there's only 3D and walking. */
   canPlan: boolean
-  /** Walking is for inside a floor. */
-  canWalk: boolean
-  /** Near walls hidden in the 3D view; offered only there. */
-  cutaway: boolean
-  onCutaway: (cutaway: boolean) => void
-  /** The floating boxes under the view switch (rooms, sunlight, measure). */
+  /** In a room the floor and camera are the room's own, so the switches only show where you are. */
+  inRoom: boolean
+  /** The rooms, at the bottom. */
   children?: ReactNode
 }
 
-/** Floats over the top left of the 3D view: how to look at the house, and the rooms and sunlight below it. */
-export const ViewDock = ({ camera, onCamera, canPlan, canWalk, cutaway, onCutaway, children }: ViewDockProps) => (
+const OUTSIDE = 'outside'
+
+const ordinal = (n: number) => `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
+
+/** Floats over the left of the 3D view: which floor and how to look at it at the top, its rooms at the bottom. */
+export const ViewDock = ({
+  floors,
+  floorIndex,
+  onFloor,
+  outside,
+  onOutside,
+  camera,
+  onCamera,
+  canPlan,
+  inRoom,
+  children,
+}: ViewDockProps) => (
   <div className="dock">
-    <div className="dock-bar float">
-      {(canPlan || canWalk) && (
+    <div className="dock-bars">
+      <div className="dock-bar float">
+        <Segmented
+          label="Floor"
+          value={outside ? OUTSIDE : floors[floorIndex].id}
+          onChange={(id) => (id === OUTSIDE ? onOutside() : onFloor(floors.findIndex((f) => f.id === id)))}
+          options={[
+            { value: OUTSIDE, label: 'Outside', icon: <House size={15} />, iconOnly: true },
+            ...floors.map((f, i) => ({ value: f.id, label: ordinal(i + 1) })),
+          ]}
+          disabled={inRoom}
+          className="floors"
+        />
+      </div>
+      <div className="dock-bar float">
         <Segmented
           label="View"
           value={camera}
           onChange={onCamera}
           options={[
-            ...(canPlan ? [{ value: 'top' as const, label: 'Plan', icon: <PlanIcon size={15} /> }] : []),
+            { value: 'top', label: 'Plan', icon: <PlanIcon size={15} />, show: canPlan },
             { value: 'orbit', label: '3D', icon: <Box size={15} /> },
-            ...(canWalk ? [{ value: 'walk' as const, label: 'Walk', icon: <Footprints size={15} /> }] : []),
+            { value: 'walk', label: 'Walk', icon: <Footprints size={15} /> },
           ]}
+          disabled={inRoom}
           className="views"
         />
-      )}
-      {camera === 'orbit' && canWalk && (
-        <IconButton
-          label={cutaway ? 'Show near walls' : 'Hide near walls'}
-          aria-pressed={cutaway}
-          small
-          onClick={() => onCutaway(!cutaway)}
-        >
-          <SquareBottomDashedScissors size={16} />
-        </IconButton>
-      )}
+      </div>
     </div>
     {children}
   </div>
-)
-
-type DockBoxProps = { label: string; grow?: boolean; children: ReactNode }
-
-/** One floating box in the dock; `grow` lets a long list take the leftover height and scroll. */
-export const DockBox = ({ label, grow, children }: DockBoxProps) => (
-  <aside className="dock-panel float" data-grow={grow ? '' : undefined} aria-label={label}>
-    {children}
-  </aside>
 )

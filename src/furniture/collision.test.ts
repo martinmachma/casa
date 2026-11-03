@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { canMove, colliding, constrainMove, footprintOutline, type Solid } from './collision'
+import type { Floor, Opening } from '../layout/types'
+import { house } from '../layout/layout'
+import { blockedDoors, colliding, doorSweeps, fixtureSolids, footprintOutline, hits, type Solid } from './collision'
 
 // A wall along x = 0, 0.2 thick.
 const walls = [{ x0: -0.1, x1: 0.1, y0: 0, y1: 4 }]
@@ -42,17 +44,28 @@ describe('collision', () => {
     expect(colliding([piece('t', 0.75, 1, { rotation: Math.PI / 4 })], walls).size).toBe(1)
   })
 
-  it('stops a move into a wall or through it, but lets a stuck piece out', () => {
-    const p = piece('p', 1, 1)
-    expect(canMove([p], [{ x: 0.3, y: 1, rotation: 0 }], [p], walls)).toBe(false)
-    expect(canMove([p], [{ x: -1, y: 1, rotation: 0 }], [p], walls)).toBe(false)
-    const stuck = piece('s', 0.3, 1)
-    expect(canMove([stuck], [{ x: 1, y: 1, rotation: 0 }], [stuck], walls)).toBe(true)
+  it('marks furniture and placement previews against fixed radiators, including chairs beside low panels', () => {
+    const fixtures = house.floors.flatMap(fixtureSolids)
+    const radiator = fixtures.find((f) => f.id === 'g-dining-radiator')!
+    const chair = piece('chair', radiator.x, radiator.y, {
+      floor: radiator.floor,
+      model: 'chairDesk',
+      width: 0.4,
+      depth: 0.4,
+    })
+    expect([...colliding([chair], [], fixtures)]).toEqual(['chair'])
+    expect([...colliding([{ ...chair, id: 'placing' }], [], fixtures)]).toEqual(['placing'])
+    expect(colliding([{ ...chair, y: radiator.y + 0.5 }], [], fixtures).size).toBe(0)
+    expect(colliding([{ ...chair, floor: 'upper' }], [], [radiator]).size).toBe(0)
   })
 
-  it('slides along a wall when dragged diagonally into it', () => {
-    const p = piece('p', 1, 1)
-    expect(constrainMove([p], [{ x: 0.3, y: 2, rotation: 0 }], [p], walls)).toEqual([{ x: 1, y: 2, rotation: 0 }])
+  it('uses the towel rail mounting height so objects below or above it remain clear', () => {
+    const fixtures = fixtureSolids(house.floors[1])
+    const rail = fixtures.find((f) => f.id === 'u-bath-towel-rail')!
+    const cabinet = piece('cabinet', rail.x, rail.y, { floor: rail.floor, width: 0.2, depth: 0.2 })
+    expect(hits(cabinet, fixtures, [])).toContain(rail.id)
+    expect(hits({ ...cabinet, height: 0.2 }, fixtures, [])).toEqual([])
+    expect(hits({ ...cabinet, z: (rail.z ?? 0) + rail.height + 0.1 }, fixtures, [])).toEqual([])
   })
 })
 
@@ -63,5 +76,45 @@ describe('footprintOutline', () => {
       [0, 0.5, 0, 0.5],
     ])
     expect(outline).toHaveLength(6)
+  })
+
+  // A door 0.8 wide in a wall along y = 0, 1 m from its west end, hinged on the west and opening south (+y).
+  const doorFloor = (door: Partial<Opening> = {}): Floor => ({
+    id: 'f',
+    name: 'F',
+    elevation: 0,
+    height: 2.6,
+    wallThickness: 0.2,
+    rooms: [],
+    walls: [
+      { id: 'w', from: [0, 0], to: [4, 0], openings: [{ type: 'door', offset: 1, width: 0.8, height: 2, ...door }] },
+    ],
+  })
+  const blockers = (floor: Floor, items: Solid[]) => blockedDoors(items, doorSweeps(floor), 'f').get('w:0') ?? []
+  const small = (id: string, x: number, y: number, extra: Partial<Solid> = {}) =>
+    piece(id, x, y, { width: 0.3, depth: 0.3, ...extra })
+
+  it('finds what stands where a door leaf swings open', () => {
+    const items = [
+      small('inSwing', 1.4, 0.5),
+      small('otherSide', 1.4, -0.5),
+      // Seated flush against the wall right beside the hinge.
+      piece('besideHinge', 0.5, 0.6),
+      // In the square round the arc but past the arc itself.
+      small('pastArc', 1.85, 0.95),
+      small('rug', 1.4, 0.5, { height: 0.01 }),
+      small('aboveDoor', 1.4, 0.5, { z: 2.1 }),
+    ]
+    expect(blockers(doorFloor(), items)).toEqual(['inSwing'])
+    expect(blockers(doorFloor({ swing: 'b', hinge: 'to' }), items)).toEqual(['otherSide'])
+    expect(blockers(doorFloor({ type: 'sliding' }), items)).toEqual([])
+  })
+
+  it('includes fixed equipment in the door sweep', () => {
+    const floor: Floor = {
+      ...doorFloor(),
+      fixtures: [{ ...small('radiator', 1.4, 0.5), kind: 'radiator', name: 'Radiator', z: 0.15 }],
+    }
+    expect(blockers(floor, fixtureSolids(floor))).toEqual(['radiator'])
   })
 })

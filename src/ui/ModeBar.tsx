@@ -1,61 +1,58 @@
-import { Lightbulb, MousePointer2, PanelRightOpen, PenLine, Redo2, Undo2 } from 'lucide-react'
-import type { Interaction } from '../scene/selection'
-import { IconButton, Segmented } from './kit'
+import { PanelRightOpen, PencilRuler, Redo2, Undo2 } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { IconButton, Slide } from './kit'
 
 type ModeBarProps = {
-  interaction: Interaction
-  onChange: (interaction: Interaction) => void
+  /** Planning is editing: the house can be changed only while it's on. */
+  planning: boolean
+  onPlanning: (planning: boolean) => void
   /** Undo and redo, shown while editing; absent when there's nothing to step to. */
   onUndo: (() => void) | undefined
   onRedo: (() => void) | undefined
+  /** The Save button, shown while editing. */
+  save: ReactNode
   onOpenPanel?: () => void
+  /** Measuring, snapping and the sun: left of the rest, pushed aside by the details panel. */
+  tools?: ReactNode
 }
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 
 /** Stays anchored over the view, including while the details panel opens. */
-export const ModeBar = ({ interaction, onChange, onUndo, onRedo, onOpenPanel }: ModeBarProps) => {
-  const editing = interaction !== 'view'
+export const ModeBar = ({ planning, onPlanning, onUndo, onRedo, save, onOpenPanel, tools }: ModeBarProps) => {
+  const editing = planning
   return (
     <div className="modebar">
-      <button
-        className="float edit-toggle"
-        aria-pressed={editing}
-        title={editing ? 'Stop editing (E)' : 'Edit (E)'}
-        onClick={() => onChange(editing ? 'view' : 'edit')}
-      >
-        <PenLine size={16} />
-        <span>Edit</span>
-      </button>
-      {editing && onOpenPanel && (
-        <div className="float history">
-          <IconButton label="Open details" small onClick={onOpenPanel}>
-            <PanelRightOpen size={17} />
-          </IconButton>
-        </div>
-      )}
-      {editing && (
-        <div className="float history" role="group" aria-label="History">
-          <IconButton label={`Undo (${mod}Z)`} small disabled={!onUndo} onClick={onUndo}>
-            <Undo2 size={17} />
-          </IconButton>
-          <IconButton label={`Redo (${mod}Shift+Z)`} small disabled={!onRedo} onClick={onRedo}>
-            <Redo2 size={17} />
-          </IconButton>
-        </div>
-      )}
-      {editing && (
-        <Segmented
-          label="Tool"
-          className="float tools"
-          value={interaction}
-          onChange={onChange}
-          options={[
-            { value: 'edit', label: 'Select', icon: <MousePointer2 size={17} />, iconOnly: true },
-            { value: 'devices', label: 'Devices (L)', icon: <Lightbulb size={17} />, iconOnly: true },
-          ]}
-        />
-      )}
+      <div className="modebar-main">
+        <button
+          className="float edit-toggle"
+          aria-pressed={planning}
+          title={planning ? 'Stop planning (E)' : 'Planning (E)'}
+          onClick={() => onPlanning(!planning)}
+        >
+          <PencilRuler size={16} />
+          <span>Planning</span>
+        </button>
+        <Slide show={editing}>{save}</Slide>
+        <Slide show={editing && !!onOpenPanel}>
+          <div className="float history">
+            <IconButton label="Open details" small onClick={onOpenPanel}>
+              <PanelRightOpen size={17} />
+            </IconButton>
+          </div>
+        </Slide>
+        <Slide show={editing}>
+          <div className="float history" role="group" aria-label="History">
+            <IconButton label={`Undo (${mod}Z)`} small disabled={!onUndo} onClick={onUndo}>
+              <Undo2 size={17} />
+            </IconButton>
+            <IconButton label={`Redo (${mod}Shift+Z)`} small disabled={!onRedo} onClick={onRedo}>
+              <Redo2 size={17} />
+            </IconButton>
+          </div>
+        </Slide>
+      </div>
+      {tools && <div className="modebar-tools">{tools}</div>}
     </div>
   )
 }

@@ -1,15 +1,33 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { WallFace } from '../layout/types'
-import type { Backend, Device, FurnitureItem, HouseState, NewDevice, NewFurnitureItem, Version } from './types'
+import { paintWallArea } from './wallAreas'
+import type {
+  Backend,
+  Device,
+  FurnitureItem,
+  HouseState,
+  NewDevice,
+  NewFurnitureItem,
+  NewWallArea,
+  Version,
+  WallArea,
+} from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
+import { ELECTRICAL_DEVICES } from '../devices/electrical'
+import { house } from '../layout/layout'
+import { withBuiltInFixtures } from './builtInFixtures'
 
 /** What is being looked at: whichever version is live, the bare house, or one version by id. */
 export type Viewing = typeof LIVE | typeof BARE | string
 export const LIVE = 'live'
 export const BARE = 'bare'
 
-/** Edits not yet saved as a version, on top of the version they started from (none: the bare house). */
-type Draft = { basedOn: string | undefined; state: HouseState }
+/**
+ * Edits not yet saved as a version, on top of the version they started from (none: the bare house). `live` is the
+ * version that was live when editing began (null: the bare house), to notice someone else making another one live.
+ */
+type Draft = { basedOn: string | undefined; live?: string | null; state: HouseState }
 
 /**
  * Undo history: drafts before (`past`) and after (`future`) the current one; `undefined` is "no edits". Consecutive
@@ -19,7 +37,21 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 
 const HISTORY_LIMIT = 100
 
-const NO_DEVICES: Device[] = []
+const NO_VERSIONS: Version[] = []
+const BARE_STATE = withBuiltInFixtures(EMPTY_STATE, house.floors)
+
+/** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
+export const sameJson = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const ka = Object.keys(a).filter((k) => (a as Record<string, unknown>)[k] !== undefined)
+  const kb = Object.keys(b).filter((k) => (b as Record<string, unknown>)[k] !== undefined)
+  return (
+    ka.length === kb.length &&
+    ka.every((k) => sameJson((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+  )
+}
 
 const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
 
@@ -27,7 +59,9 @@ const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
 const readDraft = (backend: Backend): Draft | undefined => {
   try {
     const raw = localStorage.getItem(draftKey(backend))
-    return raw ? (JSON.parse(raw) as Draft) : undefined
+    if (!raw) return undefined
+    const draft = JSON.parse(raw) as Draft
+    return { ...draft, state: withBuiltInFixtures(draft.state, house.floors) }
   } catch {
     return undefined
   }
@@ -42,41 +76,100 @@ const writeDraft = (backend: Backend, draft: Draft | undefined) => {
   }
 }
 
+const EMPTY_AREAS: WallArea[] = []
+
+/** A part of a wall side painted, or with no colour taken back to the whole side's paint (none: white). */
+const applyWallColor = (
+  s: HouseState,
+  wallId: string,
+  side: WallFace,
+  part: number,
+  color: string | undefined,
+): HouseState => {
+  const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
+  const isThis = (w: HouseState['walls'][number]) => w.wallId === wallId && w.side === side && w.part === part
+  // A reset part goes back to the whole side's paint; with none, to the default.
+  if (!color || color === sideColor?.color) return { ...s, walls: s.walls.filter((w) => !isThis(w)) }
+  const paint = { wallId, side, part, color }
+  // Repainted where it's listed, so the list keeps its order.
+  return s.walls.some(isThis)
+    ? { ...s, walls: s.walls.map((w) => (isThis(w) ? paint : w)) }
+    : { ...s, walls: [...s.walls, paint] }
+}
+
+/** Whether two states are the same house; the order wall paints are listed in doesn't matter. */
+const sameHouse = (a: HouseState, b: HouseState) => {
+  const paints = (s: HouseState) =>
+    Object.fromEntries(s.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color]))
+  // No painted areas is the same whether the list is empty or, in older versions, absent.
+  const rest = (s: HouseState) => ({ ...s, walls: undefined, wallAreas: s.wallAreas?.length ? s.wallAreas : undefined })
+  return sameJson(rest(a), rest(b)) && sameJson(paints(a), paints(b))
+}
+
 /**
  * The house's versions and the one on screen. Edits go into an unsaved draft on this device; saving it makes a new
  * version, which anyone can then make live.
  */
 export const useHouseData = (backend: Backend, liveOnly = false) => {
-  const [versions, setVersions] = useState<Version[]>([])
-  const [liveId, setLiveId] = useState<string>()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>()
+  const client = useQueryClient()
+  const queryKey = useMemo(() => ['versions', backend.kind], [backend.kind])
+  const query = useQuery({ queryKey, queryFn: backend.loadVersions })
+  const savedVersions = query.data?.versions ?? NO_VERSIONS
+  const versions = useMemo(
+    () =>
+      savedVersions.map((version) => {
+        const data = withBuiltInFixtures(version.data, house.floors)
+        return data === version.data ? version : { ...version, data }
+      }),
+    [savedVersions],
+  )
+  const liveId = query.data?.liveId
+  const [failed, setError] = useState<string>()
+  const error = failed ?? query.error?.message
+  /** Something that went differently than asked, though nothing failed. */
+  const [notice, setNotice] = useState<string>()
   const [viewing, setViewing] = useState<Viewing>(LIVE)
-  const [history, setHistory] = useState<History>(() => ({ draft: readDraft(backend), past: [], future: [] }))
+  // Edits kept from an earlier visit lose their steps, but one undo still takes them back to the saved version.
+  const [history, setHistory] = useState<History>(() => {
+    const draft = readDraft(backend)
+    return { draft, past: draft ? [undefined] : [], future: [] }
+  })
   const { draft } = history
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? e.message : String(e)), [])
 
-  const reload = useCallback(
-    () =>
-      backend
-        .loadVersions()
-        .then((r) => {
-          setVersions(r.versions)
-          setLiveId(r.liveId)
-        })
-        .catch(fail)
-        .finally(() => setLoading(false)),
-    [backend, fail],
-  )
+  const reload = useCallback(() => client.invalidateQueries({ queryKey }), [client, queryKey])
 
-  useEffect(() => backend.subscribe(reload), [backend, reload])
-  useEffect(() => void reload(), [reload])
+  useEffect(() => backend.subscribe(() => void reload()), [backend, reload])
+
+  // A change to the versions, after which they're loaded again.
+  const change = useMutation({
+    mutationFn: (action: () => Promise<void>) => action(),
+    onSuccess: reload,
+    onError: fail,
+  })
 
   useEffect(() => {
     const t = setTimeout(() => writeDraft(backend, draft), 300)
     return () => clearTimeout(t)
   }, [backend, draft])
+
+  // Edits that end up back where the version was (moved there and back, say) leave nothing to save.
+  const dirty = useMemo(() => {
+    if (!draft) return false
+    const base = versions.find((v) => v.id === draft.basedOn)?.data ?? BARE_STATE
+    return !sameHouse(draft.state, base)
+  }, [draft, versions])
+
+  // Ask before leaving with edits that aren't saved as a version. Away from planning there are none to lose
+  // (leaving planning discards them, and a draft kept from an earlier visit waits on this device), so leaving is quiet.
+  const warnOnLeave = dirty && !liveOnly
+  useEffect(() => {
+    if (!warnOnLeave) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [warnOnLeave])
 
   // A version deleted elsewhere falls back to the live one.
   // At home only the saved live version shows; the draft waits for planning.
@@ -89,20 +182,25 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
           ? viewing
           : liveId
   const viewed = versions.find((v) => v.id === viewedId)
-  const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? EMPTY_STATE
+  const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? BARE_STATE
+  // Built-in electrical infrastructure is shared by every version, including old snapshots and the bare house.
+  const devices = useMemo(() => [...ELECTRICAL_DEVICES, ...(state.devices ?? [])], [state.devices])
 
   const wallColors = useMemo(
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
     [state.walls],
   )
   const roomNames = useMemo(() => new Map((state.rooms ?? []).map((r) => [r.roomId, r.name])), [state.rooms])
-  const roomFloors = useMemo(() => new Map(state.floors.map((f) => [f.roomId, f.material])), [state.floors])
 
   /** Applies an edit, starting a draft from what's on screen if there isn't one. */
   const edit = (change: (s: HouseState) => HouseState, key?: string) =>
     setHistory((h) => {
       const d = h.draft
-      const next = { basedOn: d ? d.basedOn : viewedId, state: change(d?.state ?? state) }
+      const from = d ? d.state : state
+      const changed = change(from)
+      // Picking what's already there (the same colour, say) changes nothing and starts no draft or undo step.
+      if (sameHouse(changed, from)) return h
+      const next = d ? { ...d, state: changed } : { basedOn: viewedId, live: liveId ?? null, state: changed }
       const merge = key !== undefined && key === h.key
       return { draft: next, past: merge ? h.past : [...h.past, d].slice(-HISTORY_LIMIT), future: [], key }
     })
@@ -125,34 +223,17 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
       h.future.length ? { draft: h.future[0], past: [...h.past, h.draft], future: h.future.slice(1) } : h,
     )
 
-  const setWallColor = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
+  /** Paints a rectangle on a part of a wall side; no colour takes the paint there off. */
+  const paintArea = (at: Omit<NewWallArea, 'color'>, color: string | undefined) =>
+    edit((s) => ({ ...s, wallAreas: paintWallArea(s.wallAreas ?? [], at, color) }))
+
+  /** Paints the whole of a part of a wall side or an end, over any areas on it; no colour takes it back to white. */
+  const paintWall = (wallId: string, side: WallFace, part: number, color: string | undefined) =>
     edit((s) => {
-      const sideColor = s.walls.find((w) => w.wallId === wallId && w.side === side && w.part === undefined)
-      return {
-        ...s,
-        walls: [
-          ...s.walls.filter((w) => !(w.wallId === wallId && w.side === side && w.part === part)),
-          // A reset part goes back to the whole side's paint; with none, to the default.
-          ...(color && color !== sideColor?.color ? [{ wallId, side, part, color }] : []),
-        ],
-      }
-    }, `wall:${wallId}:${side}:${part}`)
-
-  const setRoomFloor = (roomId: string, material: string | undefined) =>
-    edit((s) => ({
-      ...s,
-      floors: [...s.floors.filter((f) => f.roomId !== roomId), ...(material ? [{ roomId, material }] : [])],
-    }))
-
-  /** Renames a room; an empty name goes back to the plan's. */
-  const setRoomName = (roomId: string, name: string) =>
-    edit(
-      (s) => ({
-        ...s,
-        rooms: [...(s.rooms ?? []).filter((r) => r.roomId !== roomId), ...(name.trim() ? [{ roomId, name }] : [])],
-      }),
-      `room:${roomId}`,
-    )
+      const painted = applyWallColor(s, wallId, side, part, color)
+      const onPart = (a: WallArea) => a.wallId === wallId && a.side === side && a.part === part
+      return { ...painted, wallAreas: (s.wallAreas ?? []).filter((a) => !onPart(a)) }
+    })
 
   /** Adds pieces as one undo step. */
   const addFurniture = (...items: NewFurnitureItem[]): FurnitureItem[] => {
@@ -187,19 +268,34 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
 
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
 
-  /** Saves the draft as a new version and shows it; optionally makes it live straight away. */
-  const saveDraft = async (name: string, makeLive: boolean) => {
-    if (!draft) return
-    try {
+  // The version made live by someone else since editing began; the bare house is `null`. Drafts kept from before
+  // this was noted count from the version they started on.
+  const live = liveId ?? null
+  const startLive = draft && (draft.live !== undefined ? draft.live : (draft.basedOn ?? null))
+  const newerLive = dirty && live !== startLive ? (versions.find((v) => v.id === live) ?? null) : undefined
+
+  const save = useMutation({
+    mutationFn: async ({ name, makeLive, draft }: { name: string; makeLive: boolean; draft: Draft }) => {
       const created = await backend.saveVersion(name, draft.state, draft.basedOn)
-      if (makeLive) await backend.setLive(created.id)
+      // Replaces only the live version the person saw when saving: one made live a moment ago stays.
+      const madeLive = makeLive && (await backend.replaceLive(created.id, liveId))
+      // The new version is loaded before the draft goes, so the old one never shows in between.
+      await reload()
+      return { created, madeLive }
+    },
+    onSuccess: ({ created, madeLive }, { makeLive }) => {
       clearDraft()
       writeDraft(backend, undefined)
-      setViewing(makeLive ? LIVE : created.id)
-      await reload()
-    } catch (e) {
-      fail(e)
-    }
+      setViewing(madeLive ? LIVE : created.id)
+      if (makeLive && !madeLive)
+        setNotice(`Another version was made live just now, so “${created.name}” is saved but not live.`)
+    },
+    onError: fail,
+  })
+
+  /** Saves the draft as a new version and shows it; optionally makes it live straight away. */
+  const saveDraft = async (name: string, makeLive: boolean) => {
+    if (draft) await save.mutateAsync({ name, makeLive, draft }).catch(() => {})
   }
 
   const discardDraft = () => {
@@ -207,12 +303,15 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     writeDraft(backend, undefined)
   }
 
-  const run = (action: Promise<void>) => action.then(reload).catch(fail)
-
   return {
-    loading,
+    loading: query.isPending,
     error,
-    clearError: () => setError(undefined),
+    clearError: () => {
+      setError(undefined)
+      if (query.isError) void query.refetch()
+    },
+    notice,
+    clearNotice: () => setNotice(undefined),
     versions,
     liveId,
     viewing,
@@ -220,7 +319,9 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     viewed,
     view: setViewing,
     /** Whether there are edits not yet saved as a version. */
-    dirty: draft !== undefined,
+    dirty,
+    /** The version someone else made live after these edits began (null: the bare house); undefined if none. */
+    newerLive,
     saveDraft,
     discardDraft,
     endEdit,
@@ -228,22 +329,21 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     redo,
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
-    makeLive: (id: string | undefined) => run(backend.setLive(id)),
-    renameVersion: (id: string, name: string) => run(backend.renameVersion(id, name)),
-    deleteVersion: (id: string) => run(backend.deleteVersion(id)),
+    makeLive: (id: string | undefined) => change.mutate(() => backend.setLive(id)),
+    renameVersion: (id: string, name: string) => change.mutate(() => backend.renameVersion(id, name)),
+    deleteVersion: (id: string) => change.mutate(() => backend.deleteVersion(id)),
     wallColors,
-    setWallColor,
-    roomFloors,
-    setRoomFloor,
+    wallAreas: state.wallAreas ?? EMPTY_AREAS,
+    paintArea,
+    paintWall,
     roomNames,
-    setRoomName,
     furniture: state.furniture,
     addFurniture,
     patchFurniture,
     patchFurnitures,
     removeFurniture,
-    // Versions and drafts from before devices have none.
-    devices: state.devices ?? NO_DEVICES,
+    // Fixed infrastructure plus the devices in this version/draft.
+    devices,
     addDevice,
     patchDevice,
     removeDevice,

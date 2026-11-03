@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
+import { setDebug, useDebug } from '../debug'
 import { PanelHead } from './kit'
 
 /** A reference to the handlers in App, CameraNudger, WalkCamera and FurnitureBox. */
 /** Shown while `open`; closing it (button or Escape) calls `onClose`. */
 export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
   const dialog = useRef<HTMLDialogElement>(null)
+  const debug = useDebug()
   useEffect(() => {
     if (open) dialog.current?.showModal()
   }, [open])
@@ -44,6 +46,7 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
       rows: [
         [`${modifier}+Z`, 'Undo the last edit; clears the selection.'],
         [`${modifier}+Shift+Z / ${modifier}+Y`, 'Redo; clears the selection.'],
+        [`${modifier}+S`, 'Save the changes as a new version (opens the save dialog).'],
         [
           'Escape',
           'Step back in order: clear selection, cancel device placement, clear an unfinished measurement, stop measuring (clearing measurements), then leave Devices for Edit mode. One step per press.',
@@ -93,6 +96,11 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
           closeLabel="Close settings"
         />
         <div className="settings-scroll" tabIndex={0} role="region" aria-labelledby="shortcuts-title">
+          <h2>Debug</h2>
+          <label className="settings-toggle">
+            <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} />
+            Name items, devices and walls under the pointer
+          </label>
           <h2 id="shortcuts-title">Shortcuts</h2>
           <p className="settings-intro">
             Keyboard and selection reference. Shortcuts cannot be remapped. Scene shortcuts pause while Settings is

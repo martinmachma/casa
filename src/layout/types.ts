@@ -28,6 +28,14 @@ export type Wall = {
   to: Point
   /** Falls back to the floor's `wallThickness`. */
   thickness?: number
+  /** Falls back to the floor's `height`; lower for half-height walls such as a WC's installation frame. */
+  height?: number
+  /** The wall it's built against (a shaft, a chimney breast), so it's cut away with that wall. */
+  against?: string
+  /** A parallel structural projection owned by this wall for picking, painting and cutaway. Its footprint stays here. */
+  partOf?: string
+  /** Rooms whose views leave it out, though it stands at their edge. */
+  notIn?: string[]
   openings?: Opening[]
 }
 
@@ -36,6 +44,10 @@ export type Room = {
   name: string
   /** Where the name is drawn in the plan. */
   label: Point
+  /** Its view looks in through its door, rather than from wherever shows it best. */
+  view?: 'door'
+  /** A space passed through or for storing things (hall, WC), listed apart from the rooms lived in. */
+  minor?: boolean
 }
 
 export type Floor = {
@@ -56,12 +68,41 @@ export type Floor = {
   railings?: Point[][]
   /** Stairs up to the next floor. */
   stairs?: Stairs
+  /** Equipment built in where the plans put it, which can't be moved or picked. */
+  fixtures?: Fixture[]
+}
+
+/**
+ * A piece of built-in equipment, placed like furniture: centred at (x, y), `width` along its own x axis, its back
+ * on its own -y side (so at rotation 0 it hangs on a wall to its north, facing south).
+ */
+export type Fixture = {
+  id: string
+  name: string
+  kind: 'boiler' | 'waterTank' | 'radiator' | 'towelRail' | 'shower' | 'vanity' | 'toilet'
+  x: number
+  y: number
+  /** Plan angle, radians. */
+  rotation: number
+  width: number
+  depth: number
+  height: number
+  /** Height of its underside above the floor; absent: standing on it. */
+  z?: number
+  /** Catalog fittings in this room superseded when this equipment became built in. Applied once per saved state. */
+  replaces?: { room: string; models: string[] }
+  /** The finish of exposed metal, such as the bathroom's black towel rail. */
+  color?: string
+  /** Radiators in front of full-height glazing stand on feet instead of wall brackets. */
+  mount?: 'floor' | 'wall'
 }
 
 /** Steps in walking order, each a plan polygon; they rise evenly to the next floor, the last one flush with it. */
 export type Stairs = {
   name: string
   steps: Point[][]
+  /** The rooms (on either floor) whose views the stairs belong to, as they're open onto them. */
+  rooms?: string[]
 }
 
 /** A small building in the garden: a box with a door on one side. */
@@ -116,5 +157,8 @@ export type HouseLayout = {
 /** Which face of a wall: walking from `from` to `to` in the plan (north up), 'a' is on the right, 'b' on the left. */
 export type WallSide = 'a' | 'b'
 
-/** A paintable face of a wall: one of its sides, or an end left bare (at an opening, or a wall stopping short). */
-export type WallFace = WallSide | 'end'
+/**
+ * A paintable face of a wall: one of its sides, an end left bare (at an opening, or a wall stopping short), or the
+ * sill or head of an opening, the reveal's bottom and top.
+ */
+export type WallFace = WallSide | 'end' | 'sill' | 'head'

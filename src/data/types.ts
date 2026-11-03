@@ -1,3 +1,4 @@
+import type { RoomOrder } from '../rooms/roomOrder'
 import type { WallFace, WallSide } from '../layout/types'
 
 /**
@@ -6,8 +7,25 @@ import type { WallFace, WallSide } from '../layout/types'
  */
 export type WallColor = { wallId: string; side: WallFace; part?: number; color: string }
 
-/** A room's floor finish; `material` is an id from scene/floorMaterials. */
-export type RoomFloor = { roomId: string; material: string }
+/**
+ * Paint over a rectangle of one part of a wall side (a dado, a stripe, a patch behind the bed), on top of the
+ * part's own. Metres: `u0`–`u1` along the wall from its `from` point, `y0`–`y1` above the floor. On an end,
+ * `u0`–`u1` run across it, from the centre line of the wall the end is on, towards side a. On a sill or head,
+ * `u0`–`u1` run along the wall as on a side, and `y0`–`y1` across it from side b's face.
+ */
+export type WallArea = {
+  id: string
+  wallId: string
+  side: WallFace
+  part: number
+  u0: number
+  u1: number
+  y0: number
+  y1: number
+  color: string
+}
+
+export type NewWallArea = Omit<WallArea, 'id'>
 
 export type FurnitureItem = {
   id: string
@@ -36,7 +54,21 @@ export type RoomName = { roomId: string; name: string }
 
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
-export type DeviceKind = 'light' | 'switch' | 'socket' | 'sensor' | 'thermostat' | 'blind' | 'other'
+export type DeviceKind =
+  | 'light'
+  | 'switch'
+  | 'socket'
+  | 'sensor'
+  | 'thermostat'
+  | 'blind'
+  | 'data'
+  | 'tv'
+  | 'connection'
+  | 'panel'
+  | 'fan'
+  | 'bell'
+  | 'earth'
+  | 'other'
 
 /** A smart-home device placed in the house. */
 export type Device = {
@@ -54,14 +86,25 @@ export type Device = {
   wall?: { wallId: string; side: WallSide }
   /** Home Assistant entity id, e.g. light.living_ceiling. */
   entity?: string
+  /** Fixed infrastructure traced from the electrical drawings, independent of saved furnishing versions. */
+  plan?: {
+    sheet: 2 | 3 | 4
+    symbol: string
+    notes?: string
+    ports?: number
+    area: 'inside' | 'outside' | 'roof'
+  }
 }
 
 export type NewDevice = Omit<Device, 'id'>
 
 /** Everything placed in the house: what a version records. */
 export type HouseState = {
+  /** Built-in fittings whose older catalog equivalents have already been retired from this state. */
+  builtInFixtures?: string[]
   walls: WallColor[]
-  floors: RoomFloor[]
+  /** Absent in versions saved before parts of walls could be painted. */
+  wallAreas?: WallArea[]
   furniture: FurnitureItem[]
   /** Absent in versions saved before rooms could be renamed. */
   rooms?: RoomName[]
@@ -69,7 +112,7 @@ export type HouseState = {
   devices?: Device[]
 }
 
-export const EMPTY_STATE: HouseState = { walls: [], floors: [], furniture: [], rooms: [], devices: [] }
+export const EMPTY_STATE: HouseState = { walls: [], wallAreas: [], furniture: [], rooms: [], devices: [] }
 
 /** A saved snapshot of the house; once saved only its name can change. */
 export type Version = {
@@ -92,6 +135,11 @@ export type Backend = {
   renameVersion: (id: string, name: string) => Promise<void>
   deleteVersion: (id: string) => Promise<void>
   setLive: (id: string | undefined) => Promise<void>
+  /** Makes `id` live only while `current` still is; false when another one was made live in the meantime. */
+  replaceLive: (id: string | undefined, current: string | undefined) => Promise<boolean>
+  /** The signed-in person's order of the room menu; undefined until they first arrange it. */
+  loadRoomOrder: () => Promise<RoomOrder | undefined>
+  saveRoomOrder: (order: RoomOrder) => Promise<void>
   /** Calls `onChange` whenever versions or the live one may have changed elsewhere. Returns the unsubscribe. */
   subscribe: (onChange: () => void) => () => void
 }
