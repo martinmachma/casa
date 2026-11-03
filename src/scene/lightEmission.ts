@@ -11,10 +11,11 @@ export const scenePointLights = (scene: Object3D, camera: Camera) => {
 }
 
 export const ceilingLightMask = (scene: Object3D, camera: Camera) =>
-  scenePointLights(scene, camera).map((l) => (l.userData.downlight ? 1 : 0))
+  scenePointLights(scene, camera).map((l) => (l.userData.downlight as number | undefined) ?? 0)
 
-// The visible ceiling fixtures are downward-facing diffusers. Keep their cube shadows, with a cosine
-// emission lobe below the fitting. Bare point sources (floor/table lamps) retain their existing emission.
+// Ceiling fixtures are downward-facing diffusers, and wall lights nearly so. Keep their cube shadows, with a
+// cosine emission lobe below the fitting, as strong as each light's mask. Bare point sources (floor/table lamps) keep
+// their existing emission.
 // A surface facing away from a light gets nothing from it, so its five-tap cube shadow isn't looked up: with a dozen
 // bulbs on at night, that lookup is most of the frame.
 export const fixtureLighting = ShaderChunk.lights_fragment_begin

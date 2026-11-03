@@ -8,7 +8,7 @@ describe('ceiling emitter assignment', () => {
     const camera = new PerspectiveCamera()
     const lamp = new PointLight()
     const ceiling = new PointLight()
-    ceiling.userData.downlight = true
+    ceiling.userData.downlight = 1
     ceiling.castShadow = true
     scene.add(lamp, ceiling)
     expect(ceilingLightMask(scene, camera)).toEqual([1, 0])
@@ -21,7 +21,7 @@ describe('ceiling emitter assignment', () => {
     const scene = new Scene()
     const camera = new PerspectiveCamera()
     const visible = new PointLight()
-    visible.userData.downlight = true
+    visible.userData.downlight = 1
     const hidden = new PointLight()
     hidden.visible = false
     const otherLayer = new PointLight()

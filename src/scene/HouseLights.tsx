@@ -9,6 +9,12 @@ import type { Floor } from '../layout/types'
 const DECAY = 1
 const CEILING_INTENSITY = 7 / 1.5
 const LAMP_INTENSITY = 2.5 / 1.5
+// How far a fitting narrows its light into a downward beam: 0 all round, 1 straight down only. A wall light washes down
+// its own wall, so only a little of it carries across a terrace and in through a window to compete with the room's light.
+const WALL_DOWNLIGHT = 0.85
+// A wall light's fitting is wide next to the window frame it shines past, so what that frame throws across a room is soft.
+const WALL_SHADOW_RADIUS = 8
+const SHADOW_RADIUS = 1.5
 // Past this, light is cut off so far rooms cost nothing.
 const REACH = 9
 // All bulbs stay lit. PointShadowAtlas shares one texture and lowers distant shadow detail instead of omitting lights.
@@ -19,7 +25,14 @@ const LAMPS: Record<string, number> = { lampRoundFloor: 0.88, lampSquareTable: 0
 
 export const isLamp = (model: string | undefined) => model !== undefined && model in LAMPS
 
-type Bulb = { id: string; downlight: boolean; position: [number, number, number]; intensity: number; color: string }
+type Bulb = {
+  id: string
+  downlight: number
+  shadowRadius: number
+  position: [number, number, number]
+  intensity: number
+  color: string
+}
 
 type HouseLightsProps = {
   /** The floors on show; lights on any other floor stay dark. */
@@ -40,7 +53,8 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       if (d.floor === f.id && d.kind === 'light' && level(d.id) > 0)
         bulbs.push({
           id: d.id,
-          downlight: !d.wall,
+          downlight: d.wall ? WALL_DOWNLIGHT : 1,
+          shadowRadius: d.wall ? WALL_SHADOW_RADIUS : SHADOW_RADIUS,
           position: lightPosition(d, f),
           intensity: CEILING_INTENSITY * level(d.id),
           color: tint(d.id),
@@ -49,7 +63,8 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
       if (item.floor === f.id && isLamp(item.model) && level(item.id) > 0)
         bulbs.push({
           id: item.id,
-          downlight: false,
+          downlight: 0,
+          shadowRadius: SHADOW_RADIUS,
           // A lamp out in the garden stands on the lawn or terrace.
           position: [
             item.x,
@@ -83,7 +98,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
           // r186 cube shadows compare perspective depth. A bias of .002 detaches shadows by metres at range.
           shadow-bias={-0.000005}
           shadow-normalBias={0.003}
-          shadow-radius={1.5}
+          shadow-radius={b.shadowRadius}
         />
       ))}
     </>
