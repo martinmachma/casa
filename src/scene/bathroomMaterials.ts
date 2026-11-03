@@ -107,3 +107,23 @@ export const BATHROOM_WOOD: FloorMaterial = {
     }
   },
 }
+
+/** Fine stone-resin grain on the low charcoal shower tray, without tile joints. */
+export const SHOWER_RESIN: FloorMaterial = {
+  tile: 1,
+  size: 512,
+  roughness: 0.88,
+  bumpScale: 0.0004,
+  draw: (ctx, px, bump) => {
+    const rnd = random(286)
+    const image = ctx.createImageData(px, px)
+    for (let i = 0; i < image.data.length; i += 4) {
+      const grain = (rnd() - 0.5) * (bump ? 20 : 9)
+      image.data[i] = (bump ? 128 : 50) + grain
+      image.data[i + 1] = (bump ? 128 : 52) + grain
+      image.data[i + 2] = (bump ? 128 : 54) + grain
+      image.data[i + 3] = 255
+    }
+    ctx.putImageData(image, 0, 0)
+  },
+}

@@ -13,7 +13,7 @@ import {
   Vector3,
 } from 'three'
 import type { Fixture } from '../layout/types'
-import { BATHROOM_WOOD } from './bathroomMaterials'
+import { BATHROOM_WOOD, SHOWER_RESIN } from './bathroomMaterials'
 import { floorBump, floorTexture } from './floorMaterials'
 
 type V = [number, number, number]
@@ -21,13 +21,25 @@ const BLACK = '#17191a'
 const WHITE = '#f4f3ef'
 const noRaycast = () => null
 
-const Block = ({ at, size, color = BLACK, wood = false }: { at: V; size: V; color?: string; wood?: boolean }) => (
+const Block = ({
+  at,
+  size,
+  color = BLACK,
+  wood = false,
+  roughness,
+}: {
+  at: V
+  size: V
+  color?: string
+  wood?: boolean
+  roughness?: number
+}) => (
   <mesh position={at} castShadow receiveShadow raycast={noRaycast}>
     <boxGeometry args={size} />
     <meshStandardMaterial
       color={wood ? '#ffffff' : color}
       shadowSide={FrontSide}
-      roughness={wood ? BATHROOM_WOOD.roughness : 0.35}
+      roughness={roughness ?? (wood ? BATHROOM_WOOD.roughness : 0.5)}
       metalness={color === BLACK && !wood ? 0.25 : 0}
       map={wood ? floorTexture(BATHROOM_WOOD) : undefined}
       bumpMap={wood ? floorBump(BATHROOM_WOOD) : undefined}
@@ -50,7 +62,7 @@ const Rod = ({ from, to, radius = 0.01, color = BLACK }: { from: V; to: V; radiu
   return (
     <mesh position={center} quaternion={quaternion} castShadow receiveShadow raycast={noRaycast}>
       <cylinderGeometry args={[radius, radius, length, 16]} />
-      <meshStandardMaterial color={color} shadowSide={FrontSide} roughness={0.3} metalness={0.3} />
+      <meshStandardMaterial color={color} shadowSide={FrontSide} roughness={0.5} metalness={0.2} />
     </mesh>
   )
 }
@@ -58,75 +70,253 @@ const Rod = ({ from, to, radius = 0.01, color = BLACK }: { from: V; to: V; radiu
 const Glass = ({ at, size }: { at: V; size: V }) => (
   <mesh position={at} receiveShadow raycast={noRaycast}>
     <boxGeometry args={size} />
-    <meshStandardMaterial color="#c9dadd" transparent opacity={0.13} depthWrite={false} roughness={0.12} />
+    <meshStandardMaterial color="#c9dadd" transparent opacity={0.08} depthWrite={false} roughness={0.12} />
   </mesh>
 )
 
-/** A low rectangular tray, slim black enclosure, rain head, hand shower and hose. Local +z is its entrance. */
-const Shower = ({ fixture: { width: w, depth: d, height: h } }: { fixture: Fixture }) => {
-  const tray = 0.045,
-    top = 2.05,
-    front = d / 2 - 0.012,
-    back = -d / 2 + 0.045
-  const hose = useMemo(
-    () =>
-      new CatmullRomCurve3([
-        new Vector3(0.08, 0.99, back + 0.09),
-        new Vector3(0.18, 0.55, back + 0.14),
-        new Vector3(-0.1, 0.5, back + 0.17),
-        new Vector3(-0.2, 1.5, back + 0.09),
-      ]),
-    [back],
-  )
+const TrayMaterial = () => (
+  <meshStandardMaterial
+    color="#ffffff"
+    map={floorTexture(SHOWER_RESIN)}
+    bumpMap={floorBump(SHOWER_RESIN)}
+    bumpScale={SHOWER_RESIN.bumpScale}
+    roughness={SHOWER_RESIN.roughness}
+    shadowSide={FrontSide}
+  />
+)
+
+/** Low stone-resin tray with a shallow fall and a removable drain cover across the short north end. */
+const ShowerTray = ({ width: w, depth: d }: { width: number; depth: number }) => {
+  const inset = 0.018
+  const floor = useMemo(() => {
+    const g = new BufferGeometry()
+    g.setAttribute(
+      'position',
+      new Float32BufferAttribute(
+        [
+          -w / 2 + inset,
+          0.023,
+          -d / 2 + inset,
+          -w / 2 + inset,
+          0.023,
+          d / 2 - inset,
+          w / 2 - inset,
+          0.032,
+          d / 2 - inset,
+          w / 2 - inset,
+          0.032,
+          -d / 2 + inset,
+        ],
+        3,
+      ),
+    )
+    g.setAttribute('uv', new Float32BufferAttribute([0, 0, 0, d, w, d, w, 0], 2))
+    g.setIndex([0, 1, 2, 0, 2, 3])
+    g.computeVertexNormals()
+    return g
+  }, [w, d])
+  useEffect(() => () => floor.dispose(), [floor])
+  const cover = -w / 2 + 0.115
   return (
     <>
       <RoundedBox
-        args={[w, tray, d]}
-        position={[0, 0.012 + tray / 2, 0]}
-        radius={0.012}
-        smoothness={3}
+        args={[w, 0.014, d]}
+        position={[0, 0.011, 0]}
+        radius={0.003}
+        smoothness={2}
         castShadow
         receiveShadow
         raycast={noRaycast}
       >
-        <meshStandardMaterial color="#dddeda" shadowSide={FrontSide} roughness={0.55} />
+        <meshStandardMaterial color="#323436" roughness={0.88} shadowSide={FrontSide} />
       </RoundedBox>
-      <Block at={[0, tray + 0.014, back + 0.06]} size={[0.3, 0.003, 0.055]} color="#676a69" />
-      {Array.from({ length: 9 }, (_, i) => (
-        <Block key={i} at={[-0.12 + i * 0.03, tray + 0.016, back + 0.06]} size={[0.009, 0.002, 0.04]} color="#292b2b" />
-      ))}
+      <mesh geometry={floor} receiveShadow raycast={noRaycast}>
+        <TrayMaterial />
+      </mesh>
       {[-1, 1].map((side) => (
         <group key={side}>
-          <Block at={[side * (w / 2 - 0.01), top / 2, front]} size={[0.02, top, 0.02]} />
-          <Block at={[side * (w / 2 - 0.01), top, 0]} size={[0.02, 0.025, d]} />
-          <Block at={[side * (w / 2 - 0.01), tray + 0.02, 0]} size={[0.02, 0.018, d]} />
-          <Glass at={[side * (w / 2 - 0.01), (top + tray) / 2, 0]} size={[0.006, top - tray, d - 0.025]} />
+          <Block
+            at={[side * (w / 2 - inset / 2), 0.029, 0]}
+            size={[inset, 0.018, d]}
+            color="#323436"
+            roughness={0.88}
+          />
+          <Block
+            at={[0, 0.029, side * (d / 2 - inset / 2)]}
+            size={[w - 2 * inset, 0.018, inset]}
+            color="#323436"
+            roughness={0.88}
+          />
         </group>
       ))}
-      <Block at={[0, top, front]} size={[w, 0.035, 0.035]} />
-      <Block at={[0, tray + 0.02, front]} size={[w, 0.02, 0.025]} />
-      <Block at={[0, (top + tray) / 2, front]} size={[0.014, top - tray, 0.014]} />
-      {[-1, 1].map((side) => (
-        <Glass key={side} at={[(side * w) / 4, (top + tray) / 2, front]} size={[w / 2 - 0.022, top - tray, 0.006]} />
-      ))}
-      <Rod from={[0.08, 0.85, front + 0.045]} to={[0.08, 1.12, front + 0.045]} radius={0.009} />
-      {[0.88, 1.09].map((y) => (
-        <Rod key={y} from={[0.08, y, front]} to={[0.08, y, front + 0.045]} radius={0.007} />
-      ))}
-      <Rod from={[0, 1, back]} to={[0, h - 0.06, back]} radius={0.015} />
-      <Rod from={[0, h - 0.06, back]} to={[0, h - 0.06, back + 0.32]} radius={0.015} />
-      <Rod from={[0, h - 0.06, back + 0.32]} to={[0, h - 0.11, back + 0.32]} radius={0.015} />
-      <Rod from={[0, h - 0.11, back + 0.32]} to={[0, h - 0.13, back + 0.32]} radius={0.115} />
-      <Rod from={[-0.17, 1.02, back + 0.06]} to={[0.17, 1.02, back + 0.06]} radius={0.026} />
-      <Rod from={[-0.2, 1.45, back + 0.09]} to={[-0.2, 1.61, back + 0.09]} radius={0.018} />
-      <Rod from={[-0.2, 1.59, back + 0.09]} to={[-0.2, 1.63, back + 0.12]} radius={0.045} />
-      <mesh castShadow raycast={noRaycast}>
-        <tubeGeometry args={[hose, 32, 0.009, 8, false]} />
-        <meshStandardMaterial color={BLACK} roughness={0.4} />
+      <Block at={[cover, 0.026, 0]} size={[0.19, 0.005, d - 0.07]} color="#121415" roughness={0.9} />
+      <mesh position={[cover, 0.032, 0]} castShadow receiveShadow raycast={noRaycast}>
+        <boxGeometry args={[0.17, 0.008, d - 0.09]} />
+        <TrayMaterial />
       </mesh>
     </>
   )
 }
+
+/** The ALTIS-style corner entry: a fixed pane and sliding door on each exposed side, with paired flat pulls. */
+const ShowerEnclosure = ({ width: w, depth: d }: { width: number; depth: number }) => {
+  const top = 2.05,
+    bottom = 0.04,
+    height = top - bottom,
+    mid = (top + bottom) / 2
+  const left = -w / 2 + 0.014,
+    right = w / 2 - 0.014,
+    front = d / 2 - 0.014,
+    back = -d / 2 + 0.014
+  return (
+    <>
+      {/* Two glass sides form an L; the other two sides are the tiled walls. */}
+      <Block at={[0, top, front]} size={[w, 0.035, 0.028]} />
+      <Block at={[0, bottom, front]} size={[w, 0.018, 0.024]} />
+      <Block at={[left, top, 0]} size={[0.028, 0.035, d]} />
+      <Block at={[left, bottom, 0]} size={[0.024, 0.018, d]} />
+      {[
+        [right, front],
+        [left, back],
+        [left, front],
+      ].map(([x, z], i) => (
+        <Block key={i} at={[x, mid, z]} size={[0.026, height, 0.026]} />
+      ))}
+      <Block at={[0, mid, front]} size={[0.018, height, 0.018]} />
+      <Block at={[left, mid, 0]} size={[0.018, height, 0.018]} />
+      <Glass at={[w / 4, mid, front - 0.006]} size={[w / 2 - 0.025, height - 0.025, 0.006]} />
+      <Glass at={[-w / 4, mid, front + 0.002]} size={[w / 2 - 0.025, height - 0.025, 0.006]} />
+      <Glass at={[left + 0.006, mid, -d / 4]} size={[0.006, height - 0.025, d / 2 - 0.025]} />
+      <Glass at={[left - 0.002, mid, d / 4]} size={[0.006, height - 0.025, d / 2 - 0.025]} />
+      <Block at={[left + 0.055, 1.02, front + 0.032]} size={[0.025, 0.24, 0.022]} />
+      <Block at={[left - 0.032, 1.02, front - 0.055]} size={[0.022, 0.24, 0.025]} />
+      {[0.92, 1.12].map((y) => (
+        <group key={y}>
+          <Block at={[left + 0.055, y, front + 0.015]} size={[0.015, 0.015, 0.03]} />
+          <Block at={[left - 0.015, y, front - 0.055]} size={[0.03, 0.015, 0.015]} />
+        </group>
+      ))}
+      {/* Small roller housings above the two sliding panels. */}
+      <Block at={[-w / 4, top + 0.003, front]} size={[0.045, 0.043, 0.032]} />
+      <Block at={[left, top + 0.003, d / 4]} size={[0.032, 0.043, 0.045]} />
+    </>
+  )
+}
+
+/** A thin round head, viewed from its spray face along local +z. */
+const SprayHead = ({ radius, rain = false }: { radius: number; rain?: boolean }) => (
+  <>
+    <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow raycast={noRaycast}>
+      <cylinderGeometry args={[radius, radius, rain ? 0.009 : 0.016, 48]} />
+      <meshStandardMaterial color={BLACK} roughness={0.5} metalness={0.2} shadowSide={FrontSide} />
+    </mesh>
+    <mesh position={[0, 0, rain ? 0.005 : 0.009]} receiveShadow raycast={noRaycast}>
+      <circleGeometry args={[radius * 0.91, 48]} />
+      <meshStandardMaterial color="#4b4c4b" roughness={0.75} />
+    </mesh>
+    {[8, 16, 24].flatMap((count, ring) =>
+      Array.from({ length: count }, (_, i) => {
+        const a = (i / count) * Math.PI * 2,
+          r = radius * (0.23 + ring * 0.27)
+        return (
+          <mesh
+            key={`${ring}:${i}`}
+            position={[Math.cos(a) * r, Math.sin(a) * r, rain ? 0.0055 : 0.0095]}
+            raycast={noRaycast}
+          >
+            <circleGeometry args={[rain ? 0.0019 : 0.0012, 6]} />
+            <meshStandardMaterial color="#151718" roughness={0.9} />
+          </mesh>
+        )
+      }),
+    )}
+  </>
+)
+
+/** Matt black thermostatic mixer, rounded riser, overhead rain disc, adjustable handset and U-shaped hose. */
+const ShowerMixer = ({ depth: d, height: h }: { depth: number; height: number }) => {
+  const wall = -d / 2,
+    back = wall + 0.07,
+    bar = back + 0.025
+  const arm = useMemo(
+    () =>
+      new CatmullRomCurve3([
+        new Vector3(0, h - 0.24, back),
+        new Vector3(0, h - 0.13, back),
+        new Vector3(0, h - 0.065, back + 0.055),
+        new Vector3(0, h - 0.06, back + 0.18),
+        new Vector3(0, h - 0.06, back + 0.31),
+        new Vector3(0, h - 0.085, back + 0.36),
+        new Vector3(0, h - 0.14, back + 0.36),
+      ]),
+    [h, back],
+  )
+  const hose = useMemo(
+    () =>
+      new CatmullRomCurve3([
+        new Vector3(0.025, 0.995, bar),
+        new Vector3(-0.035, 0.65, bar + 0.1),
+        new Vector3(-0.02, 0.4, bar + 0.12),
+        new Vector3(0.12, 0.37, bar + 0.12),
+        new Vector3(0.22, 0.52, bar + 0.1),
+        new Vector3(0.17, 0.82, bar + 0.07),
+        new Vector3(0.11, 1.42, back + 0.055),
+      ]),
+    [back, bar],
+  )
+  return (
+    <>
+      {[-0.095, 0.095].map((x) => (
+        <group key={x}>
+          <Rod from={[x, 1.04, wall + 0.002]} to={[x, 1.04, wall + 0.012]} radius={0.034} />
+          <Rod from={[x, 1.04, wall + 0.01]} to={[x, 1.04, bar]} radius={0.014} />
+        </group>
+      ))}
+      <Rod from={[-0.145, 1.04, bar]} to={[0.145, 1.04, bar]} radius={0.022} />
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Rod from={[side * 0.1, 1.04, bar]} to={[side * 0.145, 1.04, bar]} radius={0.024} />
+          <Rod from={[side * 0.098, 1.04, bar]} to={[side * 0.101, 1.04, bar]} radius={0.0245} color="#383b3c" />
+        </group>
+      ))}
+      <Block at={[0.12, 1.065, bar]} size={[0.012, 0.006, 0.013]} />
+      <Rod from={[0, 1.04, back]} to={[0, h - 0.23, back]} radius={0.012} />
+      {[1.2, 1.82].map((y) => (
+        <group key={y}>
+          <Rod from={[0, y, wall + 0.002]} to={[0, y, wall + 0.008]} radius={0.022} />
+          <Rod from={[0, y, wall]} to={[0, y, back]} radius={0.009} />
+        </group>
+      ))}
+      <mesh castShadow receiveShadow raycast={noRaycast}>
+        <tubeGeometry args={[arm, 40, 0.012, 12, false]} />
+        <meshStandardMaterial color={BLACK} roughness={0.5} metalness={0.2} shadowSide={FrontSide} />
+      </mesh>
+      <group position={[0, h - 0.14, back + 0.36]} rotation={[Math.PI / 2, 0, 0]}>
+        <SprayHead radius={0.12} rain />
+      </group>
+      <Rod from={[0, 1.44, back]} to={[0.11, 1.44, back + 0.055]} radius={0.02} />
+      <Rod from={[-0.025, 1.44, back]} to={[0.025, 1.44, back]} radius={0.023} />
+      <group position={[0.11, 1.42, back + 0.055]} rotation={[-0.22, 0, -0.08]}>
+        <Rod from={[0, 0, 0]} to={[0, 0.15, 0]} radius={0.014} />
+        <group position={[0, 0.19, 0]}>
+          <SprayHead radius={0.052} />
+        </group>
+      </group>
+      <mesh castShadow receiveShadow raycast={noRaycast}>
+        <tubeGeometry args={[hose, 48, 0.008, 8, false]} />
+        <meshStandardMaterial color={BLACK} roughness={0.6} shadowSide={FrontSide} />
+      </mesh>
+    </>
+  )
+}
+
+const Shower = ({ fixture: { width, depth, height } }: { fixture: Fixture }) => (
+  <>
+    <ShowerTray width={width} depth={depth} />
+    <ShowerEnclosure width={width} depth={depth} />
+    <ShowerMixer depth={depth} height={height} />
+  </>
+)
 
 /** Closed D-shaped pan, with the cistern and flush plate on the existing WC boxing. */
 const Toilet = ({ fixture: { width: w, depth: d, height: h, z = 0 } }: { fixture: Fixture }) => {

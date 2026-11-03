@@ -93,30 +93,47 @@ const Panel = ({ fixture }: { fixture: Fixture }) => {
   )
 }
 
-/** Ladder towel warmer, on the bathroom wall marked "žebřík" in the electrical drawing. */
-const TowelRail = ({ fixture: { width: w, height: h, depth: d, color = WHITE } }: { fixture: Fixture }) => (
-  <>
-    {[-1, 1].map((side) => (
-      <group key={side}>
-        <Tube at={[side * (w / 2 - 0.016), h / 2, 0]} radius={0.016} length={h} color={color} />
-        {[0.18, h - 0.18].map((y) => (
-          <Block key={y} at={[side * (w / 2 - 0.016), y, -d / 2]} size={[0.025, 0.025, d]} color={color} />
-        ))}
-        <Tube at={[side * (w / 2 - 0.016), -0.025, 0]} radius={0.013} length={0.05} color={METAL} />
-      </group>
-    ))}
-    {Array.from({ length: 24 }, (_, i) => (
-      <Tube
-        key={i}
-        at={[0, 0.09 + (i * (h - 0.18)) / 23, 0.012]}
-        radius={0.011}
-        length={w - 0.032}
-        color={color}
-        horizontal
-      />
-    ))}
-  </>
-)
+/** Flat-bar towel radiator with five banks separated by broad towel gaps and a central valve block. */
+const TowelRail = ({ fixture: { width: w, height: h, depth: d, color = WHITE } }: { fixture: Fixture }) => {
+  const groups = [7, 7, 7, 7, 4]
+  const barHeight = 0.024,
+    margin = 0.04,
+    gap = 0.068
+  const pitch = (h - 2 * margin - barHeight - (groups.length - 1) * gap) / (groups.reduce((a, b) => a + b, 0) - 1)
+  const bars = groups.flatMap((count, bank) => {
+    const preceding = groups.slice(0, bank).reduce((a, b) => a + b, 0)
+    return Array.from({ length: count }, (_, i) => margin + barHeight / 2 + (preceding + i) * pitch + bank * gap)
+  })
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <RoundedBox
+            args={[0.028, h, 0.035]}
+            radius={0.005}
+            smoothness={2}
+            position={[side * (w / 2 - 0.014), h / 2, 0]}
+            castShadow
+            receiveShadow
+            raycast={noRaycast}
+          >
+            <meshStandardMaterial color={color} roughness={0.5} shadowSide={FrontSide} />
+          </RoundedBox>
+          {[0.18, h - 0.18].map((y) => (
+            <Block key={y} at={[side * (w / 2 - 0.014), y, -d / 2]} size={[0.024, 0.024, d]} color={color} />
+          ))}
+          <Tube at={[side * (w / 2 - 0.014), h + 0.003, 0]} radius={0.009} length={0.006} color={color} />
+          <Tube at={[side * 0.025, -0.035, 0]} radius={0.01} length={0.07} color={color} />
+        </group>
+      ))}
+      {bars.map((y, i) => (
+        <Block key={i} at={[0, y, 0.013]} size={[w - 0.035, barHeight, 0.014]} color={color} />
+      ))}
+      <Block at={[0, -0.045, 0.005]} size={[0.09, 0.035, 0.035]} color={color} />
+      <Tube at={[0.065, -0.045, 0.005]} radius={0.022} length={0.04} horizontal color={color} />
+    </>
+  )
+}
 
 export const Radiator = ({ fixture }: { fixture: Fixture }) =>
   fixture.kind === 'towelRail' ? <TowelRail fixture={fixture} /> : <Panel fixture={fixture} />
