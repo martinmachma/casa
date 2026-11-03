@@ -94,23 +94,24 @@ const Panel = ({ fixture }: { fixture: Fixture }) => {
 }
 
 /** Ladder towel warmer, on the bathroom wall marked "žebřík" in the electrical drawing. */
-const TowelRail = ({ fixture: { width: w, height: h, depth: d } }: { fixture: Fixture }) => (
+const TowelRail = ({ fixture: { width: w, height: h, depth: d, color = WHITE } }: { fixture: Fixture }) => (
   <>
     {[-1, 1].map((side) => (
       <group key={side}>
-        <Tube at={[side * (w / 2 - 0.016), h / 2, 0]} radius={0.016} length={h} />
+        <Tube at={[side * (w / 2 - 0.016), h / 2, 0]} radius={0.016} length={h} color={color} />
         {[0.18, h - 0.18].map((y) => (
-          <Block key={y} at={[side * (w / 2 - 0.016), y, -d / 2]} size={[0.025, 0.025, d]} />
+          <Block key={y} at={[side * (w / 2 - 0.016), y, -d / 2]} size={[0.025, 0.025, d]} color={color} />
         ))}
         <Tube at={[side * (w / 2 - 0.016), -0.025, 0]} radius={0.013} length={0.05} color={METAL} />
       </group>
     ))}
-    {Array.from({ length: 12 }, (_, i) => (
+    {Array.from({ length: 24 }, (_, i) => (
       <Tube
         key={i}
-        at={[0, 0.1 + Math.floor(i / 3) * ((h - 0.34) / 3) + (i % 3) * 0.07, 0.012]}
+        at={[0, 0.09 + (i * (h - 0.18)) / 23, 0.012]}
         radius={0.011}
         length={w - 0.032}
+        color={color}
         horizontal
       />
     ))}

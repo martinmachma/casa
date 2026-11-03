@@ -79,7 +79,7 @@ export type Floor = {
 export type Fixture = {
   id: string
   name: string
-  kind: 'boiler' | 'waterTank' | 'radiator' | 'towelRail'
+  kind: 'boiler' | 'waterTank' | 'radiator' | 'towelRail' | 'shower' | 'vanity' | 'toilet'
   x: number
   y: number
   /** Plan angle, radians. */
@@ -89,6 +89,8 @@ export type Fixture = {
   height: number
   /** Height of its underside above the floor; absent: standing on it. */
   z?: number
+  /** The finish of exposed metal, such as the bathroom's black towel rail. */
+  color?: string
   /** Radiators in front of full-height glazing stand on feet instead of wall brackets. */
   mount?: 'floor' | 'wall'
 }

@@ -43,6 +43,7 @@ import { wallPartColor, type NewWallArea, type WallArea } from '../data/types'
 import type { ShadeState } from '../devices/shades'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
 import { OpeningFills } from './OpeningFills'
+import { BathroomWallTiles } from './BathroomWallTiles'
 import { raycastIfShown } from './raycast'
 import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 
@@ -579,24 +580,39 @@ const WallMesh = ({
     return (part !== undefined && wallPartColor(colors, owner.id, face, part)) || WALL_CAP
   }
   const boxes = (list: WallPiece[], cut = false) => (
-    <WallBoxes
-      boxes={list.map((p) => ({
-        size: [p.u1 - p.u0, p.y1 - p.y0, thickness],
-        position: [(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0],
-        colors: [
-          endColor(p.u1),
-          endColor(p.u0),
-          revealColor(p, 'sill'),
-          revealColor(p, 'head'),
-          colorOf(p, 'a'),
-          colorOf(p, 'b'),
-        ],
-        section: (cut && p.y1 === STUB_HEIGHT) || p.y1 >= floor.height,
-        userData: { corner: isCorner(p) },
-        raycast: interactive || brush ? raycastIfShown : noRaycast,
-        handlers: boxHandlers(p),
-      }))}
-    />
+    <>
+      <WallBoxes
+        boxes={list.map((p) => ({
+          size: [p.u1 - p.u0, p.y1 - p.y0, thickness],
+          position: [(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0],
+          colors: [
+            endColor(p.u1),
+            endColor(p.u0),
+            revealColor(p, 'sill'),
+            revealColor(p, 'head'),
+            colorOf(p, 'a'),
+            colorOf(p, 'b'),
+          ],
+          section: (cut && p.y1 === STUB_HEIGHT) || p.y1 >= floor.height,
+          userData: { corner: isCorner(p) },
+          raycast: interactive || brush ? raycastIfShown : noRaycast,
+          handlers: boxHandlers(p),
+        }))}
+      />
+      <BathroomWallTiles
+        floor={floor}
+        wall={wall}
+        pieces={list}
+        thickness={thickness}
+        cut={cut}
+        painted={(p, side, at = 0) =>
+          side === 'a' || side === 'b'
+            ? wallPartColor(colors, owner.id, side, partOf(p, side)) !== undefined
+            : wallPartColor(colors, owner.id, side, endPart(at + offset)) !== undefined ||
+              wallPartColor(colors, wall.id, side, endPart(at)) !== undefined
+        }
+      />
+    </>
   )
 
   // Areas don't overlap; where painting would go shows over them.

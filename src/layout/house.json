@@ -427,10 +427,46 @@
           "x": 3.8805,
           "y": 1.85,
           "rotation": -1.5707963267948966,
-          "width": 0.65,
+          "width": 0.5,
           "depth": 0.08,
-          "height": 1.2,
-          "z": 0.3
+          "height": 1.5,
+          "z": 0.25,
+          "color": "#17191a"
+        },
+        {
+          "id": "u-bath-shower",
+          "name": "Black-framed shower beside the WC",
+          "kind": "shower",
+          "x": 5.6005,
+          "y": 1.54,
+          "rotation": 1.5707963267948966,
+          "width": 1.2,
+          "depth": 0.9,
+          "height": 2.22
+        },
+        {
+          "id": "u-bath-vanity",
+          "name": "Floating walnut vanity with inset basin",
+          "kind": "vanity",
+          "x": 4.0405,
+          "y": 0.91,
+          "rotation": -1.5707963267948966,
+          "width": 0.8,
+          "depth": 0.46,
+          "height": 0.5,
+          "z": 0.35
+        },
+        {
+          "id": "u-bath-toilet",
+          "name": "Wall-hung WC",
+          "kind": "toilet",
+          "x": 5.245,
+          "y": 2.7,
+          "rotation": 1.5707963267948966,
+          "width": 0.37,
+          "depth": 0.54,
+          "height": 0.26,
+          "z": 0.18
         },
         {
           "id": "u-boiler",

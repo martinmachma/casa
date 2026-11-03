@@ -6,6 +6,7 @@ import type { Fixture, Floor } from '../layout/types'
 import { useItemCut } from './ItemCut'
 import { MergeParts } from './MergeParts'
 import { Radiator } from './Radiator'
+import { BathroomFitting } from './BathroomFittings'
 
 // Viessmann's casings are white with an anthracite control strip; the plumbing runs in copper.
 const CASING = '#f1f1ef'
@@ -169,6 +170,8 @@ const FixtureModel = ({ fixture, floor, cutaway }: { fixture: Fixture; floor: Fl
           <Boiler fixture={fixture} />
         ) : fixture.kind === 'waterTank' ? (
           <WaterTank fixture={fixture} />
+        ) : fixture.kind === 'shower' || fixture.kind === 'vanity' || fixture.kind === 'toilet' ? (
+          <BathroomFitting fixture={fixture} />
         ) : (
           <Radiator fixture={fixture} />
         )}
@@ -177,7 +180,7 @@ const FixtureModel = ({ fixture, floor, cutaway }: { fixture: Fixture; floor: Fl
   )
 }
 
-/** The floor's built-in heating equipment, shared by every saved version. */
+/** The floor's built-in heating and bathroom fittings, shared by every saved version. */
 export const Fixtures = ({ floor, cutaway }: { floor: Floor; cutaway: boolean }) => (
   <>
     {(floor.fixtures ?? []).map((f) => (

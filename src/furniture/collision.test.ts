@@ -56,7 +56,7 @@ describe('collision', () => {
     expect([...colliding([chair], [], fixtures)]).toEqual(['chair'])
     expect([...colliding([{ ...chair, id: 'placing' }], [], fixtures)]).toEqual(['placing'])
     expect(colliding([{ ...chair, y: radiator.y + 0.5 }], [], fixtures).size).toBe(0)
-    expect(colliding([{ ...chair, floor: 'upper' }], [], fixtures).size).toBe(0)
+    expect(colliding([{ ...chair, floor: 'upper' }], [], [radiator]).size).toBe(0)
   })
 
   it('uses the towel rail mounting height so objects below or above it remain clear', () => {
@@ -65,7 +65,7 @@ describe('collision', () => {
     const cabinet = piece('cabinet', rail.x, rail.y, { floor: rail.floor, width: 0.2, depth: 0.2 })
     expect(hits(cabinet, fixtures, [])).toContain(rail.id)
     expect(hits({ ...cabinet, height: 0.2 }, fixtures, [])).toEqual([])
-    expect(hits({ ...cabinet, z: 1.6 }, fixtures, [])).toEqual([])
+    expect(hits({ ...cabinet, z: (rail.z ?? 0) + rail.height + 0.1 }, fixtures, [])).toEqual([])
   })
 })
 

@@ -290,7 +290,24 @@ const SPARK_PERLA: FloorMaterial = {
   }),
 }
 
-/** Floors by layout room id. Rooms left out (the bathrooms, for now) show the bare slab. */
+/** Charcoal 60 × 60 cm tiles from the upstairs bathroom references. */
+const BATHROOM_SLATE: FloorMaterial = {
+  tile: 1.8,
+  size: 1024,
+  roughness: 0.82,
+  bumpScale: 0.002,
+  draw: stone({
+    base: '#49494a',
+    grout: '#363638',
+    tile: 1.8,
+    width: 0.6,
+    height: 0.6,
+    joint: 0.002,
+    seed: 28,
+  }),
+}
+
+/** Floors by layout room id; rooms left out show the bare slab. */
 const ROOM_FLOORS: Record<string, FloorMaterial | undefined> = {
   'g-living': OAK_NATURAL,
   'u-hall': OAK_NATURAL,
@@ -300,6 +317,7 @@ const ROOM_FLOORS: Record<string, FloorMaterial | undefined> = {
   'g-hall': SPARK_PERLA,
   'g-storage': SPARK_PERLA,
   'u-storage': SPARK_PERLA,
+  'u-bath': BATHROOM_SLATE,
 }
 
 export const roomFloor = (roomId: string) => ROOM_FLOORS[roomId]
