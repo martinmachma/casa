@@ -19,6 +19,8 @@ export type SmartItem = {
   facing?: [number, number]
   /** Where its close-up is centred, if not on `at`. */
   look?: [number, number, number]
+  /** For a light, how it hangs: its close-up looks into it (from below for one on the ceiling). */
+  mount?: 'ceiling' | 'wall' | 'lamp'
   /** Where its controls stand, if beside it rather than at the end of its tag's line. */
   beside?: [number, number, number]
 }
@@ -35,7 +37,7 @@ export const floorItems = (
       .filter((d) => d.floor === floor.id && (!d.plan || d.kind === 'light'))
       .map((d) => {
         const room = deviceRoom(d, floor, regions)
-        const wall = !room && d.wall && floor.walls.find((w) => w.id === d.wall!.wallId)
+        const wall = d.wall && floor.walls.find((w) => w.id === d.wall!.wallId)
         const angle = wall ? wallAngle(wall) : 0
         const side = d.wall?.side === 'a' ? 1 : -1
         return {
@@ -46,8 +48,9 @@ export const floorItems = (
           entity: d.entity,
           at: [d.x, floor.elevation + d.z, d.y] as SmartItem['at'],
           room,
-          // A light without a room is approached from the face it shines out of.
+          // A wall light is approached from the face it shines out of.
           facing: wall ? ([-Math.sin(angle) * side, Math.cos(angle) * side] as [number, number]) : undefined,
+          mount: d.kind === 'light' ? (d.wall ? ('wall' as const) : ('ceiling' as const)) : undefined,
         }
       }),
     ...furniture
@@ -57,6 +60,7 @@ export const floorItems = (
         name: f.name,
         kind: 'light' as DeviceKind,
         lamp: true,
+        mount: 'lamp' as const,
         entity: undefined,
         at: [f.x, floor.elevation + (f.z ?? 0) + f.height, f.y] as SmartItem['at'],
         room: roomAt(regions, f.x, f.y),

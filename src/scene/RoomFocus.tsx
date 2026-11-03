@@ -17,8 +17,9 @@ const CLOSE_UP_FACING = 4.2
 const FOV = 45
 /** Looking at an item from a given way, how far the camera rises for each metre it stands back. */
 const FACING_RISE = 0.15
-/** An opened item's card: how far right of the item it starts, and how wide it is. */
-const CARD = { left: 98, width: 260 }
+/** How far below a ceiling light the camera comes in to, and how far off straight up it looks. */
+const CLOSE_UNDER = 1.6
+const UNDER = 0.3
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
@@ -34,7 +35,7 @@ export const RoomCamera = ({
   roomId?: string
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
-  /** An opened item to come in close to, from the room's side of it (or from `facing`); the camera holds still there. */
+  /** An opened item to come in close to and keep in the middle, from the way it's best seen; dragging tilts round it. */
   closeUp?: Pin
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, for the house's camera to carry on from after the room. */
@@ -50,30 +51,28 @@ export const RoomCamera = ({
   )
   const [cx, cy, cz] = closeUp?.look ?? closeUp?.at ?? []
   const [fx, fz] = closeUp?.facing ?? []
+  const mount = closeUp?.mount
   const [origin] = useState(from)
   const pose = useMemo(() => {
     if (cx === undefined) return roomView
     const item = new Vector3(cx, cy, cz)
+    // The way the camera came from, level.
+    const toward = (roomView?.position ?? origin?.position ?? item.clone().add(new Vector3(0, 1, 2))).clone().sub(item)
+    const level = toward.clone().setY(0).normalize()
+    // A ceiling light is looked up into from below, tipped a little towards where the camera came from; one seen from
+    // a given way (a wall light, a window's shade) square on, a lamp from the side, anything else as the room sees it.
     const back =
-      fx === undefined
-        ? (roomView?.position ?? origin?.position ?? item.clone().add(new Vector3(0, 1, 2)))
-            .clone()
-            .sub(item)
-            .normalize()
-        : new Vector3(fx, FACING_RISE, fz).normalize()
-    const distance = fx === undefined || !roomId ? CLOSE_UP : CLOSE_UP_FACING
-    // Seen from a given way, the item is in the middle, its controls beside it.
-    if (fx !== undefined && roomId) return { position: item.clone().addScaledVector(back, distance), target: item }
-    // The item sits left of its card, which ends up in the middle of the screen.
-    const right = new Vector3(0, 1, 0).cross(back).normalize()
-    const up = back.clone().cross(right)
-    const perPixel = (2 * distance * Math.tan(((FOV / 2) * Math.PI) / 180)) / size.height
-    const dx = Math.max(16, (size.width - CARD.width) / 2 - CARD.left) - size.width / 2
-    // The line rises 22px to the card's middle.
-    const dy = 22
-    const target = item.addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel)
-    return { position: target.clone().addScaledVector(back, distance), target }
-  }, [roomView, roomId, cx, cy, cz, fx, fz, size, origin])
+      mount === 'ceiling'
+        ? level.multiplyScalar(Math.sin(UNDER)).setY(-Math.cos(UNDER))
+        : fx !== undefined
+          ? new Vector3(fx, FACING_RISE, fz).normalize()
+          : mount === 'lamp'
+            ? level.setY(FACING_RISE).normalize()
+            : toward.normalize()
+    const distance = mount === 'ceiling' ? CLOSE_UNDER : closeUp?.look && roomId ? CLOSE_UP_FACING : CLOSE_UP
+    // The item in the middle of the screen, its card beside it.
+    return { position: item.clone().addScaledVector(back, distance), target: item }
+  }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
@@ -89,6 +88,8 @@ export const RoomCamera = ({
     setFlying(true)
   }
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
+  // Close up, dragging only tilts the view up and down round the item, never round behind it.
+  const azimuth = closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
   useFrame(({ camera, invalidate }, delta) => {
     if (!pose) return
     // The controls take the new pose's target as soon as it's set, so the flight starts from where it last looked.
@@ -120,11 +121,13 @@ export const RoomCamera = ({
         <OrbitControls
           ref={controls}
           makeDefault
-          enabled={!flying && !closeUp}
+          enabled={!flying}
           target={pose.target.toArray()}
           enablePan={false}
-          minPolarAngle={0.15}
-          maxPolarAngle={1.3}
+          minPolarAngle={closeUp ? 0.3 : 0.15}
+          maxPolarAngle={closeUp ? Math.PI - 0.05 : 1.3}
+          minAzimuthAngle={azimuth ?? -Infinity}
+          maxAzimuthAngle={azimuth ?? Infinity}
           zoomToCursor
           zoomSpeed={ZOOM_SPEED}
           minDistance={0.2}
@@ -143,6 +146,8 @@ export type Pin = {
   facing?: [number, number]
   /** Where a close-up on it is centred, if not on `at`. */
   look?: [number, number, number]
+  /** For a light, how it hangs, which decides the way its close-up looks into it. */
+  mount?: 'ceiling' | 'wall' | 'lamp'
 }
 
 type FocusProjectorProps = {
