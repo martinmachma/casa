@@ -22,6 +22,8 @@ const ROOM_LAYER = 1
 const OUTSIDE_LAYER = 2
 const ITEM_LAYER = 3
 const BLUR_PASSES = 3
+/** The outside is drawn at this much of the canvas's CSS size, whatever the pixel ratio (see MotionQuality). */
+const OUTSIDE_SCALE = 0.5
 const TINT = new Color('#ebe7e1')
 const DIM = 0.3
 /** How long the dimming takes to come and go, in ms. */
@@ -68,7 +70,7 @@ const blurMaterial = () =>
   })
 
 const makeTools = () => {
-  // The outside is drawn at half size straight into `a`: it's blurred anyway, and that's a quarter of the pixels.
+  // The outside is drawn small straight into `a`: it's blurred anyway, and that's a fraction of the pixels.
   const a = new WebGLRenderTarget(1, 1, { type: HalfFloatType })
   const b = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false })
   const quad = new Mesh(new PlaneGeometry(2, 2), blurMaterial())
@@ -139,11 +141,10 @@ export const RoomBlur = ({
   )
   const sorted = useMemo(() => new WeakMap<Mesh, Sorted>(), [])
   const lastShadows = useRef(NaN)
-  const size = useMemo(() => new Vector2(), [])
 
   const inRoom = useMemo(() => roomMeshClassifier(floor, roomId), [floor, roomId])
 
-  useFrame(({ gl, scene, camera, invalidate }) => {
+  useFrame(({ gl, scene, camera, size, invalidate }) => {
     const tools = (kit.current ??= makeTools())
     const now = performance.now()
     const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
@@ -179,10 +180,11 @@ export const RoomBlur = ({
       }
     })
 
-    gl.getDrawingBufferSize(size)
+    // Sized and blurred by CSS pixels, not the drawing buffer's: the pixel ratio drops while the camera moves, and
+    // the outside mustn't turn blurrier then and sharper again as it settles.
     const { a, b, quad, camera: flat } = tools
-    const w = Math.max(1, Math.round(size.x / 2))
-    const h = Math.max(1, Math.round(size.y / 2))
+    const w = Math.max(1, Math.round(size.width * OUTSIDE_SCALE))
+    const h = Math.max(1, Math.round(size.height * OUTSIDE_SCALE))
     if (a.width !== w || a.height !== h) {
       a.setSize(w, h)
       b.setSize(w, h)
@@ -190,7 +192,7 @@ export const RoomBlur = ({
     const material = quad.material
     const pass = (from: WebGLRenderTarget, to: WebGLRenderTarget | null, x: number, y: number, tint = 0) => {
       material.uniforms.map.value = from.texture
-      material.uniforms.dir.value.set(x / from.width, y / from.height)
+      material.uniforms.dir.value.set((x * OUTSIDE_SCALE) / from.width, (y * OUTSIDE_SCALE) / from.height)
       material.uniforms.tint.value = tint
       gl.setRenderTarget(to)
       gl.render(tools.scene, flat)
