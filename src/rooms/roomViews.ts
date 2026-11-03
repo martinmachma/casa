@@ -31,14 +31,23 @@ export const roomBox = (floor: Floor, roomId: string, margin = 0.15): { min: Poi
 }
 
 const UP = new Vector3(0, 1, 0)
+/** How much of a wide screen's width the rooms list on the left and the cards on the right each take, in pixels. */
+const PANEL = 250
 
 /**
  * A three-quarter view into the room from outside it, looking across its narrow side so its length runs along the
  * screen, from the side where its tall furniture is least in the way (else the one nearest the house's outside), and from just high enough to see over what stands in it (higher
  * for a small room, whose walls are close). The camera is set back just far enough for the whole floor, the furniture
- * on it and the far walls to fit, and on a wide screen the room sits left of the cards on the right.
+ * on it and the far walls to fit between the panels on either side, the room's middle in the middle of what's left, so
+ * turning round it keeps it there.
  */
-export const roomPose = (floor: Floor, roomId: string, aspect: number, items: FurnitureItem[] = []) => {
+export const roomPose = (
+  floor: Floor,
+  roomId: string,
+  size: { width: number; height: number },
+  items: FurnitureItem[] = [],
+) => {
+  const aspect = size.width / size.height
   const box = roomBox(floor, roomId)
   if (!box) return undefined
   const [x0, z0] = box.min
@@ -98,12 +107,15 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
     const far = (x - cx) * look.x + (z - cz) * look.z < 0
     return [new Vector3(x, floorY, z), new Vector3(x, floorY + (far ? floor.height * 0.75 : 1), z)]
   })
-  // The part of the screen the room may take (NDC); the cards take the right of a wide screen.
+  // The part of the screen the room may take (NDC): on a wide screen the rooms list and the cards take its sides,
+  // the toolbar its top. It's centred across, so the room's middle can stay at the middle of the screen.
   const wide = aspect > 1.2
-  const frame = { x0: -0.96, x1: wide ? 0.5 : 0.96, y0: -0.9, y1: 0.84 }
+  const px = (n: number, of: number) => (2 * n) / of
+  const half = 1 - (wide ? px(PANEL, size.width) : 0.04)
+  const frame = { x0: -half, x1: half, y0: -1 + px(16, size.height), y1: 1 - px(wide ? 64 : 16, size.height) }
   const camera = new PerspectiveCamera(45, aspect, 0.1, 200)
+  // The room's middle, which the camera turns round.
   const target = new Vector3(cx, floorY + 0.6, cz)
-  const right = new Vector3()
   const place = (distance: number) => {
     camera.position.copy(target).addScaledVector(look, distance)
     camera.up.copy(UP)
@@ -119,7 +131,7 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
   }
   const fits = (d: number) => {
     const r = place(d)
-    return r.x1 - r.x0 <= frame.x1 - frame.x0 && r.y1 - r.y0 <= frame.y1 - frame.y0
+    return r.x0 >= frame.x0 && r.x1 <= frame.x1 && r.y1 - r.y0 <= frame.y1 - frame.y0
   }
   let lo = 0.5
   let hi = 60
@@ -129,16 +141,15 @@ export const roomPose = (floor: Floor, roomId: string, aspect: number, items: Fu
     else lo = mid
   }
   const distance = hi
-  // Slide the view (camera and target together) until the room's picture sits in the middle of its part of the screen.
+  // Raise or lower the view (camera and target together) until the room's picture sits in the middle of its part of
+  // the screen top to bottom; only straight up or down, so the target stays over the room's middle.
   for (let i = 0; i < 4; i++) {
     const r = place(distance)
-    const dx = (frame.x0 + frame.x1) / 2 - (r.x0 + r.x1) / 2
     const dy = (frame.y0 + frame.y1) / 2 - (r.y0 + r.y1) / 2
-    // Half the screen's height across, at the target's distance.
-    const half = Math.tan((camera.fov * Math.PI) / 360) * distance
-    right.setFromMatrixColumn(camera.matrixWorld, 0)
+    // Half the screen's height, at the target's distance.
+    const halfHeight = Math.tan((camera.fov * Math.PI) / 360) * distance
     const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
-    target.addScaledVector(right, -dx * half * aspect).addScaledVector(up, -dy * half)
+    target.y -= (dy * halfHeight) / up.y
   }
   place(distance)
   const position = camera.position.clone()

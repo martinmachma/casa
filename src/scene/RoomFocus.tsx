@@ -45,7 +45,7 @@ export const RoomCamera = ({
   const [placed, setPlaced] = useState({ roomId, furniture })
   if (placed.roomId !== roomId) setPlaced({ roomId, furniture })
   const roomView = useMemo(
-    () => (roomId ? roomPose(floor, roomId, size.width / size.height, placed.furniture) : undefined),
+    () => (roomId ? roomPose(floor, roomId, size, placed.furniture) : undefined),
     [floor, roomId, size, placed.furniture],
   )
   const [cx, cy, cz] = closeUp?.look ?? closeUp?.at ?? []
