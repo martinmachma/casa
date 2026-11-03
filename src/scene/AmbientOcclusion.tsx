@@ -21,7 +21,7 @@ import {
 } from 'three'
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 import { SSAOShader } from 'three/examples/jsm/shaders/SSAOShader.js'
-import { fastShadows, receiverPlaneShadows, receiverPlaneShadowKey } from './shadowShader'
+import { receiverPlaneShadows, receiverPlaneShadowKey } from './shadowShader'
 import { ceilingLightMask, fixtureLighting } from './lightEmission'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
@@ -178,7 +178,6 @@ export const AmbientOcclusion = () => {
               shader.uniforms.casaViewport = viewportSize
               shader.uniforms.casaCeilingLights = ceilingMask.current
               shader.uniforms.casaAOAmount = aoAmount
-              shader.uniforms.casaFastShadows = fastShadows
               shader.fragmentShader =
                 'uniform sampler2D casaAO; uniform vec2 casaViewport; uniform float casaAOAmount;\n#if NUM_POINT_LIGHTS > 0\nuniform float casaCeilingLights[NUM_POINT_LIGHTS];\n#endif\n' +
                 shader.fragmentShader

@@ -1,15 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Matrix4 } from 'three'
-import { fastShadows } from './shadowShader'
 
 // How long the view must stay still before it's drawn at full quality again.
 const SETTLE_MS = 150
 const MOVING_DPR = 1
 
 /**
- * While the camera moves, frames are drawn cheaper: at most 1× pixel ratio, and bulbs' shadows with a single tap.
- * At night with the lights on those two are most of a frame. Once the view settles, one full-quality frame is drawn.
+ * While the camera moves, frames are drawn at most at 1× pixel ratio: on a 2× screen that's a quarter of the pixels.
+ * Shadows stay as they are, so nothing changes look when the view starts or stops moving. Once the view settles, one
+ * full-resolution frame is drawn.
  */
 export const MotionQuality = () => {
   const invalidate = useThree((s) => s.invalidate)
@@ -20,10 +20,7 @@ export const MotionQuality = () => {
   const timer = useRef<number | undefined>(undefined)
 
   useEffect(
-    () => () => {
-      window.clearTimeout(timer.current)
-      fastShadows.value = false
-    },
+    () => () => window.clearTimeout(timer.current),
     [],
   )
 
@@ -45,7 +42,6 @@ export const MotionQuality = () => {
         invalidate()
       }, SETTLE_MS)
     }
-    fastShadows.value = moving.current
     // R3F puts its own ratio back on a resize, so this is checked every frame.
     const ratio = moving.current ? Math.min(MOVING_DPR, viewport.dpr) : viewport.dpr
     if (gl.getPixelRatio() !== ratio) gl.setPixelRatio(ratio)
