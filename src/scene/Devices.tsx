@@ -1,18 +1,20 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Mesh, Plane, Vector3, type Camera, type Group } from 'three'
+import { Box3, Mesh, Plane, Vector3, type Camera, type Group } from 'three'
 import type { Device } from '../data/types'
 import { defaultHeight, DEVICE_KINDS, onCeiling, type DevicePlacement } from '../devices/kinds'
 import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
-import { wallAngle, wallLength, wallOutside, wallThickness } from '../layout/geometry'
+import { wallAngle, wallHeight, wallLength, wallOutside, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
-import { visibleWallHeight, wallCut, type Focus } from './CutawayWall'
+import { STUB_HEIGHT, visibleWallHeight, wallCut, type Focus } from './CutawayWall'
 import { DeviceModel } from './DeviceModel'
 import { MergeParts } from './MergeParts'
 import { applyFade, GHOST_OPACITY } from './Fade'
 
 const CLICK_SLOP_PX = 5
+
+const box = new Box3()
 
 /** Taps this close to a device pick it, though the device itself is much smaller. */
 const HIT_RADIUS = 0.12
@@ -125,12 +127,21 @@ const DeviceMesh = ({
   const hit = useMemo(() => new Vector3(), [])
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)
   const outside = useMemo(() => wall && wallOutside(wall, floor), [wall, floor])
+  const parts = useRef<Group>(null)
+  // How high the fitting reaches above the floor: one wholly within a cut wall's stub stays solid, as the stub does.
+  const top = useRef(Infinity)
   const opacity = (camera: Camera) =>
-    hoveredId !== device.id && wall && wallCut(wall, floor, outside, camera, cutaway, focus) ? GHOST_OPACITY : 1
+    hoveredId !== device.id &&
+    wall &&
+    top.current > Math.min(STUB_HEIGHT, wallHeight(wall, floor)) &&
+    wallCut(wall, floor, outside, camera, cutaway, focus)
+      ? GHOST_OPACITY
+      : 1
   // Reapply after a render adds model parts, preserving any fade inherited from the floor.
   useLayoutEffect(() => {
     const g = model.current
     if (!g) return
+    if (parts.current) top.current = box.setFromObject(parts.current).max.y - floor.elevation
     g.userData.fade = opacity(getState().camera)
     applyFade(g)
   })
@@ -263,9 +274,11 @@ const DeviceMesh = ({
           debug: `${device.name} · ${device.id.slice(0, 4)}`,
         }}
       >
-        <MergeParts>
-          <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
-        </MergeParts>
+        <group ref={parts}>
+          <MergeParts>
+            <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
+          </MergeParts>
+        </group>
         {hitSphere(device.plan?.area === 'roof' ? [0, 0, 0] : [0, 0, 0.03])}
       </group>
       {marker}
