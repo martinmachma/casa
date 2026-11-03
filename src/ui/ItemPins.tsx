@@ -121,6 +121,7 @@ export const ItemPins = ({
               <SmartTag
                 item={item}
                 light={item.kind === 'light' ? light(item.id) : undefined}
+                onLight={(p) => onLight(item.id, p)}
                 onOpen={() => onOpen(item.id)}
                 onHover={(h) => onHover(h ? item.id : undefined)}
               />
