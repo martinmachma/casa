@@ -79,8 +79,32 @@ existing renderer-mutation errors in OpeningFills' clipping hook and existing Cu
 - A 120-frame local fixture run measured approximately 120 fps with cached shadows. This is a small-scene check on this Mac, not a benchmark for low-end phones or a large number of simultaneously edited lights.
 - `npm test` and the production build pass. Repository-wide ESLint also scans an existing nested `.haru/worktrees` checkout and fails its TypeScript root discovery. A scoped lint check distinguishes existing warnings/errors from the changed rendering code.
 
+## Distant-room lighting
+
+Every switched-on bulb now illuminates the house, regardless of camera position or the GPU's texture-unit
+limit. All point shadows share one depth atlas, retaining the physical walls, closed doors, slabs and roof
+as occluders. The four bulbs nearest the viewed area use 512-pixel faces, the next four use 256, and the
+rest use 128 with one filtered shadow comparison instead of five. Brightness, colour and downward emission
+do not depend on those tiers. A smaller atlas budget reduces detail further rather than omitting bulbs.
+Detailed-light selection has hysteresis and follows the orbit target, avoiding changes from rotation alone.
+Shadows remain cached across camera-only frames; changed atlas tiles refresh when their allocation changes.
+
+Point-shadow vectors use one shared normal varying instead of one position varying per bulb, keeping the
+shader within mobile varying limits. Shadow projection is initialized explicitly when the shared atlas
+replaces Three's cube allocation. Geometry/cutaway updates, shadow invalidation, material preparation and
+colour rendering now have explicit frame order, including when changing floors or entering room focus.
+
+Browser validation covered 24 illuminated rooms on a 16-texture-unit renderer, distant on/off isolation,
+moved occluders, the actual two-floor house, room focus, floor transitions, and simultaneous sun/moon lighting.
+The 24-light fixture used four 512, four 256 and sixteen 128-pixel maps: 75% fewer shadow texels than
+24 full-detail cube maps, with one point-shadow sampler. This is an allocation comparison, not an FPS claim.
+
 ## Remaining limitations
 
 This is raster lighting with approximate indirect fill, not global illumination. Screen-space AO cannot account for offscreen or hidden surfaces, and is deliberately local and subtle. Transparent glass does not model transmission/refraction or coloured shadows. Finite shadow maps can still soften or lose very small details, especially at grazing angles. Decorative distant ground outside the physical plot does not enlarge the sun map.
 
-The GPU texture budget can omit lower-priority point lights when too many are on at once; those lights no longer create unoccluded fill. Geometry edits redraw the affected shadow set immediately, so editing a scene with many active bulbs costs more than orbiting a static scene. Lamp shades remain transparent to all point-light shadow passes, not only their own bulb. Cutaway furniture retains its complete physical shadow, matching the existing behaviour.
+Geometry edits redraw the affected shadow set immediately, so editing a scene with many active bulbs costs
+more than orbiting a static scene. Distant shadows lose fine detail as their resolution falls. Lamp shades
+remain transparent to all point-light shadow passes, not only their own bulb. Cutaway furniture retains its
+complete physical shadow, matching the existing behaviour. The atlas integration follows Three r186's
+shadow viewport API and shader chunks; an engine upgrade needs visual verification of both.

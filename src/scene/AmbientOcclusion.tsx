@@ -21,8 +21,9 @@ import {
 } from 'three'
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 import { SSAOShader } from 'three/examples/jsm/shaders/SSAOShader.js'
-import { receiverPlaneShadows, receiverPlaneShadowKey } from './shadowShader'
+import { atlasShadowVertex, atlasShadowVertexPars, receiverPlaneShadows, receiverPlaneShadowKey } from './shadowShader'
 import { ceilingLightMask, fixtureLighting } from './lightEmission'
+import { PointShadowAtlas } from './PointShadowAtlas'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
 const RADIUS = 0.2
@@ -116,6 +117,8 @@ const restoreMaterial = (m: Material, p: Patched) => {
 /** Half-resolution SSAO, applied in the material before tone mapping, including the layered room view. */
 export const AmbientOcclusion = () => {
   const tools = useMemo(() => makeTools(), [])
+  const atlas = useMemo(() => new PointShadowAtlas(), [])
+  const focus = useMemo(() => new Vector3(), [])
   // One normal material per way of drawing (side, clipping, offset), shared by every mesh drawn that way: the
   // pass then switches materials only between groups of them.
   const normalsRef = useRef(new Map<string, MeshNormalMaterial>())
@@ -129,6 +132,7 @@ export const AmbientOcclusion = () => {
     const normals = normalsRef.current
     const patched = patchedRef.current
     return () => {
+      atlas.dispose()
       tools.noise.dispose()
       tools.normal.dispose()
       tools.ao.dispose()
@@ -141,9 +145,17 @@ export const AmbientOcclusion = () => {
       normals.clear()
       patched.clear()
     }
-  }, [tools])
+  }, [tools, atlas])
 
-  useFrame(({ gl, scene, camera }) => {
+  // After every geometry/cutaway hook and ShadowUpdates, before RoomBlur (1) and ItemOutline (2).
+  // Newly mounted meshes must receive the atlas shader before any colour pass draws them.
+  useFrame(({ gl, scene, camera, controls }) => {
+    atlas.prepare(
+      gl,
+      scene,
+      camera,
+      (controls as { target?: Vector3 } | null)?.target ?? camera.getWorldPosition(focus),
+    )
     const normals = normalsRef.current
     const patched = patchedRef.current
     ceilingMask.current.value = ceilingLightMask(scene, camera)
@@ -178,6 +190,10 @@ export const AmbientOcclusion = () => {
               shader.uniforms.casaViewport = viewportSize
               shader.uniforms.casaCeilingLights = ceilingMask.current
               shader.uniforms.casaAOAmount = aoAmount
+              Object.assign(shader.uniforms, atlas.uniforms)
+              shader.vertexShader = shader.vertexShader
+                .replace('#include <shadowmap_pars_vertex>', atlasShadowVertexPars)
+                .replace('#include <shadowmap_vertex>', atlasShadowVertex)
               shader.fragmentShader =
                 'uniform sampler2D casaAO; uniform vec2 casaViewport; uniform float casaAOAmount;\n#if NUM_POINT_LIGHTS > 0\nuniform float casaCeilingLights[NUM_POINT_LIGHTS];\n#endif\n' +
                 shader.fragmentShader
@@ -303,6 +319,6 @@ export const AmbientOcclusion = () => {
         restoreMaterial(m, p)
         patched.delete(m)
       }
-  })
+  }, 0.5)
   return null
 }

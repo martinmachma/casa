@@ -7,6 +7,8 @@ import { casterSignature, fitSunShadow } from './shadows'
 export const ShadowUpdates = () => {
   const previous = useRef('')
   const lightStates = useRef(new Map<Light, string>())
+  // Explicit order matters when a floor or cutaway remounts: its new frame hooks must finish before this.
+  // RoomBlur (1) or ItemOutline (2) already owns the final render.
   useFrame(({ scene, gl }) => {
     scene.updateMatrixWorld(true)
     const signature = casterSignature(scene)
@@ -34,6 +36,6 @@ export const ShadowUpdates = () => {
       light.shadow.needsUpdate = true
       gl.shadowMap.needsUpdate = true
     }
-  })
+  }, 0.25)
   return null
 }
