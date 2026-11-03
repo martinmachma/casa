@@ -254,7 +254,8 @@ const ShowerMixer = ({ depth: d, height: h }: { depth: number; height: number })
   const hose = useMemo(
     () =>
       new CatmullRomCurve3([
-        new Vector3(0.025, 0.995, bar),
+        new Vector3(0.025, 1.0, bar),
+        new Vector3(0.025, 0.965, bar),
         new Vector3(-0.035, 0.65, bar + 0.1),
         new Vector3(-0.02, 0.4, bar + 0.12),
         new Vector3(0.12, 0.37, bar + 0.12),
@@ -279,6 +280,9 @@ const ShowerMixer = ({ depth: d, height: h }: { depth: number; height: number })
           <Rod from={[side * 0.098, 1.04, bar]} to={[side * 0.101, 1.04, bar]} radius={0.0245} color="#383b3c" />
         </group>
       ))}
+      {/* The outlet and union overlap both the mixer body and the hose, leaving no floating end. */}
+      <Rod from={[0.025, 1.035, bar]} to={[0.025, 0.995, bar]} radius={0.012} />
+      <Rod from={[0.025, 1.01, bar]} to={[0.025, 0.99, bar]} radius={0.0155} />
       <Block at={[0.12, 1.065, bar]} size={[0.012, 0.006, 0.013]} />
       <Rod from={[0, 1.04, back]} to={[0, h - 0.23, back]} radius={0.012} />
       {[1.2, 1.82].map((y) => (
