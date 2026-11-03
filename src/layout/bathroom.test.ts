@@ -32,6 +32,7 @@ it('fits the 110 × 90 shower flush with the WC partition, leaving the window an
   const shower = bathroom.find((f) => f.id === 'u-bath-shower')!
   const partition = floor.walls.find((w) => w.id === 'u-bath-shaft')!
   const vanity = bathroom.find((f) => f.id === 'u-bath-vanity')!
+  expect(vanity.width).toBe(1)
   expect(shower.width).toBe(1.1)
   expect(shower.depth).toBe(0.9)
   // The partition's visible free end includes its cap, inset 2 mm like the rendered wall pieces.

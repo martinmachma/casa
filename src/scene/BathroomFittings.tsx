@@ -1,14 +1,15 @@
 import { RoundedBox } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
 import {
+  BufferGeometry,
   CatmullRomCurve3,
   DoubleSide,
   ExtrudeGeometry,
+  Float32BufferAttribute,
   FrontSide,
   Path,
   Quaternion,
   Shape,
-  Vector2,
   Vector3,
 } from 'three'
 import type { Fixture } from '../layout/types'
@@ -164,35 +165,77 @@ const Toilet = ({ fixture: { width: w, depth: d, height: h, z = 0 } }: { fixture
   )
 }
 
-/** Wall-hung walnut drawers, a white integrated basin and a matt black deck mixer. */
+/** A rounded rectangular outline, shared by the countertop opening and each level of its recessed bowl. */
+const basinOutline = (width: number, depth: number, radius: number, cx: number, cy: number) => {
+  const p = new Path()
+  const left = cx - width / 2,
+    right = cx + width / 2,
+    bottom = cy - depth / 2,
+    top = cy + depth / 2
+  p.moveTo(left + radius, bottom)
+  p.lineTo(right - radius, bottom)
+  p.quadraticCurveTo(right, bottom, right, bottom + radius)
+  p.lineTo(right, top - radius)
+  p.quadraticCurveTo(right, top, right - radius, top)
+  p.lineTo(left + radius, top)
+  p.quadraticCurveTo(left, top, left, top - radius)
+  p.lineTo(left, bottom + radius)
+  p.quadraticCurveTo(left, bottom, left + radius, bottom)
+  return p
+}
+
+/** Wall-hung walnut drawers with a rounded rectangular basin at the window end of a one-metre white counter. */
 const Vanity = ({ fixture: { width: w, depth: d, height: h } }: { fixture: Fixture }) => {
-  const bx = w * 0.21,
-    bz = 0.025,
-    rx = 0.16,
-    rz = 0.115
-  const top = useMemo(() => {
+  const bx = w / 2 - 0.26,
+    bz = 0.025
+  const { top, bowl } = useMemo(() => {
     const shape = new Shape()
     shape.moveTo(-w / 2, -d / 2)
     shape.lineTo(w / 2, -d / 2)
     shape.lineTo(w / 2, d / 2)
     shape.lineTo(-w / 2, d / 2)
     shape.closePath()
-    const hole = new Path()
-    hole.absellipse(bx, -bz, rx, rz, 0, Math.PI * 2, true, 0)
-    shape.holes.push(hole)
-    return new ExtrudeGeometry(shape, { depth: 0.028, bevelEnabled: false, curveSegments: 32 })
-  }, [w, d, bx])
-  useEffect(() => () => top.dispose(), [top])
-  const bowl = useMemo(
-    () => [
-      new Vector2(0, -0.105),
-      new Vector2(0.24, -0.103),
-      new Vector2(0.55, -0.087),
-      new Vector2(0.8, -0.055),
-      new Vector2(0.94, -0.02),
-      new Vector2(1, 0),
-    ],
-    [],
+    shape.holes.push(basinOutline(0.42, 0.3, 0.055, bx, -bz))
+    const top = new ExtrudeGeometry(shape, { depth: 0.028, bevelEnabled: false, curveSegments: 12 })
+    // Matching outlines join the opening to a flat basin floor through a softly rounded shoulder.
+    const levels = [
+      [0.42, 0.3, 0.055, 0],
+      [0.416, 0.296, 0.055, -0.008],
+      [0.394, 0.274, 0.055, -0.028],
+      [0.346, 0.222, 0.06, -0.085],
+      [0.318, 0.194, 0.06, -0.108],
+      [0.3, 0.176, 0.058, -0.115],
+    ]
+    const rings = levels.map(([width, depth, radius]) =>
+      basinOutline(width, depth, radius, bx, -bz).getPoints(12).slice(0, -1),
+    )
+    const count = rings[0].length
+    const positions = rings.flatMap((ring, i) => ring.flatMap((p) => [p.x, levels[i][3], -p.y]))
+    const indices: number[] = []
+    for (let i = 0; i < rings.length - 1; i++)
+      for (let j = 0; j < count; j++) {
+        const a = i * count + j,
+          b = i * count + ((j + 1) % count),
+          c = a + count,
+          e = b + count
+        indices.push(a, b, c, b, e, c)
+      }
+    const center = positions.length / 3
+    positions.push(bx, -0.115, bz)
+    const last = (rings.length - 1) * count
+    for (let j = 0; j < count; j++) indices.push(last + j, last + ((j + 1) % count), center)
+    const bowl = new BufferGeometry()
+    bowl.setAttribute('position', new Float32BufferAttribute(positions, 3))
+    bowl.setIndex(indices)
+    bowl.computeVertexNormals()
+    return { top, bowl }
+  }, [w, d, bx, bz])
+  useEffect(
+    () => () => {
+      top.dispose()
+      bowl.dispose()
+    },
+    [top, bowl],
   )
   return (
     <>
@@ -220,13 +263,12 @@ const Vanity = ({ fixture: { width: w, depth: d, height: h } }: { fixture: Fixtu
       >
         <meshStandardMaterial color={WHITE} shadowSide={FrontSide} roughness={0.23} />
       </mesh>
-      <mesh position={[bx, h, bz]} scale={[rx, 1, rz]} receiveShadow raycast={noRaycast}>
-        <latheGeometry args={[bowl, 40]} />
+      <mesh geometry={bowl} position={[0, h, 0]} receiveShadow raycast={noRaycast}>
         <meshStandardMaterial color={WHITE} roughness={0.24} side={DoubleSide} />
       </mesh>
-      <Rod from={[bx, h - 0.104, bz]} to={[bx, h - 0.1, bz]} radius={0.014} />
+      <Rod from={[bx, h - 0.114, bz - 0.025]} to={[bx, h - 0.111, bz - 0.025]} radius={0.023} />
       <Rod from={[bx, h, -d / 2 + 0.065]} to={[bx, h + 0.18, -d / 2 + 0.065]} radius={0.017} />
-      <Rod from={[bx, h + 0.155, -d / 2 + 0.065]} to={[bx, h + 0.155, bz - 0.025]} radius={0.013} />
+      <Rod from={[bx, h + 0.155, -d / 2 + 0.065]} to={[bx, h + 0.155, bz - 0.06]} radius={0.013} />
       <Block at={[bx, h + 0.192, -d / 2 + 0.08]} size={[0.025, 0.012, 0.075]} />
     </>
   )
