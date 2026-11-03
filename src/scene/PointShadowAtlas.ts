@@ -67,6 +67,8 @@ export class PointShadowAtlas {
     )
     const resized = this.target.width !== width || this.target.height !== height
     if (resized) this.target.setSize(width, height)
+    // The sampler must be complete even if every bulb is dark and no shadow pass allocates it.
+    gl.initRenderTarget(this.target)
 
     lights.forEach((light, i) => {
       const tile = tiles[i]
@@ -123,6 +125,9 @@ export class PointShadowAtlas {
       )
       // Far rooms keep occlusion, colour and brightness, using one filtered comparison instead of five.
       this.uniforms.casaPointShadowQuality.value[i] = tile.size >= 256 ? 1 : 0
+      // Dark fixtures keep their allocation but need no depth pass. ShadowUpdates refreshes their
+      // physical occlusion when switched on, including edits made while they were off.
+      if (light.intensity <= 0) shadow.needsUpdate = false
       if (shadow.needsUpdate) gl.shadowMap.needsUpdate = true
     })
     this.uniforms.casaPointShadowTiles.value.length = lights.length

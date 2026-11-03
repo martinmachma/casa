@@ -99,6 +99,21 @@ moved occluders, the actual two-floor house, room focus, floor transitions, and 
 The 24-light fixture used four 512, four 256 and sixteen 128-pixel maps: 75% fewer shadow texels than
 24 full-detail cube maps, with one point-shadow sampler. This is an allocation comparison, not an FPS claim.
 
+## Light switching performance (2026-11-04)
+
+Every fixture now stays mounted, including bulbs switched off or on a hidden floor, with zero intensity
+while inactive. This keeps Three's point-light/shadow counts and atlas layout stable: toggling a light or
+opening its room no longer recompiles all the house's materials for a new light count. Dark fixtures
+skip shadow depth passes; switching one back on refreshes its occlusion, including edits made while off.
+The atlas texture is initialized even when every bulb starts off, keeping the shadow sampler valid.
+The nearest fixtures retain the detailed atlas slots even when dark, so switching does not move their
+neighbours' cached shadows. Zero-intensity lights skip direct illumination and shadow sampling.
+
+In the local two-floor demo at night, switching a dining light off previously created 21 shader programs
+and stalled a frame for 8.24 seconds. With stable slots, on/off switches created no programs and the
+largest frame gaps were 100–117 ms in the same browser session. Switching the whole room off also created
+no programs. These are local interaction measurements, not an FPS guarantee for other devices.
+
 ## Remaining limitations
 
 This is raster lighting with approximate indirect fill, not global illumination. Screen-space AO cannot account for offscreen or hidden surfaces, and is deliberately local and subtle. Transparent glass does not model transmission/refraction or coloured shadows. Finite shadow maps can still soften or lose very small details, especially at grazing angles. Decorative distant ground outside the physical plot does not enlarge the sun map.

@@ -17,7 +17,7 @@ const WALL_SHADOW_RADIUS = 8
 const SHADOW_RADIUS = 1.5
 // Past this, light is cut off so far rooms cost nothing.
 const REACH = 9
-// All bulbs stay lit. PointShadowAtlas shares one texture and lowers distant shadow detail instead of omitting lights.
+// PointShadowAtlas shares one texture and lowers distant shadow detail instead of omitting lights.
 const SHADOW_MAP = 512
 
 /** Where a lamp's bulb sits, as a share of the lamp's height. */
@@ -35,8 +35,10 @@ type Bulb = {
 }
 
 type HouseLightsProps = {
-  /** The floors on show; lights on any other floor stay dark. */
+  /** Keep every fixture mounted, including on floors currently hidden. */
   floors: Floor[]
+  /** Floors from the ground up that can illuminate the view. */
+  litFloorCount: number
   devices: Device[]
   furniture: FurnitureItem[]
   /** How brightly each light (by device or furniture id) shines, 0 (off) to 1. */
@@ -45,22 +47,23 @@ type HouseLightsProps = {
   tint: (id: string) => string
 }
 
-/** The house's own lights: each ceiling light and lamp that's on is a point light. */
-export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLightsProps) => {
+/** Off fixtures keep their shader slots and atlas tiles, so switching never recompiles the house's materials. */
+export const HouseLights = ({ floors, litFloorCount, devices, furniture, level, tint }: HouseLightsProps) => {
   const bulbs: Bulb[] = []
-  for (const f of floors) {
+  for (const [index, f] of floors.entries()) {
+    const brightness = (id: string) => (index < litFloorCount ? level(id) : 0)
     for (const d of devices)
-      if (d.floor === f.id && d.kind === 'light' && level(d.id) > 0)
+      if (d.floor === f.id && d.kind === 'light')
         bulbs.push({
           id: d.id,
           downlight: d.wall ? WALL_DOWNLIGHT : 1,
           shadowRadius: d.wall ? WALL_SHADOW_RADIUS : SHADOW_RADIUS,
           position: lightPosition(d, f),
-          intensity: CEILING_INTENSITY * level(d.id),
+          intensity: CEILING_INTENSITY * brightness(d.id),
           color: tint(d.id),
         })
     for (const item of furniture)
-      if (item.floor === f.id && isLamp(item.model) && level(item.id) > 0)
+      if (item.floor === f.id && isLamp(item.model))
         bulbs.push({
           id: item.id,
           downlight: 0,
@@ -73,7 +76,7 @@ export const HouseLights = ({ floors, devices, furniture, level, tint }: HouseLi
               item.height * LAMPS[item.model!],
             item.y,
           ],
-          intensity: LAMP_INTENSITY * level(item.id),
+          intensity: LAMP_INTENSITY * brightness(item.id),
           color: tint(item.id),
         })
   }

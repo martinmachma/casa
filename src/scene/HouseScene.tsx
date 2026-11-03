@@ -217,7 +217,7 @@ export const HouseScene = ({
   // While looking round, a tap on a light or lamp picks it, to switch and set it.
   const lightPick = interaction === 'view' ? onPickLight : undefined
   const pickedLight = selection?.kind === 'light' ? selection.id : undefined
-  const litFloors = floors.slice(0, outside || camera === 'walk' ? floors.length : floorIndex + 1)
+  const litFloorCount = outside || camera === 'walk' ? floors.length : floorIndex + 1
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
@@ -354,7 +354,14 @@ export const HouseScene = ({
         />
         <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
         <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
-        <HouseLights floors={litFloors} devices={data.devices} furniture={data.furniture} level={level} tint={tint} />
+        <HouseLights
+          floors={floors}
+          litFloorCount={litFloorCount}
+          devices={data.devices}
+          furniture={data.furniture}
+          level={level}
+          tint={tint}
+        />
         <CompassTracker north={north} needle={needle} />
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
