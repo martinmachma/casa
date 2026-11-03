@@ -7,16 +7,15 @@ type LightPanelProps = {
   kind: string
   name: string
   room: string | undefined
-  entity: string | undefined
   light: LightState
   onChange: (patch: Partial<LightState>) => void
   onClose: () => void
 }
 
 /** The right panel while looking round with a light picked: switch it and set its brightness and colour. */
-export const LightPanel = ({ kind, name, room, entity, light, onChange, onClose }: LightPanelProps) => (
+export const LightPanel = ({ kind, name, room, light, onChange, onClose }: LightPanelProps) => (
   <>
     <PanelHead eyebrow={kind} title={name} sub={room} onClose={onClose} />
-    <LightControls light={light} entity={entity} onChange={onChange} />
+    <LightControls light={light} onChange={onChange} />
   </>
 )

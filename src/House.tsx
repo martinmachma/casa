@@ -564,7 +564,6 @@ export const House = ({ backend, account }: HouseProps) => {
           kind={device ? (device.wall ? 'Smart wall light' : 'Smart ceiling light') : 'Lamp'}
           name={device?.name ?? lamp!.name}
           room={room && roomLabel(room, data.roomNames).name}
-          entity={device?.entity}
           light={lightSettings(lights.states[selection.id], dark)}
           onChange={(patch) => lights.set(selection.id, patch, dark)}
           onClose={() => setSelection(undefined)}

@@ -149,7 +149,7 @@ export const ItemPins = ({
                     </IconButton>
                   </header>
                   {item.kind === 'light' ? (
-                    <LightControls light={light(item.id)} entity={item.entity} onChange={(p) => onLight(item.id, p)} />
+                    <LightControls light={light(item.id)} onChange={(p) => onLight(item.id, p)} />
                   ) : (
                     <p className="hint">
                       {item.entity

@@ -120,7 +120,6 @@ wall(
   1.8,
   'Multiwire outlet',
   2.1,
-  'Height is indicative; coordinate with the kitchen and appliance design.',
 )
 sockets('g-kitchen-ne', 'Kitchen socket', 'g-north', 'a', [2.14, 2.29])
 sw('g-terrace-switch', 'Terrace light switch', 'g-north', 'a', 2.46)
@@ -134,7 +133,6 @@ wall(
   0.58,
   'Wall lighting outlet',
   1.5,
-  'Height is indicative; coordinate with kitchen cabinetry.',
 )
 sockets('g-worktop-west', 'Kitchen worktop socket', 'g-west', 'a', [0.82, 0.98])
 wall('g-dishwasher', 'socket', 'Dishwasher socket', 'g-west', 'a', 1.95, '230 V / 16 A')
@@ -182,7 +180,7 @@ wall(
   1.3,
   'Wall light · max. 100 W, IP20',
   1.8,
-  'Wall-mounted on the storage side of the kitchen partition, beneath the upper stair flight. The drawing does not dimension its height; 1.8 m is indicative.',
+  'Wall-mounted on the storage side of the kitchen partition, beneath the upper stair flight.',
 )
 sw('g-store-switch', 'Storage light switch', 'g-core', 'a', 4.04)
 sw('g-stairs-two-way', 'Staircase two-way switch', 'g-storage-wc', 'b', 2.03, 'Two-way switch')
@@ -277,7 +275,7 @@ wall(
   1.54,
   'T · NTC, IP54',
   2.2,
-  'For the heated-drain thermostat. Mounting height is indicative.',
+  'For the heated-drain thermostat.',
   undefined,
   'outside',
 )
@@ -384,7 +382,6 @@ wall(
   4.23,
   'Wall light · max. 100 W, IP20',
   1.8,
-  'Height is indicative; the drawing does not dimension the wall light.',
 )
 ceiling('u-hall-light', 'Landing ceiling light', 'upper', [3.6, 4.23], 'Ceiling light · max. 100 W, IP20')
 point(
@@ -425,7 +422,6 @@ wall(
   0.8,
   'Wall lighting outlet',
   1.8,
-  'Height is indicative; coordinate with the mirror.',
 )
 sockets('u-bath-basin', 'Bathroom basin socket', 'u-205-bath', 'b', [1.33, 1.49])
 sw('u-bath-mirror-switch', 'Bathroom mirror switch', 'u-205-bath', 'b', 1.33)
@@ -438,7 +434,7 @@ wall(
   2.46,
   'Protected 230 V / 16 A · žebřík',
   0.25,
-  'The electrical note provides for a towel rail heating element, subject to the installed rail. Radiator dimensions and heating circuits are not specified.',
+  'Supply for the towel rail heating element.',
 )
 ceiling('u-bath-light', 'Bathroom ceiling light', 'upper', [4.52, 1.65], 'Ceiling light · max. 100 W, IP20')
 point(
@@ -576,7 +572,7 @@ export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
       [0.62, 1.5, 9.15],
     ],
     notes:
-      '2 × Ø63 mm foundation ducts for power and MET earthing. Drawing requires 1000 mm cover beneath parking; the route is indicative.',
+      '2 × Ø63 mm foundation ducts for power and MET earthing. Drawing requires 1000 mm cover beneath parking.',
   },
   {
     id: 'fibre-feed',

@@ -7,13 +7,11 @@ const KELVIN_TRACK = `linear-gradient(to right, ${[KELVIN_MIN, 3000, 4000, 5000,
 
 type LightControlsProps = {
   light: LightState
-  /** The Home Assistant entity it will be linked to, if set. */
-  entity: string | undefined
   onChange: (patch: Partial<LightState>) => void
 }
 
 /** Everything a Home Assistant light offers: on/off, brightness, and a shade of white or a colour. */
-export const LightControls = ({ light, entity, onChange }: LightControlsProps) => (
+export const LightControls = ({ light, onChange }: LightControlsProps) => (
   <Section
     title="Light"
     aside={<span className="muted num">{light.on ? `${Math.round(light.brightness * 100)} %` : 'Off'}</span>}
@@ -74,10 +72,5 @@ export const LightControls = ({ light, entity, onChange }: LightControlsProps) =
         </label>
       </>
     )}
-    <p className="hint">
-      {entity
-        ? `Only here in the app for now; it isn't linked to ${entity} yet.`
-        : 'Only here in the app for now, until it’s linked to a real light.'}
-    </p>
   </Section>
 )

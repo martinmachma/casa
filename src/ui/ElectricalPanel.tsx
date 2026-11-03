@@ -140,14 +140,6 @@ export const ElectricalDetails = ({
         </p>
       )}
       {device.plan!.notes && <p className="hint">{device.plan!.notes}</p>}
-      <p className="hint">
-        Electrical drawing {device.plan!.sheet} ·{' '}
-        {device.plan!.area === 'roof' ? 'Roof' : device.floor === 'ground' ? '1.NP' : '2.NP'}.
-      </p>
-      <p className="hint">
-        Fixed point from the plan. Position and height are indicative; confirm on site and with the final kitchen,
-        lighting and heating designs.
-      </p>
     </Section>
   </>
 )
