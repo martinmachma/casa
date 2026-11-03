@@ -462,7 +462,6 @@ wall(
   3.43,
   '230 V / 16 A',
   0.25,
-  'Also feeds the boiler’s temperature sensors and room thermostat.',
 )
 wall('u-circulation', 'socket', 'Hot-water circulation pump socket', 'u-east-south', 'a', 3.67, '230 V / 16 A')
 
