@@ -95,16 +95,16 @@ export const ElectricalPanel = ({
         </p>
         {ELECTRICAL_ROUTES.filter((r) => (outside ? r.area !== 'inside' : r.area === 'inside')).map((r) => (
           <p className="hint" key={r.id}>
-            <strong>{r.name}.</strong> {r.notes}
+            <strong>{r.name}.</strong>
+            {r.notes && ` ${r.notes}`}
           </p>
         ))}
       </Section>
       <Section>
         <h3 className="smart-group">Heating</h3>
         <p className="hint">
-          Six panel radiators and a bathroom towel rail follow the background drawing. Positions and approximate widths
-          are traced; heights and depths are illustrative. The plan also marks boiler and circulation pump sockets, and
-          two heated roof drains. Heating pipework and underfloor heating circuits are not specified.
+          Six panel radiators and a bathroom towel rail. The plan also marks boiler and circulation pump sockets, and
+          two heated roof drains.
         </p>
       </Section>
     </>

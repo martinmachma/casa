@@ -102,7 +102,7 @@ const media = (id: string, wallId: string, side: WallSide, tv: number, data: num
     data,
     'DAT',
     0.25,
-    'Double data outlet in a shared frame with power. Internal cable routes are not drawn.',
+    'Double data outlet in a shared frame with power.',
     2,
   )
 }
@@ -445,7 +445,7 @@ point(
   [4.75, 1.05],
   2.3,
   'V · 230 V, up to 100 W',
-  'Shown in the suspended ceiling; exact ceiling height is not dimensioned.',
+  'Shown in the suspended ceiling.',
 )
 sw('u-bath-switch', 'Bathroom light switch', 'u-bath-south', 'b', 4.78)
 sw('u-bath-timer', 'Bathroom fan timer button', 'u-bath-south', 'b', 4.95, 'Push button with run-on relay')
@@ -462,7 +462,7 @@ wall(
   3.43,
   '230 V / 16 A',
   0.25,
-  'Boiler, temperature sensors and room thermostat wiring must be coordinated with the heating supplier; sensor/thermostat positions are not drawn.',
+  'Also feeds the boiler’s temperature sensors and room thermostat.',
 )
 wall('u-circulation', 'socket', 'Hot-water circulation pump socket', 'u-east-south', 'a', 3.67, '230 V / 16 A')
 
@@ -556,7 +556,7 @@ export type ElectricalRoute = {
   kind: 'power' | 'data' | 'earth'
   area: 'outside' | 'roof' | 'inside'
   points: [number, number, number][]
-  notes: string
+  notes?: string
 }
 export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
   {
@@ -587,7 +587,7 @@ export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
       [0.22, 1.5, 7.02],
     ],
     notes:
-      '3 × Ø63 mm foundation communications ducts; 3 × HDPE Ø40 mm beneath parking. Local fibre connection runs to SLA; coordinate with the network provider.',
+      '3 × Ø63 mm foundation communications ducts; 3 × HDPE Ø40 mm beneath parking. Local fibre connection runs to SLA.',
   },
   {
     id: 'data-riser',
@@ -599,7 +599,6 @@ export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
       [0.22, 2.65, 7.02],
       [0.22, 4.11, 6.9],
     ],
-    notes: 'Riser symbols on the floor drawings; intermediate routing is schematic.',
   },
   {
     id: 'power-riser',
@@ -611,7 +610,6 @@ export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
       [0.22, 2.65, 9.15],
       [0.22, 4.11, 9.15],
     ],
-    notes: 'Riser symbols on the floor drawings; intermediate routing is schematic.',
   },
   {
     id: 'lightning-ring',
@@ -626,7 +624,7 @@ export const ELECTRICAL_ROUTES: ElectricalRoute[] = [
       [0.22, ROOF_LEVEL + 0.52, 0.17],
     ],
     notes:
-      'AlMgSi Ø8 mm roof conductor; connects to the adjacent building’s lightning protection. Adjacent-house conductors are not traced as this house’s equipment.',
+      'AlMgSi Ø8 mm roof conductor; connects to the adjacent building’s lightning protection.',
   },
   ...[0.85, 8.65].map((y, i): ElectricalRoute => ({
     id: `air-terminal-${i}`,
