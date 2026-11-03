@@ -5,6 +5,14 @@ import { Matrix4 } from 'three'
 // How long the view must stay still before it's drawn at full quality again.
 const SETTLE_MS = 150
 const MOVING_DPR = 1
+/**
+ * Moves smaller than this (in metres, and in the rotation's terms) don't count: the orbit controls' damping goes on
+ * nudging the camera by less than that long after they stop asking for frames, which would flip each frame drawn
+ * between cheap and full quality, and thin things like door frames would flicker.
+ */
+const STILL = 1e-3
+
+const near = (a: Matrix4, b: Matrix4) => a.elements.every((v, i) => Math.abs(v - b.elements[i]) < STILL)
 
 /**
  * While the camera moves, frames are drawn at most at 1× pixel ratio: on a 2× screen that's a quarter of the pixels.
@@ -28,9 +36,12 @@ export const MotionQuality = () => {
   // full whatever it shows, and a camera still easing after it goes back to cheap frames.
   useFrame(({ camera, gl, viewport }) => {
     camera.updateMatrixWorld()
-    const still = view.current.equals(camera.matrixWorld) && projection.current.equals(camera.projectionMatrix)
-    view.current.copy(camera.matrixWorld)
-    projection.current.copy(camera.projectionMatrix)
+    // Measured from where it last moved, so a slow drift still adds up to a move.
+    const still = near(view.current, camera.matrixWorld) && projection.current.equals(camera.projectionMatrix)
+    if (!still) {
+      view.current.copy(camera.matrixWorld)
+      projection.current.copy(camera.projectionMatrix)
+    }
     if (settled.current) {
       settled.current = false
       moving.current = false
