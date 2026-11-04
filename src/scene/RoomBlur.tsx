@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import {
+  AlwaysDepth,
   Color,
   HalfFloatType,
   Mesh,
@@ -78,16 +79,16 @@ const makeTools = () => {
   quad.frustumCulled = false
   const scene = new Scene()
   scene.add(quad)
-  // A dark wash over the whole picture, to set a highlighted item off from everything else.
+  // A dark wash over the whole picture, to set a highlighted item off from everything else. It also puts the depth
+  // back to the far plane, so the item is drawn over everything without clearing it (see `over`).
   const dim = new Mesh(
     new PlaneGeometry(2, 2),
     new ShaderMaterial({
       uniforms: { alpha: { value: DIM } },
-      vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      vertexShader: 'void main() { gl_Position = vec4(position.xy, 1.0, 1.0); }',
       fragmentShader: 'uniform float alpha; void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, alpha); }',
       transparent: true,
-      depthTest: false,
-      depthWrite: false,
+      depthFunc: AlwaysDepth,
     }),
   )
   dim.frustumCulled = false
@@ -226,10 +227,11 @@ export const RoomBlur = ({
     const autoClear = gl.autoClear
     // A colour background clears the screen whatever autoClear says.
     const background = scene.background
+    // The quad and the dim leave the depth clear. Clearing it here instead would split the screen's pass in two, and
+    // storing and reloading the antialiased picture costs far more than everything else in the frame.
     const over = (layer: number) => {
       gl.autoClear = false
       scene.background = null
-      gl.clearDepth()
       camera.layers.set(layer)
       gl.render(scene, camera)
       scene.background = background

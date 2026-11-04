@@ -30,3 +30,18 @@ it("reaches a window's shade through the wall it's set in, but not through anoth
   scene.updateMatrixWorld()
   expect(reachable(ray.intersectObject(shade), scene, ray)).toHaveLength(0)
 })
+
+it('leaves out what a Fade has hidden, though it stays mounted', () => {
+  const scene = new Scene()
+  const floor = new Group()
+  const piece = box(-5)
+  floor.add(piece)
+  scene.add(floor)
+  scene.updateMatrixWorld()
+  const ray = new Raycaster(new Vector3(0, 0, 0), new Vector3(0, 0, -1))
+  expect(reachable(ray.intersectObject(piece), scene, ray)).not.toHaveLength(0)
+
+  floor.visible = false
+  floor.userData.fadedAway = true
+  expect(reachable(ray.intersectObject(piece), scene, ray)).toHaveLength(0)
+})

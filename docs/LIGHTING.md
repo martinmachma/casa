@@ -79,8 +79,70 @@ existing renderer-mutation errors in OpeningFills' clipping hook and existing Cu
 - A 120-frame local fixture run measured approximately 120 fps with cached shadows. This is a small-scene check on this Mac, not a benchmark for low-end phones or a large number of simultaneously edited lights.
 - `npm test` and the production build pass. Repository-wide ESLint also scans an existing nested `.haru/worktrees` checkout and fails its TypeScript root discovery. A scoped lint check distinguishes existing warnings/errors from the changed rendering code.
 
+## Distant-room lighting
+
+Every switched-on bulb now illuminates the house, regardless of camera position or the GPU's texture-unit
+limit. All point shadows share one depth atlas, retaining the physical walls, closed doors, slabs and roof
+as occluders. The four bulbs nearest the viewed area use 512-pixel faces, the next four use 256, and the
+rest use 128 with one filtered shadow comparison instead of five. Brightness, colour and downward emission
+do not depend on those tiers. A smaller atlas budget reduces detail further rather than omitting bulbs.
+Detailed-light selection has hysteresis and follows the orbit target, avoiding changes from rotation alone.
+Shadows remain cached across camera-only frames; changed atlas tiles refresh when their allocation changes.
+
+Point-shadow vectors use one shared normal varying instead of one position varying per bulb, keeping the
+shader within mobile varying limits. Shadow projection is initialized explicitly when the shared atlas
+replaces Three's cube allocation. Geometry/cutaway updates, shadow invalidation, material preparation and
+colour rendering now have explicit frame order, including when changing floors or entering room focus.
+
+Browser validation covered 24 illuminated rooms on a 16-texture-unit renderer, distant on/off isolation,
+moved occluders, the actual two-floor house, room focus, floor transitions, and simultaneous sun/moon lighting.
+The 24-light fixture used four 512, four 256 and sixteen 128-pixel maps: 75% fewer shadow texels than
+24 full-detail cube maps, with one point-shadow sampler. This is an allocation comparison, not an FPS claim.
+
+## Light switching performance (2026-11-04)
+
+Every fixture now stays mounted, including bulbs switched off or on a hidden floor, with zero intensity
+while inactive. This keeps Three's point-light/shadow counts and atlas layout stable: toggling a light or
+opening its room no longer recompiles all the house's materials for a new light count. Dark fixtures
+skip shadow depth passes; switching one back on refreshes its occlusion, including edits made while off.
+The atlas texture is initialized even when every bulb starts off, keeping the shadow sampler valid.
+The nearest fixtures retain the detailed atlas slots even when dark, so switching does not move their
+neighbours' cached shadows. Zero-intensity lights skip direct illumination and shadow sampling.
+
+In the local two-floor demo at night, switching a dining light off previously created 21 shader programs
+and stalled a frame for 8.24 seconds. With stable slots, on/off switches created no programs and the
+largest frame gaps were 100–117 ms in the same browser session. Switching the whole room off also created
+no programs. These are local interaction measurements, not an FPS guarantee for other devices.
+
+## View switching performance (2026-11-04)
+
+Profiled in Chrome on an M1 Pro with the real house at night, at 2× on a 1512×720 window. The cost was the GPU, and
+it hardly depended on the lights: with every bulb at zero the room view took 68 ms a frame against 79 ms.
+
+- **The room view cleared depth part-way through the screen's pass.** On Metal that stores and reloads the antialiased
+  picture. Nothing needed it: the blurred quad before it writes no depth. Removing it took the room view from 79 to
+  30 ms a frame, antialiasing kept. Opening an item now resets depth with the dim's own quad instead of a clear.
+- **Fades ran at full resolution.** Only camera movement dropped to 1×, so a floor fading in with the camera still drew
+  every pixel at 2× (38 ms a frame, against 14 ms). Fades and cut walls now count as motion, from a switch's first frame.
+- **Floors were rebuilt on every switch.** `Fade` unmounted what it hid, so each return remounted a floor and linked
+  up to 9 programs again. It now hides them and keeps them mounted. `fadedAway` keeps them out of picking, which
+  doesn't otherwise look at `visible`. Electrical-plan devices, which filtered in and out by floor, do the same.
+- **The AO pass let go of materials out of sight**, which relinked or re-patched them on return. A material keeps its
+  patch until it's disposed; it must then be restored, as a disposed material can be used again (StrictMode does this in
+  development), and patching one twice fails to compile. AO targets no longer reallocate with the pixel ratio.
+- **`MergeParts` compared every part on every React render.** Device models and fixtures now skip renders that don't
+  touch them.
+
+Repeat floor switches went from 1.1–1.7 s of frames over 40 ms, and 9 linked programs, to 0.55–0.9 s and at most 2.
+These are development-build figures from a Mac under heavy memory pressure, so they compare with each other only.
+A room's first visit still links about 16 programs for its cut walls; later visits link few or none.
+
 ## Remaining limitations
 
 This is raster lighting with approximate indirect fill, not global illumination. Screen-space AO cannot account for offscreen or hidden surfaces, and is deliberately local and subtle. Transparent glass does not model transmission/refraction or coloured shadows. Finite shadow maps can still soften or lose very small details, especially at grazing angles. Decorative distant ground outside the physical plot does not enlarge the sun map.
 
-The GPU texture budget can omit lower-priority point lights when too many are on at once; those lights no longer create unoccluded fill. Geometry edits redraw the affected shadow set immediately, so editing a scene with many active bulbs costs more than orbiting a static scene. Lamp shades remain transparent to all point-light shadow passes, not only their own bulb. Cutaway furniture retains its complete physical shadow, matching the existing behaviour.
+Geometry edits redraw the affected shadow set immediately, so editing a scene with many active bulbs costs
+more than orbiting a static scene. Distant shadows lose fine detail as their resolution falls. Lamp shades
+remain transparent to all point-light shadow passes, not only their own bulb. Cutaway furniture retains its
+complete physical shadow, matching the existing behaviour. The atlas integration follows Three r186's
+shadow viewport API and shader chunks; an engine upgrade needs visual verification of both.

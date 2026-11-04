@@ -154,6 +154,16 @@ const DeviceMesh = ({
     g.userData.fade = amount
     applyFade(g)
   })
+  // The same element when nothing about it changed: merging looks at every part, so it's left out of other renders.
+  const hasWall = !!wall
+  const model3d = useMemo(
+    () => (
+      <MergeParts>
+        <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={hasWall} />
+      </MergeParts>
+    ),
+    [device, selected, glow, tint, hasWall],
+  )
   const color = device.plan && device.kind === 'socket' && plan ? '#ba7c31' : DEVICE_KINDS[device.kind].color
   const pick = device.kind === 'light' ? onPickLight : onPickDevice
 
@@ -274,11 +284,7 @@ const DeviceMesh = ({
           debug: `${device.name} · ${device.id.slice(0, 4)}`,
         }}
       >
-        <group ref={parts}>
-          <MergeParts>
-            <DeviceModel device={device} selected={selected} glow={glow} tint={tint} wall={!!wall} />
-          </MergeParts>
-        </group>
+        <group ref={parts}>{model3d}</group>
         {hitSphere(device.plan?.area === 'roof' ? [0, 0, 0] : [0, 0, 0.03])}
       </group>
       {marker}

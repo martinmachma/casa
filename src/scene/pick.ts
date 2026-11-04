@@ -1,4 +1,5 @@
 import { Mesh, type Intersection, type Material, type Object3D, type Raycaster } from 'three'
+import { fadedAway } from './Fade'
 
 const materialsOf = (m: Mesh) => [m.material as Material].flat()
 
@@ -54,7 +55,7 @@ const wallOf = (o: Object3D) => {
  * marked `pastWalls` (a window's shade, outside it) through the wall it's set in, though not through any other.
  */
 export const reachable = (hits: Intersection[], scene: Object3D, ray: Raycaster) => {
-  const near = hits.filter((h) => !h.object.userData.outside)
+  const near = hits.filter((h) => !h.object.userData.outside && !fadedAway(h.object))
   if (!near.length) return near
   const solids = solidHits(scene, ray)
   const front = solids[0]
