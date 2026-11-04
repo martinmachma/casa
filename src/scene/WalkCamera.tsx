@@ -18,7 +18,7 @@ const RADIUS = 0.22
 const WALK_SPEED = 1.4 // m/s
 const TURN_SPEED = 1.6 // rad/s
 const LOOK_SPEED = 0.9 // rad/s from the buttons
-const DRAG_LOOK = 0.005 // rad per pixel dragged
+const POINTER_LOOK = 0.005 // rad per pixel the mouse moves or a touch drags
 const MAX_PITCH = 1.2
 // Furniture lower than this (rugs) can be walked over.
 const STEP_OVER = 0.15
@@ -78,7 +78,7 @@ const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
 }
 
 /**
- * First-person camera at eye height: drag to look around, WASD/arrow keys or the on-screen buttons to walk.
+ * First-person camera at eye height: move the mouse (or drag on a touch screen) to look around, WASD/arrow keys or the on-screen buttons to walk.
  * Walls block the way except through open doors and passages; furniture does too.
  */
 export const WalkCamera = ({
@@ -94,6 +94,7 @@ export const WalkCamera = ({
   const camera = useRef<Camera>(null)
   const gl = useThree((s) => s.gl)
   const set = useThree((s) => s.set)
+  const invalidate = useThree((s) => s.invalidate)
   const [start] = useState(() => (outside && outdoor ? gardenStart(floors[0], outdoor) : startingPoint(floor)))
   const pose = useRef({ x: start.at[0], y: start.at[1], yaw: start.yaw, pitch: 0 })
   /** The surface underfoot when not on a stair: the ground floor's slab, paving or lawn, or an upper floor. */
@@ -125,33 +126,50 @@ export const WalkCamera = ({
     return () => set({ controls: null })
   }, [set, look])
 
-  // Drag anywhere on the canvas to look around.
+  // Moving the mouse over the canvas looks around, buttons held or not; a touch has to drag.
   useEffect(() => {
     const el = gl.domElement
-    let last: { x: number; y: number; id: number } | undefined
-    const down = (e: PointerEvent) => (last = { x: e.clientX, y: e.clientY, id: e.pointerId })
-    const move = (e: PointerEvent) => {
-      if (!last || e.pointerId !== last.id) return
-      if (look.enabled) {
-        const p = pose.current
-        // Grab-the-view, like street-view photos: drag left to turn right.
-        p.yaw -= (e.clientX - last.x) * DRAG_LOOK
-        p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch + (e.clientY - last.y) * DRAG_LOOK))
-      }
-      last = { x: e.clientX, y: e.clientY, id: e.pointerId }
+    const aim = (dx: number, dy: number) => {
+      if (!look.enabled) return
+      const p = pose.current
+      p.yaw += dx * POINTER_LOOK
+      p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch - dy * POINTER_LOOK))
+      invalidate()
     }
-    const up = () => (last = undefined)
+    let mouse: { x: number; y: number } | undefined
+    const hover = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return
+      if (mouse) aim(e.clientX - mouse.x, e.clientY - mouse.y)
+      mouse = { x: e.clientX, y: e.clientY }
+    }
+    // Back from the sidebar or a popover, the mouse starts afresh rather than jumping the view.
+    const leave = () => (mouse = undefined)
+    let touch: { x: number; y: number; id: number } | undefined
+    const down = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') touch = { x: e.clientX, y: e.clientY, id: e.pointerId }
+    }
+    const move = (e: PointerEvent) => {
+      if (!touch || e.pointerId !== touch.id) return
+      // Grab-the-view, like street-view photos: drag left to turn right.
+      aim(touch.x - e.clientX, touch.y - e.clientY)
+      touch = { x: e.clientX, y: e.clientY, id: e.pointerId }
+    }
+    const up = () => (touch = undefined)
+    el.addEventListener('pointermove', hover)
+    el.addEventListener('pointerleave', leave)
     el.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', up)
     return () => {
+      el.removeEventListener('pointermove', hover)
+      el.removeEventListener('pointerleave', leave)
       el.removeEventListener('pointerdown', down)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', up)
     }
-  }, [gl, look])
+  }, [gl, look, invalidate])
 
   useEffect(() => {
     const held = keys.current
