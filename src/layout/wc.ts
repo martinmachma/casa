@@ -1,7 +1,8 @@
 import { floorRegions } from './rooms'
 import type { Floor, Wall, WallSide } from './types'
 
-export const WC_TILE_HEIGHT = 1.5
+export const WC_TILE_HEIGHT = 1.2
+export const WC_BOXING_WALLS = ['g-wc-frame', 'g-wc-basin-frame']
 
 /** Only the inward faces within the WC, including the clipped lengths of the shared west and core walls. */
 export const wcWallFinish = (floor: Floor, wall: Wall) => {
@@ -11,6 +12,8 @@ export const wcWallFinish = (floor: Floor, wall: Wall) => {
     'g-storage-wc': 'a',
     'g-core': 'a',
     'g-wc-hall': 'b',
+    'g-wc-frame': 'a',
+    'g-wc-basin-frame': 'a',
   }
   const side = sides[wall.id]
   const region = floorRegions(floor).get('g-wc')

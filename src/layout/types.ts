@@ -34,6 +34,8 @@ export type Wall = {
   against?: string
   /** A parallel structural projection owned by this wall for picking, painting and cutaway. Its footprint stays here. */
   partOf?: string
+  /** False for installation boxing inside a room: solid, but not a new room or wall-paint boundary. */
+  roomBoundary?: boolean
   /** Rooms whose views leave it out, though it stands at their edge. */
   notIn?: string[]
   openings?: Opening[]

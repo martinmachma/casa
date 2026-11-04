@@ -38,7 +38,8 @@ const sortedUnique = (values: number[]): number[] => {
  * one open space split it halfway between their labels.
  */
 export const roomRegions = (floor: Floor): Map<string, RoomRegion> => {
-  const walls = floorWallRects(floor)
+  // Installation boxing stays within its room; its real footprint still blocks furniture and walking.
+  const walls = floorWallRects({ ...floor, walls: floor.walls.filter((wall) => wall.roomBoundary !== false) })
   const { min, max } = floorBounds(floor)
   const xs = sortedUnique([min[0], max[0], ...walls.flatMap((r) => [r.x0, r.x1])])
   const ys = sortedUnique([min[1], max[1], ...walls.flatMap((r) => [r.y0, r.y1])])

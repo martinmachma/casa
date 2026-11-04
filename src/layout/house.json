@@ -197,6 +197,24 @@
               "height": 1.97
             }
           ]
+        },
+        {
+          "id": "g-wc-frame",
+          "against": "g-west",
+          "roomBoundary": false,
+          "from": [0.2755, 6.488],
+          "to": [0.2755, 5.366],
+          "thickness": 0.15,
+          "height": 1.2
+        },
+        {
+          "id": "g-wc-basin-frame",
+          "against": "g-storage-wc",
+          "roomBoundary": false,
+          "from": [0.3505, 5.416],
+          "to": [2.335, 5.416],
+          "thickness": 0.1,
+          "height": 1.2
         }
       ],
       "fixtures": [
@@ -205,7 +223,7 @@
           "name": "Wall-hung WC on the left wall",
           "kind": "toilet",
           "replaces": { "room": "g-wc", "models": ["toilet"] },
-          "x": 0.4705,
+          "x": 0.6205,
           "y": 6.05,
           "rotation": -1.5707963267948966,
           "width": 0.37,
@@ -219,7 +237,7 @@
           "kind": "basin",
           "replaces": { "room": "g-wc", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
           "x": 1.4,
-          "y": 5.496,
+          "y": 5.596,
           "rotation": 0,
           "width": 0.4,
           "depth": 0.26,
