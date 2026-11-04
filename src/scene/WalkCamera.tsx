@@ -127,11 +127,36 @@ export const WalkCamera = ({
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
-  const obstaclesAt = (elevation: number): Obstacle[] => [
-    ...floors.flatMap((f) => wallObstacles(f, openDoors, elevation)),
-    ...solidObstacles(solids, floors, elevation + STEP_OVER, elevation + EYE_HEIGHT),
-    ...(outdoor ? [...outdoor.sheds, ...(outdoor.blocks ?? [])].map(rectObstacle) : []),
-  ]
+  const fixed = useMemo(
+    () => (outdoor ? [...outdoor.sheds, ...(outdoor.blocks ?? [])].map(rectObstacle) : []),
+    [outdoor],
+  )
+  const obstacleCache = useRef<{
+    elevation: number
+    floors: Floor[]
+    solids: typeof solids
+    openDoors: ReadonlySet<string>
+    fixed: Obstacle[]
+    obstacles: Obstacle[]
+  }>(undefined)
+  const obstaclesAt = (elevation: number): Obstacle[] => {
+    const previous = obstacleCache.current
+    if (
+      previous?.elevation === elevation &&
+      previous.floors === floors &&
+      previous.solids === solids &&
+      previous.openDoors === openDoors &&
+      previous.fixed === fixed
+    )
+      return previous.obstacles
+    const obstacles = [
+      ...floors.flatMap((f) => wallObstacles(f, openDoors, elevation)),
+      ...solidObstacles(solids, floors, elevation + STEP_OVER, elevation + EYE_HEIGHT),
+      ...fixed,
+    ]
+    obstacleCache.current = { elevation, floors, solids, openDoors, fixed, obstacles }
+    return obstacles
+  }
 
   useEffect(() => {
     set({ controls: look as never })

@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Matrix4 } from 'three'
+import { motionState } from './motionState'
 
 // How long the view must stay still before it's drawn at full quality again.
 const SETTLE_MS = 150
@@ -33,10 +34,7 @@ export const MotionQuality = ({ view }: { view: string }) => {
   const settled = useRef(false)
   const timer = useRef<number | undefined>(undefined)
 
-  useEffect(
-    () => () => window.clearTimeout(timer.current),
-    [],
-  )
+  useEffect(() => () => window.clearTimeout(timer.current), [])
   useEffect(() => {
     animating()
     invalidate()
@@ -67,6 +65,7 @@ export const MotionQuality = ({ view }: { view: string }) => {
       }, SETTLE_MS)
     }
     // R3F puts its own ratio back on a resize, so this is checked every frame.
+    motionState.moving = moving.current
     const ratio = moving.current ? Math.min(MOVING_DPR, viewport.dpr) : viewport.dpr
     if (gl.getPixelRatio() !== ratio) gl.setPixelRatio(ratio)
   })

@@ -46,6 +46,7 @@ import { MotionQuality } from './MotionQuality'
 import { Outdoor } from './Outdoor'
 import { COLLIDING, DOOR_SWEEP, FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
 import { OVERLAY, reachable } from './pick'
+import { pointerEvents } from './pointerEvents'
 import { slabGeometry } from './prism'
 import { Roof } from './Roof'
 import { RoomBlur } from './RoomBlur'
@@ -301,6 +302,7 @@ export const HouseScene = ({
   return (
     <>
       <Canvas
+        events={pointerEvents}
         shadows="percentage"
         dpr={[1, 2]}
         frameloop="demand"

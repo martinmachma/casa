@@ -91,4 +91,48 @@ describe('point shadow atlas geometry', () => {
     expect(gl.initRenderTarget).toHaveBeenLastCalledWith(map)
     atlas.dispose()
   })
+
+  it('keeps shadow faces in place while walking, then gives detail to the nearest bulbs once settled', () => {
+    const scene = new Scene()
+    const lights = Array.from({ length: 12 }, (_, i) => {
+      const light = new PointLight()
+      light.position.set(i * 2, 2.6, 0)
+      light.castShadow = true
+      scene.add(light)
+      return light
+    })
+    const atlas = new PointShadowAtlas()
+    const gl = {
+      capabilities: { maxTextureSize: 4096 },
+      shadowMap: { needsUpdate: false },
+      initRenderTarget: vi.fn(),
+    } as unknown as WebGLRenderer
+    const camera = new PerspectiveCamera()
+    atlas.prepare(gl, scene, camera, new Vector3())
+    const tiles = atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())
+    const detailed = lights[0].shadow.mapSize.x
+    const distant = lights[11].shadow.mapSize.x
+    const faces = lights.map((l) => l.shadow.getViewport(0))
+    for (const light of lights) light.shadow.needsUpdate = false
+    gl.shadowMap.needsUpdate = false
+
+    const destination = new Vector3(22, 0, 0)
+    atlas.prepare(gl, scene, camera, destination, true)
+    expect(atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())).toEqual(tiles)
+    expect(lights.every((l, i) => l.shadow.getViewport(0) === faces[i])).toBe(true)
+    expect(lights.every((l) => !l.shadow.needsUpdate)).toBe(true)
+    expect(gl.shadowMap.needsUpdate).toBe(false)
+
+    // A real light or geometry change still refreshes occlusion during movement.
+    lights[0].shadow.needsUpdate = true
+    atlas.prepare(gl, scene, camera, destination, true)
+    expect(lights[0].shadow.needsUpdate).toBe(true)
+    expect(gl.shadowMap.needsUpdate).toBe(true)
+
+    atlas.prepare(gl, scene, camera, destination, false)
+    expect(lights[11].shadow.mapSize.x).toBe(detailed)
+    expect(lights[0].shadow.mapSize.x).toBe(distant)
+    expect(atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())).not.toEqual(tiles)
+    atlas.dispose()
+  })
 })

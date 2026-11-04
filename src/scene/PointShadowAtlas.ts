@@ -43,7 +43,7 @@ export class PointShadowAtlas {
     this.target.scissorTest = true
   }
 
-  prepare(gl: WebGLRenderer, scene: Scene, camera: Camera, focus: Vector3) {
+  prepare(gl: WebGLRenderer, scene: Scene, camera: Camera, focus: Vector3, moving = false) {
     scene.updateMatrixWorld()
     const lights = scenePointLights(scene, camera).filter((l) => l.castShadow)
     const current = new Set(lights)
@@ -59,8 +59,13 @@ export class PointShadowAtlas {
       const d = Math.max(1, l.getWorldPosition(this.position).distanceToSquared(focus))
       return d * (this.bindings.get(l)?.tile.size === 512 ? 0.75 : 1)
     }
-    const ranked = [...lights].sort((a, b) => distance(a) - distance(b))
-    const sizes = new Map(ranked.map((l, i) => [l, i < 4 ? 512 : i < 8 ? 256 : 128]))
+    // Changing the detailed set repacks the atlas and redraws many six-face shadows. Keep the allocation
+    // while moving; MotionQuality asks for another frame when settled, when it can catch up once.
+    const keepDetail = moving && lights.every((l) => this.bindings.has(l))
+    const ranked = keepDetail ? [] : [...lights].sort((a, b) => distance(a) - distance(b))
+    const sizes = keepDetail
+      ? new Map(lights.map((l) => [l, this.bindings.get(l)!.tile.size]))
+      : new Map(ranked.map((l, i) => [l, i < 4 ? 512 : i < 8 ? 256 : 128]))
     const { width, height, tiles } = pointShadowLayout(
       lights.map((l) => sizes.get(l)!),
       Math.min(4096, gl.capabilities.maxTextureSize),
@@ -108,16 +113,18 @@ export class PointShadowAtlas {
         shadow.needsUpdate = true
       }
       const before = binding.tile
-      if (resized || before.x !== tile.x || before.y !== tile.y || before.size !== tile.size) shadow.needsUpdate = true
+      const changed = resized || before.x !== tile.x || before.y !== tile.y || before.size !== tile.size
+      if (changed) shadow.needsUpdate = true
       binding.tile = tile
       binding.extents.set(width / tile.size, height / tile.size)
-      binding.viewports = Array.from(
-        { length: 6 },
-        (_, face) => new Vector4(tile.x / tile.size + (face % 3), tile.y / tile.size + Math.floor(face / 3), 1, 1),
-      )
+      if (changed || !binding.viewports.length)
+        binding.viewports = Array.from(
+          { length: 6 },
+          (_, face) => new Vector4(tile.x / tile.size + (face % 3), tile.y / tile.size + Math.floor(face / 3), 1, 1),
+        )
       shadow.map = this.target
       shadow.mapSize.set(tile.size, tile.size)
-      this.uniforms.casaPointShadowTiles.value[i] = new Vector4(
+      ;(this.uniforms.casaPointShadowTiles.value[i] ??= new Vector4()).set(
         tile.x / width,
         tile.y / height,
         tile.size / width,

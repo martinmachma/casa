@@ -24,6 +24,7 @@ import { SSAOShader } from 'three/examples/jsm/shaders/SSAOShader.js'
 import { atlasShadowVertex, atlasShadowVertexPars, receiverPlaneShadows, receiverPlaneShadowKey } from './shadowShader'
 import { ceilingLightMask, fixtureLighting } from './lightEmission'
 import { PointShadowAtlas } from './PointShadowAtlas'
+import { motionState } from './motionState'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
 // Ways of drawing kept for the normal pass, used or not, before the unused ones are let go.
@@ -156,6 +157,7 @@ export const AmbientOcclusion = () => {
       scene,
       camera,
       (controls as { target?: Vector3 } | null)?.target ?? camera.getWorldPosition(focus),
+      motionState.moving,
     )
     const normals = normalsRef.current
     const patched = patchedRef.current
