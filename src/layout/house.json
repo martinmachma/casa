@@ -201,6 +201,32 @@
       ],
       "fixtures": [
         {
+          "id": "g-wc-toilet",
+          "name": "Wall-hung WC on the left wall",
+          "kind": "toilet",
+          "replaces": { "room": "g-wc", "models": ["toilet"] },
+          "x": 0.4705,
+          "y": 6.05,
+          "rotation": -1.5707963267948966,
+          "width": 0.37,
+          "depth": 0.54,
+          "height": 0.26,
+          "z": 0.18
+        },
+        {
+          "id": "g-wc-basin",
+          "name": "Small wall-hung basin with chrome tap and exposed trap",
+          "kind": "basin",
+          "replaces": { "room": "g-wc", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
+          "x": 1.4,
+          "y": 5.496,
+          "rotation": 0,
+          "width": 0.4,
+          "depth": 0.26,
+          "height": 0.13,
+          "z": 0.72
+        },
+        {
           "id": "g-dining-radiator",
           "name": "Dining radiator by the terrace glazing",
           "kind": "radiator",

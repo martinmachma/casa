@@ -273,6 +273,23 @@ const OAK_RUSTIC: FloorMaterial = {
     seed: 14,
   }),
 }
+/** Warm, staggered oak boards across the downstairs WC, matching its reference. */
+const WC_OAK: FloorMaterial = {
+  tile: 2.4,
+  size: 2048,
+  roughness: 0.65,
+  bumpScale: 0.001,
+  draw: wood({
+    base: '#af8959',
+    tile: 2.4,
+    width: 0.2,
+    length: [0.65, 1.25],
+    spread: 0.13,
+    arches: 0.65,
+    cracks: 0.2,
+    seed: 39,
+  }),
+}
 // Spark Perla 60 × 60 cm, matt, rectified, in the hall and storage rooms.
 const SPARK_PERLA: FloorMaterial = {
   tile: 1.8,
@@ -310,6 +327,7 @@ const BATHROOM_SLATE: FloorMaterial = {
 /** Floors by layout room id; rooms left out show the bare slab. */
 const ROOM_FLOORS: Record<string, FloorMaterial | undefined> = {
   'g-living': OAK_NATURAL,
+  'g-wc': WC_OAK,
   'u-hall': OAK_NATURAL,
   'u-room-203': OAK_RUSTIC,
   'u-bedroom': OAK_RUSTIC,

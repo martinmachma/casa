@@ -79,7 +79,7 @@ export type Floor = {
 export type Fixture = {
   id: string
   name: string
-  kind: 'boiler' | 'waterTank' | 'radiator' | 'towelRail' | 'shower' | 'vanity' | 'toilet'
+  kind: 'boiler' | 'waterTank' | 'radiator' | 'towelRail' | 'shower' | 'vanity' | 'basin' | 'toilet'
   x: number
   y: number
   /** Plan angle, radians. */

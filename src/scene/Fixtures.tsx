@@ -170,7 +170,7 @@ const FixtureModel = memo(({ fixture, floor, cutaway }: { fixture: Fixture; floo
           <Boiler fixture={fixture} />
         ) : fixture.kind === 'waterTank' ? (
           <WaterTank fixture={fixture} />
-        ) : fixture.kind === 'shower' || fixture.kind === 'vanity' || fixture.kind === 'toilet' ? (
+        ) : ['shower', 'vanity', 'basin', 'toilet'].includes(fixture.kind) ? (
           <BathroomFitting fixture={fixture} />
         ) : (
           <Radiator fixture={fixture} />

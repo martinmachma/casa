@@ -19,6 +19,7 @@ import { floorBump, floorTexture } from './floorMaterials'
 type V = [number, number, number]
 const BLACK = '#17191a'
 const WHITE = '#f4f3ef'
+const CHROME = '#bac1c5'
 const noRaycast = () => null
 
 const Block = ({
@@ -62,7 +63,12 @@ const Rod = ({ from, to, radius = 0.01, color = BLACK }: { from: V; to: V; radiu
   return (
     <mesh position={center} quaternion={quaternion} castShadow receiveShadow raycast={noRaycast}>
       <cylinderGeometry args={[radius, radius, length, 16]} />
-      <meshStandardMaterial color={color} shadowSide={FrontSide} roughness={0.5} metalness={0.2} />
+      <meshStandardMaterial
+        color={color}
+        shadowSide={FrontSide}
+        roughness={color === CHROME ? 0.22 : 0.5}
+        metalness={color === CHROME ? 0.85 : 0.2}
+      />
     </mesh>
   )
 }
@@ -468,11 +474,88 @@ const Vanity = ({ fixture: { width: w, depth: d, height: h } }: { fixture: Fixtu
   )
 }
 
+/** Compact ceramic hand basin, with an open bowl, chrome mixer and visible bottle trap. */
+const Basin = ({ fixture: { width: w, depth: d, height: h } }: { fixture: Fixture }) => {
+  const bz = 0.025
+  const { rim, bowl } = useMemo(() => {
+    const shape = new Shape()
+    shape.moveTo(-w / 2, -d / 2)
+    shape.lineTo(w / 2, -d / 2)
+    shape.lineTo(w / 2, d / 2)
+    shape.lineTo(-w / 2, d / 2)
+    shape.closePath()
+    shape.holes.push(basinOutline(w - 0.04, d - 0.09, 0.014, 0, -bz))
+    const rim = new ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false, curveSegments: 12 })
+    const rings = [
+      basinOutline(w - 0.04, d - 0.09, 0.014, 0, -bz)
+        .getPoints(12)
+        .slice(0, -1),
+      basinOutline(w - 0.1, d - 0.15, 0.025, 0, -bz)
+        .getPoints(12)
+        .slice(0, -1),
+    ]
+    const count = rings[0].length
+    const positions = rings.flatMap((ring, i) => ring.flatMap((p) => [p.x, i === 0 ? 0 : -0.085, -p.y]))
+    const indices: number[] = []
+    for (let j = 0; j < count; j++) {
+      const next = (j + 1) % count
+      indices.push(j, next, j + count, next, next + count, j + count)
+    }
+    positions.push(0, -0.085, bz)
+    for (let j = 0; j < count; j++) indices.push(count + j, count + ((j + 1) % count), count * 2)
+    const bowl = new BufferGeometry()
+    bowl.setAttribute('position', new Float32BufferAttribute(positions, 3))
+    bowl.setIndex(indices)
+    bowl.computeVertexNormals()
+    return { rim, bowl }
+  }, [w, d])
+  useEffect(
+    () => () => {
+      rim.dispose()
+      bowl.dispose()
+    },
+    [rim, bowl],
+  )
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <Block key={side} at={[side * (w / 2 - 0.008), h / 2, 0]} size={[0.016, h, d]} color={WHITE} roughness={0.22} />
+      ))}
+      <Block at={[0, h / 2, d / 2 - 0.008]} size={[w, h, 0.016]} color={WHITE} roughness={0.22} />
+      <Block at={[0, h / 2, -d / 2 + 0.008]} size={[w, h, 0.016]} color={WHITE} roughness={0.22} />
+      <Block at={[0, 0.012, 0]} size={[w, 0.024, d]} color={WHITE} roughness={0.22} />
+      <mesh
+        geometry={rim}
+        position={[0, h - 0.012, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        castShadow
+        receiveShadow
+        raycast={noRaycast}
+      >
+        <meshStandardMaterial color={WHITE} roughness={0.22} shadowSide={FrontSide} />
+      </mesh>
+      <mesh geometry={bowl} position={[0, h, 0]} receiveShadow raycast={noRaycast}>
+        <meshStandardMaterial color={WHITE} roughness={0.22} side={DoubleSide} />
+      </mesh>
+      <Rod from={[0, h - 0.084, bz]} to={[0, h - 0.081, bz]} radius={0.017} color={CHROME} />
+      <Rod from={[0, h, -d / 2 + 0.035]} to={[0, h + 0.17, -d / 2 + 0.035]} radius={0.013} color={CHROME} />
+      <Rod from={[0, h + 0.14, -d / 2 + 0.035]} to={[0, h + 0.14, bz - 0.01]} radius={0.01} color={CHROME} />
+      <Rod from={[0, h + 0.17, -d / 2 + 0.035]} to={[0, h + 0.17, -d / 2 + 0.075]} radius={0.006} color={CHROME} />
+      <Rod from={[0, 0.01, bz]} to={[0, -0.15, bz]} radius={0.013} color={CHROME} />
+      <Rod from={[0, -0.11, bz]} to={[0, -0.2, bz]} radius={0.026} color={CHROME} />
+      <Rod from={[0, -0.15, bz]} to={[0, -0.15, -d / 2]} radius={0.013} color={CHROME} />
+      <Rod from={[0, -0.15, -d / 2]} to={[0, -0.15, -d / 2 + 0.01]} radius={0.033} color={CHROME} />
+    </>
+  )
+}
+
 export const BathroomFitting = ({ fixture }: { fixture: Fixture }) =>
   fixture.kind === 'shower' ? (
     <Shower fixture={fixture} />
   ) : fixture.kind === 'vanity' ? (
     <Vanity fixture={fixture} />
+  ) : fixture.kind === 'basin' ? (
+    <Basin fixture={fixture} />
   ) : (
     <Toilet fixture={fixture} />
   )
