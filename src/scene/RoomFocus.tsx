@@ -113,7 +113,9 @@ export const RoomCamera = ({
     camera.lookAt(look)
     onView?.(camera.position, look)
     if (k >= 1) setFlying(false)
-  })
+    // Ahead of whatever goes by the camera this frame: mounted after it all, this would otherwise run last, and the
+    // pins would be placed for one frame with the new camera still at the pose it's flying to.
+  }, -1)
   return (
     <>
       <PerspectiveCamera makeDefault fov={FOV} near={0.1} far={200} position={firstPosition} />
