@@ -45,6 +45,7 @@ import { MotionQuality } from './MotionQuality'
 import { Outdoor } from './Outdoor'
 import { COLLIDING, DOOR_SWEEP, FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
 import { OVERLAY, reachable } from './pick'
+import { pointerEvents } from './pointerEvents'
 import { slabGeometry } from './prism'
 import { Roof } from './Roof'
 import { RoomBlur } from './RoomBlur'
@@ -189,6 +190,11 @@ export const HouseScene = ({
   // A window's shade opened is seen from outside on the whole house: every floor and the roof, nothing cut or dimmed.
   const whole = !!open && !!shadeWall(open)
   const closeUp = open ? pins.find((p) => p.key === `tag:${open}`) : undefined
+  // The room stays blurred round it a moment after it's left, for that to ease away.
+  const blurHere = !!focusRoom && !whole
+  const [blurred, setBlurred] = useState<{ floor: Floor; roomId: string }>()
+  if (blurHere && (blurred?.roomId !== focusRoom || blurred.floor !== floors[floorIndex]))
+    setBlurred({ floor: floors[floorIndex], roomId: focusRoom })
   // Floors above the one looked at are left off; one taken off fades out, one put back fades in.
   const shownCount = camera === 'walk' || whole ? floors.length : floorIndex + 1
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
@@ -290,6 +296,7 @@ export const HouseScene = ({
   return (
     <>
       <Canvas
+        events={pointerEvents}
         shadows="percentage"
         dpr={[1, 2]}
         frameloop="demand"
@@ -310,8 +317,9 @@ export const HouseScene = ({
                 ? { position: lastView.position.clone(), target: lastView.target.clone() }
                 : undefined
             }
-            onView={(position, target) => {
-              if (temporaryFocus) {
+            onView={(position, target, moving) => {
+              // A close-up or a pose on the way is no view to stay in: leaving flies from it to the last settled one.
+              if (temporaryFocus || closeUp || moving) {
                 lastView.returnFrom ??= { position: new Vector3(), target: new Vector3() }
                 lastView.returnFrom.position.copy(position)
                 lastView.returnFrom.target.copy(target)
@@ -347,11 +355,16 @@ export const HouseScene = ({
           />
         )}
         <DebugHover copies={interaction === 'view'} />
-        {focusRoom ? (
-          !whole && <RoomBlur floor={floor} roomId={focusRoom} open={open} />
-        ) : !closeUp ? (
-          <CameraNudger nudge={nudge} />
-        ) : null}
+        {blurred && (
+          <RoomBlur
+            floor={blurred.floor}
+            roomId={blurred.roomId}
+            open={blurHere ? open : undefined}
+            leaving={!blurHere}
+            onLeft={() => setBlurred(undefined)}
+          />
+        )}
+        {!focusRoom && !closeUp && <CameraNudger nudge={nudge} />}
         <ItemOutline
           item={hovered}
           over={!!focusRoom && !whole}
@@ -820,7 +833,8 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
         makeDefault
         enabled={!flying}
         target={(flying && start.from ? start.from.target : start.target).toArray()}
-        maxPolarAngle={Math.PI / 2.05}
+        // A flight back can start from below, looking up into a ceiling light.
+        maxPolarAngle={flying ? Math.PI : Math.PI / 2.05}
         zoomToCursor
         minDistance={0.2}
       />
