@@ -45,8 +45,7 @@ type MeasureToolProps = {
   items: FurnitureItem[]
   measure: Measurement
   onPick: (pick: MeasurePick) => void
-  /** Cut walls the same way as the scene's, so hidden ones don't catch the pointer. */
-  cutaway: boolean
+  /** The walls are cut the same way as the scene's (`CutAway`), so hidden ones don't catch the pointer. */
   focus?: Focus
   /** Measuring between points, taps snap to wall faces and to pieces' corners and sides only when these are on. */
   wallSnap: boolean
@@ -64,16 +63,7 @@ type Owner = { wall: Wall } | { item: FurnitureItem }
  * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece, and the whole wall
  * or piece lights up. Draws the line being measured; finished ones are drawn by the scene.
  */
-export const MeasureTool = ({
-  floor,
-  items,
-  measure,
-  onPick,
-  cutaway,
-  focus,
-  wallSnap,
-  furnitureSnap,
-}: MeasureToolProps) => {
+export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, furnitureSnap }: MeasureToolProps) => {
   const walls = useMemo(() => floorWallRects(floor), [floor])
   const footprints = useMemo(() => items.map(footprintOutline), [items])
   const outlines = useMemo(() => [...footprints, ...walls.map(rectOutline)], [footprints, walls])
@@ -167,7 +157,6 @@ export const MeasureTool = ({
             key={wall.id}
             wall={wall}
             floor={floor}
-            cutaway={cutaway}
             focus={focus}
             full={target(floor.height)}
             stub={stubPieces(
@@ -185,7 +174,7 @@ export const MeasureTool = ({
 
       {lit.map(({ owner, ghost }, i) =>
         'wall' in owner ? (
-          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} cutaway={cutaway} focus={focus} />
+          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} focus={focus} />
         ) : (
           <ItemHighlight key={i} item={owner.item} elevation={floor.elevation} ghost={ghost} />
         ),
@@ -216,19 +205,7 @@ const HighlightMaterial = ({ ghost }: { ghost: boolean }) => (
 )
 
 /** The whole wall, openings and all, washed in the accent colour. */
-const WallHighlight = ({
-  wall,
-  floor,
-  ghost,
-  cutaway,
-  focus,
-}: {
-  wall: Wall
-  floor: Floor
-  ghost: boolean
-  cutaway: boolean
-  focus?: Focus
-}) => {
+const WallHighlight = ({ wall, floor, ghost, focus }: { wall: Wall; floor: Floor; ghost: boolean; focus?: Focus }) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(() => wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor)), [wall, floor])
   const boxes = (list: typeof pieces) =>
@@ -242,7 +219,6 @@ const WallHighlight = ({
     <CutawayWall
       wall={wall}
       floor={floor}
-      cutaway={cutaway}
       focus={focus}
       full={boxes(pieces)}
       stub={boxes(stubPieces(pieces, STUB_HEIGHT))}

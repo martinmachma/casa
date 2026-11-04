@@ -24,7 +24,7 @@ export const useItemCut = (
   group: RefObject<Group | null>,
   item: FurnitureItem,
   floor: Floor | undefined,
-  cutaway: boolean,
+  cutaway: RefObject<boolean>,
 ) => {
   const plane = useMemo(() => new Plane(new Vector3(0, -1, 0), UNCUT), [])
   const sectionRef = useRef<{
@@ -69,10 +69,10 @@ export const useItemCut = (
     if (!section) return
     const cut =
       !!floor &&
-      cutaway &&
+      cutaway.current &&
       reaches &&
       inTheWay([item.x, item.y], backing?.wall, [camera.position.x, camera.position.z], center!) &&
-      (!backing || wallCut(backing.wall, floor, backing.outside, camera, cutaway))
+      (!backing || wallCut(backing.wall, floor, backing.outside, camera, cutaway.current))
     const constant = cut ? floor!.elevation + ITEM_CUT_AT : UNCUT
     if (cut) gl.localClippingEnabled = true
     plane.setComponents(0, -1, 0, constant)

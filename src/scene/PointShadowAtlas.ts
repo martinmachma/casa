@@ -60,8 +60,10 @@ export class PointShadowAtlas {
       return d * (this.bindings.get(l)?.tile.size === 512 ? 0.75 : 1)
     }
     // Changing the detailed set repacks the atlas and redraws many six-face shadows. Keep the allocation
-    // while moving; MotionQuality asks for another frame when settled, when it can catch up once.
-    const keepDetail = moving && lights.every((l) => this.bindings.has(l))
+    // while moving; MotionQuality asks for another frame when settled, when it can catch up once. Unless every
+    // shadow is being redrawn anyway, as when the floor changes: then it costs nothing now, and that later frame less.
+    const redrawn = lights.every((l) => l.shadow.needsUpdate || l.intensity <= 0)
+    const keepDetail = moving && !redrawn && lights.every((l) => this.bindings.has(l))
     const ranked = keepDetail ? [] : [...lights].sort((a, b) => distance(a) - distance(b))
     const sizes = keepDetail
       ? new Map(lights.map((l) => [l, this.bindings.get(l)!.tile.size]))

@@ -1,5 +1,5 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Box3, Mesh, Plane, Vector3, type Camera, type Group } from 'three'
 import type { Device } from '../data/types'
 import { defaultHeight, DEVICE_KINDS, onCeiling, type DevicePlacement } from '../devices/kinds'
@@ -7,7 +7,7 @@ import { placeDevice, snapToWall, WALL_REACH } from '../devices/place'
 import { wallAngle, wallHeight, wallLength, wallOutside, wallThickness } from '../layout/geometry'
 import type { Floor, Point } from '../layout/types'
 import { SELECTED_OUTLINE } from './palette'
-import { STUB_HEIGHT, visibleWallHeight, wallCut, type Focus } from './CutawayWall'
+import { CutAway, FollowCut, STUB_HEIGHT, visibleWallHeight, wallCut, type Focus } from './CutawayWall'
 import { DeviceModel } from './DeviceModel'
 import { MergeParts } from './MergeParts'
 import { applyFade, GHOST_OPACITY } from './Fade'
@@ -31,8 +31,6 @@ type DevicesProps = {
   tint: (id: string) => string
   /** Seen from straight above: wall plates get a marker on top of the wall, where they can be seen and picked. */
   plan: boolean
-  /** Fittings on a wall cut away to see inside become see-through; other devices stay solid. */
-  cutaway?: boolean
   /** The room whose walls the cutaway follows, if one is being looked at. */
   focus?: Focus
   /** False unless the devices tool is on. */
@@ -59,7 +57,6 @@ export const Devices = ({
   glow,
   tint,
   plan,
-  cutaway,
   focus,
   interactive,
   onSelect,
@@ -76,11 +73,10 @@ export const Devices = ({
         device={device}
         floor={floor}
         selected={device.id === selectedId}
-        hoveredId={hoveredId}
+        hovered={device.id === hoveredId}
         glow={glow(device.id)}
         tint={tint(device.id)}
         plan={plan}
-        cutaway={cutaway}
         focus={focus}
         interactive={interactive}
         onSelect={onSelect}
@@ -94,22 +90,22 @@ export const Devices = ({
   </group>
 )
 
-type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId' | 'glow' | 'tint'> & {
+type DeviceMeshProps = Omit<DevicesProps, 'devices' | 'selectedId' | 'hoveredId' | 'glow' | 'tint'> & {
   device: Device
   selected: boolean
+  hovered: boolean
   glow: number
   tint: string
 }
 
-const DeviceMesh = ({
+const DeviceMeshParts = ({
   device,
   floor,
   selected,
-  hoveredId,
+  hovered,
   glow,
   tint,
   plan,
-  cutaway = false,
   focus,
   interactive,
   onSelect,
@@ -130,11 +126,13 @@ const DeviceMesh = ({
   const parts = useRef<Group>(null)
   // How high the fitting reaches above the floor: one wholly within a cut wall's stub stays solid, as the stub does.
   const top = useRef(Infinity)
+  // Fittings on a wall cut away to see inside become see-through; other devices stay solid.
+  const cutaway = useRef(false)
   const opacity = (camera: Camera) =>
-    hoveredId !== device.id &&
+    !hovered &&
     wall &&
     top.current > Math.min(STUB_HEIGHT, wallHeight(wall, floor)) &&
-    wallCut(wall, floor, outside, camera, cutaway, focus)
+    wallCut(wall, floor, outside, camera, cutaway.current, focus)
       ? GHOST_OPACITY
       : 1
   // Reapply after a render adds model parts, preserving any fade inherited from the floor.
@@ -286,11 +284,14 @@ const DeviceMesh = ({
       >
         <group ref={parts}>{model3d}</group>
         {hitSphere(device.plan?.area === 'roof' ? [0, 0, 0] : [0, 0, 0.03])}
+        <FollowCut intoRef={cutaway} />
       </group>
       {marker}
     </>
   )
 }
+
+const DeviceMesh = memo(DeviceMeshParts)
 
 type DevicePlacerProps = {
   floor: Floor
@@ -373,19 +374,21 @@ export const DevicePlacer = ({ floor, placement, onPlace, cutaway, plan }: Devic
           </mesh>
         ))}
       {preview && (
-        <DeviceMesh
-          device={{ ...preview, id: 'placing', name: '' }}
-          floor={floor}
-          selected
-          glow={0}
-          tint={DEVICE_KINDS[kind].color}
-          plan={plan}
-          cutaway={cutaway && !plan}
-          interactive={false}
-          onSelect={() => {}}
-          onMove={() => {}}
-          onMoveEnd={() => {}}
-        />
+        <CutAway.Provider value={cutaway && !plan}>
+          <DeviceMesh
+            device={{ ...preview, id: 'placing', name: '' }}
+            floor={floor}
+            selected
+            hovered={false}
+            glow={0}
+            tint={DEVICE_KINDS[kind].color}
+            plan={plan}
+            interactive={false}
+            onSelect={() => {}}
+            onMove={() => {}}
+            onMoveEnd={() => {}}
+          />
+        </CutAway.Provider>
       )}
     </>
   )

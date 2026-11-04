@@ -1,10 +1,11 @@
+import { memo } from 'react'
 import type { Floor, Roof as RoofLayout } from '../layout/types'
 import { roofBoxes } from './roofGeometry'
 
 const noRaycast = () => null
 
 /** The flat roof over the top floor: the slab, a parapet round its edge and the chimney. */
-export const Roof = ({ roof, floor }: { roof: RoofLayout; floor: Floor }) => (
+export const Roof = memo(({ roof, floor }: { roof: RoofLayout; floor: Floor }) => (
   <group>
     {roofBoxes(floor, roof).map((b, i) => (
       <mesh key={i} position={b.at} receiveShadow raycast={noRaycast}>
@@ -13,4 +14,4 @@ export const Roof = ({ roof, floor }: { roof: RoofLayout; floor: Floor }) => (
       </mesh>
     ))}
   </group>
-)
+))

@@ -35,7 +35,6 @@ const setup = (selected: boolean, pointerType = 'mouse', add = false) => {
     },
     elevation: 0,
     selected,
-    showActions: false,
     interactive: true,
     wallSnap: false,
     furnitureSnap: false,

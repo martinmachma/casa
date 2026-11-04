@@ -1,5 +1,14 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep } from './Fade'
 import { animating } from './MotionQuality'
@@ -9,6 +18,21 @@ import type { Floor, Point, Wall } from '../layout/types'
 // Keep the visible outline pickable when the rest of the wall is cut away.
 export const STUB_HEIGHT = 0.3
 const forward = new Vector3()
+
+/**
+ * Whether the walls round what's inside it are cut away. It reaches only what follows the cut, so a floor switch
+ * flips it without re-rendering the walls and furniture in between.
+ */
+export const CutAway = createContext(false)
+
+/** Keeps `intoRef` set to the cut, for frame callbacks to read. */
+export const FollowCut = ({ intoRef }: { intoRef: RefObject<boolean> }) => {
+  const cut = useContext(CutAway)
+  useLayoutEffect(() => {
+    intoRef.current = cut
+  }, [intoRef, cut])
+  return null
+}
 
 /**
  * A room being looked at: its middle, its floor's extent, and the walls along its outline with the way out across
@@ -63,7 +87,6 @@ export const visibleWallHeight = (wall: Wall, floor: Floor, camera: Camera, cuta
 export const CutawayWall = ({
   wall,
   floor,
-  cutaway,
   focus,
   decider: other,
   full,
@@ -73,12 +96,12 @@ export const CutawayWall = ({
   /** The wall whose cut this follows, if not its own (a corner block going with the room's wall it meets). */
   decider?: Wall
   floor: Floor
-  cutaway: boolean
   /** The middle of the room being looked at, if any. */
   focus?: Focus
   full: ReactNode
   stub: ReactNode
 }) => {
+  const cutaway = useContext(CutAway)
   const fullRef = useRef<Group>(null)
   const stubRef = useRef<Group>(null)
   const outside = useMemo(() => wallOutside(other ?? wall, floor), [other, wall, floor])

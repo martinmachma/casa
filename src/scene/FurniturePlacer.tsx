@@ -125,7 +125,6 @@ export const FurniturePlacer = ({
           ground={ground([placed.x, placed.y])}
           selected
           colliding={colliding([...items, placed], wallRects, obstacles).has(PLACING)}
-          showActions={false}
           interactive={false}
           wallSnap={false}
           furnitureSnap={false}
@@ -135,7 +134,6 @@ export const FurniturePlacer = ({
           onMove={noop}
           onMoveEnd={noop}
           onTap={noop}
-          actions={{ onRotate: noop, onDuplicate: noop, onDelete: noop }}
         />
       )}
     </>

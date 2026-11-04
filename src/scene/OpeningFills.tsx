@@ -1,9 +1,10 @@
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { Fragment, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { createContext, Fragment, useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { FrontSide, Group, InstancedMesh, MathUtils, Mesh, Object3D, Plane, Vector3 } from 'three'
 import { DOOR_SWING, OPENING_FRAME as FRAME, openingId, openingSill, shadeId } from '../layout/geometry'
 import { SHADE_INSET, SHADE_UP, type ShadeState } from '../devices/shades'
 import type { Opening, WallSide } from '../layout/types'
+import { CutAway } from './CutawayWall'
 import { raycastIfShown } from './raycast'
 import { GHOST_OPACITY } from './Fade'
 import { DOOR_LEAF, EXTERIOR_FRAME, GLASS, HANDLE, INTERIOR_FRAME, SHADE } from './palette'
@@ -70,21 +71,37 @@ const Boxes = ({ boxes, section }: { boxes: Box[]; section?: boolean }) =>
   ))
 
 /** Closed doors and glazed windows sitting in a wall's openings, in the wall's own frame (u along it, y up). */
+/**
+ * Holds on to the shader of solid shades, and draws nothing. Otherwise, with the only ones shown see-through, nothing
+ * would use it, three would delete it, and the floor switch that shows one again would stall to link it anew.
+ */
+export const SolidShadeShader = () => (
+  <instancedMesh args={[undefined, undefined, 0]} frustumCulled={false} raycast={noRaycast}>
+    <boxGeometry />
+    <FillMaterial color={SHADE} />
+  </instancedMesh>
+)
+
+/** What a tap does to a floor's doors and shades: it changes with the floor looked at, which the walls round them don't. */
+export const OpeningTaps = createContext<{
+  /** Whether a tap on a door opens or closes it. */
+  clickable: boolean
+  /** Opens a shade's controls when it's tapped; left out, shades don't take taps. */
+  onPickShade?: (id: string) => void
+}>({ clickable: false })
+
 export const OpeningFills = ({
   wallId,
   openings,
   exterior,
   outside,
   thickness,
-  clickable,
   top,
   openDoors,
   onToggleDoor,
   shades,
-  onPickShade,
   onHoverShade,
   hoveredShade,
-  ghostShades,
 }: {
   wallId: string
   openings: Opening[]
@@ -96,19 +113,16 @@ export const OpeningFills = ({
   outside?: WallSide
   thickness: number
   shades: Readonly<Record<string, ShadeState>>
-  /** Opens a shade's controls when it's tapped; left out, shades don't take taps. */
-  onPickShade?: (id: string) => void
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
   /** The shade pointed at in the scene or its controls, drawn solid. */
   hoveredShade?: string
-  /** Walls cut away to see in: the shades are drawn whole and see-through, even where the wall is cut down. */
-  ghostShades?: boolean
-  /** Whether a tap on a door opens or closes it. */
-  clickable: boolean
   /** In a wall cut down to its stub: only what's below this height is drawn. */
   top?: number
 }) => {
+  // Walls cut away to see in: the shades are drawn whole and see-through, even where the wall is cut down.
+  const ghostShades = useContext(CutAway)
+  const { clickable, onPickShade } = useContext(OpeningTaps)
   const section = top !== undefined
   const shaded = (o: Opening) => !!outside && (o.type === 'window' || o.type === 'sliding')
   const frameColor = exterior ? EXTERIOR_FRAME : INTERIOR_FRAME

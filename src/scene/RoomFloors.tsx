@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { BufferGeometry, Float32BufferAttribute } from 'three'
-import { subtractRects, type Rect, type RoomRegion } from '../layout/rooms'
+import { floorRegions, subtractRects, type Rect, type RoomRegion } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 import { floorBump, floorTexture, roomFloor } from './floorMaterials'
 import { FLOOR_SLAB } from './palette'
@@ -34,18 +34,16 @@ const floorGeometry = (cells: Rect[]): BufferGeometry => {
   return g
 }
 
-type RoomFloorsProps = {
-  floor: Floor
-  regions: Map<string, RoomRegion>
-}
-
-export const RoomFloors = ({ floor, regions }: RoomFloorsProps) => (
-  <group position={[0, floor.elevation + LIFT, 0]}>
-    {[...regions.values()].map((region) => (
-      <RoomFloorMesh key={region.roomId} region={region} voids={floor.voids} />
-    ))}
-  </group>
-)
+export const RoomFloors = memo(({ floor }: { floor: Floor }) => {
+  const regions = useMemo(() => floorRegions(floor), [floor])
+  return (
+    <group position={[0, floor.elevation + LIFT, 0]}>
+      {[...regions.values()].map((region) => (
+        <RoomFloorMesh key={region.roomId} region={region} voids={floor.voids} />
+      ))}
+    </group>
+  )
+})
 
 type RoomFloorMeshProps = {
   region: RoomRegion

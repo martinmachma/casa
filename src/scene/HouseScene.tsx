@@ -1,6 +1,6 @@
 import { Line, OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MathUtils, MOUSE, Spherical, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Device, FurnitureItem, NewFurnitureItem } from '../data/types'
@@ -8,12 +8,13 @@ import type { HouseData } from '../data/useHouseData'
 import type { DevicePlacement } from '../devices/kinds'
 import { lightColor, lightLevel, type LightState } from '../devices/lights'
 import type { ShadeState } from '../devices/shades'
+import { useStable } from '../lib/useStable'
 import { blockedDoors, colliding, doorSweeps, fixtureSolids, sweepOutline } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
 import { floorBounds, shadeWall } from '../layout/geometry'
 import { groundLevel } from '../layout/ground'
 import { house } from '../layout/layout'
-import { floorRegions, floorWallRects } from '../layout/rooms'
+import { floorWallRects } from '../layout/rooms'
 import type { Floor } from '../layout/types'
 import { clearances } from '../measure/clearance'
 import { distance, formatLength, type MeasuredLine, type Measurement, type MeasurePick } from '../measure/measure'
@@ -24,7 +25,7 @@ import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annota
 import { NEAR_PACE, PAN_SPEED, ZOOM_SPEED, type CameraNudge } from './cameraNudge'
 import { CameraNudger } from './CameraNudger'
 import { Compass, CompassTracker } from './Compass'
-import type { Focus } from './CutawayWall'
+import { CutAway, type Focus } from './CutawayWall'
 import { DebugHover } from './DebugHover'
 import { DevicePlacer, Devices } from './Devices'
 import { ElectricalRoutes } from './ElectricalRoutes'
@@ -42,6 +43,7 @@ import { ItemOutline } from './ItemOutline'
 import { daylight, Lights } from './Lights'
 import { MeasureTool } from './MeasureTool'
 import { MotionQuality } from './MotionQuality'
+import { SolidShadeShader } from './OpeningFills'
 import { Outdoor } from './Outdoor'
 import { COLLIDING, DOOR_SWEEP, FLOOR_SLAB, SELECTED_OUTLINE } from './palette'
 import { OVERLAY, reachable } from './pick'
@@ -133,6 +135,11 @@ type HouseSceneProps = {
 }
 
 const NO_BLOCKED = new Map<string, string[]>()
+const NO_ITEMS: FurnitureItem[] = []
+const noop = () => {}
+
+// With a floor switch nothing about most pieces changes, so a house's worth of them skip re-rendering.
+const Furniture = memo(FurnitureBox)
 
 export const HouseScene = ({
   floorPointer,
@@ -187,13 +194,16 @@ export const HouseScene = ({
     if (!focusRoom && camera === 'walk') lastView.returnFrom = undefined
   }, [focusRoom, camera])
   const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
-  const toggleDoor = (id: string) =>
-    setOpenDoors((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  const toggleDoor = useCallback(
+    (id: string) =>
+      setOpenDoors((current) => {
+        const next = new Set(current)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      }),
+    [],
+  )
   const floor = floors[floorIndex]
   // A window's shade opened is seen from outside on the whole house: every floor and the roof, nothing cut or dimmed.
   const whole = !!open && !!shadeWall(open)
@@ -233,7 +243,13 @@ export const HouseScene = ({
   const level = (id: string) => lightLevel(lights[id], dark)
   const tint = (id: string) => lightColor(lights[id])
   // While looking round, a tap on a light or lamp picks it, to switch and set it.
-  const lightPick = interaction === 'view' ? onPickLight : undefined
+  const pickLight = useStable(onPickLight)
+  const lightPick = interaction === 'view' ? pickLight : undefined
+  const pickShade = useStable(onPickShade)
+  const paintStroke = useStable(onPaint)
+  const paintFace = useStable(onPaintWall)
+  const selectNothing = useStable(() => onSelect(undefined))
+  const selectDevice = useStable((id: string) => onSelect({ kind: 'device', id }))
   const pickedLight = selection?.kind === 'light' ? selection.id : undefined
   const litFloorCount = outside || camera === 'walk' ? floors.length : floorIndex + 1
 
@@ -243,6 +259,7 @@ export const HouseScene = ({
   const wallRects = useMemo(() => floorWallRects(furnitureFloor), [furnitureFloor])
   // Measuring uses its own floor and wall targets; a piece or device being put down takes every tap.
   const pickable = interaction === 'edit' && !placingPiece && !placing
+  const movable = (f: Floor) => pickable && (!outside || f.id === furnitureFloor.id)
   const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside && !whole
   // While arranging, anything that runs into a wall or another piece, or stands where a door swings, is marked.
   const sweeps = useMemo(() => doorSweeps(furnitureFloor), [furnitureFloor])
@@ -275,7 +292,7 @@ export const HouseScene = ({
 
   // A group moves together by however far the grabbed piece went.
   // Pieces may overlap walls and each other; overlaps are only highlighted.
-  const moveItem = (id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
+  const moveItem = useStable((id: string, placement: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => {
     const grabbed = items.find((f) => f.id === id)
     if (!grabbed) return
     if (selectedIds.length < 2) {
@@ -290,16 +307,17 @@ export const HouseScene = ({
       new Map(proposed.map((f) => [f.id, { x: f.x + sx, y: f.y + sy }])),
       `move:${selectedIds.join()}`,
     )
-  }
+  })
   // Shift/⌘-tap adds or removes; a plain tap on a piece of the group keeps the group, so it can be dragged.
-  const pickItem = (id: string, add: boolean) => {
+  const pickItem = useStable((id: string, add: boolean) => {
     if (add) {
       const ids = selectedIds.includes(id) ? selectedIds.filter((s) => s !== id) : [...selectedIds, id]
       onSelect(ids.length ? { kind: 'furniture', ids } : undefined)
     } else if (!selectedIds.includes(id)) onSelect({ kind: 'furniture', ids: [id] })
-  }
-  const saveItem = () => data.endEdit()
-  const moveDevice = (id: string, patch: Partial<Device>) => data.patchDevice(id, patch, `device:${id}`)
+  })
+  const tapItem = useStable((id: string) => selectedIds.length > 1 && onSelect({ kind: 'furniture', ids: [id] }))
+  const saveItem = useStable(() => data.endEdit())
+  const moveDevice = useStable((id: string, patch: Partial<Device>) => data.patchDevice(id, patch, `device:${id}`))
 
   return (
     <>
@@ -403,6 +421,7 @@ export const HouseScene = ({
 
         {house.outdoor && <Outdoor outdoor={house.outdoor} />}
         <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} groundLevel={house.outdoor?.level} />
+        <SolidShadeShader />
 
         {/* Walking shows the connected floors, including the landing and the slab overhead. */}
         {floors.map((f, i) => (
@@ -436,8 +455,10 @@ export const HouseScene = ({
               />
             )}
             <Railings floor={f} />
-            <Fixtures floor={f} cutaway={cutWalls && !focusRoom && f.id === floor.id} />
-            <RoomFloors floor={f} regions={floorRegions(f)} />
+            <CutAway.Provider value={cutWalls && !focusRoom && f.id === floor.id}>
+              <Fixtures floor={f} />
+            </CutAway.Provider>
+            <RoomFloors floor={f} />
             <FloorWalls
               floor={f}
               colors={data.wallColors}
@@ -447,15 +468,15 @@ export const HouseScene = ({
               openDoors={openDoors}
               onToggleDoor={toggleDoor}
               shades={shades}
-              onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? onPickShade : undefined}
+              onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? pickShade : undefined}
               onHoverShade={onHoverItem}
               hoveredShade={hovered}
               cutaway={cutWalls && f.id === floor.id}
               focus={focusPoint}
-              onTap={() => onSelect(undefined)}
+              onTap={selectNothing}
               brush={interaction === 'paint' && (outside || f.id === floor.id) ? brush : undefined}
-              onPaint={onPaint}
-              onPaintWall={onPaintWall}
+              onPaint={paintStroke}
+              onPaintWall={paintFace}
             />
           </Fade>
         ))}
@@ -467,28 +488,27 @@ export const HouseScene = ({
         {floors.flatMap((f) =>
           (['inside', 'outside'] as const).map((area) => (
             <Fade key={`electrical-${f.id}-${area}`} shown={area === 'inside' ? furnished(f) : outside}>
-              <Devices
-                hoveredId={hovered}
-                floor={f}
-                cutaway={cutWalls && f.id === floor.id}
-                focus={focusPoint}
-                devices={data.devices.filter(
-                  (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside') === (area === 'inside'),
-                )}
-                selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
-                glow={level}
-                tint={tint}
-                plan={electrical}
-                interactive={false}
-                onSelect={() => {}}
-                onMove={() => {}}
-                onMoveEnd={() => {}}
-                onPickLight={
-                  pickable ? (id) => onSelect({ kind: 'device', id }) : interaction === 'view' ? onPickLight : undefined
-                }
-                onPickDevice={electrical && !measure ? (id) => onSelect({ kind: 'device', id }) : undefined}
-                onHoverLight={onHoverItem}
-              />
+              <CutAway.Provider value={cutWalls && f.id === floor.id}>
+                <Devices
+                  hoveredId={hovered}
+                  floor={f}
+                  focus={focusPoint}
+                  devices={data.devices.filter(
+                    (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside') === (area === 'inside'),
+                  )}
+                  selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
+                  glow={level}
+                  tint={tint}
+                  plan={electrical}
+                  interactive={false}
+                  onSelect={noop}
+                  onMove={noop}
+                  onMoveEnd={noop}
+                  onPickLight={pickable ? selectDevice : lightPick}
+                  onPickDevice={electrical && !measure ? selectDevice : undefined}
+                  onHoverLight={onHoverItem}
+                />
+              </CutAway.Provider>
             </Fade>
           )),
         )}
@@ -520,24 +540,25 @@ export const HouseScene = ({
         {floors.map((f) => (
           <Fade key={f.id} shown={furnished(f)}>
             <Fade shown={outside || f.id === floor.id}>
-              <Devices
-                floor={f}
-                hoveredId={hovered}
-                cutaway={cutWalls && f.id === floor.id}
-                focus={focusPoint}
-                devices={data.devices.filter((d) => !d.plan && d.floor === f.id)}
-                selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
-                glow={level}
-                tint={tint}
-                plan={camera === 'top'}
-                onPickLight={lightPick}
-                onPickDevice={focusRoom ? lightPick : undefined}
-                onHoverLight={onHoverItem}
-                interactive={pickable && !outside}
-                onSelect={(id) => onSelect({ kind: 'device', id })}
-                onMove={moveDevice}
-                onMoveEnd={saveItem}
-              />
+              <CutAway.Provider value={cutWalls && f.id === floor.id}>
+                <Devices
+                  floor={f}
+                  hoveredId={hovered}
+                  focus={focusPoint}
+                  devices={data.devices.filter((d) => !d.plan && d.floor === f.id)}
+                  selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
+                  glow={level}
+                  tint={tint}
+                  plan={camera === 'top'}
+                  onPickLight={lightPick}
+                  onPickDevice={focusRoom ? lightPick : undefined}
+                  onHoverLight={onHoverItem}
+                  interactive={pickable && !outside}
+                  onSelect={selectDevice}
+                  onMove={moveDevice}
+                  onMoveEnd={saveItem}
+                />
+              </CutAway.Provider>
             </Fade>
             {measurements
               .filter((m) => m.floor === f.id && !outside)
@@ -553,50 +574,51 @@ export const HouseScene = ({
                   userData={OVERLAY}
                 />
               ))}
-            {data.furniture
-              .filter((item) => item.floor === f.id)
-              .map((item) => (
-                <FurnitureBox
-                  key={item.id}
-                  item={item}
-                  glow={isLamp(item.model) ? level(item.id) : 0}
-                  glowColor={tint(item.id)}
-                  onPickLight={isLamp(item.model) ? lightPick : undefined}
-                  onHoverLight={onHoverItem}
-                  elevation={f.elevation}
-                  ground={ground(f, [item.x, item.y])}
-                  floor={f}
-                  // Looking at one room, only its walls are cut; its furniture is what's being looked at.
-                  cutaway={cutWalls && !focusRoom && f.id === floor.id}
-                  selected={selectedIds.includes(item.id) || pickedLight === item.id}
-                  colliding={clashes.has(item.id)}
-                  showActions={selectedIds[selectedIds.length - 1] === item.id}
-                  interactive={pickable && (!outside || f.id === furnitureFloor.id)}
-                  // Group snapping is applied to the shared translation in moveItem.
-                  wallSnap={wallSnap && selectedIds.length < 2}
-                  furnitureSnap={furnitureSnap && selectedIds.length < 2}
-                  snapWalls={wallSnap ? snapWalls : undefined}
-                  snapItems={items}
-                  onSelect={pickItem}
-                  onMove={moveItem}
-                  onMoveEnd={saveItem}
-                  onTap={(id) => selectedIds.length > 1 && onSelect({ kind: 'furniture', ids: [id] })}
-                  actions={itemActions}
-                />
-              ))}
+            {/* Looking at one room, only its walls are cut; its furniture is what's being looked at. */}
+            <CutAway.Provider value={cutWalls && !focusRoom && f.id === floor.id}>
+              {data.furniture
+                .filter((item) => item.floor === f.id)
+                .map((item) => (
+                  <Furniture
+                    key={item.id}
+                    item={item}
+                    glow={isLamp(item.model) ? level(item.id) : 0}
+                    glowColor={tint(item.id)}
+                    onPickLight={isLamp(item.model) ? lightPick : undefined}
+                    onHoverLight={onHoverItem}
+                    elevation={f.elevation}
+                    ground={ground(f, [item.x, item.y])}
+                    floor={f}
+                    selected={selectedIds.includes(item.id) || pickedLight === item.id}
+                    colliding={clashes.has(item.id)}
+                    actions={selectedIds[selectedIds.length - 1] === item.id ? itemActions : undefined}
+                    interactive={movable(f)}
+                    // Group snapping is applied to the shared translation in moveItem.
+                    wallSnap={wallSnap && selectedIds.length < 2}
+                    furnitureSnap={furnitureSnap && selectedIds.length < 2}
+                    snapWalls={movable(f) && wallSnap ? snapWalls : undefined}
+                    snapItems={movable(f) ? items : NO_ITEMS}
+                    onSelect={pickItem}
+                    onMove={moveItem}
+                    onMoveEnd={saveItem}
+                    onTap={tapItem}
+                  />
+                ))}
+            </CutAway.Provider>
           </Fade>
         ))}
         {measure && (
-          <MeasureTool
-            floor={floor}
-            items={items}
-            measure={measure}
-            onPick={onMeasurePick}
-            cutaway={cutWalls}
-            focus={focusPoint}
-            wallSnap={wallSnap}
-            furnitureSnap={furnitureSnap}
-          />
+          <CutAway.Provider value={cutWalls}>
+            <MeasureTool
+              floor={floor}
+              items={items}
+              measure={measure}
+              onPick={onMeasurePick}
+              focus={focusPoint}
+              wallSnap={wallSnap}
+              furnitureSnap={furnitureSnap}
+            />
+          </CutAway.Provider>
         )}
 
         <AnnotationProjector items={annotations} refs={annotationRefs} />
@@ -640,14 +662,14 @@ export const HouseScene = ({
 }
 
 /** The floor's outline (its walls' bounding box if it has none), with its voids as holes. */
-const Slab = ({ floor, color = FLOOR_SLAB, depth = SLAB }: { floor: Floor; color?: string; depth?: number }) => {
+const Slab = memo(({ floor, color = FLOOR_SLAB, depth = SLAB }: { floor: Floor; color?: string; depth?: number }) => {
   const geometry = useMemo(() => slabGeometry(floor, depth), [floor, depth])
   return (
     <mesh geometry={geometry} position={[0, floor.elevation, 0]} receiveShadow>
       <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>
   )
-}
+})
 
 /** How high the house stands: the top floor's walls plus the flat roof and its parapet. */
 const roofTop = (floors: Floor[]) => {
