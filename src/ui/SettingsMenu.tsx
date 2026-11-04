@@ -63,6 +63,7 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
         ],
         ['A / D', 'Orbit or Plan: pan left / right. Walk: sidestep left / right.'],
         ['← / →', 'Orbit or Plan: pan left / right. Walk: turn left / right.'],
+        ['Escape', 'Walk: free the mouse. Click the view to capture it again.'],
       ],
     },
     {

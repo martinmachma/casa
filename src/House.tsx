@@ -125,6 +125,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // A room on its own, from the menu: a fixed view of it with its smart items alongside.
   const [roomView, setRoomView] = useState<string>()
   const [popover, setPopover] = useState<string>()
+  const [walkCaptured, setWalkCaptured] = useState(false)
   // Opening an item borrows its room's view; closing it returns to where it was opened.
   const [itemOrigin, setItemOrigin] = useState<{
     room: string | undefined
@@ -670,6 +671,8 @@ export const House = ({ backend, account }: HouseProps) => {
           floors={house.floors}
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
           onWalkFloorChange={setFloorIndex}
+          walkCursorNeed={planning || rightOpen || !!popover}
+          onWalkCaptured={setWalkCaptured}
           outside={outside}
           camera={camera}
           cutaway={cutaway}
@@ -788,7 +791,9 @@ export const House = ({ backend, account }: HouseProps) => {
         {modeBar}
 
         {/* Drags and pinches move the 3D view; walking on a touch screen needs the buttons. */}
-        {!focus && camera === 'walk' && (
+        {walkCaptured && <div className="crosshair" aria-hidden />}
+
+        {!focus && camera === 'walk' && !walkCaptured && (
           <CameraPad
             onHold={(axis, value) => (nudge.current[axis] = value)}
             onRelease={(axis, value) => nudge.current[axis] === value && (nudge.current[axis] = 0)}

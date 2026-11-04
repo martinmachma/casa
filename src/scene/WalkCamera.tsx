@@ -18,7 +18,7 @@ const RADIUS = 0.22
 const WALK_SPEED = 1.4 // m/s
 const TURN_SPEED = 1.6 // rad/s
 const LOOK_SPEED = 0.9 // rad/s from the buttons
-const POINTER_LOOK = 0.005 // rad per pixel the mouse moves or a touch drags
+const POINTER_LOOK = 0.005 // rad per pixel the captured mouse moves or a drag covers
 const MAX_PITCH = 1.2
 // Furniture lower than this (rugs) can be walked over.
 const STEP_OVER = 0.15
@@ -37,7 +37,14 @@ type WalkCameraProps = {
   outdoor?: Outdoor
   /** Start in the garden instead of indoors. */
   outside?: boolean
+  /** A panel or Planning wants a real cursor, so the mouse stays free. */
+  cursorNeed: boolean
+  /** Tells whether the mouse is captured, so the crosshair can show. */
+  onCaptured: (captured: boolean) => void
 }
+
+/** Refused without a recent click, or just after Esc; a later click tries again. */
+const capture = (el: HTMLElement) => void el.requestPointerLock()?.catch(() => {})
 
 const rectObstacle = (r: Rect): Obstacle => ({
   cx: (r.x0 + r.x1) / 2,
@@ -78,7 +85,7 @@ const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
 }
 
 /**
- * First-person camera at eye height: move the mouse (or drag on a touch screen) to look around, WASD/arrow keys or the on-screen buttons to walk.
+ * First-person camera at eye height: the captured mouse (or a drag, on a touch screen or in Planning) looks around, WASD/arrow keys or the on-screen buttons to walk.
  * Walls block the way except through open doors and passages; furniture does too.
  */
 export const WalkCamera = ({
@@ -90,11 +97,16 @@ export const WalkCamera = ({
   openDoors,
   outdoor,
   outside,
+  cursorNeed,
+  onCaptured,
 }: WalkCameraProps) => {
   const camera = useRef<Camera>(null)
   const gl = useThree((s) => s.gl)
   const set = useThree((s) => s.set)
   const invalidate = useThree((s) => s.invalidate)
+  const setEvents = useThree((s) => s.setEvents)
+  const getState = useThree((s) => s.get)
+  const cursorNeeded = useRef(cursorNeed)
   const [start] = useState(() => (outside && outdoor ? gardenStart(floors[0], outdoor) : startingPoint(floor)))
   const pose = useRef({ x: start.at[0], y: start.at[1], yaw: start.yaw, pitch: 0 })
   /** The surface underfoot when not on a stair: the ground floor's slab, paving or lawn, or an upper floor. */
@@ -126,50 +138,66 @@ export const WalkCamera = ({
     return () => set({ controls: null })
   }, [set, look])
 
-  // Moving the mouse over the canvas looks around, buttons held or not; a touch has to drag.
+  // With the mouse captured it just turns the view and everything aims through the crosshair at the centre.
   useEffect(() => {
     const el = gl.domElement
     const aim = (dx: number, dy: number) => {
-      if (!look.enabled) return
       const p = pose.current
       p.yaw += dx * POINTER_LOOK
       p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch - dy * POINTER_LOOK))
       invalidate()
     }
-    let mouse: { x: number; y: number } | undefined
-    const hover = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse') return
-      if (mouse) aim(e.clientX - mouse.x, e.clientY - mouse.y)
-      mouse = { x: e.clientX, y: e.clientY }
-    }
-    // Back from the sidebar or a popover, the mouse starts afresh rather than jumping the view.
-    const leave = () => (mouse = undefined)
-    let touch: { x: number; y: number; id: number } | undefined
+    const compute = getState().events.compute
+    setEvents({
+      compute: (event, state, previous) => {
+        if (document.pointerLockElement !== el) return compute?.(event, state, previous)
+        state.pointer.set(0, 0)
+        state.raycaster.setFromCamera(state.pointer, state.camera)
+      },
+    })
+    const lockChange = () => onCaptured(document.pointerLockElement === el)
+    const lockError = () => onCaptured(false)
+    let last: { x: number; y: number; id: number } | undefined
     const down = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse') touch = { x: e.clientX, y: e.clientY, id: e.pointerId }
+      // Esc lets the mouse go; a click on the view takes it back. If that's refused, dragging still looks around.
+      if (e.pointerType === 'mouse' && !cursorNeeded.current) capture(el)
+      last = { x: e.clientX, y: e.clientY, id: e.pointerId }
     }
     const move = (e: PointerEvent) => {
-      if (!touch || e.pointerId !== touch.id) return
+      if (document.pointerLockElement === el) return aim(e.movementX, e.movementY)
+      if (!last || e.pointerId !== last.id) return
       // Grab-the-view, like street-view photos: drag left to turn right.
-      aim(touch.x - e.clientX, touch.y - e.clientY)
-      touch = { x: e.clientX, y: e.clientY, id: e.pointerId }
+      if (look.enabled) aim(last.x - e.clientX, last.y - e.clientY)
+      last = { x: e.clientX, y: e.clientY, id: e.pointerId }
     }
-    const up = () => (touch = undefined)
-    el.addEventListener('pointermove', hover)
-    el.addEventListener('pointerleave', leave)
+    const up = () => (last = undefined)
+    document.addEventListener('pointerlockchange', lockChange)
+    document.addEventListener('pointerlockerror', lockError)
     el.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', up)
     return () => {
-      el.removeEventListener('pointermove', hover)
-      el.removeEventListener('pointerleave', leave)
+      setEvents({ compute })
+      document.removeEventListener('pointerlockchange', lockChange)
+      document.removeEventListener('pointerlockerror', lockError)
       el.removeEventListener('pointerdown', down)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', up)
+      if (document.pointerLockElement === el) document.exitPointerLock()
+      onCaptured(false)
     }
-  }, [gl, look, invalidate])
+  }, [gl, look, invalidate, setEvents, getState, onCaptured])
+
+  // Capture the mouse on arrival and whenever panels close; give it back when one opens.
+  useEffect(() => {
+    cursorNeeded.current = cursorNeed
+    const el = gl.domElement
+    if (cursorNeed) {
+      if (document.pointerLockElement === el) document.exitPointerLock()
+    } else if (matchMedia('(pointer: fine)').matches) capture(el)
+  }, [cursorNeed, gl])
 
   useEffect(() => {
     const held = keys.current

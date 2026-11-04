@@ -1060,6 +1060,21 @@ p {
   z-index: 10;
 }
 
+/* Walk mode's aim, while the mouse is captured: a dark-edged dot that reads on any wall. */
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 55%);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* Lengths pinned in the scene: gaps to the walls, and the measured distance. */
 .annotation {
   position: absolute;

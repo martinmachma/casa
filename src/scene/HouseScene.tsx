@@ -64,6 +64,8 @@ type HouseSceneProps = {
   floors: Floor[]
   floorIndex: number
   onWalkFloorChange: (index: number) => void
+  walkCursorNeed: boolean
+  onWalkCaptured: (captured: boolean) => void
   /** The whole house from outside, roof and all; what's inside shows through the windows but can't be picked. */
   outside: boolean
   camera: CameraMode
@@ -131,6 +133,8 @@ export const HouseScene = ({
   floors,
   floorIndex,
   onWalkFloorChange,
+  walkCursorNeed,
+  onWalkCaptured,
   outside,
   camera,
   cutaway,
@@ -330,6 +334,8 @@ export const HouseScene = ({
             openDoors={openDoors}
             outdoor={house.outdoor}
             outside={outside}
+            cursorNeed={walkCursorNeed}
+            onCaptured={onWalkCaptured}
           />
         ) : (
           <CameraRig
