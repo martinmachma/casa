@@ -55,6 +55,8 @@ import type { CameraMode, Interaction, Selection } from './selection'
 import { ShadowUpdates } from './ShadowUpdates'
 import { Railings, Stairs } from './Stairs'
 import { WalkCamera } from './WalkCamera'
+import { WalkPlacementTracker, type WalkPlacement } from './WalkPlacement'
+import type { WalkStart } from '../walk/start'
 import { ZoomToSurface } from './ZoomToSurface'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
@@ -65,6 +67,9 @@ type HouseSceneProps = {
   floors: Floor[]
   floorIndex: number
   onWalkFloorChange: (index: number) => void
+  walkPlacement: WalkPlacement
+  walkStart: WalkStart | undefined
+  walkFloorIndex: number
   walkCursorNeed: boolean
   onWalkCaptured: (captured: boolean) => void
   /** The whole house from outside, roof and all; what's inside shows through the windows but can't be picked. */
@@ -134,6 +139,9 @@ export const HouseScene = ({
   floors,
   floorIndex,
   onWalkFloorChange,
+  walkPlacement,
+  walkStart,
+  walkFloorIndex,
   walkCursorNeed,
   onWalkCaptured,
   outside,
@@ -303,6 +311,16 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
       >
         <InputInvalidator />
+        {camera !== 'walk' && (
+          <WalkPlacementTracker
+            placementRef={walkPlacement}
+            floors={floors}
+            activeFloor={walkFloorIndex}
+            shownCount={shownCount}
+            furniture={data.furniture}
+            openDoors={openDoors}
+          />
+        )}
         <MotionQuality view={[floor.id, outside, camera, focusRoom, open].join()} />
         <PointerReach />
         <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
@@ -335,13 +353,13 @@ export const HouseScene = ({
           <WalkCamera
             key={`${viewKey}-${outside}`}
             floor={floor}
+            start={walkStart}
             floors={floors}
             onFloorChange={onWalkFloorChange}
             furniture={data.furniture}
             nudge={nudge}
             openDoors={openDoors}
             outdoor={house.outdoor}
-            outside={outside}
             cursorNeed={walkCursorNeed}
             onCaptured={onWalkCaptured}
           />
