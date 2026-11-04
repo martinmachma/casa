@@ -20,6 +20,7 @@ const fromRow = (r: VersionRow): Version => ({
   createdAt: r.created_at,
   ...(r.based_on ? { basedOn: r.based_on } : {}),
   data: {
+    builtInFinishes: r.data?.builtInFinishes,
     builtInFixtures: r.data?.builtInFixtures,
     walls: r.data?.walls ?? [],
     wallAreas: r.data?.wallAreas ?? [],

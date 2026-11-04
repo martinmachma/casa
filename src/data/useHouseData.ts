@@ -17,6 +17,7 @@ import { EMPTY_STATE, wallColorKey } from './types'
 import { ELECTRICAL_DEVICES } from '../devices/electrical'
 import { house } from '../layout/layout'
 import { withBuiltInFixtures } from './builtInFixtures'
+import { withBuiltInFinishes } from './builtInFinishes'
 
 /** What is being looked at: whichever version is live, the bare house, or one version by id. */
 export type Viewing = typeof LIVE | typeof BARE | string
@@ -38,7 +39,8 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 const HISTORY_LIMIT = 100
 
 const NO_VERSIONS: Version[] = []
-const BARE_STATE = withBuiltInFixtures(EMPTY_STATE, house.floors)
+const withBuiltIns = (state: HouseState) => withBuiltInFinishes(withBuiltInFixtures(state, house.floors), house.floors)
+const BARE_STATE = withBuiltIns(EMPTY_STATE)
 
 /** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
 export const sameJson = (a: unknown, b: unknown): boolean => {
@@ -61,7 +63,7 @@ const readDraft = (backend: Backend): Draft | undefined => {
     const raw = localStorage.getItem(draftKey(backend))
     if (!raw) return undefined
     const draft = JSON.parse(raw) as Draft
-    return { ...draft, state: withBuiltInFixtures(draft.state, house.floors) }
+    return { ...draft, state: withBuiltIns(draft.state) }
   } catch {
     return undefined
   }
@@ -118,7 +120,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const versions = useMemo(
     () =>
       savedVersions.map((version) => {
-        const data = withBuiltInFixtures(version.data, house.floors)
+        const data = withBuiltIns(version.data)
         return data === version.data ? version : { ...version, data }
       }),
     [savedVersions],
