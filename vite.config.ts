@@ -22,7 +22,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png', 'textures/wc-patterned-stone.jpg'],
       manifest: {
         name: 'Casa',
         short_name: 'Casa',

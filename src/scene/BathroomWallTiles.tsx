@@ -1,5 +1,6 @@
+import { useTexture } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
-import { PlaneGeometry } from 'three'
+import { NoColorSpace, PlaneGeometry, RepeatWrapping, SRGBColorSpace } from 'three'
 import type { WallPiece } from '../layout/geometry'
 import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
 import { WC_TILE_HEIGHT, wcWallFinish } from '../layout/wc'
@@ -12,6 +13,28 @@ const noRaycast = () => null
 const PROUD = 0.0002
 
 type V = [number, number, number]
+
+const ImageTileMaterial = ({ finish }: { finish: typeof WC_STONE }) => {
+  const source = useTexture(finish.image)
+  const { map, bump } = useMemo(() => {
+    const map = source.clone()
+    map.wrapS = map.wrapT = RepeatWrapping
+    map.repeat.set(1 / finish.tile, 1 / finish.tile)
+    map.anisotropy = 8
+    map.colorSpace = SRGBColorSpace
+    const bump = map.clone()
+    bump.colorSpace = NoColorSpace
+    return { map, bump }
+  }, [source, finish.tile])
+  useEffect(
+    () => () => {
+      map.dispose()
+      bump.dispose()
+    },
+    [map, bump],
+  )
+  return <meshStandardMaterial map={map} bumpMap={bump} bumpScale={finish.bumpScale} roughness={finish.roughness} />
+}
 
 const TileFace = ({
   at,
@@ -28,7 +51,7 @@ const TileFace = ({
   height: number
   u: number
   v: number
-  finish: FloorMaterial
+  finish: FloorMaterial | typeof WC_STONE
 }) => {
   const geometry = useMemo(() => {
     const g = new PlaneGeometry(width, height)
@@ -39,12 +62,16 @@ const TileFace = ({
   useEffect(() => () => geometry.dispose(), [geometry])
   return (
     <mesh position={at} rotation={rotation} geometry={geometry} receiveShadow raycast={noRaycast}>
-      <meshStandardMaterial
-        map={floorTexture(finish)}
-        bumpMap={floorBump(finish)}
-        bumpScale={finish.bumpScale}
-        roughness={finish.roughness}
-      />
+      {'image' in finish ? (
+        <ImageTileMaterial finish={finish} />
+      ) : (
+        <meshStandardMaterial
+          map={floorTexture(finish)}
+          bumpMap={floorBump(finish)}
+          bumpScale={finish.bumpScale}
+          roughness={finish.roughness}
+        />
+      )}
     </mesh>
   )
 }
