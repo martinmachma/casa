@@ -42,8 +42,8 @@ export const MotionQuality = ({ view }: { view: string }) => {
     invalidate()
   }, [view, invalidate])
 
-  // Runs before the camera rigs' own frame callbacks, so a move is seen a frame late; the settling frame is drawn in
-  // full whatever it shows, and a camera still easing after it goes back to cheap frames.
+  // Runs before most camera rigs' frame callbacks, so their moves are seen a frame late; held keys and buttons go first.
+  // Switching ratio can stall a frame past SETTLE_MS, so a settling frame that finds the view moved stays cheap.
   useFrame(({ camera, gl, viewport }) => {
     camera.updateMatrixWorld()
     // Measured from where it last moved, so a slow drift still adds up to a move.
@@ -54,10 +54,11 @@ export const MotionQuality = ({ view }: { view: string }) => {
     }
     const animated = asked.frame
     asked.frame = false
-    if (settled.current) {
-      settled.current = false
-      moving.current = false
-    } else if (!still || animated) {
+    const settling = settled.current
+    settled.current = false
+    if (still && !animated) {
+      if (settling) moving.current = false
+    } else {
       moving.current = true
       window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => {

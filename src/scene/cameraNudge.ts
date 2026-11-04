@@ -20,6 +20,18 @@ export type CameraNudgeAxis = keyof CameraNudge
 
 export const createCameraNudge = (): CameraNudge => ({ forward: 0, right: 0, zoom: 0, turn: 0, tilt: 0 })
 
+const FIRST_STEP = 1 / 120
+const STEP_GROWTH = 1.5
+const LONGEST_STEP = 0.1
+
+/**
+ * How far in seconds to move a held camera this frame, given the step before it (0 when it was still). The canvas
+ * renders on demand, so a move's first delta holds all the idle time before it, and starting to move can stall a frame
+ * or two; following delta straight away would make the camera jump. Steps can only grow gently, so it eases in instead.
+ */
+export const heldStep = (delta: number, previous: number) =>
+  previous ? Math.min(delta, LONGEST_STEP, previous * STEP_GROWTH) : FIRST_STEP
+
 /** Closer to the orbit target than this, panning and zooming keep the pace they have here. */
 export const NEAR_PACE = 4
 

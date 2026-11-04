@@ -11,7 +11,7 @@ import type { Floor, Outdoor, Point, Rect } from '../layout/types'
 import { isTyping } from '../ui/isTyping'
 import { resolveCollisions, solidObstacles, wallObstacles, type Obstacle } from '../walk/collide'
 import { stairHeight, stairRuns, type StairRun } from '../walk/stairs'
-import type { CameraNudge } from './cameraNudge'
+import { heldStep, type CameraNudge } from './cameraNudge'
 
 const EYE_HEIGHT = 1.6
 const RADIUS = 0.22
@@ -110,6 +110,7 @@ export const WalkCamera = ({
   const runs = useMemo(() => stairRuns(floors), [floors])
   const solids = useMemo(() => [...furniture, ...floors.flatMap(fixtureSolids)], [furniture, floors])
   const keys = useRef(new Set<string>())
+  const step = useRef(0)
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
@@ -178,7 +179,6 @@ export const WalkCamera = ({
   useFrame(({ invalidate }, delta) => {
     const cam = camera.current
     if (!cam) return
-    const dt = Math.min(delta, 0.1)
     const p = pose.current
     const k = keys.current
     const n = nudge.current
@@ -186,7 +186,10 @@ export const WalkCamera = ({
     const forward = n.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
     const strafe = n.right + axis(k.has('d'), k.has('a'))
     const turn = n.turn + axis(k.has('arrowright'), k.has('arrowleft'))
-    if (forward || strafe || turn || n.tilt) invalidate()
+    const going = !!(forward || strafe || turn || n.tilt)
+    if (going) invalidate()
+    step.current = going ? heldStep(delta, step.current) : 0
+    const dt = going ? step.current : Math.min(delta, 0.1)
 
     p.yaw += turn * TURN_SPEED * dt
     p.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p.pitch + n.tilt * LOOK_SPEED * dt))
@@ -262,7 +265,8 @@ export const WalkCamera = ({
     } else eye.current = target
     cam.position.set(p.x, eye.current + EYE_HEIGHT, p.y)
     cam.rotation.set(p.pitch, -p.yaw, 0, 'YXZ')
-  })
+    // Before MotionQuality, so a move's very first frame is already cheap.
+  }, -1)
 
   return <PerspectiveCamera ref={camera} makeDefault fov={70} near={0.05} far={200} />
 }
