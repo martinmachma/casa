@@ -138,11 +138,7 @@ export const ItemPins = ({
                 }}
               >
                 {item.kind === 'light' ? (
-                  <LightControls
-                    light={light(item.id)}
-                    onChange={(p) => onLight(item.id, p)}
-                    onClose={() => onOpen(undefined)}
-                  />
+                  <LightControls light={light(item.id)} onChange={(p) => onLight(item.id, p)} />
                 ) : (
                   <div className="room-card-head">
                     <p className="hint">

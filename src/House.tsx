@@ -557,7 +557,6 @@ export const House = ({ backend, account }: HouseProps) => {
         <LightControls
           light={lightSettings(lights.states[selection.id], dark)}
           onChange={(patch) => lights.set(selection.id, patch, dark)}
-          onClose={() => setSelection(undefined)}
         />
       )
     }

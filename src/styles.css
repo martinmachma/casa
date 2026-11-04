@@ -1621,34 +1621,6 @@ input[type='range'] {
   accent-color: var(--accent);
 }
 
-/* A light's colour temperature: the track shows the whites, warm to cool. */
-input[type='range'].kelvin {
-  appearance: none;
-  height: 12px;
-  margin: 6px 0;
-  border-radius: 6px;
-  border: 1px solid var(--line-strong);
-}
-
-input[type='range'].kelvin::-webkit-slider-thumb {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-  background: var(--ink);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
-  cursor: pointer;
-}
-
-input[type='range'].kelvin::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-  background: var(--ink);
-}
-
 .date-input {
   min-height: 30px;
   padding: 0 8px;
@@ -3493,30 +3465,185 @@ input[type='range'].kelvin::-moz-range-thumb {
 }
 
 .light-controls {
+  --brightness-dim: #4a4540;
+  align-items: center;
   gap: 8px;
 }
 
-.light-top {
+.light-mode {
+  align-self: stretch;
+}
+
+.light-mode button {
+  padding: 0 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.light-dial {
+  position: relative;
+  width: 148px;
+  height: 148px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.light-dial > svg {
+  position: absolute;
+  inset: 0;
+}
+
+/* A hairline round the ring, or its coolest white would vanish into the card. */
+.light-dial > svg path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 26;
+  stroke-linecap: round;
+}
+
+.light-dial-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  mask: radial-gradient(closest-side, transparent 67%, #000 68%);
+}
+
+.light-dial-cap,
+.light-dial-thumb {
+  position: absolute;
+  translate: -50% -50%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.light-dial-cap {
+  width: 24px;
+  height: 24px;
+}
+
+.light-dial-thumb {
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--surface);
+  box-shadow:
+    0 0 0 1px rgb(34 26 18 / 0.2),
+    0 2px 6px rgb(34 26 18 / 0.3);
+}
+
+.light-dial-power {
+  position: absolute;
+  left: 44px;
+  top: 44px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink);
+  cursor: pointer;
 }
 
-.light-top .switch {
-  flex: 1;
-  min-height: 28px;
+.light-dial-value {
+  position: absolute;
+  inset: 128px 0 0;
+  text-align: center;
   font-size: 13px;
-  font-weight: 500;
+  line-height: 18px;
+  font-weight: 600;
+  pointer-events: none;
 }
 
-.light-controls .field {
-  gap: 4px;
+/* Only for the keyboard; a pointer uses the ring. Focus shows on the dial. */
+.light-dial input {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.light-field-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.light-dial:has(input:focus-visible) {
+  border-radius: var(--radius-lg);
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+input[type='range'].light-brightness {
+  appearance: none;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 2px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+input[type='range'].light-brightness::-webkit-slider-thumb {
+  appearance: none;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--brightness-thumb);
+  box-shadow: 0 0 0 1px rgb(34 26 18 / 0.2);
+}
+
+input[type='range'].light-brightness::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--brightness-thumb);
+}
+
+/* In the card over the room, the switch and the slider run to its edges and take its corners. */
+.room-popover:has(.light-controls) {
+  width: 200px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.room-popover .light-controls {
+  gap: 0;
+}
+
+.room-popover .light-mode {
+  padding: 0;
+  gap: 0;
+  border-radius: 0;
+}
+
+.room-popover .light-mode button {
+  min-height: 36px;
+  border-radius: 0;
+}
+
+.room-popover .light-mode button:first-child {
+  border-top-left-radius: 13px;
+}
+
+.room-popover .light-mode button:last-child {
+  border-top-right-radius: 13px;
+}
+
+.room-popover .light-dial {
+  margin: 10px 0;
+}
+
+.room-popover input[type='range'].light-brightness {
+  border-radius: 0;
+}
+
+.room-popover input[type='range'].light-brightness:focus-visible,
+.room-popover .light-mode button:focus-visible {
+  outline-offset: -2px;
 }
 
 .room-popover > * {
