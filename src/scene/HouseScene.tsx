@@ -7,6 +7,7 @@ import type { Device, FurnitureItem, NewFurnitureItem } from '../data/types'
 import type { HouseData } from '../data/useHouseData'
 import type { DevicePlacement } from '../devices/kinds'
 import { lightColor, lightLevel, type LightState } from '../devices/lights'
+import { overVoid } from '../devices/place'
 import type { ShadeState } from '../devices/shades'
 import { blockedDoors, colliding, doorSweeps, fixtureSolids, sweepOutline } from '../furniture/collision'
 import { floorSnapWalls, snapGroupToWalls } from '../furniture/snap'
@@ -222,6 +223,11 @@ export const HouseScene = ({
   const lightPick = interaction === 'view' ? onPickLight : undefined
   const pickedLight = selection?.kind === 'light' ? selection.id : undefined
   const litFloorCount = outside || camera === 'walk' ? floors.length : floorIndex + 1
+  const deviceArea = (d: Device, f: Floor) =>
+    d.plan?.area !== 'inside' ? 'outside' : overVoid(d, f) ? 'stairwell' : 'inside'
+  // Looking round a floor, a light hanging over the stairwell from the floor above stays in sight.
+  const seenUpStairwell = (f: Floor) =>
+    camera === 'orbit' && !outside && !electrical && floors.indexOf(f) === floorIndex + 1
 
   // While a piece is selected (and while it's dragged), how far each side is from the walls.
   const selectedIds = selection?.kind === 'furniture' ? selection.ids : []
@@ -434,16 +440,17 @@ export const HouseScene = ({
         </Fade>
 
         {floors.flatMap((f) =>
-          (['inside', 'outside'] as const).map((area) => (
-            <Fade key={`electrical-${f.id}-${area}`} shown={area === 'inside' ? furnished(f) : outside}>
+          (['inside', 'stairwell', 'outside'] as const).map((area) => (
+            <Fade
+              key={`electrical-${f.id}-${area}`}
+              shown={area === 'outside' ? outside : furnished(f) || (area === 'stairwell' && seenUpStairwell(f))}
+            >
               <Devices
                 hoveredId={hovered}
                 floor={f}
                 cutaway={cutWalls && f.id === floor.id}
                 focus={focusPoint}
-                devices={data.devices.filter(
-                  (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside') === (area === 'inside'),
-                )}
+                devices={data.devices.filter((d) => d.plan && d.floor === f.id && deviceArea(d, f) === area)}
                 selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
                 glow={level}
                 tint={tint}

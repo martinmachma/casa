@@ -107,6 +107,13 @@ export const lightPosition = (device: Device, floor: Floor): [number, number, nu
   return [device.x + n[0] * out, floor.elevation + device.z, device.y + n[1] * out]
 }
 
+/** A light hanging over the floor's opening onto the floor below (the stairwell), so it shines down there too. */
+export const overVoid = (device: Device, floor: Floor) => {
+  if (device.kind !== 'light') return false
+  const [x, , y] = lightPosition(device, floor)
+  return (floor.voids ?? []).some((v) => x > v.x0 && x < v.x1 && y > v.y0 && y < v.y1)
+}
+
 /** The room a device is in; a wall-mounted one belongs to the room its face looks into. */
 export const deviceRoom = (device: Device, floor: Floor, regions: Map<string, RoomRegion>): string | undefined => {
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)

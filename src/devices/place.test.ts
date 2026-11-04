@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Device } from '../data/types'
 import { roomRegions } from '../layout/rooms'
 import type { Floor } from '../layout/types'
-import { deviceRoom, lightPosition, placeDevice, snapToWall } from './place'
+import { deviceRoom, lightPosition, overVoid, placeDevice, snapToWall } from './place'
 
 // A 4×3 m box (wall centre lines), 0.2 m walls, a window in the south wall, split by a wall at x = 2 with a door.
 const floor: Floor = {
@@ -84,6 +84,13 @@ describe('deviceRoom', () => {
     expect(lightPosition(east, floor)[0]).toBeCloseTo(2.22)
     const ceiling = device(placeDevice('light', [3, 1], floor)!)
     expect(lightPosition(ceiling, floor)).toEqual([3, 2.42, 1])
+  })
+
+  it('tells a light over the stairwell from one beside it, by where its bulb is', () => {
+    const open = { ...floor, voids: [{ x0: 0, y0: 0, x1: 1, y1: 3 }] }
+    expect(overVoid(device({ ...placeDevice('wall-light', [0.05, 1], floor)!, wall: undefined }), open)).toBe(true)
+    expect(overVoid(device(placeDevice('light', [3, 1], floor)!), open)).toBe(false)
+    expect(overVoid(device({ ...placeDevice('switch', [0.5, 1], floor)!, wall: undefined }), open)).toBe(false)
   })
 
   it('places smart wall lights on either face, including outside without a room', () => {
