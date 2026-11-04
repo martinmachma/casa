@@ -64,7 +64,7 @@ export const WalkButton = ({ disabled, onStart, onDrag, onDrop, onCancel }: Prop
         disabled={disabled}
         draggable={false}
         onDragStart={(e) => e.preventDefault()}
-        title="Walk · click to start here, or drag onto a floor"
+        title="Walk · click to start here, or drag onto a floor or the garden"
         onClick={() => {
           if (!suppressClick.current) onStart()
         }}
@@ -87,7 +87,7 @@ export const WalkButton = ({ disabled, onStart, onDrag, onDrop, onCancel }: Prop
             style={{ left: preview.x, top: preview.y }}
           >
             <Footprints size={21} />
-            <span>{preview.valid ? 'Release to start walking' : 'Drop onto a floor'}</span>
+            <span>{preview.valid ? 'Release to start walking' : 'Drop onto a floor or the garden'}</span>
           </div>,
           document.body,
         )}

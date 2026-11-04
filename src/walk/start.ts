@@ -1,6 +1,7 @@
 import { floorBounds, insidePolygon } from '../layout/geometry'
 import { floorRegions, roomAt, subtractRects } from '../layout/rooms'
-import type { Floor, Point } from '../layout/types'
+import { onSlab } from '../layout/ground'
+import type { Floor, Outdoor, Point } from '../layout/types'
 import { resolveCollisions, type Obstacle } from './collide'
 
 export const EYE_HEIGHT = 1.6
@@ -8,7 +9,26 @@ export const WALK_RADIUS = 0.22
 // Rugs and other low items can be stepped over.
 export const STEP_OVER = 0.15
 
-export type WalkStart = { floorIndex: number; at: Point; yaw: number }
+export type WalkStart = { floorIndex: number; at: Point; yaw: number; outside?: boolean }
+
+/** A nearby clear spot on the plot, staying outside the house and within the garden boundary. */
+export const outdoorWalkPoint = (
+  floor: Floor,
+  outdoor: Outdoor,
+  preferred: Point,
+  obstacles: Obstacle[],
+): Point | undefined => {
+  if (onSlab(floor, preferred) || !insidePolygon(preferred, outdoor.garden)) return
+  const at = resolveCollisions(preferred, WALK_RADIUS, obstacles)
+  if (onSlab(floor, at)) return
+  const supported = Array.from({ length: 16 }, (_, i): Point => [
+    at[0] + Math.cos((i * Math.PI) / 8) * WALK_RADIUS,
+    at[1] + Math.sin((i * Math.PI) / 8) * WALK_RADIUS,
+  ]).every((p) => insidePolygon(p, outdoor.garden))
+  if (!supported) return
+  const checked = resolveCollisions(at, WALK_RADIUS, obstacles)
+  return Math.hypot(checked[0] - at[0], checked[1] - at[1]) < 1e-5 ? at : undefined
+}
 
 /** A slab surface, excluding its stairwell and the space beyond its edge. */
 export const onFloorSurface = (floor: Floor, at: Point, radius = 0): boolean => {

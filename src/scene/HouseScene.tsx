@@ -333,6 +333,7 @@ export const HouseScene = ({
           <WalkPlacementTracker
             placementRef={walkPlacement}
             floors={floors}
+            outdoor={house.outdoor}
             activeFloor={walkFloorIndex}
             shownCount={shownCount}
             furniture={data.furniture}

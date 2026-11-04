@@ -330,7 +330,7 @@ export const House = ({ backend, account }: HouseProps) => {
     walkOrigin.current = { camera, outside, floor: floorIndex, rightTucked }
     setWalkStart(start)
     setFloorIndex(start.floorIndex)
-    setOutside(false)
+    setOutside(!!start.outside)
     setCamera('walk')
     setRightTucked(true)
     setSelection(undefined)

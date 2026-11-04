@@ -6,9 +6,9 @@ import type { FurnitureItem } from '../data/types'
 import { fixtureSolids } from '../furniture/collision'
 import { insidePolygon } from '../layout/geometry'
 import { groundLevel } from '../layout/ground'
-import type { Floor, Outdoor, Point, Rect } from '../layout/types'
+import type { Floor, Outdoor, Point } from '../layout/types'
 import { isTyping } from '../ui/isTyping'
-import { resolveCollisions, solidObstacles, wallObstacles, type Obstacle } from '../walk/collide'
+import { outdoorObstacles, resolveCollisions, solidObstacles, wallObstacles, type Obstacle } from '../walk/collide'
 import { stairHeight, stairRuns, type StairRun } from '../walk/stairs'
 import { EYE_HEIGHT, STEP_OVER, WALK_RADIUS as RADIUS, type WalkStart } from '../walk/start'
 import { heldStep, type CameraNudge } from './cameraNudge'
@@ -39,14 +39,6 @@ type WalkCameraProps = {
 
 /** Refused without a recent click, or just after Esc; a later click tries again. */
 const capture = (el: HTMLElement) => void el.requestPointerLock()?.catch(() => {})
-
-const rectObstacle = (r: Rect): Obstacle => ({
-  cx: (r.x0 + r.x1) / 2,
-  cy: (r.y0 + r.y1) / 2,
-  hu: (r.x1 - r.x0) / 2,
-  hv: (r.y1 - r.y0) / 2,
-  angle: 0,
-})
 
 /**
  * First-person camera at eye height: the captured mouse (or a drag, on a touch screen or in Planning) looks around, WASD/arrow keys or the on-screen buttons to walk.
@@ -93,10 +85,7 @@ export const WalkCamera = ({
   // Stands in for orbit controls: furniture dragging switches it off so the view holds still meanwhile.
   const look = useMemo(() => ({ enabled: true }), [])
 
-  const fixed = useMemo(
-    () => (outdoor ? [...outdoor.sheds, ...(outdoor.blocks ?? [])].map(rectObstacle) : []),
-    [outdoor],
-  )
+  const fixed = useMemo(() => outdoorObstacles(outdoor), [outdoor])
   const obstacleCache = useRef<{
     elevation: number
     floors: Floor[]
