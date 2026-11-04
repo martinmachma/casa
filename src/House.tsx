@@ -633,8 +633,6 @@ export const House = ({ backend, account }: HouseProps) => {
       return (
         <FurniturePanel
           onAdd={addPiece}
-          devices={data.devices.filter((d) => d.kind === 'light' && (outside || d.floor === floor.id))}
-          onSelectDevice={(id) => select({ kind: 'device', id })}
           placing={placing}
           onPlacing={(kind) => {
             setSelection(undefined)
