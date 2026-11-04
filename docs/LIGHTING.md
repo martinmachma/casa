@@ -137,6 +137,12 @@ Repeat floor switches went from 1.1–1.7 s of frames over 40 ms, and 9 linked p
 These are development-build figures from a Mac under heavy memory pressure, so they compare with each other only.
 A room's first visit still links about 16 programs for its cut walls; later visits link few or none.
 
+**Going to planning at night froze the page.** At night home had a moon and a sun casting no shadow; planning has no
+moon and a sun that casts, so the number of directional lights changed, and with it every material's program. From a room that
+took 23 links and stalled one frame for 10 seconds. The moon and sun now stay mounted, at zero if need be, and only the
+brighter one casts, so that number never changes. The same switch now links nothing and its longest frame is 94 ms. At
+dusk, when both are lit, the fainter one no longer casts a shadow.
+
 ## Remaining limitations
 
 This is raster lighting with approximate indirect fill, not global illumination. Screen-space AO cannot account for offscreen or hidden surfaces, and is deliberately local and subtle. Transparent glass does not model transmission/refraction or coloured shadows. Finite shadow maps can still soften or lose very small details, especially at grazing angles. Decorative distant ground outside the physical plot does not enlarge the sun map.
