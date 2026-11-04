@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Group, Material, Mesh, Object3D } from 'three'
+import { animating } from './MotionQuality'
 
 export const FADE_SECONDS = 0.35
 /** How much of a shade or device shows while the walls are cut away to see inside. */
@@ -53,30 +54,43 @@ export const fadeStep = (now: number, target: number, delta: number) => {
   return now + Math.max(-step, Math.min(step, target - now))
 }
 
-/** Fades its contents in when shown and out when hidden, keeping them until they've faded away. Whatever is shown from the start is just there. */
+/** Faded right out by a `Fade`, so nothing in it takes the pointer. */
+export const fadedAway = (o: Object3D) => {
+  for (let p: Object3D | null = o; p; p = p.parent) if (p.userData.fadedAway) return true
+  return false
+}
+
+/**
+ * Fades its contents in when shown and out when hidden. Whatever is shown from the start is just there. Faded away
+ * they stay mounted, only not drawn: taking them down would rebuild a whole floor, and link its shaders again, on
+ * every switch.
+ */
 export const Fade = ({ shown, children }: { shown: boolean; children: ReactNode }) => {
   const group = useRef<Group>(null)
   const k = useRef(shown ? 1 : 0)
-  const [present, setPresent] = useState(shown)
-  if (shown && !present) setPresent(true)
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [shown, redraw])
-  // Put back, it starts out unseen.
   useLayoutEffect(() => {
     const g = group.current
-    if (!present || !g) return
-    g.userData.fade = k.current
+    if (!g || k.current) return
+    g.userData.fade = 0
+    g.userData.fadedAway = true
+    g.visible = false
     applyFade(g)
-  }, [present])
+  }, [])
   useFrame(({ invalidate }, delta) => {
     const g = group.current
     const target = shown ? 1 : 0
     if (!g || (k.current === target && g.userData.fade === target)) return
     k.current = fadeStep(k.current, target, delta)
     g.userData.fade = k.current
+    g.userData.fadedAway = !k.current
+    g.visible = !!k.current
     applyFade(g)
-    if (k.current !== target) invalidate()
-    else if (!target) setPresent(false)
+    if (k.current !== target) {
+      invalidate()
+      animating()
+    }
   })
-  return present ? <group ref={group}>{children}</group> : null
+  return <group ref={group}>{children}</group>
 }

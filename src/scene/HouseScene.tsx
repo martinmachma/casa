@@ -292,7 +292,7 @@ export const HouseScene = ({
         onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
       >
         <InputInvalidator />
-        <MotionQuality />
+        <MotionQuality view={[floor.id, outside, camera, focusRoom, open].join()} />
         <PointerReach />
         <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
         {focusRoom || closeUp ? (
@@ -427,31 +427,34 @@ export const HouseScene = ({
           {house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
         </Fade>
 
-        {floors.map((f) => (
-          <Devices
-            key={`electrical-${f.id}`}
-            hoveredId={hovered}
-            floor={f}
-            cutaway={cutWalls && f.id === floor.id}
-            focus={focusPoint}
-            devices={data.devices.filter(
-              (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside' ? furnished(f) : outside),
-            )}
-            selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
-            glow={level}
-            tint={tint}
-            plan={electrical}
-            interactive={false}
-            onSelect={() => {}}
-            onMove={() => {}}
-            onMoveEnd={() => {}}
-            onPickLight={
-              pickable ? (id) => onSelect({ kind: 'device', id }) : interaction === 'view' ? onPickLight : undefined
-            }
-            onPickDevice={electrical && !measure ? (id) => onSelect({ kind: 'device', id }) : undefined}
-            onHoverLight={onHoverItem}
-          />
-        ))}
+        {floors.flatMap((f) =>
+          (['inside', 'outside'] as const).map((area) => (
+            <Fade key={`electrical-${f.id}-${area}`} shown={area === 'inside' ? furnished(f) : outside}>
+              <Devices
+                hoveredId={hovered}
+                floor={f}
+                cutaway={cutWalls && f.id === floor.id}
+                focus={focusPoint}
+                devices={data.devices.filter(
+                  (d) => d.plan && d.floor === f.id && (d.plan.area === 'inside') === (area === 'inside'),
+                )}
+                selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
+                glow={level}
+                tint={tint}
+                plan={electrical}
+                interactive={false}
+                onSelect={() => {}}
+                onMove={() => {}}
+                onMoveEnd={() => {}}
+                onPickLight={
+                  pickable ? (id) => onSelect({ kind: 'device', id }) : interaction === 'view' ? onPickLight : undefined
+                }
+                onPickDevice={electrical && !measure ? (id) => onSelect({ kind: 'device', id }) : undefined}
+                onHoverLight={onHoverItem}
+              />
+            </Fade>
+          )),
+        )}
         {electrical && outside && <ElectricalRoutes />}
 
         {interaction === 'edit' && placing && (!outside || placing === 'wall-light') && (
@@ -479,24 +482,26 @@ export const HouseScene = ({
         )}
         {floors.map((f) => (
           <Fade key={f.id} shown={furnished(f)}>
-            <Devices
-              floor={f}
-              hoveredId={hovered}
-              cutaway={cutWalls && f.id === floor.id}
-              focus={focusPoint}
-              devices={data.devices.filter((d) => !d.plan && d.floor === f.id && (outside || f.id === floor.id))}
-              selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
-              glow={level}
-              tint={tint}
-              plan={camera === 'top'}
-              onPickLight={lightPick}
-              onPickDevice={focusRoom ? lightPick : undefined}
-              onHoverLight={onHoverItem}
-              interactive={pickable && !outside}
-              onSelect={(id) => onSelect({ kind: 'device', id })}
-              onMove={moveDevice}
-              onMoveEnd={saveItem}
-            />
+            <Fade shown={outside || f.id === floor.id}>
+              <Devices
+                floor={f}
+                hoveredId={hovered}
+                cutaway={cutWalls && f.id === floor.id}
+                focus={focusPoint}
+                devices={data.devices.filter((d) => !d.plan && d.floor === f.id)}
+                selectedId={selection?.kind === 'device' ? selection.id : pickedLight}
+                glow={level}
+                tint={tint}
+                plan={camera === 'top'}
+                onPickLight={lightPick}
+                onPickDevice={focusRoom ? lightPick : undefined}
+                onHoverLight={onHoverItem}
+                interactive={pickable && !outside}
+                onSelect={(id) => onSelect({ kind: 'device', id })}
+                onMove={moveDevice}
+                onMoveEnd={saveItem}
+              />
+            </Fade>
             {measurements
               .filter((m) => m.floor === f.id && !outside)
               .map((m) => (

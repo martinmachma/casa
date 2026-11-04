@@ -26,6 +26,8 @@ import { ceilingLightMask, fixtureLighting } from './lightEmission'
 import { PointShadowAtlas } from './PointShadowAtlas'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
+// Ways of drawing kept for the normal pass, used or not, before the unused ones are let go.
+const NORMALS_KEPT = 128
 const RADIUS = 0.2
 const SAMPLES = 16
 const STRENGTH = 0.55
@@ -127,7 +129,6 @@ export const AmbientOcclusion = () => {
   const viewport = useMemo(() => new Vector4(), [])
   const viewportSize = useMemo(() => ({ value: new Vector2(1, 1) }), [])
   const ceilingMask = useRef({ value: [] as number[] })
-  const drawingSize = useMemo(() => new Vector2(), [])
   useEffect(() => {
     const normals = normalsRef.current
     const patched = patchedRef.current
@@ -149,7 +150,7 @@ export const AmbientOcclusion = () => {
 
   // After every geometry/cutaway hook and ShadowUpdates, before RoomBlur (1) and ItemOutline (2).
   // Newly mounted meshes must receive the atlas shader before any colour pass draws them.
-  useFrame(({ gl, scene, camera, controls }) => {
+  useFrame(({ gl, scene, camera, controls, size, viewport: { dpr } }) => {
     atlas.prepare(
       gl,
       scene,
@@ -159,10 +160,11 @@ export const AmbientOcclusion = () => {
     const normals = normalsRef.current
     const patched = patchedRef.current
     ceilingMask.current.value = ceilingLightMask(scene, camera)
-    gl.getDrawingBufferSize(drawingSize)
-    const scale = Math.min(0.5, 960 / Math.max(drawingSize.x, drawingSize.y))
-    const w = Math.max(1, Math.round(drawingSize.x * scale))
-    const h = Math.max(1, Math.round(drawingSize.y * scale))
+    // Sized by the full pixel ratio, not the drawing buffer's: these would be reallocated each time the view moves
+    // and settles (see MotionQuality), and the occlusion would change with them.
+    const scale = Math.min(0.5, 960 / (Math.max(size.width, size.height) * dpr))
+    const w = Math.max(1, Math.round(size.width * dpr * scale))
+    const h = Math.max(1, Math.round(size.height * dpr * scale))
     for (const rt of [tools.normal, tools.ao, tools.blur]) if (rt.width !== w || rt.height !== h) rt.setSize(w, h)
     const hidden: Object3D[] = []
     const replaced = new Map<Mesh, Material | Material[]>()
@@ -211,6 +213,16 @@ export const AmbientOcclusion = () => {
               viewportSize.value.set(viewport.z, viewport.w)
             }
             patched.set(m, { compile, key, render, wrapped, beforeRender })
+            // Only a material that's gone is let go: one merely out of sight (a floor faded away, a cut wall) keeps
+            // its patch for when it's back, and the shader that goes with it. It's taken off again as it's let go, as
+            // a disposed material can still be used again, and patching it twice would break its shader.
+            const letGo = () => {
+              m.removeEventListener('dispose', letGo)
+              const own = patched.get(m)
+              if (own) restoreMaterial(m, own)
+              patched.delete(m)
+            }
+            m.addEventListener('dispose', letGo)
             m.onBeforeCompile = wrapped
             m.customProgramCacheKey = () =>
               programKey + '-casa-ambient-section-' + section + '-' + receiverPlaneShadowKey
@@ -309,15 +321,11 @@ export const AmbientOcclusion = () => {
       gl.setClearColor(clearColor, clearAlpha)
       gl.setRenderTarget(target)
     }
+    // A way of drawing out of sight is often back at the next switch, and its shader would have to be linked again.
     for (const [key, normal] of normals)
-      if (!active.has(normal)) {
+      if (normals.size > NORMALS_KEPT && !active.has(normal)) {
         normal.dispose()
         normals.delete(key)
-      }
-    for (const [m, p] of patched)
-      if (!active.has(m)) {
-        restoreMaterial(m, p)
-        patched.delete(m)
       }
   }, 0.5)
   return null

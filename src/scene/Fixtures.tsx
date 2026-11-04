@@ -1,5 +1,5 @@
 import { RoundedBox } from '@react-three/drei'
-import { useMemo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import { FrontSide, Quaternion, Vector2, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import type { Fixture, Floor } from '../layout/types'
@@ -155,7 +155,7 @@ const WaterTank = ({ fixture }: { fixture: Fixture }) => {
 }
 
 /** One fixture, cut down with the walls like a piece of furniture when it's in the way. */
-const FixtureModel = ({ fixture, floor, cutaway }: { fixture: Fixture; floor: Floor; cutaway: boolean }) => {
+const FixtureModel = memo(({ fixture, floor, cutaway }: { fixture: Fixture; floor: Floor; cutaway: boolean }) => {
   const group = useRef<Group>(null)
   const item = useMemo((): FurnitureItem => ({ ...fixture, floor: floor.id, color: CASING }), [fixture, floor.id])
   useItemCut(group, item, floor, cutaway)
@@ -178,7 +178,7 @@ const FixtureModel = ({ fixture, floor, cutaway }: { fixture: Fixture; floor: Fl
       </MergeParts>
     </group>
   )
-}
+})
 
 /** The floor's built-in heating and bathroom fittings, shared by every saved version. */
 export const Fixtures = ({ floor, cutaway }: { floor: Floor; cutaway: boolean }) => (

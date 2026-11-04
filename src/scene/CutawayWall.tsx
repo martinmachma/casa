@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep } from './Fade'
+import { animating } from './MotionQuality'
 import { blocksView, separates, wallAngle, wallHeight, wallOutside, wallOwner } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
@@ -94,8 +95,10 @@ export const CutawayWall = ({
   useFrame(({ camera, invalidate }, delta) => {
     const target = isCut(decider, outside, camera, cutaway, focus) ? 1 : 0
     const now = k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta)
-    if (now !== target) invalidate()
-    else animate.current = false
+    if (now !== target) {
+      invalidate()
+      animating()
+    } else animate.current = false
     if (now === k.current) return
     k.current = now
     const full = fullRef.current
