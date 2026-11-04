@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Group, PerspectiveCamera, PointLight, Scene } from 'three'
-import { ceilingLightMask } from './lightEmission'
+import { ceilingLightMask, fixtureLighting } from './lightEmission'
 
 describe('ceiling emitter assignment', () => {
   it('keeps the emission mask aligned with the renderer when shadowed lights come first', () => {
@@ -31,5 +31,14 @@ describe('ceiling emitter assignment', () => {
     group.add(new PointLight())
     scene.add(visible, hidden, otherLayer, group)
     expect(ceilingLightMask(scene, camera)).toEqual([1])
+  })
+})
+
+describe('fixture lighting', () => {
+  // These are text patches on three's shader, which do nothing, silently, if an upgrade rewords it.
+  it('skips the bulbs and the sun or moon that add nothing to a pixel', () => {
+    expect(fixtureLighting.match(/if \( directLight\.visible \) RE_Direct\(/g)).toHaveLength(2)
+    expect(fixtureLighting).toContain('if ( any( greaterThan( pointLight.color, vec3( 0.0 ) ) ) ) {')
+    expect(fixtureLighting).toContain('getPointShadow( UNROLLED_LOOP_INDEX,')
   })
 })

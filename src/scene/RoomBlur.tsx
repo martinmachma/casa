@@ -12,6 +12,7 @@ import {
   ShaderMaterial,
   Vector2,
   WebGLRenderTarget,
+  type Camera,
 } from 'three'
 import { floorRegions } from '../layout/rooms'
 import { roomMeshClassifier } from './roomMeshes'
@@ -165,6 +166,8 @@ export const RoomBlur = ({
     let shadows = 0
     let i = 0
     scene.traverseVisible((o) => {
+      // The view's camera is in the scene too, and moving it moves no shadow.
+      if ((o as Camera).isCamera) return
       const e = o.matrixWorld.elements
       i++
       shadows += i * (e[12] + 2 * e[13] + 3 * e[14] + 5 * e[0] + 7 * e[2])
