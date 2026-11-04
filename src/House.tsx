@@ -13,7 +13,7 @@ import { rotateGroup } from './furniture/group'
 import { duplicateOffset } from './furniture/duplicate'
 import { pasteFurniture } from './furniture/clipboard'
 import { floorSnapWalls, normalizeAngle, snapToWalls } from './furniture/snap'
-import { floorRegions, roomAt } from './layout/rooms'
+import { floorRegions } from './layout/rooms'
 import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
 import { house } from './layout/layout'
@@ -25,7 +25,7 @@ import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
 import { lightSettings, useLights } from './devices/lights'
 import { useScenes } from './devices/scenes'
-import { LightPanel } from './ui/LightPanel'
+import { LightControls } from './ui/LightControls'
 import { daylight } from './scene/Lights'
 import { FurnitureEditor } from './ui/FurnitureEditor'
 import { FurnitureGroupEditor } from './ui/FurnitureGroupEditor'
@@ -553,18 +553,8 @@ export const House = ({ backend, account }: HouseProps) => {
 
   const inspector = (() => {
     if (selection?.kind === 'light') {
-      const device = data.devices.find((d) => d.id === selection.id)
-      const lamp = data.furniture.find((f) => f.id === selection.id)
-      const home = house.floors.find((f) => f.id === (device ?? lamp)?.floor)
-      if (!home || !(device || lamp)) return undefined
-      const regions = floorRegions(home)
-      const roomId = device ? deviceRoom(device, home, regions) : roomAt(regions, lamp!.x, lamp!.y)
-      const room = home.rooms.find((r) => r.id === roomId)
       return (
-        <LightPanel
-          kind={device ? (device.wall ? 'Smart wall light' : 'Smart ceiling light') : 'Lamp'}
-          name={device?.name ?? lamp!.name}
-          room={room && roomLabel(room, data.roomNames).name}
+        <LightControls
           light={lightSettings(lights.states[selection.id], dark)}
           onChange={(patch) => lights.set(selection.id, patch, dark)}
           onClose={() => setSelection(undefined)}

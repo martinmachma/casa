@@ -3456,8 +3456,8 @@ input[type='range'].kelvin::-moz-range-thumb {
   left: 98px;
   top: -30px;
   translate: 0 -50%;
-  width: 260px;
-  padding: 12px;
+  width: 224px;
+  padding: 10px 12px;
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
   pointer-events: auto;
@@ -3486,6 +3486,37 @@ input[type='range'].kelvin::-moz-range-thumb {
   from {
     stroke-dasharray: 122 200;
   }
+}
+
+.room-popover .section {
+  padding: 0;
+}
+
+.light-controls {
+  gap: 8px;
+}
+
+.light-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.light-top .switch {
+  flex: 1;
+  min-height: 28px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.light-controls .field {
+  gap: 4px;
+}
+
+.light-field-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .room-popover > * {

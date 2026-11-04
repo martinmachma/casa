@@ -30,6 +30,8 @@ const DIM = 0.3
 /** How long the dimming takes to come and go, in ms. */
 const DIM_IN = 220
 const DIM_OUT = 320
+/** How long the blur takes to clear after the room is left, in ms. */
+const BLUR_OUT = 500
 
 const ease = (t: number) => t * t * (3 - 2 * t)
 
@@ -108,20 +110,25 @@ const itemOf = (o: Object3D) => {
 /**
  * Draws the outside blurred, then the room's own meshes sharp over it: everything else is out of focus,
  * whatever stands where on screen. Each mesh is drawn once; shadows are only redrawn when something moves.
- * With an item open, everything else is dimmed, easing in and out, and it's drawn over it.
+ * With an item open, everything else is dimmed, easing in and out, and it's drawn over it. Left, it all eases away.
  */
 export const RoomBlur = ({
   floor,
   roomId,
   open,
+  leaving,
+  onLeft,
 }: {
   floor: Floor
   roomId: string
   open?: string
+  leaving?: boolean
+  onLeft?: () => void
 }) => {
   const redraw = useThree((s) => s.invalidate)
-  useEffect(() => redraw(), [open, redraw])
+  useEffect(() => redraw(), [open, leaving, redraw])
   const dimming = useRef<Fade>({ value: 0 })
+  const blurring = useRef<Fade>({ value: 1 })
   // What's around the room is marked as it's sorted, so the pointer passes it by (see `reachable`).
   const scene = useThree((s) => s.scene)
   useEffect(() => () => scene.traverse((o) => delete o.userData.outside), [scene])
@@ -149,7 +156,9 @@ export const RoomBlur = ({
     const tools = (kit.current ??= makeTools())
     const now = performance.now()
     const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
-    if (dimMoving) invalidate()
+    const blurMoving = step(blurring.current, leaving ? undefined : roomId, now, DIM_IN, BLUR_OUT)
+    if (dimMoving || blurMoving) invalidate()
+    const blur = ease(blurring.current.value)
     const shown = dimming.current.item
     scene.updateMatrixWorld()
     // Sort the meshes, and sum up where everything is, to tell when the shadows need redrawing.
@@ -221,8 +230,8 @@ export const RoomBlur = ({
     camera.layers.set(OUTSIDE_LAYER)
     gl.render(scene, camera)
     for (let k = 0; k < BLUR_PASSES; k++) {
-      pass(a, b, 1 + k, 0)
-      pass(b, a, 0, 1 + k)
+      pass(a, b, (1 + k) * blur, 0)
+      pass(b, a, 0, (1 + k) * blur)
     }
     const autoClear = gl.autoClear
     // A colour background clears the screen whatever autoClear says.
@@ -237,7 +246,7 @@ export const RoomBlur = ({
       scene.background = background
       gl.autoClear = autoClear
     }
-    pass(a, null, 0, 0, 1)
+    pass(a, null, 0, 0, blur)
     // The room, sharp, over it.
     over(ROOM_LAYER)
     if (shown) {
@@ -250,6 +259,10 @@ export const RoomBlur = ({
     }
     camera.layers.set(0)
     gl.shadowMap.autoUpdate = autoUpdate
+    if (leaving && !blurMoving) {
+      onLeft?.()
+      invalidate()
+    }
   }, 1)
   return null
 }

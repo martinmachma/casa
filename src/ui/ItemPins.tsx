@@ -1,6 +1,5 @@
 import { X } from 'lucide-react'
 import { type RefObject, useEffect, useState } from 'react'
-import { DEVICE_KINDS } from '../devices/kinds'
 import type { LightState } from '../devices/lights'
 import type { ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
@@ -138,26 +137,24 @@ export const ItemPins = ({
                     setLeaving((l) => l.filter((i) => i !== item.id))
                 }}
               >
-                <>
-                  <header className="room-card-head">
-                    <div>
-                      <div className="eyebrow">{item.lamp ? 'Lamp' : DEVICE_KINDS[item.kind].label}</div>
-                      <strong>{item.name}</strong>
-                    </div>
-                    <IconButton label="Close" small onClick={() => onOpen(undefined)}>
-                      <X size={16} />
-                    </IconButton>
-                  </header>
-                  {item.kind === 'light' ? (
-                    <LightControls light={light(item.id)} onChange={(p) => onLight(item.id, p)} />
-                  ) : (
+                {item.kind === 'light' ? (
+                  <LightControls
+                    light={light(item.id)}
+                    onChange={(p) => onLight(item.id, p)}
+                    onClose={() => onOpen(undefined)}
+                  />
+                ) : (
+                  <div className="room-card-head">
                     <p className="hint">
                       {item.entity
                         ? `It will show ${item.entity} once Home Assistant is linked.`
                         : 'Give it a Home Assistant entity under Planning to control it here.'}
                     </p>
-                  )}
-                </>
+                    <IconButton label="Close" small onClick={() => onOpen(undefined)}>
+                      <X size={16} />
+                    </IconButton>
+                  </div>
+                )}
               </div>
             )}
           </div>

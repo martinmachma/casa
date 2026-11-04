@@ -38,8 +38,8 @@ export const RoomCamera = ({
   /** An opened item to come in close to and keep in the middle, from the way it's best seen; dragging tilts round it. */
   closeUp?: Pin
   from?: { position: Vector3; target: Vector3 }
-  /** Where it is and looks each frame, for the house's camera to carry on from after the room. */
-  onView?: (position: Vector3, target: Vector3) => void
+  /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
+  onView?: (position: Vector3, target: Vector3, flying: boolean) => void
 }) => {
   const size = useThree((s) => s.size)
   // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
@@ -100,7 +100,7 @@ export const RoomCamera = ({
     }
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
-      onView?.(camera.position, look)
+      onView?.(camera.position, look, false)
       return
     }
     // The first frame after the view sat still carries all the time it sat, which would skip the flight.
@@ -111,7 +111,7 @@ export const RoomCamera = ({
     camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
-    onView?.(camera.position, look)
+    onView?.(camera.position, look, t.current < 1)
     if (k >= 1) setFlying(false)
     // Ahead of whatever goes by the camera this frame: mounted after it all, this would otherwise run last, and the
     // pins would be placed for one frame with the new camera still at the pose it's flying to.

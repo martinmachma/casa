@@ -1,5 +1,6 @@
+import { X } from 'lucide-react'
 import { KELVIN_MAX, KELVIN_MIN, kelvinColor, type LightState } from '../devices/lights'
-import { Section, Segmented, Switch } from './kit'
+import { IconButton, Section, Segmented, Switch } from './kit'
 
 const COLORS = ['#ff3b30', '#ff8a3d', '#ffcc00', '#34c759', '#30b0c7', '#007aff', '#5856d6', '#ff2d92']
 // The temperature slider's track runs warm to cool, as the light would look.
@@ -8,15 +9,24 @@ const KELVIN_TRACK = `linear-gradient(to right, ${[KELVIN_MIN, 3000, 4000, 5000,
 type LightControlsProps = {
   light: LightState
   onChange: (patch: Partial<LightState>) => void
+  onClose?: () => void
 }
 
 /** Everything a Home Assistant light offers: on/off, brightness, and a shade of white or a colour. */
-export const LightControls = ({ light, onChange }: LightControlsProps) => (
-  <Section
-    title="Light"
-    aside={<span className="muted num">{light.on ? `${Math.round(light.brightness * 100)} %` : 'Off'}</span>}
-  >
-    <Switch label="On" checked={light.on} onChange={(on) => onChange({ on })} />
+export const LightControls = ({ light, onChange, onClose }: LightControlsProps) => (
+  <Section className="light-controls">
+    <div className="light-top">
+      <Switch
+        label={light.on ? `${Math.round(light.brightness * 100)} %` : 'Off'}
+        checked={light.on}
+        onChange={(on) => onChange({ on })}
+      />
+      {onClose && (
+        <IconButton label="Close" small onClick={onClose}>
+          <X size={16} />
+        </IconButton>
+      )}
+    </div>
     <label className="field">
       Brightness
       <input
@@ -39,7 +49,9 @@ export const LightControls = ({ light, onChange }: LightControlsProps) => (
     />
     {light.mode === 'white' ? (
       <label className="field">
-        Temperature <span className="muted num">{light.kelvin} K</span>
+        <span className="light-field-head">
+          Temperature <span className="num">{light.kelvin} K</span>
+        </span>
         <input
           type="range"
           className="kelvin"
