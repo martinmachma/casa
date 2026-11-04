@@ -18,6 +18,8 @@ import { roomLabel } from './layout/roomName'
 import type { Point } from './layout/types'
 import { house } from './layout/layout'
 import { HouseScene } from './scene/HouseScene'
+import type { WalkPlacement } from './scene/WalkPlacement'
+import type { WalkStart } from './walk/start'
 import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
 import type { CameraMode, Interaction, Selection } from './scene/selection'
@@ -126,6 +128,11 @@ export const House = ({ backend, account }: HouseProps) => {
   const [roomView, setRoomView] = useState<string>()
   const [popover, setPopover] = useState<string>()
   const [walkCaptured, setWalkCaptured] = useState(false)
+  const walkPlacement: WalkPlacement = useRef(undefined)
+  const [walkStart, setWalkStart] = useState<WalkStart>()
+  const walkOrigin = useRef<{ camera: CameraMode; outside: boolean; floor: number; rightTucked: boolean } | undefined>(
+    undefined,
+  )
   // Opening an item borrows its room's view; closing it returns to where it was opened.
   const [itemOrigin, setItemOrigin] = useState<{
     room: string | undefined
@@ -315,6 +322,35 @@ export const House = ({ backend, account }: HouseProps) => {
     setOutside(false)
     setSelection(undefined)
     if (measure) setMeasure({ ...measure, picks: [] })
+  }
+
+  const startWalk = (start = walkPlacement.current?.start()) => {
+    walkPlacement.current?.clear()
+    if (!start) return
+    walkOrigin.current = { camera, outside, floor: floorIndex, rightTucked }
+    setWalkStart(start)
+    setFloorIndex(start.floorIndex)
+    setOutside(false)
+    setCamera('walk')
+    setRightTucked(true)
+    setSelection(undefined)
+    setPlacing(undefined)
+    setPlacingPiece(undefined)
+    setTool('edit')
+    stopMeasuring()
+    nudge.current = createCameraNudge()
+  }
+  const exitWalk = () => {
+    const origin = walkOrigin.current
+    setCamera(origin?.camera ?? 'orbit')
+    if (origin) {
+      setOutside(origin.outside)
+      setFloorIndex(origin.floor)
+      setRightTucked(origin.rightTucked)
+    }
+    setWalkStart(undefined)
+    nudge.current = createCameraNudge()
+    walkOrigin.current = undefined
   }
 
   const goOutside = () => {
@@ -661,7 +697,10 @@ export const House = ({ backend, account }: HouseProps) => {
           floors={house.floors}
           floorIndex={outside ? house.floors.length - 1 : floorIndex}
           onWalkFloorChange={setFloorIndex}
-          walkCursorNeed={planning || rightOpen || !!popover}
+          walkPlacement={walkPlacement}
+          walkStart={walkStart}
+          walkFloorIndex={floorIndex}
+          walkCursorNeed={rightOpen || !!popover || !!measure || interaction === 'paint'}
           onWalkCaptured={setWalkCaptured}
           outside={outside}
           camera={camera}
@@ -761,7 +800,15 @@ export const House = ({ backend, account }: HouseProps) => {
           outside={outside}
           onOutside={goOutside}
           camera={camera}
-          onCamera={setCamera}
+          onCamera={(next) => (next === 'walk' ? startWalk() : setCamera(next))}
+          onExitWalk={exitWalk}
+          onWalkDrag={(x, y) => walkPlacement.current?.preview(x, y) ?? false}
+          onWalkDrop={(x, y) => {
+            const start = walkPlacement.current?.point(x, y)
+            walkPlacement.current?.clear()
+            if (start) startWalk(start)
+          }}
+          onWalkCancel={() => walkPlacement.current?.clear()}
           canPlan={planning}
           inRoom={!!focus || !!popover}
         >

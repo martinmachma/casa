@@ -3,15 +3,13 @@ import {
   ChevronUp,
   ChevronsDown,
   ChevronsUp,
-  EyeOff,
-  Gamepad2,
   House,
   MoveLeft,
   MoveRight,
   RotateCcw,
   RotateCw,
 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { CameraNudgeAxis } from '../scene/cameraNudge'
 
 type Hold = {
@@ -25,38 +23,8 @@ type CameraPadProps = Hold & {
   onReset: () => void
 }
 
-const HIDDEN_KEY = 'casa.cameraPad.hidden'
-
-const readHidden = () => {
-  try {
-    return localStorage.getItem(HIDDEN_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 /** On-screen walking buttons: hold to keep moving. Made for thumbs, works with a mouse too. */
 export const CameraPad = ({ onHold, onRelease, onReset }: CameraPadProps) => {
-  const [hidden, setHidden] = useState(readHidden)
-
-  const toggle = () => {
-    setHidden(!hidden)
-    try {
-      localStorage.setItem(HIDDEN_KEY, hidden ? '0' : '1')
-    } catch {
-      // Remembering is a nicety.
-    }
-  }
-
-  if (hidden)
-    return (
-      <div className="camera-pad camera-pad-hidden float">
-        <button className="pad-btn" onClick={toggle} aria-label="Show camera buttons" title="Show camera buttons">
-          <Gamepad2 size={17} />
-        </button>
-      </div>
-    )
-
   const hold = (axis: CameraNudgeAxis, value: number, label: string, icon: ReactNode) => (
     <HoldButton onHold={onHold} onRelease={onRelease} axis={axis} value={value} label={label}>
       {icon}
@@ -66,11 +34,6 @@ export const CameraPad = ({ onHold, onRelease, onReset }: CameraPadProps) => {
   const reset = (
     <button className="pad-btn pad-btn-home" onClick={onReset} aria-label="Back to the start" title="Back to the start">
       <House size={17} />
-    </button>
-  )
-  const hide = (
-    <button className="pad-btn" onClick={toggle} aria-label="Hide camera buttons" title="Hide camera buttons">
-      <EyeOff size={16} />
     </button>
   )
 
@@ -90,7 +53,6 @@ export const CameraPad = ({ onHold, onRelease, onReset }: CameraPadProps) => {
       <div className="pad-column">
         {hold('tilt', 1, 'Look up', <ChevronsUp size={18} />)}
         {hold('tilt', -1, 'Look down', <ChevronsDown size={18} />)}
-        {hide}
       </div>
     </div>
   )

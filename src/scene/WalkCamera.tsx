@@ -4,30 +4,26 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { PerspectiveCamera as Camera } from 'three'
 import type { FurnitureItem } from '../data/types'
 import { fixtureSolids } from '../furniture/collision'
-import { floorRegions, roomAt } from '../layout/rooms'
-import { floorBounds, insidePolygon } from '../layout/geometry'
+import { insidePolygon } from '../layout/geometry'
 import { groundLevel } from '../layout/ground'
 import type { Floor, Outdoor, Point, Rect } from '../layout/types'
 import { isTyping } from '../ui/isTyping'
 import { resolveCollisions, solidObstacles, wallObstacles, type Obstacle } from '../walk/collide'
 import { stairHeight, stairRuns, type StairRun } from '../walk/stairs'
+import { EYE_HEIGHT, STEP_OVER, WALK_RADIUS as RADIUS, type WalkStart } from '../walk/start'
 import { heldStep, type CameraNudge } from './cameraNudge'
 
-const EYE_HEIGHT = 1.6
-const RADIUS = 0.22
 const WALK_SPEED = 1.4 // m/s
 const TURN_SPEED = 1.6 // rad/s
 const LOOK_SPEED = 0.9 // rad/s from the buttons
 const POINTER_LOOK = 0.005 // rad per pixel the captured mouse moves or a drag covers
 const MAX_PITCH = 1.2
-// Furniture lower than this (rugs) can be walked over.
-const STEP_OVER = 0.15
-const START_BACKOFF = 0.9
 // Steps between paving, lawn and slab are eased rather than jumped.
 const STEP_EASE = 12 // 1/s
 
 type WalkCameraProps = {
   floor: Floor
+  start: WalkStart | undefined
   floors: Floor[]
   onFloorChange: (index: number) => void
   furniture: FurnitureItem[]
@@ -35,9 +31,7 @@ type WalkCameraProps = {
   openDoors: ReadonlySet<string>
   /** The garden round the ground floor, walkable within its outline. */
   outdoor?: Outdoor
-  /** Start in the garden instead of indoors. */
-  outside?: boolean
-  /** A panel or Planning wants a real cursor, so the mouse stays free. */
+  /** An open panel or tool wants a real cursor, so the mouse stays free. */
   cursorNeed: boolean
   /** Tells whether the mouse is captured, so the crosshair can show. */
   onCaptured: (captured: boolean) => void
@@ -54,49 +48,19 @@ const rectObstacle = (r: Rect): Obstacle => ({
   angle: 0,
 })
 
-/** Where to stand outside: in front of the house (plan-down from it), halfway to the garden's edge, facing it. */
-const gardenStart = (floor: Floor, outdoor: Outdoor): { at: Point; yaw: number } => {
-  const { min, max } = floorBounds(floor)
-  const edge = Math.max(...outdoor.garden.map((p) => p[1]))
-  const at: Point = [(min[0] + max[0]) / 2, (max[1] + edge) / 2]
-  if (insidePolygon(at, outdoor.garden)) return { at, yaw: 0 }
-  const n = outdoor.garden.length
-  return {
-    at: [outdoor.garden.reduce((a, p) => a + p[0], 0) / n, outdoor.garden.reduce((a, p) => a + p[1], 0) / n],
-    yaw: 0,
-  }
-}
-
-/** Where to stand at first: at one end of the biggest room, looking down its length. */
-const startingPoint = (floor: Floor): { at: Point; yaw: number } => {
-  const regions = floorRegions(floor)
-  const biggest = [...regions.values()].sort((a, b) => b.area - a.area)[0]
-  if (!biggest) return { at: [0, 0], yaw: 0 }
-  const x0 = Math.min(...biggest.cells.map((c) => c.x0))
-  const x1 = Math.max(...biggest.cells.map((c) => c.x1))
-  const y0 = Math.min(...biggest.cells.map((c) => c.y0))
-  const y1 = Math.max(...biggest.cells.map((c) => c.y1))
-  const tall = y1 - y0 >= x1 - x0
-  // Back against the south (or west) end, facing north (or east).
-  const at: Point = tall ? [(x0 + x1) / 2, y1 - START_BACKOFF] : [x0 + START_BACKOFF, (y0 + y1) / 2]
-  if (roomAt(regions, ...at) === biggest.roomId) return { at, yaw: tall ? 0 : Math.PI / 2 }
-  const cell = biggest.cells[0]
-  return { at: [(cell.x0 + cell.x1) / 2, (cell.y0 + cell.y1) / 2], yaw: 0 }
-}
-
 /**
  * First-person camera at eye height: the captured mouse (or a drag, on a touch screen or in Planning) looks around, WASD/arrow keys or the on-screen buttons to walk.
  * Walls block the way except through open doors and passages; furniture does too.
  */
 export const WalkCamera = ({
   floor,
+  start: entry,
   floors,
   onFloorChange,
   furniture,
   nudge,
   openDoors,
   outdoor,
-  outside,
   cursorNeed,
   onCaptured,
 }: WalkCameraProps) => {
@@ -107,14 +71,16 @@ export const WalkCamera = ({
   const setEvents = useThree((s) => s.setEvents)
   const getState = useThree((s) => s.get)
   const cursorNeeded = useRef(cursorNeed)
-  const [start] = useState(() => (outside && outdoor ? gardenStart(floors[0], outdoor) : startingPoint(floor)))
+  const [start] = useState(
+    () => entry ?? { floorIndex: floors.indexOf(floor), at: floor.rooms[0]?.label ?? [0, 0], yaw: 0 },
+  )
   const pose = useRef({ x: start.at[0], y: start.at[1], yaw: start.yaw, pitch: 0 })
   /** The surface underfoot when not on a stair: the ground floor's slab, paving or lawn, or an upper floor. */
   const surface = (index: number, p: Point) =>
     index === 0 ? groundLevel(floors[0], outdoor, p) : floors[index].elevation
-  const startElevation = outside && outdoor ? groundLevel(floors[0], outdoor, start.at) : floor.elevation
+  const startElevation = surface(start.floorIndex, start.at)
   const walking = useRef({
-    floorIndex: outside && outdoor ? 0 : floors.indexOf(floor),
+    floorIndex: start.floorIndex,
     elevation: startElevation,
     stair: undefined as StairRun | undefined,
   })
