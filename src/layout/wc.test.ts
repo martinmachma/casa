@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { blockedDoors, doorSweeps, fixtureSolids, hits } from '../furniture/collision'
+import { blockedDoors, doorSweeps, fixtureSolids, hits, type Solid } from '../furniture/collision'
 import { house } from './layout'
 import { wallJoints } from './geometry'
 import { floorRegions, floorWallRects, roomAt } from './rooms'
@@ -8,6 +8,27 @@ import { WC_BOXING_WALLS, WC_TILE_HEIGHT, wcWallFinish } from './wc'
 const floor = house.floors.find((f) => f.id === 'ground')!
 const regions = floorRegions(floor)
 const structure = { ...floor, walls: floor.walls.filter((w) => !WC_BOXING_WALLS.includes(w.id)) }
+
+it('leaves a raised shelf above the WC boxing clear while catching overlaps below its top and with the full wall', () => {
+  const shelf: Solid = {
+    id: 'wc-shelf',
+    floor: floor.id,
+    x: 0.3005,
+    y: 5.94,
+    width: 0.8,
+    depth: 0.2,
+    height: 0.04,
+    z: 1.7,
+    rotation: Math.PI / 2,
+  }
+  const walls = floorWallRects(floor)
+  const boxing = `wall:${floor.walls.findIndex((w) => w.id === 'g-wc-frame')}`
+  const west = `wall:${floor.walls.findIndex((w) => w.id === 'g-west')}`
+  expect(hits(shelf, fixtureSolids(floor), walls)).toEqual([])
+  expect(hits({ ...shelf, z: 1.2 }, [], walls)).toEqual([])
+  expect(hits({ ...shelf, z: 1.15 }, [], walls)).toEqual([boxing])
+  expect(hits({ ...shelf, x: shelf.x - 0.02 }, [], walls)).toEqual([west])
+})
 
 it('fits the WC and basin inside the room, clear of walls, one another and the entrance swing', () => {
   const fittings = fixtureSolids(floor).filter((f) => f.id.startsWith('g-wc-'))

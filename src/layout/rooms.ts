@@ -1,7 +1,10 @@
-import { floorBounds, wallThickness } from './geometry'
+import { floorBounds, wallHeight, wallThickness } from './geometry'
 import type { Floor, Point, Rect } from './types'
 
 export type { Rect }
+
+/** A wall footprint, with its height above the floor when known. */
+export type WallRect = Rect & { height?: number }
 
 /** The floor of a room: rectangles that tile it exactly, and its clear area (to the wall faces). */
 export type RoomRegion = { roomId: string; cells: Rect[]; area: number }
@@ -22,9 +25,9 @@ export const wallRect = (from: Point, to: Point, thickness: number): Rect => {
   }
 }
 
-/** Every wall's footprint on the floor. */
-export const floorWallRects = (floor: Floor): Rect[] =>
-  floor.walls.map((w) => wallRect(w.from, w.to, wallThickness(w, floor)))
+/** Every wall's footprint and height above the floor. */
+export const floorWallRects = (floor: Floor): WallRect[] =>
+  floor.walls.map((w) => ({ ...wallRect(w.from, w.to, wallThickness(w, floor)), height: wallHeight(w, floor) }))
 
 const sortedUnique = (values: number[]): number[] => {
   const sorted = [...values].sort((a, b) => a - b)
