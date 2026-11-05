@@ -6,7 +6,7 @@ import type { Scene } from '../devices/scenes'
 import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { ItemPins } from './ItemPins'
-import { RoomScenes } from './RoomScenes'
+import { NewSceneButton, RoomScenes } from './RoomScenes'
 import { AllLights, SmartRows } from './SmartList'
 
 type RoomOverviewProps = {
@@ -51,6 +51,9 @@ export const RoomOverview = ({
   onLeave,
 }: RoomOverviewProps) => {
   const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
+  const shades = items.filter((i) => i.kind === 'blind')
+  const rest = items.filter((i) => i.kind !== 'blind')
+  const rows = { light, onLight, shade, onShade, onOpen, onHover, hovered }
   return (
     <>
       <h2 className="room-name float">
@@ -61,34 +64,35 @@ export const RoomOverview = ({
       </h2>
       {/* An open item has the view to itself. */}
       <div className="room-cards" hidden={!!open || sceneOpen}>
-        <section className="room-card float">
-          <div className="smart-card-body">
-            {lightIds.length > 0 && (
-              <RoomScenes
-                scenes={scenes}
-                onEdit={onEditScene}
-                lightIds={lightIds}
-                light={light}
-                onLight={onLight}
-                end={<AllLights ids={lightIds} light={light} onLight={onLight} />}
-              />
-            )}
-            {items.length ? (
-              <SmartRows
-                items={items}
-                light={light}
-                onLight={onLight}
-                shade={shade}
-                onShade={onShade}
-                onOpen={onOpen}
-                onHover={onHover}
-                hovered={hovered}
-              />
-            ) : (
-              <p className="hint">No smart items here yet. Place them under Planning → Devices.</p>
-            )}
-          </div>
-        </section>
+        <NewSceneButton onClick={() => onEditScene(undefined)} />
+        {(rest.length > 0 || !shades.length) && (
+          <section className="room-card float">
+            <div className="smart-card-body">
+              {lightIds.length > 0 && (
+                <RoomScenes
+                  scenes={scenes}
+                  onEdit={onEditScene}
+                  lightIds={lightIds}
+                  light={light}
+                  onLight={onLight}
+                  end={<AllLights ids={lightIds} light={light} onLight={onLight} />}
+                />
+              )}
+              {rest.length ? (
+                <SmartRows items={rest} {...rows} />
+              ) : (
+                <p className="hint">No smart items here yet. Place them under Planning → Devices.</p>
+              )}
+            </div>
+          </section>
+        )}
+        {shades.length > 0 && (
+          <section className="room-card float">
+            <div className="smart-card-body">
+              <SmartRows items={shades} {...rows} />
+            </div>
+          </section>
+        )}
       </div>
 
       <ItemPins

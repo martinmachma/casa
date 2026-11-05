@@ -2964,7 +2964,27 @@ input[type='range'] {
   font-size: 12px;
 }
 
-/* The smart items card, at the bottom right; its list scrolls once it reaches the Planning button. */
+/* Stands over the cards, on the right. */
+.scene-new {
+  display: inline-flex;
+  flex: none;
+  align-self: flex-end;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* The smart items cards, at the bottom right, lights over shades; each one's list scrolls once they fill the height
+   up to the Planning button. */
 .room-card {
   display: flex;
   flex-direction: column;
