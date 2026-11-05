@@ -159,7 +159,7 @@ export const BathroomWallTiles = (props: WallTilesProps) => {
   if (floor.id !== 'upper') return null
   const side: WallSide | undefined = ['u-north', 'u-east', 'u-east-shaft', 'u-wc-frame'].includes(wall.id)
     ? 'a'
-    : ['u-205-bath', 'u-bath-south', 'u-bath-shaft'].includes(wall.id)
+    : ['u-205-bath', 'u-bath-basin-frame', 'u-bath-south', 'u-bath-shaft'].includes(wall.id)
       ? 'b'
       : undefined
   if (!side) return null
@@ -197,8 +197,8 @@ export const BathroomWallTiles = (props: WallTilesProps) => {
             finish={BATHROOM_MARBLE}
           />
         )}
-        {/* The WC ledge is a real tiled top; artificial cut faces keep the wall's section colour. */}
-        {wall.id === 'u-wc-frame' && !cut && (
+        {/* Installation ledges have tiled tops; artificial cut faces keep the wall's section colour. */}
+        {['u-wc-frame', 'u-bath-basin-frame'].includes(wall.id) && !cut && (
           <TileFace
             at={[middle, p.y1 + PROUD, 0]}
             rotation={[-Math.PI / 2, 0, 0]}
@@ -209,8 +209,8 @@ export const BathroomWallTiles = (props: WallTilesProps) => {
             finish={finish}
           />
         )}
-        {/* The shaft and boxing have visible returns beside the shower and WC. */}
-        {['u-east-shaft', 'u-wc-frame', 'u-bath-shaft'].includes(wall.id) &&
+        {/* The shaft and boxing have tiled returns at their exposed ends. */}
+        {['u-east-shaft', 'u-wc-frame', 'u-bath-shaft', 'u-bath-basin-frame'].includes(wall.id) &&
           [-1, 1].map(
             (end) =>
               !painted(p, 'end', end < 0 ? u0 : u1) && (

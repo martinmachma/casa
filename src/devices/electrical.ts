@@ -423,8 +423,8 @@ wall(
   'Wall lighting outlet',
   1.8,
 )
-sockets('u-bath-basin', 'Bathroom basin socket', 'u-205-bath', 'b', [1.33, 1.49])
-sw('u-bath-mirror-switch', 'Bathroom mirror switch', 'u-205-bath', 'b', 1.33)
+sockets('u-bath-basin', 'Bathroom basin socket', 'u-bath-basin-frame', 'b', [1.33, 1.49])
+sw('u-bath-mirror-switch', 'Bathroom mirror switch', 'u-bath-basin-frame', 'b', 1.33)
 wall(
   'u-towel-rail',
   'socket',

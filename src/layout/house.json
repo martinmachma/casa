@@ -469,7 +469,7 @@
           "name": "Bathroom heated towel rail",
           "kind": "towelRail",
           "x": 3.8805,
-          "y": 1.85,
+          "y": 1.91,
           "rotation": -1.5707963267948966,
           "width": 0.5,
           "depth": 0.08,
@@ -494,7 +494,7 @@
           "name": "Floating walnut vanity with inset basin",
           "kind": "vanity",
           "replaces": { "room": "u-bath", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
-          "x": 4.0405,
+          "x": 4.1305,
           "y": 0.91,
           "rotation": -1.5707963267948966,
           "width": 1,
@@ -637,6 +637,15 @@
           "to": [3.7505, 3.21]
         },
         {
+          "id": "u-bath-basin-frame",
+          "against": "u-205-bath",
+          "roomBoundary": false,
+          "from": [3.8505, 0.3855],
+          "to": [3.8505, 1.5855],
+          "thickness": 0.1,
+          "height": 1.2
+        },
+        {
           "id": "u-bath-south",
           "from": [3.7505, 3.21],
           "to": [6.138, 3.21],
@@ -692,9 +701,9 @@
         {
           "id": "u-shaft-s14",
           "against": "u-205-south",
-          "from": [0.2005, 3.01],
-          "to": [0.6155, 3.01],
-          "thickness": 0.3
+          "from": [0.408, 2.9525],
+          "to": [0.443, 2.9525],
+          "thickness": 0.415
         },
         {
           "id": "u-shaft-s15",
