@@ -18,7 +18,7 @@ type FloorOverviewProps = {
   hovered: string | undefined
 }
 
-/** Between rooms: everything on the floor, room by room, with what isn't in a room first. */
+/** Between rooms: everything on the floor, room by room, with what isn't in a room first, as outside. */
 export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) => {
   const names = [...new Set(items.map(roomName))]
   const groups = [...names.filter((n) => !n), ...names.filter((n) => n)].map((name) => ({
@@ -39,7 +39,7 @@ export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) 
           )}
           {groups.map(({ name, items }) => (
             <Fragment key={name ?? ''}>
-              {name && <h4 className="smart-room">{name}</h4>}
+              <h4 className="smart-room">{name ?? 'Outside'}</h4>
               <SmartRows items={items} {...rows} />
             </Fragment>
           ))}
