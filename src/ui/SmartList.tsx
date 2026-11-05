@@ -22,10 +22,16 @@ type SmartRowProps = {
   onShade: (patch: Partial<ShadeState>) => void
 }
 
+/** The colour a light gives off, by its level. */
+export const LightDot = ({ light }: { light: LightState }) => (
+  <span className="smart-row-dot" style={{ background: lightColor(light) }} />
+)
+
 /** One smart item, filled as far as it's lit or let down: its tile switches it, the rest of the row opens it, and a drag along the row sets the level. */
 const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onShade }: SmartRowProps) => {
   const on = !!light?.on
   const level = light ? (on ? light.brightness : 0) : shade?.position
+  const active = !!level && level > 0.005
   const press = useRef<{ x: number; from: number; width: number }>(undefined)
   const dragged = useRef(false)
   const [dragging, setDragging] = useState(false)
@@ -38,7 +44,7 @@ const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onSha
     setDragging(false)
   }
   const icon = (
-    <span className="smart-tile" data-on={on || undefined} style={on ? { background: lightColor(light) } : undefined}>
+    <span className="smart-tile" data-on={active || undefined}>
       <span className="smart-row-device">
         <DeviceIcon kind={item.kind} size={15} />
       </span>
@@ -54,6 +60,7 @@ const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onSha
   return (
     <li
       className="smart-row"
+      data-on={active || undefined}
       data-hovered={hovered || undefined}
       data-dragging={dragging || undefined}
       onPointerEnter={() => onHover(true)}
@@ -84,15 +91,7 @@ const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onSha
         dragged.current = false
       }}
     >
-      {level !== undefined && (
-        <span
-          className="smart-row-fill"
-          style={{
-            width: `${level * 100}%`,
-            background: on ? `color-mix(in srgb, ${lightColor(light)} 50%, var(--accent-soft))` : undefined,
-          }}
-        />
-      )}
+      {level !== undefined && <span className="smart-row-fill" style={{ width: `${level * 100}%` }} />}
       {light || shade ? (
         <button
           className="smart-row-toggle"
@@ -112,6 +111,7 @@ const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onSha
       <button className="smart-row-open" title={item.name} onClick={onOpen}>
         <span className="smart-row-name">{item.name}</span>
         <span className="smart-row-state">
+          {on && <LightDot light={light!} />}
           {light
             ? on
               ? `${Math.round(light.brightness * 100)} %`

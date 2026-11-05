@@ -3137,24 +3137,21 @@ input[type='range'] {
 
 .scene-rows {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .scene-row {
+  border: 1px solid var(--line);
   border-radius: 8px;
-}
-
-.scene-row[data-picked] {
-  background: var(--surface-2);
 }
 
 .scene-row-head {
   display: flex;
   align-items: center;
-  height: 36px;
+  height: 34px;
 }
 
 .scene-tick {
@@ -3228,7 +3225,7 @@ input[type='range'] {
 /* One item: its tile switches it, the rest of the row opens it, and a drag along it sets how far it's lit or let down. */
 .smart-rows {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -3240,9 +3237,19 @@ input[type='range'] {
   align-items: stretch;
   height: 36px;
   overflow: hidden;
+  border: 1px solid var(--line);
   border-radius: 8px;
   touch-action: pan-y;
   user-select: none;
+}
+
+.smart-row[data-on],
+.scene-row[data-picked] {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.smart-row[data-on] .smart-row-fill {
+  background: var(--accent-soft);
 }
 
 .smart-row:hover,
@@ -3283,10 +3290,6 @@ input[type='range'] {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-}
-
-.smart-row .smart-tile[data-on] {
-  box-shadow: 0 1px 6px rgb(221 127 46 / 0.5);
 }
 
 button.smart-row-toggle:hover .smart-tile {
@@ -3335,10 +3338,21 @@ button.smart-row-toggle:hover .smart-row-action {
 }
 
 .smart-row-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--ink-2);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* The colour a lit light gives off; ringed so a white one still shows. */
+.smart-row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
 
 /* A room's name over its items on the floor's list. */
@@ -3387,6 +3401,7 @@ button.smart-row-toggle:hover .smart-row-action {
 }
 
 .smart-tile[data-on] {
+  background: var(--accent);
   color: var(--accent-ink);
 }
 

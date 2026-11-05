@@ -1,12 +1,13 @@
 import { Check, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import { lightColor, type LightState } from '../devices/lights'
+import type { LightState } from '../devices/lights'
 import type { Scene } from '../devices/scenes'
 import { shadeText, type ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
 import { DeviceIcon } from './deviceIcons'
 import { Segmented } from './kit'
 import { LightControls } from './LightControls'
+import { LightDot } from './SmartList'
 
 type Item = SmartItem & { room: string | undefined }
 
@@ -73,16 +74,13 @@ const SceneRow = ({ item, target, open, onTick, onOpen, onChange }: SceneRowProp
           {target && <Check size={13} />}
         </button>
         <button className="scene-row-open" aria-expanded={open} onClick={onOpen}>
-          <span
-            className="smart-tile"
-            data-on={light?.on || undefined}
-            style={light?.on ? { background: lightColor(light) } : undefined}
-          >
+          <span className="smart-tile" data-on={light?.on || (shade && shade.position > 0.005) || undefined}>
             <DeviceIcon kind={item.kind} size={15} />
           </span>
           <span className="smart-row-name">{item.name}</span>
           {target && (
             <span className="smart-row-state">
+              {light?.on && <LightDot light={light} />}
               {light ? (light.on ? `${Math.round(light.brightness * 100)} %` : 'Off') : shadeText(shade!)}
             </span>
           )}
