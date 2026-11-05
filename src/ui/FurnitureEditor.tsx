@@ -5,6 +5,7 @@ import { DuplicateToFloor } from './DuplicateToFloor'
 import { FURNITURE_SWATCHES } from '../scene/palette'
 import { NumberField } from './NumberField'
 import { PanelHead, Section } from './kit'
+import { EditableTitle } from './EditableTitle'
 
 type FurnitureEditorProps = {
   item: FurnitureItem
@@ -34,23 +35,12 @@ export const FurnitureEditor = ({
   <>
     <PanelHead
       eyebrow="Furniture"
-      title={item.name}
+      title={<EditableTitle key={item.id} value={item.name} onChange={(name) => onChange({ name })} />}
       sub={`${cm(item.width)} × ${cm(item.depth)} × ${cm(item.height)} cm`}
       onClose={onClose}
     />
 
     <Section>
-      <label className="field">
-        Name
-        <input
-          // Remount when another item is selected so the field shows its name.
-          key={item.id}
-          defaultValue={item.name}
-          onBlur={(e) =>
-            e.target.value.trim() && e.target.value !== item.name && onChange({ name: e.target.value.trim() })
-          }
-        />
-      </label>
       <div className="row" key={item.id}>
         <NumberField label="Width cm" value={cm(item.width)} onCommit={(v) => onChange({ width: v / 100 })} />
         <NumberField label="Depth cm" value={cm(item.depth)} onCommit={(v) => onChange({ depth: v / 100 })} />

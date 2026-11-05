@@ -70,16 +70,7 @@ const sw = (id: string, name: string, wallId: string, side: WallSide, at: number
   wall(id, 'switch', name, wallId, side, at, symbol)
 const ceiling = (id: string, name: string, floorId: string, at: Point, symbol = 'Ceiling lighting outlet') => {
   const floor = house.floors.find((f) => f.id === floorId)!
-  point(
-    id,
-    'light',
-    name,
-    floorId,
-    at,
-    floor.height,
-    symbol,
-    'Smart light at the lighting position shown in the drawing.',
-  )
+  point(id, 'light', name, floorId, at, floor.height, symbol)
 }
 const media = (id: string, wallId: string, side: WallSide, tv: number, data: number) => {
   wall(
