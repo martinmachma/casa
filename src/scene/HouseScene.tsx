@@ -572,6 +572,10 @@ export const HouseScene = ({
                   ]}
                   color={SELECTED_OUTLINE}
                   lineWidth={3}
+                  renderOrder={1000}
+                  transparent
+                  depthTest={false}
+                  depthWrite={false}
                   userData={OVERLAY}
                 />
               ))}

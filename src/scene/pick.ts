@@ -53,6 +53,7 @@ const wallOf = (o: Object3D) => {
  * thing is in front, even one that doesn't take the pointer itself (a box in front of a door). A target marked
  * `pastFurniture` (the floor while a ceiling light is placed) is reached through furniture standing on it, and one
  * marked `pastWalls` (a window's shade, outside it) through the wall it's set in, though not through any other.
+ * Measurement targets use their own floor and visible wall geometry, reached through anything drawn over them.
  */
 export const reachable = (hits: Intersection[], scene: Object3D, ray: Raycaster) => {
   const near = hits.filter((h) => !h.object.userData.outside && !fadedAway(h.object))
@@ -63,6 +64,7 @@ export const reachable = (hits: Intersection[], scene: Object3D, ray: Raycaster)
   const pastWall = (wall?: string) => solids.find((h) => !wall || wallOf(h.object) !== wall)
   return near.filter((h) => {
     const ud = h.object.userData
+    if (ud.measureTarget) return true
     const by = ud.pastFurniture ? past : ud.pastWalls ? pastWall(wallOf(h.object)) : front
     return !by || h.distance <= by.distance + 0.01
   })

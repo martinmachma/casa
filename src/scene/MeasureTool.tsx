@@ -32,12 +32,13 @@ import { OVERLAY } from './pick'
 import { raycastIfShown } from './raycast'
 
 const CLICK_SLOP_PX = 5
-// Drawn just above the floor finishes and rugs.
+// Anchored just above the floor; dots and lines draw over the scene.
 const LIFT = 0.03
 // Taps this close on screen to a wall face land on it, whatever the zoom.
 const SNAP_PX = 16
 // Measuring between faces, a tap this close on screen to a side picks it.
 const FACE_PX = 28
+const MEASURE_TARGET = { measureTarget: true }
 
 type MeasureToolProps = {
   floor: Floor
@@ -132,7 +133,7 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
         rotation-x={-Math.PI / 2}
         position={[(min[0] + max[0]) / 2, floor.elevation + 0.01, (min[1] + max[1]) / 2]}
         // A tap on a piece measures from where it stands on the floor; looking at a room, it's part of the room.
-        userData={{ pastFurniture: true, everyRoom: true }}
+        userData={{ ...MEASURE_TARGET, everyRoom: true }}
         {...catcher}
       >
         <planeGeometry args={[200, 200]} />
@@ -146,6 +147,7 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
           <mesh
             position={[(wallLength(wall) + extension.to - extension.from) / 2, height / 2, 0]}
             raycast={raycastIfShown}
+            userData={MEASURE_TARGET}
             {...catcher}
           >
             <boxGeometry args={[wallLength(wall) + extension.from + extension.to, height, thickness]} />
@@ -163,7 +165,13 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
               wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor, 0.002)),
               STUB_HEIGHT,
             ).map((p, i) => (
-              <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={raycastIfShown} {...catcher}>
+              <mesh
+                key={i}
+                position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
+                raycast={raycastIfShown}
+                userData={MEASURE_TARGET}
+                {...catcher}
+              >
                 <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
                 <meshBasicMaterial visible={false} />
               </mesh>
@@ -187,13 +195,30 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
           dashed
           dashSize={0.1}
           gapSize={0.06}
+          renderOrder={1000}
+          transparent
+          depthTest={false}
+          depthWrite={false}
           userData={OVERLAY}
         />
       )}
       {dots.map((p, i) => (
-        <mesh key={i} position={at(p.at)} rotation-x={-Math.PI / 2} raycast={noRaycast} userData={OVERLAY}>
+        <mesh
+          key={i}
+          position={at(p.at)}
+          rotation-x={-Math.PI / 2}
+          renderOrder={1001}
+          raycast={noRaycast}
+          userData={OVERLAY}
+        >
           <circleGeometry args={[0.05, 20]} />
-          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={i < picks.length ? 1 : 0.5} />
+          <meshBasicMaterial
+            color={SELECTED_OUTLINE}
+            transparent
+            opacity={i < picks.length ? 1 : 0.5}
+            depthTest={false}
+            depthWrite={false}
+          />
         </mesh>
       ))}
     </group>
