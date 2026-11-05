@@ -21,10 +21,29 @@ type DeviceEditorProps = {
 
 const cm = (m: number) => Math.round(m * 100)
 
+const NameField = ({ device, onChange }: Pick<DeviceEditorProps, 'device' | 'onChange'>) => (
+  <label className="field">
+    Name
+    <input
+      defaultValue={device.name}
+      onBlur={(e) =>
+        e.target.value.trim() && e.target.value !== device.name && onChange({ name: e.target.value.trim() })
+      }
+    />
+  </label>
+)
+
 export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) =>
   device.plan ? (
     <ElectricalDetails device={device} room={room} onClose={onClose}>
-      {device.kind === 'light' && <LightControls light={light} onChange={onLight} />}
+      {device.kind === 'light' && (
+        <>
+          <LightControls light={light} onChange={onLight} />
+          <Section>
+            <NameField key={`${device.id}-${device.name}`} device={device} onChange={onChange} />
+          </Section>
+        </>
+      )}
     </ElectricalDetails>
   ) : (
     <>
@@ -39,15 +58,7 @@ export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete,
 
       <Section>
         {/* Remount when another device is selected so the fields show its values. */}
-        <label className="field" key={`name-${device.id}-${device.name}`}>
-          Name
-          <input
-            defaultValue={device.name}
-            onBlur={(e) =>
-              e.target.value.trim() && e.target.value !== device.name && onChange({ name: e.target.value.trim() })
-            }
-          />
-        </label>
+        <NameField key={`${device.id}-${device.name}`} device={device} onChange={onChange} />
         <div className="row" key={`z-${device.id}`}>
           <NumberField label="Height cm" min={0} value={cm(device.z)} onCommit={(v) => onChange({ z: v / 100 })} />
         </div>

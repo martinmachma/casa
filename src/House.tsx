@@ -634,8 +634,9 @@ export const House = ({ backend, account }: HouseProps) => {
           device={selectedDevice}
           room={roomRecord && roomLabel(roomRecord, data.roomNames).name}
           onChange={(patch) =>
-            !selectedDevice.plan &&
-            data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
+            selectedDevice.plan
+              ? patch.name && data.renameDevice(selectedDevice.id, patch.name)
+              : data.patchDevice(selectedDevice.id, patch, `${selectedDevice.id}:${Object.keys(patch).join()}`)
           }
           light={lightSettings(lights.states[selectedDevice.id], dark)}
           onLight={(patch) => lights.set(selectedDevice.id, patch, dark)}

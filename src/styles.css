@@ -2975,11 +2975,6 @@ input[type='range'] {
   overflow: hidden;
 }
 
-/* Over the compass, which a room's view doesn't have. */
-.room-cards[data-floor] {
-  bottom: 68px;
-}
-
 .room-cards[hidden] {
   display: none;
 }
@@ -3168,6 +3163,11 @@ button.smart-row-toggle:hover .smart-row-device {
 
 button.smart-row-toggle:hover .smart-row-action {
   display: block;
+}
+
+/* On its own line an icon sits on the text's baseline, above the tile's middle. */
+.smart-row-device {
+  display: grid;
 }
 
 .smart-row-open {
@@ -3673,10 +3673,22 @@ input[type='range'].light-brightness::-moz-range-thumb {
   }
 }
 
+/* Beside the floor's list, which runs to the bottom of the screen. */
+@media (min-width: 821px) {
+  .app:has(.room-cards[data-floor]) .compass {
+    right: 286px;
+  }
+}
+
 @media (max-width: 820px) {
   .room-cards {
     top: auto;
     max-height: 45%;
+  }
+
+  /* Over the compass, which a room's view doesn't have. */
+  .room-cards[data-floor] {
+    bottom: 68px;
   }
 
   /* Under the floor buttons and Planning, which fill the top row here. */

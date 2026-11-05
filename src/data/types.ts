@@ -52,6 +52,9 @@ export type FurnitureItem = {
 /** A name given to a room, replacing the plan's; the plan number stays. */
 export type RoomName = { roomId: string; name: string }
 
+/** A name given to a light from the electrical plan, replacing the plan's. */
+export type DeviceName = { deviceId: string; name: string }
+
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
 export type DeviceKind =
@@ -112,6 +115,8 @@ export type HouseState = {
   rooms?: RoomName[]
   /** Absent in versions saved before devices could be placed. */
   devices?: Device[]
+  /** Absent in versions saved before the electrical plan's lights could be renamed. */
+  deviceNames?: DeviceName[]
 }
 
 export const EMPTY_STATE: HouseState = { walls: [], wallAreas: [], furniture: [], rooms: [], devices: [] }

@@ -186,7 +186,11 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const viewed = versions.find((v) => v.id === viewedId)
   const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? BARE_STATE
   // Built-in electrical infrastructure is shared by every version, including old snapshots and the bare house.
-  const devices = useMemo(() => [...ELECTRICAL_DEVICES, ...(state.devices ?? [])], [state.devices])
+  const devices = useMemo(() => {
+    const names = new Map((state.deviceNames ?? []).map((n) => [n.deviceId, n.name]))
+    const built = ELECTRICAL_DEVICES.map((d) => (names.has(d.id) ? { ...d, name: names.get(d.id)! } : d))
+    return [...built, ...(state.devices ?? [])]
+  }, [state.devices, state.deviceNames])
 
   const wallColors = useMemo(
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
@@ -268,6 +272,15 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const patchDevice = (id: string, patch: Partial<Device>, key?: string) =>
     edit((s) => ({ ...s, devices: (s.devices ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)) }), key)
 
+  /** Names a device from the electrical plan; its plan name takes it back to having none of its own. */
+  const renameDevice = (id: string, name: string) =>
+    edit((s) => {
+      const others = (s.deviceNames ?? []).filter((n) => n.deviceId !== id)
+      const planned = ELECTRICAL_DEVICES.some((d) => d.id === id && d.name === name)
+      const deviceNames = planned ? others : [...others, { deviceId: id, name }]
+      return { ...s, deviceNames: deviceNames.length ? deviceNames : undefined }
+    })
+
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
 
   // The version made live by someone else since editing began; the bare house is `null`. Drafts kept from before
@@ -348,6 +361,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     devices,
     addDevice,
     patchDevice,
+    renameDevice,
     removeDevice,
   }
 }

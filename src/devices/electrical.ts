@@ -127,7 +127,7 @@ sockets('g-dining-north', 'Dining socket', 'g-north', 'a', [5.36, 5.51])
 wall(
   'g-worktop-light',
   'light',
-  'Kitchen worktop light',
+  'Worktop light',
   'g-west',
   'a',
   0.58,
@@ -160,9 +160,9 @@ sw(
   2.31,
   'Double two-way switch',
 )
-ceiling('g-kitchen-light', 'Kitchen ceiling light', 'ground', [1.48, 2.03])
-ceiling('g-dining-light', 'Dining ceiling light', 'ground', [4.04, 2.03])
-ceiling('g-living-light', 'Living ceiling light', 'ground', [4.49, 5.55], 'Multiwire ceiling outlet')
+ceiling('g-kitchen-light', 'Kitchen light', 'ground', [1.48, 2.03])
+ceiling('g-dining-light', 'Dining light', 'ground', [4.04, 2.03])
+ceiling('g-living-light', 'Living light', 'ground', [4.49, 5.55], 'Multiwire ceiling outlet')
 sockets('g-living-east', 'Living wall socket', 'g-east-south', 'a', [3.85, 4.0])
 sockets('g-living-media', 'Living media socket', 'g-east-south', 'a', [5.27, 5.42, 5.57])
 media('g-living', 'g-east-south', 'a', 5.8, 6.02)
@@ -174,7 +174,7 @@ wall('g-store-socket', 'socket', 'Under-stair storage socket', 'g-kitchen-storag
 wall(
   'g-store-light',
   'light',
-  'Under-stair storage light',
+  'Wall light',
   'g-kitchen-storage',
   'a',
   1.3,
@@ -185,12 +185,12 @@ wall(
 sw('g-store-switch', 'Storage light switch', 'g-core', 'a', 4.04)
 sw('g-stairs-two-way', 'Staircase two-way switch', 'g-storage-wc', 'b', 2.03, 'Two-way switch')
 sw('g-stairs-intermediate', 'Staircase intermediate switch', 'g-storage-wc', 'b', 2.28, 'Intermediate switch')
-ceiling('g-wc-light', 'WC ceiling light', 'ground', [1.25, 6.0], 'Ceiling light · max. 100 W, IP20')
+ceiling('g-wc-light', 'Ceiling light', 'ground', [1.25, 6.0], 'Ceiling light · max. 100 W, IP20')
 wall('g-wc-fan', 'fan', 'WC extractor fan', 'g-west', 'a', 6.27, 'V · 230 V, up to 100 W', 2.3)
 sw('g-wc-switch', 'WC light switch', 'g-wc-hall', 'b', 1.88)
 sw('g-wc-timer', 'WC fan timer button', 'g-wc-hall', 'b', 2.07, 'Push button with run-on relay')
 sw('g-hall-two-way', 'Hall two-way switch', 'g-wc-hall', 'a', 2.18, 'Two-way switch')
-ceiling('g-hall-light', 'Hall ceiling light', 'ground', [1.55, 7.9], 'Ceiling light · max. 100 W, IP20')
+ceiling('g-hall-light', 'Ceiling light', 'ground', [1.55, 7.9], 'Ceiling light · max. 100 W, IP20')
 point(
   'g-smoke',
   'sensor',
@@ -370,20 +370,20 @@ sockets('u-205-ne', "Sara's room corner socket", 'u-north', 'a', [2.82, 2.97])
 sockets('u-205-west', "Sara's room bedside socket", 'u-west', 'a', [1.82, 1.98])
 wall('u-205-door-socket', 'socket', "Sara's room doorway socket", 'u-205-south', 'b', 2.58, '230 V / 16 A')
 sw('u-205-switch', "Sara's room light switch", 'u-205-south', 'b', 2.68)
-ceiling('u-205-light', "Sara's room ceiling light", 'upper', [1.95, 1.55])
+ceiling('u-205-light', 'Ceiling light', 'upper', [1.95, 1.55])
 sw('u-hall-north-1', 'Landing two-gang two-way switch 1', 'u-205-south', 'a', 2.52, 'Double two-way switch')
 sw('u-hall-north-2', 'Landing two-gang two-way switch 2', 'u-205-south', 'a', 2.68, 'Double two-way switch')
 wall(
   'u-stairs-light',
   'light',
-  'Staircase wall light',
+  'Wall light',
   'u-west',
   'a',
   4.23,
   'Wall light · max. 100 W, IP20',
   1.8,
 )
-ceiling('u-hall-light', 'Landing ceiling light', 'upper', [3.6, 4.23], 'Ceiling light · max. 100 W, IP20')
+ceiling('u-hall-light', 'Ceiling light', 'upper', [3.6, 4.23], 'Ceiling light · max. 100 W, IP20')
 point(
   'u-smoke',
   'sensor',
@@ -405,18 +405,18 @@ sw('u-bedroom-south-switch', 'Bedroom bedside two-way switch · south', 'u-west'
 sockets('u-bedroom-sw', 'Bedroom corner socket', 'u-west', 'a', [8.9, 9.05])
 sockets('u-bedroom-media', 'Bedroom media socket', 'u-204-203', 'a', [8.45, 8.6, 8.75])
 media('u-bedroom', 'u-204-203', 'a', 8.96, 9.12)
-ceiling('u-bedroom-light', 'Bedroom ceiling light', 'upper', [1.95, 7.5])
+ceiling('u-bedroom-light', 'Ceiling light', 'upper', [1.95, 7.5])
 sw('u-203-switch', "Martin's room light switch", 'u-middle', 'a', 4.62)
 wall('u-203-door-socket', 'socket', "Martin's room doorway socket", 'u-middle', 'a', 4.62, '230 V / 16 A')
 sockets('u-203-ne', "Martin's room bedside socket", 'u-east-south', 'a', [5.6, 5.75])
 sockets('u-203-se', "Martin's room corner socket", 'u-east-south', 'a', [8.9, 9.05])
 sockets('u-203-media', "Martin's room media socket", 'u-204-203', 'b', [8.45, 8.6, 8.75])
 media('u-203', 'u-204-203', 'b', 8.96, 9.12)
-ceiling('u-203-light', "Martin's room ceiling light", 'upper', [4.9, 7.15])
+ceiling('u-203-light', 'Ceiling light', 'upper', [4.9, 7.15])
 wall(
   'u-bath-mirror',
   'light',
-  'Bathroom mirror light',
+  'Mirror light',
   'u-205-bath',
   'b',
   0.8,
@@ -436,7 +436,7 @@ wall(
   0.25,
   'Supply for the towel rail heating element.',
 )
-ceiling('u-bath-light', 'Bathroom ceiling light', 'upper', [4.52, 1.65], 'Ceiling light · max. 100 W, IP20')
+ceiling('u-bath-light', 'Ceiling light', 'upper', [4.52, 1.65], 'Ceiling light · max. 100 W, IP20')
 point(
   'u-bath-fan',
   'fan',
@@ -450,7 +450,7 @@ point(
 sw('u-bath-switch', 'Bathroom light switch', 'u-bath-south', 'b', 4.78)
 sw('u-bath-timer', 'Bathroom fan timer button', 'u-bath-south', 'b', 4.95, 'Push button with run-on relay')
 sw('u-store-switch', 'Boiler room light switch', 'u-storage-west', 'b', 4.86)
-ceiling('u-store-light', 'Boiler room ceiling light', 'upper', [5.5, 4.23], 'Ceiling light · max. 100 W, IP20')
+ceiling('u-store-light', 'Ceiling light', 'upper', [5.5, 4.23], 'Ceiling light · max. 100 W, IP20')
 wall('u-washer', 'socket', 'Washing machine socket', 'u-bath-south', 'a', 5.12, '230 V / 16 A')
 wall('u-dryer', 'socket', 'Dryer socket', 'u-bath-south', 'a', 5.35, '230 V / 16 A')
 wall(
