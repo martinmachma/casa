@@ -53,6 +53,7 @@ import { floorShades, SHADE_UP, useShades } from './devices/shades'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
 import { ItemPins } from './ui/ItemPins'
+import { FloorOverview } from './ui/FloorOverview'
 import { RoomOverview } from './ui/RoomOverview'
 import { ElectricalPanel } from './ui/ElectricalPanel'
 
@@ -777,6 +778,19 @@ export const House = ({ backend, account }: HouseProps) => {
         )}
 
         {/* Between rooms, smart items keep their tags; outside, so do lights without a room. */}
+        {floorTags.length > 0 && !popover && (
+          <FloorOverview
+            items={floorTags}
+            roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
+            light={(id) => lightSettings(lights.states[id], dark)}
+            onLight={(id, patch) => lights.set(id, patch, dark)}
+            shade={(id) => shades.states[id] ?? SHADE_UP}
+            onShade={shades.set}
+            onOpen={openItem}
+            onHover={setHoveredItem}
+            hovered={hoveredItem}
+          />
+        )}
         {floorTags.length > 0 && (
           <ItemPins
             items={floorTags}

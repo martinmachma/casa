@@ -1,5 +1,5 @@
 import { Check, Pencil, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { LightState } from '../devices/lights'
 import { type Scene, sceneActive } from '../devices/scenes'
 
@@ -9,13 +9,15 @@ type RoomScenesProps = {
   lightIds: string[]
   light: (id: string) => LightState
   onLight: (id: string, patch: Partial<LightState>) => void
+  /** Stands at the end of the chips' row. */
+  end?: ReactNode
 }
 
 /**
  * The room's scenes as chips that set its lights. A new scene keeps the lights as they are; editing one puts it on,
  * so its lights can be adjusted before saving it again.
  */
-export const RoomScenes = ({ scenes, onScenes, lightIds, light, onLight }: RoomScenesProps) => {
+export const RoomScenes = ({ scenes, onScenes, lightIds, light, onLight, end }: RoomScenesProps) => {
   const [editing, setEditing] = useState(false)
   // The scene open in the form, or 'new'.
   const [form, setForm] = useState<string>()
@@ -73,6 +75,7 @@ export const RoomScenes = ({ scenes, onScenes, lightIds, light, onLight }: RoomS
             )}
           </>
         )}
+        {end}
       </div>
       {form && (
         <form

@@ -7,8 +7,7 @@ import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { ItemPins } from './ItemPins'
 import { RoomScenes } from './RoomScenes'
-import { SmartCard, SmartTile } from './SmartList'
-import { KIND_GROUPS, lightsSummary } from './smartText'
+import { AllLights, SmartRows } from './SmartList'
 
 type RoomOverviewProps = {
   title: string
@@ -48,9 +47,7 @@ export const RoomOverview = ({
   onScenes,
   onLeave,
 }: RoomOverviewProps) => {
-  const lights = items.filter((i) => i.kind === 'light')
-  const on = lights.filter((i) => light(i.id).on).length
-  const kinds = [...new Set(items.map((i) => i.kind))]
+  const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
   return (
     <>
       <h2 className="room-name float">
@@ -59,52 +56,36 @@ export const RoomOverview = ({
           <X size={14} />
         </IconButton>
       </h2>
-      <div className="room-cards" data-compact>
-        <SmartCard
-          title="In this room"
-          summary={lights.length ? lightsSummary(on, lights.length) : `${items.length} smart items`}
-          allLights={
-            lights.length
-              ? { on: on > 0, onChange: (to) => lights.forEach((i) => onLight(i.id, { on: to })) }
-              : undefined
-          }
-        >
-          {lights.length > 0 && (
-            <RoomScenes
-              scenes={scenes}
-              onScenes={onScenes}
-              lightIds={lights.map((i) => i.id)}
-              light={light}
-              onLight={onLight}
-            />
-          )}
-          {items.length ? (
-            kinds.map((kind) => (
-              <div key={kind}>
-                {kinds.length > 1 && <h4 className="smart-group">{KIND_GROUPS[kind]}</h4>}
-                <div className="smart-lights">
-                  {items
-                    .filter((i) => i.kind === kind)
-                    .map((item) => (
-                      <SmartTile
-                        key={item.id}
-                        item={item}
-                        light={item.kind === 'light' ? light(item.id) : undefined}
-                        shade={item.kind === 'blind' ? shade(item.id) : undefined}
-                        pressed={open === item.id}
-                        hovered={hovered === item.id}
-                        onOpen={() => onOpen(open === item.id ? undefined : item.id)}
-                        onHover={(h) => onHover(h ? item.id : undefined)}
-                        onLight={(p) => onLight(item.id, p)}
-                      />
-                    ))}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="hint">No smart items here yet. Place them under Planning → Devices.</p>
-          )}
-        </SmartCard>
+      {/* An open item has the view to itself; hidden rather than gone, so a scene being set up survives it. */}
+      <div className="room-cards" hidden={!!open}>
+        <section className="room-card float">
+          <div className="smart-card-body">
+            {lightIds.length > 0 && (
+              <RoomScenes
+                scenes={scenes}
+                onScenes={onScenes}
+                lightIds={lightIds}
+                light={light}
+                onLight={onLight}
+                end={<AllLights ids={lightIds} light={light} onLight={onLight} />}
+              />
+            )}
+            {items.length ? (
+              <SmartRows
+                items={items}
+                light={light}
+                onLight={onLight}
+                shade={shade}
+                onShade={onShade}
+                onOpen={onOpen}
+                onHover={onHover}
+                hovered={hovered}
+              />
+            ) : (
+              <p className="hint">No smart items here yet. Place them under Planning → Devices.</p>
+            )}
+          </div>
+        </section>
       </div>
 
       <ItemPins
