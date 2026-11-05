@@ -26,7 +26,7 @@ import type { CameraMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
 import { lightSettings, useLights } from './devices/lights'
-import { useScenes } from './devices/scenes'
+import { type Scene, useScenes } from './devices/scenes'
 import { LightControls } from './ui/LightControls'
 import { daylight } from './scene/Lights'
 import { FurnitureEditor } from './ui/FurnitureEditor'
@@ -37,6 +37,7 @@ import { sunPosition, zonedTime } from './sun/sun'
 import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } from './measure/measure'
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
+import { ordinal } from './ui/ordinal'
 import { ViewDock } from './ui/ViewDock'
 import { PaintPanel } from './ui/PaintPanel'
 import type { Brush, PaintFace, PaintStroke } from './scene/FloorWalls'
@@ -55,6 +56,7 @@ import { useRoomOrder } from './rooms/useRoomOrder'
 import { ItemPins } from './ui/ItemPins'
 import { FloorOverview } from './ui/FloorOverview'
 import { RoomOverview } from './ui/RoomOverview'
+import { SceneEditor } from './ui/SceneEditor'
 import { ElectricalPanel } from './ui/ElectricalPanel'
 
 type HouseProps = { backend: Backend; account: Account }
@@ -148,6 +150,8 @@ export const House = ({ backend, account }: HouseProps) => {
   const lights = useLights()
   const shades = useShades()
   const scenes = useScenes()
+  // The scene being put together: `scene` is empty for a new one.
+  const [sceneEdit, setSceneEdit] = useState<{ scene?: Scene }>()
   const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
   const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
   const dark = 1 - daylight(sunAt)
@@ -465,6 +469,7 @@ export const House = ({ backend, account }: HouseProps) => {
         return
       }
       // Esc first steps back out of what's being done in the room, then out of the room.
+      if (sceneEdit && e.key === 'Escape' && !typing) return setSceneEdit(undefined)
       if (
         focus &&
         e.key === 'Escape' &&
@@ -773,13 +778,14 @@ export const House = ({ backend, account }: HouseProps) => {
               focus.room,
               focusItems.filter((i) => i.kind === 'light').map((i) => i.id),
             )}
-            onScenes={(s) => scenes.set(focus.room, s)}
+            onEditScene={(scene) => setSceneEdit({ scene })}
+            sceneOpen={!!sceneEdit}
             onLeave={leaveRoom}
           />
         )}
 
         {/* Between rooms, smart items keep their tags; outside, so do lights without a room. */}
-        {floorTags.length > 0 && !popover && (
+        {floorTags.length > 0 && !popover && !sceneEdit && (
           <FloorOverview
             items={floorTags}
             roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
@@ -790,6 +796,22 @@ export const House = ({ backend, account }: HouseProps) => {
             onOpen={openItem}
             onHover={setHoveredItem}
             hovered={hoveredItem}
+            onEditScene={(scene) => setSceneEdit({ scene })}
+          />
+        )}
+        {sceneEdit && !rightOpen && (
+          <SceneEditor
+            key={sceneEdit.scene?.id ?? 'new'}
+            scene={sceneEdit.scene}
+            floors={house.floors
+              .map((f, i) => ({ f, name: `${ordinal(i + 1)} floor` }))
+              .sort((a, b) => Number(b.f === (focusFloor ?? floor)) - Number(a.f === (focusFloor ?? floor)))
+              .map(({ f, name }) => ({ name, items: floorItems(f, data.devices, data.furniture) }))}
+            roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
+            room={focus?.room}
+            light={(id) => lightSettings(lights.states[id], dark)}
+            shade={(id) => shades.states[id] ?? SHADE_UP}
+            onClose={() => setSceneEdit(undefined)}
           />
         )}
         {floorTags.length > 0 && (

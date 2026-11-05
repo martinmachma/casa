@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Floor } from '../layout/types'
 import type { CameraMode } from '../scene/selection'
 import { Segmented } from './kit'
+import { ordinal } from './ordinal'
 import { WalkButton } from './WalkButton'
 
 type ViewDockProps = {
@@ -27,8 +28,6 @@ type ViewDockProps = {
 }
 
 const OUTSIDE = 'outside'
-
-const ordinal = (n: number) => `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`
 
 /** Floats over the left of the 3D view: which floor and how to look at it at the top, its rooms at the bottom. */
 export const ViewDock = ({

@@ -25,7 +25,9 @@ type RoomOverviewProps = {
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
   scenes: Scene[]
-  onScenes: (scenes: Scene[]) => void
+  onEditScene: (scene: Scene | undefined) => void
+  /** A scene is being put together, in the card's place. */
+  sceneOpen: boolean
   /** Out of the room, back to its whole floor. */
   onLeave: () => void
 }
@@ -44,7 +46,8 @@ export const RoomOverview = ({
   hovered,
   pinRefs,
   scenes,
-  onScenes,
+  onEditScene,
+  sceneOpen,
   onLeave,
 }: RoomOverviewProps) => {
   const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
@@ -56,14 +59,14 @@ export const RoomOverview = ({
           <X size={14} />
         </IconButton>
       </h2>
-      {/* An open item has the view to itself; hidden rather than gone, so a scene being set up survives it. */}
-      <div className="room-cards" hidden={!!open}>
+      {/* An open item has the view to itself. */}
+      <div className="room-cards" hidden={!!open || sceneOpen}>
         <section className="room-card float">
           <div className="smart-card-body">
             {lightIds.length > 0 && (
               <RoomScenes
                 scenes={scenes}
-                onScenes={onScenes}
+                onEdit={onEditScene}
                 lightIds={lightIds}
                 light={light}
                 onLight={onLight}

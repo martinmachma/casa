@@ -1,7 +1,9 @@
 import { Fragment } from 'react'
 import type { LightState } from '../devices/lights'
+import type { Scene } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
+import { RoomScenes } from './RoomScenes'
 import { AllLights, SmartRows } from './SmartList'
 
 type FloorOverviewProps = {
@@ -16,10 +18,11 @@ type FloorOverviewProps = {
   onOpen: (id: string) => void
   onHover: (id: string | undefined) => void
   hovered: string | undefined
+  onEditScene: (scene: Scene | undefined) => void
 }
 
 /** Between rooms: everything on the floor, room by room, with what isn't in a room first, as outside. */
-export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) => {
+export const FloorOverview = ({ items, roomName, onEditScene, ...rows }: FloorOverviewProps) => {
   const names = [...new Set(items.map(roomName))]
   const groups = [...names.filter((n) => !n), ...names.filter((n) => n)].map((name) => ({
     name,
@@ -31,11 +34,14 @@ export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) 
       <section className="room-card float">
         <div className="smart-card-body">
           {lightIds.length > 0 && (
-            <div className="smart-scenes">
-              <div className="smart-scene-chips">
-                <AllLights ids={lightIds} light={rows.light} onLight={rows.onLight} />
-              </div>
-            </div>
+            <RoomScenes
+              scenes={[]}
+              onEdit={onEditScene}
+              lightIds={lightIds}
+              light={rows.light}
+              onLight={rows.onLight}
+              end={<AllLights ids={lightIds} light={rows.light} onLight={rows.onLight} />}
+            />
           )}
           {groups.map(({ name, items }) => (
             <Fragment key={name ?? ''}>

@@ -3043,7 +3043,7 @@ input[type='range'] {
   color: var(--ink);
 }
 
-/* While editing, a picked scene opens in the form; the others wait outlined. */
+/* While editing, a picked scene opens in the editor; they all wait outlined. */
 .smart-scenes[data-editing] .smart-scene-chips button:not(.chip-icon, [aria-pressed='true']) {
   background: none;
   box-shadow: inset 0 0 0 1px var(--line-strong);
@@ -3071,11 +3071,6 @@ input[type='range'] {
   box-shadow: var(--ring);
 }
 
-.scene-form .hint {
-  margin: 0;
-  font-size: 12px;
-}
-
 .scene-form-actions {
   display: flex;
   align-items: center;
@@ -3086,6 +3081,128 @@ input[type='range'] {
   min-height: 28px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+/* A scene being put together: the house's items, each with a box and what the scene sets it to. */
+.room-cards[data-scene] {
+  width: min(320px, calc(100% - 24px));
+  justify-content: flex-start;
+}
+
+.room-cards[data-scene] .room-card {
+  flex: 1;
+}
+
+.room-cards[data-scene] .smart-card-body {
+  flex: 1;
+}
+
+.scene-editor-head {
+  gap: 8px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.scene-editor-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.scene-editor-foot {
+  padding: 8px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.scene-rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scene-row {
+  border-radius: 8px;
+}
+
+.scene-row[data-picked] {
+  background: var(--surface-2);
+}
+
+.scene-row-head {
+  display: flex;
+  align-items: center;
+  height: 36px;
+}
+
+.scene-tick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 8px 0 6px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+.scene-tick[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.scene-row-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px 0 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scene-row .smart-tile {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.scene-row-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: rotate 150ms;
+}
+
+.scene-row-open[aria-expanded='true'] .scene-row-chevron {
+  rotate: 180deg;
+}
+
+.scene-row .light-controls {
+  padding: 4px 10px 12px;
+  border: 0;
+}
+
+.scene-shade {
+  display: grid;
+  gap: 8px;
+  padding: 4px 10px 12px;
+}
+
+.scene-shade input {
+  width: 100%;
+  accent-color: var(--accent);
 }
 
 /* One item: its tile switches it, the rest of the row opens it, and a drag along it sets how far it's lit or let down. */
@@ -3677,6 +3794,10 @@ input[type='range'].light-brightness::-moz-range-thumb {
 @media (min-width: 821px) {
   .app:has(.room-cards[data-floor]) .compass {
     right: 286px;
+  }
+
+  .app:has(.room-cards[data-scene]) .compass {
+    right: 342px;
   }
 }
 
