@@ -1,5 +1,5 @@
-import { Cable, Paintbrush, SquareBottomDashedScissors } from 'lucide-react'
-import { IconButton, Slide } from './ui/kit'
+import { Cable, Lightbulb, Paintbrush, Sofa, SquareBottomDashedScissors } from 'lucide-react'
+import { IconButton, Section, Segmented, Slide } from './ui/kit'
 import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
@@ -22,9 +22,10 @@ import type { WalkPlacement } from './scene/WalkPlacement'
 import type { WalkStart } from './walk/start'
 import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
-import type { CameraMode, Interaction, Selection } from './scene/selection'
+import type { CameraMode, EditMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
+import { DevicePanel } from './ui/DevicePanel'
 import { lightSettings, useLights } from './devices/lights'
 import { type Scene, useScenes } from './devices/scenes'
 import { LightControls } from './ui/LightControls'
@@ -49,7 +50,7 @@ import { SnapMenu } from './ui/SnapMenu'
 import { VersionMenu } from './ui/VersionMenu'
 import { isTyping } from './ui/isTyping'
 import { roomViews } from './rooms/roomViews'
-import { floorItems, roomItems } from './rooms/roomItems'
+import { floorItems, outsideLight, roomItems } from './rooms/roomItems'
 import { floorShades, SHADE_UP, useShades } from './devices/shades'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
@@ -65,35 +66,35 @@ type HouseProps = { backend: Backend; account: Account }
 const NARROW = '(max-width: 820px)'
 const isNarrow = () => window.matchMedia(NARROW).matches
 
-const PLANNING_PARAM = 'planning'
-/** Home is for living in the house; planning is the editor, `?planning` in the URL. */
-type Section = 'home' | 'planning'
+const EDIT_PARAM = 'edit'
+/** Home is for living in the house; Edit is the editor, `?edit` in the URL. */
+type Section = 'home' | 'edit'
 
-const savedSection = (): Section =>
-  new URLSearchParams(window.location.search).has(PLANNING_PARAM) ? 'planning' : 'home'
+const savedSection = (): Section => (new URLSearchParams(window.location.search).has(EDIT_PARAM) ? 'edit' : 'home')
 
 const saveSection = (section: Section) => {
   const url = new URL(window.location.href)
-  if (section === 'planning') url.searchParams.set(PLANNING_PARAM, '')
-  else url.searchParams.delete(PLANNING_PARAM)
-  window.history.replaceState(window.history.state, '', url.toString().replace(`${PLANNING_PARAM}=`, PLANNING_PARAM))
+  if (section === 'edit') url.searchParams.set(EDIT_PARAM, '')
+  else url.searchParams.delete(EDIT_PARAM)
+  window.history.replaceState(window.history.state, '', url.toString().replace(`${EDIT_PARAM}=`, EDIT_PARAM))
 }
 
 export const House = ({ backend, account }: HouseProps) => {
   const [section, setSection] = useState(savedSection)
-  const planning = section === 'planning'
-  const data = useHouseData(backend, !planning)
+  const editing = section === 'edit'
+  const data = useHouseData(backend, !editing)
   const [floorIndex, setFloorIndex] = useState(0)
   // The app opens on the whole house.
   const [outside, setOutside] = useState(true)
   const [planCamera, setCamera] = useState<CameraMode>('orbit')
-  // The plan is a planning tool; at home the house is seen in 3D or walked through.
-  const camera = planning || planCamera !== 'top' ? planCamera : 'orbit'
+  // The plan is an editing tool; at home the house is seen in 3D or walked through.
+  const camera = editing || planCamera !== 'top' ? planCamera : 'orbit'
   const [cutaway, setCutaway] = useState(true)
   const [electrical, setElectrical] = useState(false)
-  // The tool in use while planning; at home the house is only looked at.
+  // The tool in use while editing; at home the house is only looked at.
   const [tool, setTool] = useState<Exclude<Interaction, 'view' | 'measure'>>('edit')
-  const interaction: Interaction = planning ? tool : 'view'
+  const interaction: Interaction = editing ? tool : 'view'
+  const [editMode, setEditMode] = useState<EditMode>('interior')
   const [brush, setBrush] = useState<Brush>({ color: '#7f9172', erase: false, size: 0.1 })
   const [selection, setSelection] = useState<Selection>()
   const [placing, setPlacing] = useState<DevicePlacement>()
@@ -114,15 +115,15 @@ export const House = ({ backend, account }: HouseProps) => {
   const [viewKey, setViewKey] = useState(0)
   const [measure, setMeasure] = useState<Measurement>()
   const [measurements, setMeasurements] = useState<MeasuredLine[]>([])
-  // Sunlight follows the clock at home; planning starts with even light.
-  const [sun, setSun] = useState<SunSettings | undefined>(() => (planning ? undefined : sunNow()))
+  // Sunlight follows the clock at home; Edit starts with even light.
+  const [sun, setSun] = useState<SunSettings | undefined>(() => (editing ? undefined : sunNow()))
   const { site } = house
   // At home the sun can't be moved; it keeps up with the clock.
   useEffect(() => {
-    if (planning) return
+    if (editing) return
     const timer = setInterval(() => setSun(sunNow()), 60 * 1000)
     return () => clearInterval(timer)
-  }, [planning])
+  }, [editing])
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
     : undefined
@@ -363,18 +364,19 @@ export const House = ({ backend, account }: HouseProps) => {
     setOutside(true)
   }
 
-  /** Planning is editing, in a room or not; home is for looking: editing and measuring stop, and the sun follows the clock. */
+  /** Edit works in a room or not; home is for looking: editing and measuring stop, and the sun follows the clock. */
   const changeSection = (next: Section) => {
     if (next === section) return
-    // Leaving planning drops unsaved edits, so it asks first, as leaving the page does.
+    // Leaving Edit drops unsaved edits, so it asks first, as leaving the page does.
     if (next === 'home') {
-      if (data.dirty && !confirm('Leave planning? Your unsaved changes will be lost.')) return
+      if (data.dirty && !confirm('Leave Edit? Your unsaved changes will be lost.')) return
       data.discardDraft()
     }
     if (popover) openPopover(undefined)
     setSelection(undefined)
     setPlacing(undefined)
     setPlacingPiece(undefined)
+    setSceneEdit(undefined)
     if (next === 'home') {
       stopMeasuring()
       setRightTucked(false)
@@ -382,6 +384,18 @@ export const House = ({ backend, account }: HouseProps) => {
     setSun(next === 'home' ? sunNow() : undefined)
     setSection(next)
     saveSection(next)
+  }
+
+  /** Each mode opens on its own panel, whatever was on the way there. */
+  const changeEditMode = (next: EditMode) => {
+    setSelection(undefined)
+    setPlacing(undefined)
+    setPlacingPiece(undefined)
+    setSceneEdit(undefined)
+    setElectrical(false)
+    setTool('edit')
+    setEditMode(next)
+    setRightOpen(true)
   }
 
   /** Measuring works in any mode; while it's on, taps measure instead of selecting. */
@@ -396,6 +410,7 @@ export const House = ({ backend, account }: HouseProps) => {
   /** While painting, taps and drags on walls paint them instead of selecting. */
   const togglePaint = () => {
     setSelection(undefined)
+    setSceneEdit(undefined)
     setPlacing(undefined)
     setPlacingPiece(undefined)
     if (measure) stopMeasuring()
@@ -435,14 +450,21 @@ export const House = ({ backend, account }: HouseProps) => {
   }
 
   // Outside and at home, the house is only looked at.
-  const locked = !planning
-  // E toggles planning, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
+  const locked = !editing
+  // E toggles Edit, M measuring, L devices; R / Shift+R rotate, Cmd+D duplicates and Delete removes the selected item; Esc steps back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Text fields keep their own undo.
       const typing = isTyping(e.target)
       const key = e.key.toLowerCase()
-      if (!typing && !locked && interaction === 'edit' && !measure && (e.metaKey || e.ctrlKey)) {
+      if (
+        !typing &&
+        !locked &&
+        interaction === 'edit' &&
+        editMode === 'interior' &&
+        !measure &&
+        (e.metaKey || e.ctrlKey)
+      ) {
         if (key === 'c' && selectedItems.length) {
           e.preventDefault()
           clipboard.current = selectedItems.map(({ id: _, ...item }) => ({ ...item }))
@@ -483,9 +505,10 @@ export const House = ({ backend, account }: HouseProps) => {
         return popover ? openPopover(undefined) : leaveRoom()
       if (popover && !focus && e.key === 'Escape' && !typing) return openPopover(undefined)
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return
-      if (key === 'e') return changeSection(planning ? 'home' : 'planning')
+      if (key === 'e') return changeSection(editing ? 'home' : 'edit')
       if (locked) return
       if (key === 'm') toggleMeasure()
+      else if (key === 'l') changeEditMode(editMode === 'devices' ? 'interior' : 'devices')
       else if (key === 'p') togglePaint()
       else if (placingPiece && key === 'r')
         setPlacingPiece({
@@ -508,26 +531,29 @@ export const House = ({ backend, account }: HouseProps) => {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const editing = planning
   // While looking round, it opens only for a picked light (in a room, its card does that).
   const rightOpen = (editing || (selection?.kind === 'light' && !focus)) && !rightTucked
+  // From outside, the lights out there; on a floor, what's on it, and those lights all the same.
   const floorTags =
-    !focus && !planning && !rightOpen && camera !== 'walk'
-      ? (outside ? house.floors : [floor])
-          .flatMap((f) => floorItems(f, data.devices, data.furniture))
-          .filter((item) => !outside || (!item.room && item.kind === 'light'))
+    !focus && !editing && !rightOpen && camera !== 'walk'
+      ? house.floors.flatMap((f) =>
+          floorItems(f, data.devices, data.furniture).filter((item) => outsideLight(item) || (!outside && f === floor)),
+        )
       : []
   const closeRight = () => setRightOpen(false)
   const modeBar = (
     <ModeBar
-      planning={planning}
-      onPlanning={(on) => changeSection(on ? 'planning' : 'home')}
+      editing={editing}
+      onEditing={(on) => changeSection(on ? 'edit' : 'home')}
       onUndo={data.canUndo ? undo : undefined}
       onRedo={data.canRedo ? redo : undefined}
       save={<SaveButton data={data} />}
       onOpenPanel={editing && !rightOpen ? () => setRightOpen(true) : undefined}
       tools={
         <>
+          <Slide show={editing}>
+            <SunPanel sun={sun} position={sunAt} onSun={setSun} />
+          </Slide>
           <Slide show={!locked}>
             <MeasurePanel
               mode={measure?.mode}
@@ -540,25 +566,14 @@ export const House = ({ backend, account }: HouseProps) => {
               }}
             />
           </Slide>
-          <Slide show={planning}>
-            <SnapMenu
-              wallSnap={wallSnap}
-              onWallSnap={setWallSnap}
-              furnitureSnap={furnitureSnap}
-              onFurnitureSnap={setFurnitureSnap}
-            />
-          </Slide>
-          <Slide show={planning}>
-            <SunPanel sun={sun} position={sunAt} onSun={setSun} />
-          </Slide>
-          <Slide show={planning}>
+          <Slide show={editing}>
             <div className="toolbar float">
               <IconButton label="Paint walls (P)" aria-pressed={tool === 'paint'} small onClick={togglePaint}>
                 <Paintbrush size={17} />
               </IconButton>
             </div>
           </Slide>
-          <Slide show={planning}>
+          <Slide show={editing}>
             <div className="toolbar float">
               <IconButton
                 label="Electrical plan"
@@ -567,12 +582,21 @@ export const House = ({ backend, account }: HouseProps) => {
                 onClick={() => {
                   setElectrical(!electrical)
                   setSelection(undefined)
+                  setSceneEdit(undefined)
                   setRightOpen(true)
                 }}
               >
                 <Cable size={17} />
               </IconButton>
             </div>
+          </Slide>
+          <Slide show={editing}>
+            <SnapMenu
+              wallSnap={wallSnap}
+              onWallSnap={setWallSnap}
+              furnitureSnap={furnitureSnap}
+              onFurnitureSnap={setFurnitureSnap}
+            />
           </Slide>
           {/* Walls in front cut down in the 3D view, to see in; not yet from outside. */}
           <Slide show={camera === 'orbit' && !outside}>
@@ -594,6 +618,22 @@ export const House = ({ backend, account }: HouseProps) => {
   )
 
   const inspector = (() => {
+    if (sceneEdit)
+      return (
+        <SceneEditor
+          key={sceneEdit.scene?.id ?? 'new'}
+          scene={sceneEdit.scene}
+          floors={house.floors
+            .map((f, i) => ({ f, name: `${ordinal(i + 1)} floor` }))
+            .sort((a, b) => Number(b.f === (focusFloor ?? floor)) - Number(a.f === (focusFloor ?? floor)))
+            .map(({ f, name }) => ({ name, items: floorItems(f, data.devices, data.furniture) }))}
+          roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
+          room={focus?.room}
+          light={(id) => lightSettings(lights.states[id], dark)}
+          shade={(id) => shades.states[id] ?? SHADE_UP}
+          onClose={() => setSceneEdit(undefined)}
+        />
+      )
     if (selection?.kind === 'light') {
       return (
         <LightControls
@@ -651,7 +691,7 @@ export const House = ({ backend, account }: HouseProps) => {
       )
     }
     if (interaction === 'paint') return <PaintPanel brush={brush} onBrush={setBrush} onClose={togglePaint} />
-    if (planning && electrical)
+    if (editing && electrical)
       return (
         <ElectricalPanel
           floor={floor}
@@ -662,10 +702,10 @@ export const House = ({ backend, account }: HouseProps) => {
           onClose={() => setElectrical(false)}
         />
       )
+    if (interaction === 'edit' && editMode === 'interior') return <FurniturePanel onAdd={addPiece} />
     if (interaction === 'edit')
       return (
-        <FurniturePanel
-          onAdd={addPiece}
+        <DevicePanel
           placing={placing}
           onPlacing={(kind) => {
             setSelection(undefined)
@@ -675,6 +715,17 @@ export const House = ({ backend, account }: HouseProps) => {
             if (kind && kind !== 'wall-light' && outside) setOutside(false)
             // On a phone the sheet covers the house; tuck it away so there's room to tap.
             if (kind && isNarrow()) setRightOpen(false)
+          }}
+          rooms={rooms.flatMap((view) => {
+            const viewFloor = house.floors.find((f) => f.id === view.floor)!
+            const ids = roomItems(viewFloor, view.room, data.devices, data.furniture)
+              .filter((i) => i.kind === 'light')
+              .map((i) => i.id)
+            return ids.length ? [{ id: view.id, name: view.label, scenes: scenes.of(view.room, ids) }] : []
+          })}
+          onEditScene={(scene) => {
+            setPlacing(undefined)
+            setSceneEdit({ scene })
           }}
         />
       )
@@ -687,7 +738,7 @@ export const House = ({ backend, account }: HouseProps) => {
         // Already home, the name puts the camera back where it started.
         onHome={focus || popover ? leaveRoom : () => setViewKey((k) => k + 1)}
         inRoom={!!focus || !!popover}
-        versions={planning && <VersionMenu data={data} />}
+        versions={editing && <VersionMenu data={data} />}
         onWeather={() => setWeatherOpen(true)}
         onTodos={() => setTodosOpen(true)}
         openTodos={openTodos}
@@ -711,9 +762,11 @@ export const House = ({ backend, account }: HouseProps) => {
           outside={outside}
           camera={camera}
           cutaway={cutaway}
-          electrical={planning && electrical}
+          electrical={editing && electrical}
           data={data}
           interaction={measure ? 'measure' : interaction}
+          // Nothing's moved while a scene is put together.
+          editMode={sceneEdit ? undefined : editMode}
           brush={brush}
           onPaint={paint}
           onPaintWall={paintWall}
@@ -760,7 +813,7 @@ export const House = ({ backend, account }: HouseProps) => {
           onHoverItem={setHoveredItem}
         />
 
-        {/* While planning, the editor takes the room's place on the right. */}
+        {/* While editing, the editor takes the room's place on the right. */}
         {focus && focusFloor && !rightOpen && (
           <RoomOverview
             title={focus.label}
@@ -778,14 +831,12 @@ export const House = ({ backend, account }: HouseProps) => {
               focus.room,
               focusItems.filter((i) => i.kind === 'light').map((i) => i.id),
             )}
-            onEditScene={(scene) => setSceneEdit({ scene })}
-            sceneOpen={!!sceneEdit}
             onLeave={leaveRoom}
           />
         )}
 
         {/* Between rooms, smart items keep their tags; outside, so do lights without a room. */}
-        {floorTags.length > 0 && !popover && !sceneEdit && (
+        {floorTags.length > 0 && !popover && (
           <FloorOverview
             items={floorTags}
             roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
@@ -796,22 +847,6 @@ export const House = ({ backend, account }: HouseProps) => {
             onOpen={openItem}
             onHover={setHoveredItem}
             hovered={hoveredItem}
-            onEditScene={(scene) => setSceneEdit({ scene })}
-          />
-        )}
-        {sceneEdit && !rightOpen && (
-          <SceneEditor
-            key={sceneEdit.scene?.id ?? 'new'}
-            scene={sceneEdit.scene}
-            floors={house.floors
-              .map((f, i) => ({ f, name: `${ordinal(i + 1)} floor` }))
-              .sort((a, b) => Number(b.f === (focusFloor ?? floor)) - Number(a.f === (focusFloor ?? floor)))
-              .map(({ f, name }) => ({ name, items: floorItems(f, data.devices, data.furniture) }))}
-            roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
-            room={focus?.room}
-            light={(id) => lightSettings(lights.states[id], dark)}
-            shade={(id) => shades.states[id] ?? SHADE_UP}
-            onClose={() => setSceneEdit(undefined)}
           />
         )}
         {floorTags.length > 0 && (
@@ -845,7 +880,7 @@ export const House = ({ backend, account }: HouseProps) => {
             if (start) startWalk(start)
           }}
           onWalkCancel={() => walkPlacement.current?.clear()}
-          canPlan={planning}
+          canPlan={editing}
           inRoom={!!focus || !!popover}
         >
           {camera !== 'walk' && roomOrder.ready && (
@@ -889,6 +924,20 @@ export const House = ({ backend, account }: HouseProps) => {
 
       <aside className="sidebar sidebar-right" aria-label="Details" inert={!rightOpen}>
         <div className="sheet-handle" onClick={closeRight} />
+        {editing && (
+          <Section className="edit-modes">
+            <Segmented
+              label="What to edit"
+              block
+              value={editMode}
+              onChange={changeEditMode}
+              options={[
+                { value: 'interior', label: 'Interior', icon: <Sofa size={16} /> },
+                { value: 'devices', label: 'Devices', icon: <Lightbulb size={16} /> },
+              ]}
+            />
+          </Section>
+        )}
         <div
           className="sidebar-inner"
           key={selectedDevice?.id ?? (selection?.kind === 'light' ? selection.id : 'catalog')}

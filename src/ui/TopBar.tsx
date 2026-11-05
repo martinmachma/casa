@@ -8,7 +8,7 @@ type TopBarProps = {
   /** Back to the whole house, out of any room. */
   onHome: () => void
   inRoom: boolean
-  /** The version picker, while planning. */
+  /** The version picker, while editing. */
   versions?: ReactNode
   onWeather: () => void
   /** Opens the wishes & bugs list; the badge counts open ones. */

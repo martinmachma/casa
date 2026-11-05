@@ -69,5 +69,9 @@ export const floorItems = (
   ]
 }
 
+/** A light that isn't in any room: on the house's outside, or out in the garden. */
+export const outsideLight = (item: { kind: DeviceKind; room: string | undefined }) =>
+  item.kind === 'light' && !item.room
+
 export const roomItems = (floor: Floor, roomId: string, devices: Device[], furniture: FurnitureItem[]): SmartItem[] =>
   floorItems(floor, devices, furniture).filter((i) => i.room === roomId)

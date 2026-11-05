@@ -51,7 +51,7 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
   }
 
   // How many lights there are, and how many cast shadows, is built into every material's shader. So both are always
-  // here, at zero if need be, and the brighter one alone casts: otherwise each change of light, like going to planning
+  // here, at zero if need be, and the brighter one alone casts: otherwise each change of light, like going to Edit
   // at night, links the whole house's shaders again and freezes the page for seconds.
   const moonCasts = moon > sunIntensity
 

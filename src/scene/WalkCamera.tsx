@@ -41,7 +41,7 @@ type WalkCameraProps = {
 const capture = (el: HTMLElement) => void el.requestPointerLock()?.catch(() => {})
 
 /**
- * First-person camera at eye height: the captured mouse (or a drag, on a touch screen or in Planning) looks around, WASD/arrow keys or the on-screen buttons to walk.
+ * First-person camera at eye height: the captured mouse (or a drag, on a touch screen or in Edit) looks around, WASD/arrow keys or the on-screen buttons to walk.
  * Walls block the way except through open doors and passages; furniture does too.
  */
 export const WalkCamera = ({

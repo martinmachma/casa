@@ -5,7 +5,7 @@ import type { Scene } from '../devices/scenes'
 import { shadeText, type ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
 import { DeviceIcon } from './deviceIcons'
-import { Segmented } from './kit'
+import { PanelHead, Segmented } from './kit'
 import { LightControls } from './LightControls'
 import { LightDot } from './SmartList'
 
@@ -145,84 +145,81 @@ export const SceneEditor = ({ scene, floors, roomName, room, light, shade, onClo
   }
 
   return (
-    <div className="room-cards" data-scene>
-      <section className="room-card float">
-        <div className="scene-form scene-editor-head">
-          <input
-            autoFocus
-            aria-label="Scene name"
-            placeholder="Scene name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+    <>
+      <PanelHead eyebrow="Scene" title={name.trim() || (scene ? scene.name : 'New scene')} onClose={onClose} />
+      <div className="scene-form scene-editor-head">
+        <input
+          autoFocus
+          aria-label="Scene name"
+          placeholder="Scene name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        />
+        <div className="scene-editor-tools">
+          <Segmented
+            label="Which items to list"
+            value={show}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'picked', label: `In scene · ${picked.length}` },
+            ]}
+            onChange={setShow}
           />
-          <div className="scene-editor-tools">
-            <Segmented
-              label="Which items to list"
-              value={show}
-              options={[
-                { value: 'all', label: 'All' },
-                { value: 'picked', label: `In scene · ${picked.length}` },
-              ]}
-              onChange={setShow}
-            />
-            <button
-              className="btn btn-small btn-ghost"
-              disabled={!picked.length}
-              title="Set everything in the scene as it is now"
-              onClick={() => setTargets(Object.fromEntries(picked.map((i) => [i.id, now(i)])))}
-            >
-              Use current
-            </button>
+          <button
+            className="btn btn-small btn-ghost"
+            disabled={!picked.length}
+            title="Set everything in the scene as it is now"
+            onClick={() => setTargets(Object.fromEntries(picked.map((i) => [i.id, now(i)])))}
+          >
+            Use current
+          </button>
+        </div>
+      </div>
+
+      <div className="smart-card-body">
+        {sections.map((section) => (
+          <div key={section.name}>
+            <h3 className="smart-group">{section.name}</h3>
+            {section.rooms
+              .filter((r) => r.rows.length)
+              .map((r) => (
+                <div key={r.name ?? ''}>
+                  {r.name && <h4 className="smart-room">{r.name}</h4>}
+                  <ul className="scene-rows">
+                    {r.rows.map((item) => (
+                      <SceneRow
+                        key={item.id}
+                        item={item}
+                        target={targets[item.id]}
+                        open={open === item.id}
+                        onTick={() => tick(item)}
+                        onOpen={() => (targets[item.id] ? setOpen(open === item.id ? undefined : item.id) : tick(item))}
+                        onChange={(target) => setTargets({ ...targets, [item.id]: target })}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))}
           </div>
-        </div>
+        ))}
+        {!sections.length && <p className="hint">Nothing in this scene yet.</p>}
+      </div>
 
-        <div className="smart-card-body">
-          {sections.map((section) => (
-            <div key={section.name}>
-              <h3 className="smart-group">{section.name}</h3>
-              {section.rooms
-                .filter((r) => r.rows.length)
-                .map((r) => (
-                  <div key={r.name ?? ''}>
-                    {r.name && <h4 className="smart-room">{r.name}</h4>}
-                    <ul className="scene-rows">
-                      {r.rows.map((item) => (
-                        <SceneRow
-                          key={item.id}
-                          item={item}
-                          target={targets[item.id]}
-                          open={open === item.id}
-                          onTick={() => tick(item)}
-                          onOpen={() =>
-                            targets[item.id] ? setOpen(open === item.id ? undefined : item.id) : tick(item)
-                          }
-                          onChange={(target) => setTargets({ ...targets, [item.id]: target })}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-            </div>
-          ))}
-          {!sections.length && <p className="hint">Nothing in this scene yet.</p>}
-        </div>
-
-        <div className="scene-form-actions scene-editor-foot">
-          {scene && (
-            <button className="btn btn-small btn-ghost btn-danger" onClick={onClose}>
-              Delete
-            </button>
-          )}
-          <span className="spacer" />
-          <button className="btn btn-small btn-ghost" onClick={onClose}>
-            Cancel
+      <div className="scene-form-actions scene-editor-foot">
+        {scene && (
+          <button className="btn btn-small btn-ghost btn-danger" onClick={onClose}>
+            Delete
           </button>
-          <button className="btn btn-small btn-primary" disabled={!picked.length} onClick={onClose}>
-            Save
-          </button>
-        </div>
-      </section>
-    </div>
+        )}
+        <span className="spacer" />
+        <button className="btn btn-small btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="btn btn-small btn-primary" disabled={!picked.length} onClick={onClose}>
+          Save
+        </button>
+      </div>
+    </>
   )
 }

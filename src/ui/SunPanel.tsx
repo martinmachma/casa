@@ -2,7 +2,7 @@ import { CalendarDays, Sun, X } from 'lucide-react'
 import { useState } from 'react'
 import type { SunPosition } from '../sun/sun'
 import { sunNow, type SunSettings } from '../sun/useSun'
-import { IconButton } from './kit'
+import { IconButton, Slide } from './kit'
 
 type SunPanelProps = {
   /** Undefined while sunlight is off (even light). */
@@ -26,10 +26,9 @@ const SEASONS = [
   { label: 'Summer', monthDay: '06-21' },
 ]
 
-/** Bottom centre of the 3D view: a sun button that opens into a timeline of the day while sunlight is on. */
-export const SunPanel = ({ sun, position, onSun }: SunPanelProps) => {
-  const [dateOpen, setDateOpen] = useState(false)
-  const toggle = (
+/** A sun button that opens into a timeline of the day while sunlight is on. */
+export const SunPanel = ({ sun, position, onSun }: SunPanelProps) => (
+  <div className="toolbar sunbar float">
     <IconButton
       label={sun ? 'Even light' : 'Sunlight by time of day'}
       aria-pressed={Boolean(sun)}
@@ -38,13 +37,17 @@ export const SunPanel = ({ sun, position, onSun }: SunPanelProps) => {
     >
       <Sun size={17} />
     </IconButton>
-  )
-  if (!sun) return <div className="toolbar float">{toggle}</div>
+    <Slide show={!!sun}>{sun && <SunControls sun={sun} position={position} onSun={onSun} />}</Slide>
+  </div>
+)
 
+type SunControlsProps = { sun: SunSettings; position: SunPosition | undefined; onSun: SunPanelProps['onSun'] }
+
+const SunControls = ({ sun, position, onSun }: SunControlsProps) => {
+  const [dateOpen, setDateOpen] = useState(false)
   const year = sun.date.slice(0, 4)
   return (
-    <div className="toolbar sunbar float" data-open="">
-      <Sun size={17} className="toolbar-icon" />
+    <div className="toolbar-more">
       <div className="sunbar-time">
         <strong>{clock(sun.minutes)}</strong>
         <span className="sunbar-sun">

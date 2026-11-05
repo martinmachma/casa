@@ -6,7 +6,7 @@ import type { Scene } from '../devices/scenes'
 import type { SmartItem } from '../rooms/roomItems'
 import { IconButton } from './kit'
 import { ItemPins } from './ItemPins'
-import { NewSceneButton, RoomScenes } from './RoomScenes'
+import { RoomScenes } from './RoomScenes'
 import { AllLights, SmartRows } from './SmartList'
 
 type RoomOverviewProps = {
@@ -25,9 +25,6 @@ type RoomOverviewProps = {
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
   scenes: Scene[]
-  onEditScene: (scene: Scene | undefined) => void
-  /** A scene is being put together, in the card's place. */
-  sceneOpen: boolean
   /** Out of the room, back to its whole floor. */
   onLeave: () => void
 }
@@ -46,8 +43,6 @@ export const RoomOverview = ({
   hovered,
   pinRefs,
   scenes,
-  onEditScene,
-  sceneOpen,
   onLeave,
 }: RoomOverviewProps) => {
   const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
@@ -63,15 +58,13 @@ export const RoomOverview = ({
         </IconButton>
       </h2>
       {/* An open item has the view to itself. */}
-      <div className="room-cards" hidden={!!open || sceneOpen}>
-        <NewSceneButton onClick={() => onEditScene(undefined)} />
+      <div className="room-cards" hidden={!!open}>
         {(rest.length > 0 || !shades.length) && (
           <section className="room-card float">
             <div className="smart-card-body">
               {lightIds.length > 0 && (
                 <RoomScenes
                   scenes={scenes}
-                  onEdit={onEditScene}
                   lightIds={lightIds}
                   light={light}
                   onLight={onLight}
@@ -81,7 +74,7 @@ export const RoomOverview = ({
               {rest.length ? (
                 <SmartRows items={rest} {...rows} />
               ) : (
-                <p className="hint">No smart items here yet. Place them under Planning → Devices.</p>
+                <p className="hint">No smart items here yet. Place them under Edit → Devices.</p>
               )}
             </div>
           </section>

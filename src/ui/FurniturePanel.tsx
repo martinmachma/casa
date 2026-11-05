@@ -1,37 +1,23 @@
-import { Plus, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
-import { DEVICE_KINDS, type DevicePlacement } from '../devices/kinds'
-import { DeviceIcon } from './deviceIcons'
 import { NumberField } from './NumberField'
-import { Section } from './kit'
+import { IconButton, Section } from './kit'
 
 /** What to add: a catalog model or a plain box, sizes in metres. */
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
-// Smart devices that can be put in by hand; the rest (sockets, blinds…) are fixed in the house's layout.
-const DEVICES: { kind: DevicePlacement; name: string }[] = [
-  { kind: 'light', name: 'Ceiling light' },
-  { kind: 'wall-light', name: 'Wall light' },
-]
-const DEVICES_GROUP = 'Devices'
+type FurniturePanelProps = { onAdd: (piece: NewPiece) => void }
 
-type FurniturePanelProps = {
-  onAdd: (piece: NewPiece) => void
-  /** The device kind the next tap places, if one is picked. */
-  placing: DevicePlacement | undefined
-  onPlacing: (kind: DevicePlacement | undefined) => void
-}
-
-/** Furniture creation shown while editing with nothing selected. */
-export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProps) => {
+/** The catalog, shown in Interior with nothing selected. */
+export const FurniturePanel = ({ onAdd }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
-  const [group, setGroup] = useState<CatalogGroup | typeof DEVICES_GROUP>('Living')
+  const [group, setGroup] = useState<CatalogGroup>('Living')
   const [query, setQuery] = useState('')
   const [custom, setCustom] = useState(false)
   const groups = useRef<HTMLDivElement>(null)
-  // Which ends of the group row have more chips past them, so the edge fades there.
+  // Which ends of the group row have more chips past them, so the edge fades and shows an arrow there.
   const [more, setMore] = useState({ start: false, end: false })
   const measure = () => {
     const el = groups.current
@@ -43,11 +29,12 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [])
+  const slide = (direction: 1 | -1) =>
+    groups.current?.scrollBy({ left: (direction * groups.current.clientWidth) / 2, behavior: 'smooth' })
 
   // A search looks through every group.
   const q = query.trim().toLowerCase()
   const entries = CATALOG.filter((e) => (q ? e.name.toLowerCase().includes(q) : e.group === group))
-  const devices = DEVICES.filter((d) => (q ? d.name.toLowerCase().includes(q) : group === DEVICES_GROUP))
 
   return (
     <>
@@ -62,45 +49,46 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <div
-          className="tabs"
-          role="tablist"
-          aria-label="Group"
-          ref={groups}
-          onScroll={measure}
-          data-more-start={more.start}
-          data-more-end={more.end}
-        >
-          {CATALOG_GROUPS.map((g) => (
-            <button
-              key={g}
-              role="tab"
-              aria-selected={!q && group === g}
-              onClick={() => {
-                setGroup(g)
-                setQuery('')
-              }}
-            >
-              {g}
-              <span className="num">{CATALOG.filter((e) => e.group === g).length}</span>
-            </button>
-          ))}
-          <button
-            role="tab"
-            aria-selected={!q && group === DEVICES_GROUP}
-            onClick={() => {
-              setGroup(DEVICES_GROUP)
-              setQuery('')
-            }}
+        <div className="tabs-wrap">
+          <div
+            className="tabs"
+            role="tablist"
+            aria-label="Group"
+            ref={groups}
+            onScroll={measure}
+            data-more-start={more.start}
+            data-more-end={more.end}
           >
-            {DEVICES_GROUP}
-            <span className="num">{DEVICES.length}</span>
-          </button>
+            {CATALOG_GROUPS.map((g) => (
+              <button
+                key={g}
+                role="tab"
+                aria-selected={!q && group === g}
+                onClick={() => {
+                  setGroup(g)
+                  setQuery('')
+                }}
+              >
+                {g}
+                <span className="num">{CATALOG.filter((e) => e.group === g).length}</span>
+              </button>
+            ))}
+          </div>
+          {more.start && (
+            <IconButton label="Earlier groups" className="side-arrow side-arrow-back" onClick={() => slide(-1)}>
+              <ChevronLeft size={16} />
+            </IconButton>
+          )}
+          {more.end && (
+            <IconButton label="Later groups" className="side-arrow" onClick={() => slide(1)}>
+              <ChevronRight size={16} />
+            </IconButton>
+          )}
         </div>
       </Section>
 
       <Section>
-        {custom && (q || group !== DEVICES_GROUP) && (
+        {custom && (
           <div className="custom-box">
             <label className="field">
               Name
@@ -128,34 +116,11 @@ export const FurniturePanel = ({ onAdd, placing, onPlacing }: FurniturePanelProp
           </div>
         )}
 
-        {placing && (
-          <p className="hint">
-            {placing === 'wall-light'
-              ? 'Tap a wall where the light should be mounted.'
-              : 'Tap the floor where the light should hang from the ceiling.'}
-          </p>
-        )}
-
         <div className="catalog">
-          {(q || group !== DEVICES_GROUP) && (
-            <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
-              <Plus size={22} />
-              <span>Custom box</span>
-            </button>
-          )}
-          {devices.map((d) => (
-            <button
-              key={d.kind}
-              className="catalog-item"
-              aria-pressed={placing === d.kind}
-              onClick={() => onPlacing(placing === d.kind ? undefined : d.kind)}
-            >
-              <span className="device-swatch" style={{ background: DEVICE_KINDS.light.color }}>
-                <DeviceIcon kind="light" size={18} />
-              </span>
-              <span>{d.name}</span>
-            </button>
-          ))}
+          <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
+            <Plus size={22} />
+            <span>Custom box</span>
+          </button>
           {entries.map((e) => (
             <button
               key={e.model}

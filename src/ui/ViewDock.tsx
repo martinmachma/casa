@@ -19,7 +19,7 @@ type ViewDockProps = {
   onWalkDrag: (x: number, y: number) => boolean
   onWalkDrop: (x: number, y: number) => void
   onWalkCancel: () => void
-  /** The plan view is for planning; at home there's only 3D and walking. */
+  /** The plan view is for editing; at home there's only 3D and walking. */
   canPlan: boolean
   /** In a room the floor and camera are the room's own, so the switches only show where you are. */
   inRoom: boolean

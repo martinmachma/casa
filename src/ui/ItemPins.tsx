@@ -144,7 +144,7 @@ export const ItemPins = ({
                     <p className="hint">
                       {item.entity
                         ? `It will show ${item.entity} once Home Assistant is linked.`
-                        : 'Give it a Home Assistant entity under Planning to control it here.'}
+                        : 'Give it a Home Assistant entity under Edit to control it here.'}
                     </p>
                     <IconButton label="Close" small onClick={() => onOpen(undefined)}>
                       <X size={16} />

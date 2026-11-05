@@ -12,7 +12,7 @@ points. These include individual power sockets, four TV outlets and four double 
 ports), appliance supplies, switches and timer buttons, smart lights, smoke/PIR/temperature
 sensors, fans, doorbells, distribution boards, bonding and lightning protection equipment.
 
-Open **Planning → Electrical plan** (the cable button). Pick a marker or an entry in the room inventory to
+Open **Edit → Electrical plan** (the cable button). Pick a marker or an entry in the room inventory to
 see its symbol, source sheet and notes. Choose **Outside** for the utility connections and roof. These are
 built-in points shared by every saved version; choosing them does not edit furniture or create a draft.
 The 17 lighting positions are smart lights using the same on/off, brightness and colour controls as lights

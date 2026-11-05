@@ -163,8 +163,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     return !sameHouse(draft.state, base)
   }, [draft, versions])
 
-  // Ask before leaving with edits that aren't saved as a version. Away from planning there are none to lose
-  // (leaving planning discards them, and a draft kept from an earlier visit waits on this device), so leaving is quiet.
+  // Ask before leaving with edits that aren't saved as a version. Away from Edit there are none to lose
+  // (leaving Edit discards them, and a draft kept from an earlier visit waits on this device), so leaving is quiet.
   const warnOnLeave = dirty && !liveOnly
   useEffect(() => {
     if (!warnOnLeave) return
@@ -174,7 +174,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   }, [warnOnLeave])
 
   // A version deleted elsewhere falls back to the live one.
-  // At home only the saved live version shows; the draft waits for planning.
+  // At home only the saved live version shows; the draft waits for Edit.
   const viewedId =
     liveOnly || viewing === LIVE
       ? liveId

@@ -135,12 +135,12 @@ export const WeatherPopup = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
           {canBack && (
-            <IconButton label="Earlier days" className="weather-arrow weather-arrow-back" onClick={() => slide(-1)}>
+            <IconButton label="Earlier days" className="side-arrow side-arrow-back" onClick={() => slide(-1)}>
               <ChevronLeft size={20} />
             </IconButton>
           )}
           {canForward && (
-            <IconButton label="Later days" className="weather-arrow" onClick={() => slide(1)}>
+            <IconButton label="Later days" className="side-arrow" onClick={() => slide(1)}>
               <ChevronRight size={20} />
             </IconButton>
           )}

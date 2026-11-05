@@ -1,9 +1,8 @@
 import { Fragment } from 'react'
 import type { LightState } from '../devices/lights'
-import type { Scene } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
-import { NewSceneButton, RoomScenes } from './RoomScenes'
+import { RoomScenes } from './RoomScenes'
 import { AllLights, SmartRows } from './SmartList'
 
 type FloorOverviewProps = {
@@ -18,11 +17,10 @@ type FloorOverviewProps = {
   onOpen: (id: string) => void
   onHover: (id: string | undefined) => void
   hovered: string | undefined
-  onEditScene: (scene: Scene | undefined) => void
 }
 
 /** Between rooms: the floor's lights over its shades, each room by room, with what isn't in a room first, as outside. */
-export const FloorOverview = ({ items, roomName, onEditScene, ...rows }: FloorOverviewProps) => {
+export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) => {
   const byRoom = (list: FloorOverviewProps['items']) => {
     // In the floor's order, so both cards run the same way.
     const names = [...new Set(items.map(roomName))].filter((n) => list.some((i) => roomName(i) === n))
@@ -38,14 +36,12 @@ export const FloorOverview = ({ items, roomName, onEditScene, ...rows }: FloorOv
   const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
   return (
     <div className="room-cards" data-floor>
-      <NewSceneButton onClick={() => onEditScene(undefined)} />
       {rest.length > 0 && (
         <section className="room-card float">
           <div className="smart-card-body">
             {lightIds.length > 0 && (
               <RoomScenes
                 scenes={[]}
-                onEdit={onEditScene}
                 lightIds={lightIds}
                 light={rows.light}
                 onLight={rows.onLight}

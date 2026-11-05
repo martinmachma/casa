@@ -25,7 +25,7 @@ const solid = (h: Intersection) => {
 
 /**
  * Everything drawn solid along the ray, nearest first, whether or not it takes the pointer: most meshes have their
- * raycast off outside planning, so each is tested directly. In a room's view, what's around the room is drawn
+ * raycast off outside Edit, so each is tested directly. In a room's view, what's around the room is drawn
  * behind it, blurred, and is left out.
  */
 export const solidHits = (scene: Object3D, ray: Raycaster) => {
