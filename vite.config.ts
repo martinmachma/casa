@@ -1,8 +1,11 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // .haru/worktrees holds other checkouts of this repo; their tests aren't ours.
+  test: { exclude: ['**/node_modules/**', '**/dist/**', '.haru/**'] },
   build: {
     rolldownOptions: {
       output: {

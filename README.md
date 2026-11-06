@@ -3,6 +3,8 @@
 Our house in 3D: walls traced from the plan, paint colours per wall side, and box furniture you can drag around. A
 Vite + React + TypeScript PWA using React Three Fiber, backed by Supabase and deployed on Vercel.
 
+> Agent/contributor guidance: [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md). The code map below is partly out of date; the architecture doc is current.
+
 ## Run it
 
 ```bash
@@ -21,7 +23,8 @@ saved only in this browser's localStorage.
 | `npm run preview`   | serve the production build locally                       |
 | `npm run lint`      | eslint (`npm run format` runs prettier)                  |
 | `npm run typecheck` | `tsc -b`                                                 |
-| `npm test`          | vitest: wall splitting, layout validation, wall snapping |
+| `npm test`          | vitest: core logic (geometry, snapping, collision, ...)  |
+| `npm run check`     | typecheck + tests                                        |
 | `npm run icons`     | regenerate PWA icons from `public/favicon.svg`           |
 
 ## One-time setup

@@ -1,5 +1,7 @@
 # Casa — Implementation plan
 
+> **Historical.** Written early on; the code has moved well past it. For how the app works now, read `docs/ARCHITECTURE.md`.
+
 Last updated: 2026-10-12
 
 ## Phase 1 — House model, wall colours, box furniture

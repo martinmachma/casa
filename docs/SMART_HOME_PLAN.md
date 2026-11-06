@@ -1,5 +1,7 @@
 # Casa — Smart home plan
 
+> **Historical.** Written early on; the code has moved well past it. For how the app works now, read `docs/ARCHITECTURE.md`.
+
 Written 2026-10-13 as a handoff to a new session. Read `AGENTS.md` and `docs/IMPLEMENTATION_PLAN.md` first.
 
 ## Goal
