@@ -77,7 +77,7 @@ existing renderer-mutation errors in OpeningFills' clipping hook and existing Cu
 - Browser checks used the logged-in Chrome house: exterior, furnished ground floor, focused living/kitchen view, orthographic plan, and simulated noon. Shadows remain aligned with furniture and walls; solid geometry blocks direct light.
 - A temporary independent room fixture exercised front/side/top views, morning/noon/evening/night lighting, moved emitters, moved/rotated furniture and nonuniform scaling. The wall bands and large shadow separation reproduced before the corrections and were absent in the final checks. The fixture used production scene components and was removed after validation.
 - A 120-frame local fixture run measured approximately 120 fps with cached shadows. This is a small-scene check on this Mac, not a benchmark for low-end phones or a large number of simultaneously edited lights.
-- `npm test` and the production build pass. Repository-wide ESLint also scans an existing nested `.haru/worktrees` checkout and fails its TypeScript root discovery. A scoped lint check distinguishes existing warnings/errors from the changed rendering code.
+- `npm test` and the production build pass.
 
 ## Distant-room lighting
 
