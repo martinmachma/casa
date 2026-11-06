@@ -65,9 +65,11 @@ export const RoomOverview = ({
               {lightIds.length > 0 && (
                 <RoomScenes
                   scenes={scenes}
-                  lightIds={lightIds}
+                  ids={items.map((i) => i.id)}
                   light={light}
                   onLight={onLight}
+                  shade={shade}
+                  onShade={onShade}
                   end={<AllLights ids={lightIds} light={light} onLight={onLight} />}
                 />
               )}

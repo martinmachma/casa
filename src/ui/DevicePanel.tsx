@@ -14,14 +14,13 @@ type DevicePanelProps = {
   /** The device kind the next tap places, if one is picked. */
   placing: DevicePlacement | undefined
   onPlacing: (kind: DevicePlacement | undefined) => void
-  /** Each room with lights, and its scenes. */
-  rooms: { id: string; name: string; scenes: Scene[] }[]
+  scenes: Scene[]
   /** Opens a scene in the editor; none for a new one. */
   onEditScene: (scene: Scene | undefined) => void
 }
 
 /** What's shown in Devices with nothing selected: lights to put in, and the house's scenes. */
-export const DevicePanel = ({ placing, onPlacing, rooms, onEditScene }: DevicePanelProps) => (
+export const DevicePanel = ({ placing, onPlacing, scenes, onEditScene }: DevicePanelProps) => (
   <>
     <Section title="Add">
       {placing && (
@@ -47,27 +46,24 @@ export const DevicePanel = ({ placing, onPlacing, rooms, onEditScene }: DevicePa
         ))}
       </div>
     </Section>
-    <Section
-      title="Scenes"
-      aside={
-        <button className="btn btn-small" onClick={() => onEditScene(undefined)}>
-          <Plus size={14} />
-          New scene
-        </button>
-      }
-    >
-      {rooms.map((room) => (
-        <div key={room.id}>
-          <h4 className="smart-room">{room.name}</h4>
-          <div className="smart-scene-chips" role="group" aria-label={`Scenes in ${room.name}`}>
-            {room.scenes.map((scene) => (
-              <button key={scene.id} className="chip" onClick={() => onEditScene(scene)}>
-                {scene.name}
-              </button>
-            ))}
-          </div>
+    <Section title="Scenes">
+      {scenes.length > 0 ? (
+        <div className="smart-scene-chips" role="group" aria-label="Scenes">
+          {scenes.map((scene) => (
+            <button key={scene.id} className="chip" onClick={() => onEditScene(scene)}>
+              {scene.name}
+            </button>
+          ))}
         </div>
-      ))}
+      ) : (
+        <p className="hint">No scenes yet. A scene sets any lights and shades in the house with one tap.</p>
+      )}
     </Section>
+    <div className="panel-foot">
+      <button className="btn btn-block" onClick={() => onEditScene(undefined)}>
+        <Plus size={16} />
+        New scene
+      </button>
+    </div>
   </>
 )

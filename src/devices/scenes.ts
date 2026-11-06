@@ -1,67 +1,89 @@
 import { useState } from 'react'
+import type { DeviceKind } from '../data/types'
 import type { LightState } from './lights'
+import type { ShadeState } from './shades'
 
-/** A room's lights as someone set them once, put back with a tap. */
-export type Scene = { id: string; name: string; lights: Record<string, LightState> }
+/** Lights and shades around the house as someone set them once, put back with a tap. */
+export type Scene = {
+  id: string
+  name: string
+  lights: Record<string, LightState>
+  shades: Record<string, ShadeState>
+}
 
-const white = (brightness: number, kelvin: number): LightState => ({
-  on: true,
-  brightness,
-  mode: 'white',
-  kelvin,
-  color: '#ff8a3d',
+/** Whether a scene can set an item of the kind. */
+export const inScenes = (item: { kind: DeviceKind }) => item.kind === 'light' || item.kind === 'blind'
+
+export const sceneHas = (scene: Scene, id: string) => !!(scene.lights[id] ?? scene.shades[id])
+
+export const sceneWithout = (scene: Scene, id: string): Scene => ({
+  ...scene,
+  lights: Object.fromEntries(Object.entries(scene.lights).filter(([key]) => key !== id)),
+  shades: Object.fromEntries(Object.entries(scene.shades).filter(([key]) => key !== id)),
 })
 
-/** What a room starts with until its scenes are changed: every light bright and cool, or dim and warm. */
-const defaults = (lightIds: string[]): Scene[] =>
-  [
-    { id: 'bright', name: 'Bright', set: white(1, 4000) },
-    { id: 'relax', name: 'Relax', set: white(0.4, 2700) },
-  ].map(({ id, name, set }) => ({ id, name, lights: Object.fromEntries(lightIds.map((l) => [l, set])) }))
-
-const same = (a: LightState, b: LightState) =>
+const sameLight = (a: LightState, b: LightState) =>
   a.on === b.on &&
   (!a.on ||
     (Math.round(a.brightness * 100) === Math.round(b.brightness * 100) &&
       a.mode === b.mode &&
       (a.mode === 'white' ? a.kelvin === b.kelvin : a.color.toLowerCase() === b.color.toLowerCase())))
 
-/** Whether the lights are as the scene sets them; lights it doesn't know are left out. */
-export const sceneActive = (scene: Scene, light: (id: string) => LightState, lightIds: string[]) => {
-  const ids = lightIds.filter((id) => scene.lights[id])
-  return ids.length > 0 && ids.every((id) => same(scene.lights[id], light(id)))
+const sameShade = (a: ShadeState, b: ShadeState) =>
+  Math.round(a.position * 100) === Math.round(b.position * 100) && (a.position <= 0 || a.tilt === b.tilt)
+
+/** Whether these items are as the scene sets them; those it doesn't know are left out. */
+export const sceneActive = (
+  scene: Scene,
+  light: (id: string) => LightState,
+  shade: (id: string) => ShadeState,
+  ids: string[],
+) => {
+  const known = ids.filter((id) => sceneHas(scene, id))
+  return (
+    known.length > 0 &&
+    known.every((id) =>
+      scene.lights[id] ? sameLight(scene.lights[id], light(id)) : sameShade(scene.shades[id], shade(id)),
+    )
+  )
 }
 
-const KEY = 'casa.scenes'
+const KEY = 'casa.house-scenes'
 
-const load = (): Record<string, Scene[]> => {
+const load = (): Scene[] => {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}')
+    return JSON.parse(localStorage.getItem(KEY) ?? '[]')
   } catch {
-    return {}
+    return []
   }
 }
 
 export type Scenes = {
-  /** A room's scenes; the two to start with until any are changed. */
-  of: (room: string, lightIds: string[]) => Scene[]
-  set: (room: string, scenes: Scene[]) => void
+  list: Scene[]
+  /** Adds the scene, or replaces the one with its id. */
+  save: (scene: Scene) => void
+  remove: (id: string) => void
 }
 
-/** Each room's scenes, kept in this browser like the lights themselves. */
+/** The house's scenes, kept in this browser like the lights themselves. */
 export const useScenes = (): Scenes => {
-  const [saved, setSaved] = useState(load)
+  const [list, setList] = useState(load)
+  const keep = (change: (scenes: Scene[]) => Scene[]) =>
+    setList((current) => {
+      const next = change(current)
+      try {
+        localStorage.setItem(KEY, JSON.stringify(next))
+      } catch {
+        // Private windows may refuse; the scenes still hold until reload.
+      }
+      return next
+    })
   return {
-    of: (room, lightIds) => saved[room] ?? defaults(lightIds),
-    set: (room, scenes) =>
-      setSaved((current) => {
-        const next = { ...current, [room]: scenes }
-        try {
-          localStorage.setItem(KEY, JSON.stringify(next))
-        } catch {
-          // Private windows may refuse; the scenes still hold until reload.
-        }
-        return next
-      }),
+    list,
+    save: (scene) =>
+      keep((scenes) =>
+        scenes.some((s) => s.id === scene.id) ? scenes.map((s) => (s.id === scene.id ? scene : s)) : [...scenes, scene],
+      ),
+    remove: (id) => keep((scenes) => scenes.filter((s) => s.id !== id)),
   }
 }

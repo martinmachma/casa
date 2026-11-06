@@ -6,12 +6,9 @@ import { LightControls } from './LightControls'
 import { NumberField } from './NumberField'
 import { PanelHead, Section } from './kit'
 import { EditableTitle } from './EditableTitle'
-import { ItemInfo } from './ItemInfo'
 
 type DeviceEditorProps = {
   device: Device
-  /** The room it's in, shown with its technical information. */
-  room: string | undefined
   onChange: (patch: Partial<Device>) => void
   /** How it's set now; only lights use it. */
   light: LightState
@@ -22,7 +19,7 @@ type DeviceEditorProps = {
 
 const cm = (m: number) => Math.round(m * 100)
 
-export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) => (
+export const DeviceEditor = ({ device, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) => (
   <>
     <PanelHead
       eyebrow={DEVICE_KINDS[device.kind].label}
@@ -44,6 +41,20 @@ export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete,
           <div className="row" key={`z-${device.id}`}>
             <NumberField label="Height cm" min={0} value={cm(device.z)} onCommit={(v) => onChange({ z: v / 100 })} />
           </div>
+          <label className="field" key={`entity-${device.id}`}>
+            Home Assistant entity
+            <input
+              defaultValue={device.entity ?? ''}
+              placeholder={`${device.kind === 'other' ? 'switch' : device.kind}.living_room`}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              onBlur={(e) => {
+                const entity = e.target.value.trim() || undefined
+                if (entity !== device.entity) onChange({ entity })
+              }}
+            />
+          </label>
         </Section>
         <Section>
           <button className="btn btn-danger btn-block" onClick={onDelete}>
@@ -53,47 +64,5 @@ export const DeviceEditor = ({ device, room, onChange, light, onLight, onDelete,
         </Section>
       </>
     )}
-
-    <ItemInfo key={device.id}>
-      <dl className="item-specs">
-        <div>
-          <dt>Type</dt>
-          <dd>{device.plan?.symbol ?? DEVICE_KINDS[device.kind].label}</dd>
-        </div>
-        {room && (
-          <div>
-            <dt>Room</dt>
-            <dd>{room}</dd>
-          </div>
-        )}
-        <div>
-          <dt>Above floor</dt>
-          <dd>{cm(device.z)} cm</dd>
-        </div>
-        {device.plan?.ports && (
-          <div>
-            <dt>{device.kind === 'data' ? 'RJ45 ports' : 'Outlets'}</dt>
-            <dd>{device.plan.ports}</dd>
-          </div>
-        )}
-      </dl>
-      {device.plan?.notes && <p className="hint">{device.plan.notes}</p>}
-      {!device.plan && (
-        <label className="field" key={`entity-${device.id}`}>
-          Home Assistant entity
-          <input
-            defaultValue={device.entity ?? ''}
-            placeholder={`${device.kind === 'other' ? 'switch' : device.kind}.living_room`}
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            onBlur={(e) => {
-              const entity = e.target.value.trim() || undefined
-              if (entity !== device.entity) onChange({ entity })
-            }}
-          />
-        </label>
-      )}
-    </ItemInfo>
   </>
 )

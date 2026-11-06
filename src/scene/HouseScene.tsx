@@ -84,8 +84,8 @@ type HouseSceneProps = {
   data: HouseData
   /** What a tap does: nothing (just looking), select and drag (editing), measure, or paint walls. */
   interaction: Interaction
-  /** What can be moved while editing; none while a scene is being put together. */
-  editMode: EditMode | undefined
+  /** What's being worked on while editing, which shows what stands in the way of arranging it. */
+  editMode: EditMode
   /** What painting puts on the walls. */
   brush: Brush
   onPaint: (stroke: PaintStroke) => void
@@ -275,8 +275,7 @@ export const HouseScene = ({
   // Measuring uses its own floor and wall targets; a piece or device being put down takes every tap.
   const pickable = interaction === 'edit' && !placingPiece && !placing
   const editsInterior = pickable && editMode === 'interior'
-  const editsDevices = pickable && editMode === 'devices'
-  const movable = (f: Floor) => editsInterior && (!outside || f.id === furnitureFloor.id)
+  const movable = (f: Floor) => pickable && (!outside || f.id === furnitureFloor.id)
   const cutWalls = (cutaway || !!focusRoom) && (camera === 'orbit' || !!focusRoom) && !outside && !whole
   // While arranging, anything that runs into a wall or another piece, or stands where a door swings, is marked.
   const sweeps = useMemo(() => doorSweeps(furnitureFloor), [furnitureFloor])
@@ -350,7 +349,7 @@ export const HouseScene = ({
       onSelect={noop}
       onMove={noop}
       onMoveEnd={noop}
-      onPickLight={editsDevices ? selectDevice : lightPick}
+      onPickLight={pickable ? selectDevice : lightPick}
       onPickDevice={electrical && !measure ? selectDevice : undefined}
       onHoverLight={onHoverItem}
     />
@@ -365,10 +364,10 @@ export const HouseScene = ({
       glow={level}
       tint={tint}
       plan={camera === 'top'}
-      onPickLight={lightPick}
+      onPickLight={pickable ? selectDevice : lightPick}
       onPickDevice={focusRoom ? lightPick : undefined}
       onHoverLight={onHoverItem}
-      interactive={editsDevices && !outside && f.id === floor.id}
+      interactive={pickable && !outside && f.id === floor.id}
       onSelect={selectDevice}
       onMove={moveDevice}
       onMoveEnd={saveItem}

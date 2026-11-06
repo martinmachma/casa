@@ -42,9 +42,11 @@ export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) 
             {lightIds.length > 0 && (
               <RoomScenes
                 scenes={[]}
-                lightIds={lightIds}
+                ids={lightIds}
                 light={rows.light}
                 onLight={rows.onLight}
+                shade={rows.shade}
+                onShade={rows.onShade}
                 end={<AllLights ids={lightIds} light={rows.light} onLight={rows.onLight} />}
               />
             )}
