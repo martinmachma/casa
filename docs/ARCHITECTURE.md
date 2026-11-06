@@ -90,5 +90,5 @@ and CORS, or a Supabase edge function).
 
 ## Other docs
 
-`LIGHTING.md` (lighting/shadow pipeline, current), `ELECTRICAL.md` (traced electrical plan, current),
-`SMART_HOME_PLAN.md` and `IMPLEMENTATION_PLAN.md` (historical plans; code is the truth).
+`LIGHTING.md` (lighting/shadow pipeline) and `ELECTRICAL.md` (traced electrical plan) are current. The early
+implementation and smart-home plans were removed as outdated; the code and this file are the truth.
