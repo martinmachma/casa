@@ -1,4 +1,4 @@
-import { ListTodo, LogOut, Settings } from 'lucide-react'
+import { House, ListTodo, LogOut, Settings } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Account } from '../auth/AuthGate'
 import { SettingsMenu } from './SettingsMenu'
@@ -25,7 +25,9 @@ export const TopBar = ({ onHome, inRoom, versions, onWeather, onTodos, openTodos
       aria-label="Casa, whole house"
       onClick={onHome}
     >
-      <img src="/favicon.svg" alt="" />
+      <span className="brand-mark">
+        <House size={17} strokeWidth={2.2} />
+      </span>
       <span>Casa</span>
     </button>
     {versions}

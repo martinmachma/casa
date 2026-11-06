@@ -48,7 +48,7 @@ export const FurniturePanel = ({ onAdd, group, onGroup, lights, foundLights }: F
 
   return (
     <>
-      <Section className="section-flush">
+      <Section className="catalog-head">
         <label className="search">
           <Search size={16} aria-hidden />
           <input
@@ -97,72 +97,74 @@ export const FurniturePanel = ({ onAdd, group, onGroup, lights, foundLights }: F
         </div>
       </Section>
 
-      {!q && group === 'Lights' ? (
-        lights
-      ) : (
-        <Section>
-          {custom && (
-            <div className="custom-box">
-              <label className="field">
-                Name
-                <input value={size.name} onChange={(e) => setSize({ ...size, name: e.target.value })} />
-              </label>
-              <div className="row">
-                <NumberField label="Width cm" value={size.width} onCommit={(width) => setSize({ ...size, width })} />
-                <NumberField label="Depth cm" value={size.depth} onCommit={(depth) => setSize({ ...size, depth })} />
-                <NumberField
-                  label="Height cm"
-                  value={size.height}
-                  onCommit={(height) => setSize({ ...size, height })}
-                />
+      <div className="catalog-body">
+        {!q && group === 'Lights' ? (
+          lights
+        ) : (
+          <Section>
+            {custom && (
+              <div className="custom-box">
+                <label className="field">
+                  Name
+                  <input value={size.name} onChange={(e) => setSize({ ...size, name: e.target.value })} />
+                </label>
+                <div className="row">
+                  <NumberField label="Width cm" value={size.width} onCommit={(width) => setSize({ ...size, width })} />
+                  <NumberField label="Depth cm" value={size.depth} onCommit={(depth) => setSize({ ...size, depth })} />
+                  <NumberField
+                    label="Height cm"
+                    value={size.height}
+                    onCommit={(height) => setSize({ ...size, height })}
+                  />
+                </div>
+                <button
+                  className="btn btn-primary btn-block"
+                  onClick={() =>
+                    onAdd({
+                      name: size.name.trim() || 'Box',
+                      width: size.width / 100,
+                      depth: size.depth / 100,
+                      height: size.height / 100,
+                    })
+                  }
+                >
+                  <Plus size={16} />
+                  Add box
+                </button>
               </div>
-              <button
-                className="btn btn-primary btn-block"
-                onClick={() =>
-                  onAdd({
-                    name: size.name.trim() || 'Box',
-                    width: size.width / 100,
-                    depth: size.depth / 100,
-                    height: size.height / 100,
-                  })
-                }
-              >
-                <Plus size={16} />
-                Add box
-              </button>
-            </div>
-          )}
+            )}
 
-          <div className="catalog">
-            <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
-              <Plus size={22} />
-              <span>Custom box</span>
-            </button>
-            {entries.map((e) => (
-              <button
-                key={e.model}
-                className="catalog-item"
-                onClick={() =>
-                  onAdd({
-                    name: e.name,
-                    model: e.model,
-                    width: e.width / 100,
-                    depth: e.depth / 100,
-                    height: e.height / 100,
-                  })
-                }
-              >
-                <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
-                <span>{e.name}</span>
-                <span className="catalog-size">
-                  {e.width} × {e.depth}
-                </span>
+            <div className="catalog">
+              <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
+                <Plus size={22} />
+                <span>Custom box</span>
               </button>
-            ))}
-          </div>
-        </Section>
-      )}
-      {q && foundLights(q)}
+              {entries.map((e) => (
+                <button
+                  key={e.model}
+                  className="catalog-item"
+                  onClick={() =>
+                    onAdd({
+                      name: e.name,
+                      model: e.model,
+                      width: e.width / 100,
+                      depth: e.depth / 100,
+                      height: e.height / 100,
+                    })
+                  }
+                >
+                  <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
+                  <span>{e.name}</span>
+                  <span className="catalog-size">
+                    {e.width} × {e.depth}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+        {q && foundLights(q)}
+      </div>
     </>
   )
 }

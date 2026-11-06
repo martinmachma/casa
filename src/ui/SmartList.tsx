@@ -60,6 +60,7 @@ const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onSha
   return (
     <li
       className="smart-row"
+      data-kind={item.kind}
       data-on={active || undefined}
       data-hovered={hovered || undefined}
       data-dragging={dragging || undefined}

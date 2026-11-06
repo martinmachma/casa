@@ -86,9 +86,7 @@ export const LightControls = ({ light, onChange }: LightControlsProps) => {
         onPointerCancel={() => (dragging.current = false)}
       >
         <svg viewBox={`0 0 ${DIAL_SIZE} ${DIAL_SIZE}`} aria-hidden="true">
-          <path
-            d={`M ${ARC_START.x} ${ARC_START.y} A ${DIAL_RADIUS} ${DIAL_RADIUS} 0 1 1 ${ARC_END.x} ${ARC_END.y}`}
-          />
+          <path d={`M ${ARC_START.x} ${ARC_START.y} A ${DIAL_RADIUS} ${DIAL_RADIUS} 0 1 1 ${ARC_END.x} ${ARC_END.y}`} />
         </svg>
         <div className="light-dial-ring" style={{ background: conic(stops) }} />
         <span className="light-dial-cap" style={{ left: ARC_START.x, top: ARC_START.y, background: stops[0] }} />
@@ -96,11 +94,11 @@ export const LightControls = ({ light, onChange }: LightControlsProps) => {
         <span className="light-dial-thumb" style={{ left: thumb.x, top: thumb.y, background: shade }} />
         <button
           className="light-dial-power"
-          style={{
-            background: light.on
-              ? `color-mix(in srgb, ${shade} ${35 + light.brightness * 65}%, var(--surface-3))`
-              : undefined,
-          }}
+          style={
+            {
+              '--shade': `color-mix(in srgb, ${shade} ${35 + light.brightness * 65}%, var(--surface))`,
+            } as CSSProperties
+          }
           aria-label={light.on ? 'Turn off' : 'Turn on'}
           title={light.on ? 'Turn off' : 'Turn on'}
           aria-pressed={light.on}

@@ -26,7 +26,7 @@ import {
   type MeasurePick,
   type Measurement,
 } from '../measure/measure'
-import { SELECTED_OUTLINE } from './palette'
+import { MEASURE } from './palette'
 import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 import { OVERLAY } from './pick'
 import { raycastIfShown } from './raycast'
@@ -190,7 +190,7 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
       {preview && (
         <Line
           points={[at(preview.from), at(preview.to)]}
-          color={SELECTED_OUTLINE}
+          color={MEASURE}
           lineWidth={2}
           dashed
           dashSize={0.1}
@@ -213,7 +213,7 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
         >
           <circleGeometry args={[0.05, 20]} />
           <meshBasicMaterial
-            color={SELECTED_OUTLINE}
+            color={MEASURE}
             transparent
             opacity={i < picks.length ? 1 : 0.5}
             depthTest={false}
@@ -226,7 +226,7 @@ export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, fu
 }
 
 const HighlightMaterial = ({ ghost }: { ghost: boolean }) => (
-  <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={ghost ? 0.28 : 0.6} depthWrite={false} />
+  <meshBasicMaterial color={MEASURE} transparent opacity={ghost ? 0.28 : 0.6} depthWrite={false} />
 )
 
 /** The whole wall, openings and all, washed in the accent colour. */

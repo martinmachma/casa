@@ -31,19 +31,12 @@ export const WeatherButton = ({ onClick }: { onClick: () => void }) => {
   return (
     <button className="weather-button" onClick={onClick} aria-haspopup="dialog" title="Weather forecast">
       <Icon
-        size={26}
+        size={16}
         className="weather-button-icon"
         data-sun={now?.group === 'Clear' && now.day ? '' : undefined}
         aria-hidden
       />
-      <span className="weather-button-text">
-        <strong>Weather</strong>
-        {now && (
-          <span>
-            {Math.round(now.temperature)}°C {label}
-          </span>
-        )}
-      </span>
+      <span className="weather-button-text">{now ? `${Math.round(now.temperature)}°C ${label}` : 'Weather'}</span>
     </button>
   )
 }

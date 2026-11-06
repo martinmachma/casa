@@ -34,8 +34,7 @@ export const SaveButton = ({ data }: { data: HouseData }) => {
         title={dirty ? `Save changes (${mod}S)` : 'Nothing to save'}
         onClick={() => setOpen(true)}
       >
-        <Save size={16} />
-        <span>Save</span>
+        Save
       </button>
       {open && <SaveDialog data={data} onClose={() => setOpen(false)} />}
     </>

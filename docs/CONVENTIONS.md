@@ -27,7 +27,7 @@ behind, no comments that restate the code.
 
 ## UI / styling
 
-- One stylesheet, `src/styles.css`, with CSS custom properties at the top (`--bg`, `--accent`, radii, shadows).
+- One stylesheet, `src/styles.css`, with CSS custom properties at the top (`--ground`, `--accent`, `--cool`, radii, shadows).
   Reuse existing classes (`btn`, `icon-btn`, `field`, `muted`) and primitives from `ui/kit.tsx` before adding new.
 - Icons: `lucide-react` only; custom ones live in `ui/deviceIcons.tsx` and `ui/weatherIcons.ts`.
 - Rows and list items use the app's active state and an outline, not new highlight styles.
