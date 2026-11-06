@@ -9,6 +9,8 @@ import { EditableTitle } from './EditableTitle'
 
 type DeviceEditorProps = {
   device: Device
+  /** Where it is, in words. */
+  where: string
   onChange: (patch: Partial<Device>) => void
   /** How it's set now; only lights use it. */
   light: LightState
@@ -19,7 +21,7 @@ type DeviceEditorProps = {
 
 const cm = (m: number) => Math.round(m * 100)
 
-export const DeviceEditor = ({ device, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) => (
+export const DeviceEditor = ({ device, where, onChange, light, onLight, onDelete, onClose }: DeviceEditorProps) => (
   <>
     <PanelHead
       eyebrow={DEVICE_KINDS[device.kind].label}
@@ -30,10 +32,21 @@ export const DeviceEditor = ({ device, onChange, light, onLight, onDelete, onClo
           device.name
         )
       }
+      sub={where}
       onClose={onClose}
     />
 
     {device.kind === 'light' && <LightControls light={light} onChange={onLight} />}
+
+    {device.plan && (
+      <Section>
+        <p className="hint">
+          Fixed by the electrical plan ({device.plan.symbol}), so it can't be moved or removed.
+          {device.kind === 'light' && ' Its name is yours to change.'}
+        </p>
+        {device.plan.notes && <p className="hint">{device.plan.notes}</p>}
+      </Section>
+    )}
 
     {!device.plan && (
       <>
@@ -56,12 +69,12 @@ export const DeviceEditor = ({ device, onChange, light, onLight, onDelete, onClo
             />
           </label>
         </Section>
-        <Section>
+        <div className="panel-foot">
           <button className="btn btn-danger btn-block" onClick={onDelete}>
             <Trash2 size={16} />
-            Remove device
+            Remove {DEVICE_KINDS[device.kind].label.toLowerCase()}
           </button>
-        </Section>
+        </div>
       </>
     )}
   </>

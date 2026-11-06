@@ -1,4 +1,4 @@
-import type { DeviceKind } from '../data/types'
+import type { Device, DeviceKind } from '../data/types'
 
 /** Lights can be added on a ceiling or a wall; both remain the same smart device kind. */
 export type DevicePlacement = DeviceKind | 'wall-light'
@@ -34,4 +34,14 @@ export const defaultHeight = (kind: DevicePlacement, ceiling: number) => {
   if (kind === 'wall-light') return Math.min(2.2, ceiling - 0.15)
   const h = DEVICE_KINDS[kind].height
   return h === 'ceiling' ? ceiling : h
+}
+
+/** A numbered name for a light put in by hand ("Wall light 2"), counted apart from the electrical plan's lights. */
+export const newDeviceName = (device: Pick<Device, 'kind' | 'wall'>, devices: Device[]) => {
+  const label =
+    device.kind === 'light' ? (device.wall ? 'Wall light' : 'Ceiling light') : DEVICE_KINDS[device.kind].label
+  const taken = new Set(devices.map((d) => d.name))
+  let n = devices.filter((d) => !d.plan && d.kind === device.kind && !d.wall === !device.wall).length + 1
+  while (taken.has(`${label} ${n}`)) n++
+  return `${label} ${n}`
 }

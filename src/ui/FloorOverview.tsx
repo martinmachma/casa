@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import type { LightState } from '../devices/lights'
+import type { Scene } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
 import { RoomScenes } from './RoomScenes'
@@ -17,10 +18,13 @@ type FloorOverviewProps = {
   onOpen: (id: string) => void
   onHover: (id: string | undefined) => void
   hovered: string | undefined
+  scenes: Scene[]
+  /** Every item in the house: a scene here is on when all it sets is as it says, not just what's in view. */
+  sceneIds: string[]
 }
 
 /** Between rooms: the floor's lights over its shades, each room by room, with what isn't in a room first, as outside. */
-export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) => {
+export const FloorOverview = ({ items, roomName, scenes, sceneIds, ...rows }: FloorOverviewProps) => {
   const byRoom = (list: FloorOverviewProps['items']) => {
     // In the floor's order, so both cards run the same way.
     const names = [...new Set(items.map(roomName))].filter((n) => list.some((i) => roomName(i) === n))
@@ -41,8 +45,8 @@ export const FloorOverview = ({ items, roomName, ...rows }: FloorOverviewProps) 
           <div className="smart-card-body">
             {lightIds.length > 0 && (
               <RoomScenes
-                scenes={[]}
-                ids={lightIds}
+                scenes={scenes}
+                ids={sceneIds}
                 light={rows.light}
                 onLight={rows.onLight}
                 shade={rows.shade}

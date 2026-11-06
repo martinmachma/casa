@@ -34,7 +34,7 @@ A module may import from the left of itself, not the right. (A few small upward 
 ## Data model
 
 - **`HouseState`** (`data/types.ts`): wall paint, wall areas, furniture, room name overrides, devices, device names,
-  built-in finishes and fixtures. Optional fields are defaulted when loading (`supabaseBackend.fromRow`), so adding a
+  scenes, built-in finishes and fixtures. Optional fields are defaulted when loading (`supabaseBackend.fromRow`), so adding a
   field needs no migration.
 - **Versions** are immutable snapshots (`house.versions`, jsonb). `house.live_version` is a one-row pointer to the
   version that is "the house now" (null = bare house). The `Backend` interface covers load, save, rename, delete,
@@ -49,7 +49,10 @@ A module may import from the left of itself, not the right. (A few small upward 
 - **Realtime**: `supabaseBackend.subscribe` listens to `versions` and `live_version` and reloads the react-query cache.
 - **Server state** is react-query (keys such as `['versions', kind]`, `['roomOrder', kind]`, `['access', userId]`,
   `['todos']`). Mutations are followed by `invalidateQueries`.
-- **Per-browser state, not synced**: light/shade/scene state (`devices/*`, localStorage), weather cache, north and
+- **Scenes** are part of the version, like the devices and lamps they name: editing one is an ordinary draft edit,
+  and Home sees it once the version is saved and live. A scene keeps what it says about an item that's gone from a
+  version, so undo and other versions bring it back. `localScenes` brings in scenes from before this, once.
+- **Per-browser state, not synced**: light and shade state (`devices/*`, localStorage), weather cache, north and
   camera preferences.
 - **Supabase calls** belong in `data/supabaseBackend.ts`. Existing exceptions: `auth/useAccess.ts`, `ui/TodoPopup.tsx`,
   `ui/useOpenTodoCount.ts`, `lib/useRealtime.ts`. New code goes through `data`.
@@ -81,7 +84,7 @@ Performance-sensitive; read `docs/LIGHTING.md` before touching lights, shadows o
 
 ## Features that exist / don't
 
-Exist: versions + undo/redo, Edit with Interior and Devices modes, scenes, paint areas, furniture, bathroom fittings,
+Exist: versions + undo/redo, Edit with Interior (furniture and lights) and Scenes tabs, scenes, paint areas, furniture, bathroom fittings,
 roof/outdoor/stairs, electrical routes view, walk mode, sun and moon, weather, todos popup, per-user room order,
 nicknames, PWA.
 Not built: Home Assistant. Lights, shades and scenes switch in-app only. Devices carry an optional `entity` for later.

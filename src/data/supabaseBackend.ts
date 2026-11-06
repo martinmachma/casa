@@ -28,6 +28,7 @@ const fromRow = (r: VersionRow): Version => ({
     rooms: r.data?.rooms ?? [],
     devices: r.data?.devices ?? [],
     deviceNames: r.data?.deviceNames,
+    scenes: r.data?.scenes,
   },
 })
 

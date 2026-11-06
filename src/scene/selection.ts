@@ -13,5 +13,5 @@ export type CameraMode = 'top' | 'orbit' | 'walk'
  */
 export type Interaction = 'view' | 'edit' | 'measure' | 'paint'
 
-/** What editing moves and adds: everything that stands in the rooms, or what's wired in. */
-export type EditMode = 'interior' | 'devices'
+/** What's being edited: everything fitted and standing in the rooms, or the scenes that set the lights and shades. */
+export type EditMode = 'interior' | 'scenes'

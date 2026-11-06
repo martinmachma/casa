@@ -16,6 +16,8 @@ type ItemPinsProps = {
   onShade: (id: string, patch: Partial<ShadeState>) => void
   open: string | undefined
   onOpen: (id: string | undefined) => void
+  /** Picked out like the open item, without opening a card. */
+  picked?: string
   onHover: (id: string | undefined) => void
   hovered: string | undefined
   pinRefs: RefObject<Map<string, HTMLElement | null>>
@@ -30,6 +32,7 @@ export const ItemPins = ({
   onShade,
   open,
   onOpen,
+  picked,
   onHover,
   hovered,
   pinRefs,
@@ -108,7 +111,7 @@ export const ItemPins = ({
           <div
             key={item.id}
             className="room-pin"
-            data-active={hovered === item.id || item.id === open || undefined}
+            data-active={hovered === item.id || item.id === open || item.id === picked || undefined}
             ref={(el) => {
               pinRefs.current.set(`tag:${item.id}`, el)
             }}
@@ -117,12 +120,15 @@ export const ItemPins = ({
               // Longer to the open card, which stands clear of its item; it grows and shrinks with the card.
               <TagLine key={item.id === open ? 'line-open' : 'line-closing'} reach={98} />
             ) : (
-              <SmartTag
-                item={item}
-                light={item.kind === 'light' ? light(item.id) : undefined}
-                onOpen={() => onOpen(item.id)}
-                onHover={(h) => onHover(h ? item.id : undefined)}
-              />
+              <>
+                <SmartTag
+                  item={item}
+                  light={item.kind === 'light' ? light(item.id) : undefined}
+                  onOpen={() => onOpen(item.id)}
+                  onHover={(h) => onHover(h ? item.id : undefined)}
+                />
+                <span className="pin-name">{item.name}</span>
+              </>
             )}
             {carded && (
               <div

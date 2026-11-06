@@ -75,3 +75,36 @@ export const outsideLight = (item: { kind: DeviceKind; room: string | undefined 
 
 export const roomItems = (floor: Floor, roomId: string, devices: Device[], furniture: FurnitureItem[]): SmartItem[] =>
   floorItems(floor, devices, furniture).filter((i) => i.room === roomId)
+
+/** A smart item with the room it's in and the floor it's on. */
+export type PlacedItem = SmartItem & { room: string | undefined; floorIndex: number }
+
+/** A part of a list of items: a floor, split into its rooms, or what's outside. */
+export type ItemSection<T> = { name: string; rooms: { name: string | undefined; items: T[] }[] }
+
+/**
+ * Items as a list reads them: each floor's rooms, then what isn't in a room as Outside. Floors stay in the order
+ * given, and `firstRoom` comes first on its floor.
+ */
+export const itemSections = <T extends { room: string | undefined }>(
+  floors: { name: string; items: T[] }[],
+  roomName: (item: T) => string | undefined,
+  firstRoom?: string,
+): ItemSection<T>[] => {
+  const inFloor = floors.map((floor) => {
+    const inRooms = floor.items.filter((i) => i.room)
+    const ids = [...new Set(inRooms.map((i) => i.room))]
+    const ordered = [...ids.filter((id) => id === firstRoom), ...ids.filter((id) => id !== firstRoom)]
+    return {
+      name: floor.name,
+      rooms: ordered.map((id) => {
+        const items = inRooms.filter((i) => i.room === id)
+        return { name: roomName(items[0]), items }
+      }),
+    }
+  })
+  const out = floors.flatMap((f) => f.items.filter((i) => !i.room))
+  return [...inFloor, { name: 'Outside', rooms: out.length ? [{ name: undefined, items: out }] : [] }].filter(
+    (s) => s.rooms.length,
+  )
+}

@@ -1,9 +1,16 @@
 import { Pencil } from 'lucide-react'
 import { useRef, useState } from 'react'
 
+type EditableTitleProps = {
+  value: string
+  onChange: (name: string) => void
+  /** Opens as a text field, for something new that wants a name. */
+  startEditing?: boolean
+}
+
 /** A title that becomes a selected text field on click; Enter saves and Escape cancels. */
-export const EditableTitle = ({ value, onChange }: { value: string; onChange: (name: string) => void }) => {
-  const [draft, setDraft] = useState<string>()
+export const EditableTitle = ({ value, onChange, startEditing }: EditableTitleProps) => {
+  const [draft, setDraft] = useState(startEditing ? value : undefined)
   const cancelled = useRef(false)
 
   return draft === undefined ? (

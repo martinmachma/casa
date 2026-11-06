@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Device } from '../data/types'
 import { roomRegions } from '../layout/rooms'
 import type { Floor } from '../layout/types'
-import { deviceRoom, lightPosition, overVoid, placeDevice, snapToWall } from './place'
+import { atHeight, deviceRoom, lightPosition, overVoid, placeDevice, snapToWall } from './place'
 
 // A 4×3 m box (wall centre lines), 0.2 m walls, a window in the south wall, split by a wall at x = 2 with a door.
 const floor: Floor = {
@@ -103,5 +103,21 @@ describe('deviceRoom', () => {
     expect(deviceRoom(outside, floor, regions)).toBeUndefined()
     expect(lightPosition(inside, floor)[2]).toBeCloseTo(0.22)
     expect(lightPosition(outside, floor)[2]).toBeCloseTo(-0.22)
+  })
+})
+
+describe('atHeight', () => {
+  const ceiling: Device = { id: 'c', floor: 'f', kind: 'light', name: 'C', x: 1, y: 1, z: 2.5 }
+
+  it('keeps a device under the ceiling', () => {
+    expect(atHeight(ceiling, 9, floor).z).toBe(2.5)
+  })
+
+  it('slides a wall device clear of a window at its new height', () => {
+    // Above the window's head on the south wall, right over the window.
+    const mount = snapToWall([1, 3.1], floor, 2.4, Infinity, { wallId: 's', side: 'b' })!
+    const lowered = atHeight({ ...ceiling, z: 2.4, ...mount }, 1.5, floor)
+    expect(lowered.z).toBe(1.5)
+    expect(Math.abs(lowered.x! - 1)).toBeGreaterThan(0.5)
   })
 })

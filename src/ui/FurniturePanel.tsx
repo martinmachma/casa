@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 import { CATALOG, CATALOG_GROUPS, thumbnailUrl, type CatalogGroup } from '../furniture/catalog'
 import { NumberField } from './NumberField'
 import { IconButton, Section } from './kit'
@@ -7,13 +7,24 @@ import { IconButton, Section } from './kit'
 /** What to add: a catalog model or a plain box, sizes in metres. */
 export type NewPiece = { name: string; width: number; depth: number; height: number; model?: string }
 
-type FurniturePanelProps = { onAdd: (piece: NewPiece) => void }
+/** What the panel's chips pick: a group of the catalog, or the house's lights. */
+export type PanelGroup = CatalogGroup | 'Lights'
 
-/** The catalog, shown in Interior with nothing selected. */
-export const FurniturePanel = ({ onAdd }: FurniturePanelProps) => {
+type FurniturePanelProps = {
+  onAdd: (piece: NewPiece) => void
+  group: PanelGroup
+  onGroup: (group: PanelGroup) => void
+  lightCount: number
+  /** The Lights group's own contents. */
+  lights: ReactNode
+  /** The lights matching a search. */
+  foundLights: (query: string) => ReactNode
+}
+
+/** The catalog and the lights, shown in Interior with nothing selected. */
+export const FurniturePanel = ({ onAdd, group, onGroup, lightCount, lights, foundLights }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
-  const [group, setGroup] = useState<CatalogGroup>('Living')
   const [query, setQuery] = useState('')
   const [custom, setCustom] = useState(false)
   const groups = useRef<HTMLDivElement>(null)
@@ -43,8 +54,8 @@ export const FurniturePanel = ({ onAdd }: FurniturePanelProps) => {
           <Search size={16} aria-hidden />
           <input
             type="search"
-            placeholder={`Search ${CATALOG.length} pieces`}
-            aria-label="Search furniture"
+            placeholder="Search furniture and lights"
+            aria-label="Search furniture and lights"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -59,18 +70,18 @@ export const FurniturePanel = ({ onAdd }: FurniturePanelProps) => {
             data-more-start={more.start}
             data-more-end={more.end}
           >
-            {CATALOG_GROUPS.map((g) => (
+            {(['Lights', ...CATALOG_GROUPS] as const).map((g) => (
               <button
                 key={g}
                 role="tab"
                 aria-selected={!q && group === g}
                 onClick={() => {
-                  setGroup(g)
+                  onGroup(g)
                   setQuery('')
                 }}
               >
                 {g}
-                <span className="num">{CATALOG.filter((e) => e.group === g).length}</span>
+                <span className="num">{g === 'Lights' ? lightCount : CATALOG.filter((e) => e.group === g).length}</span>
               </button>
             ))}
           </div>
@@ -87,63 +98,72 @@ export const FurniturePanel = ({ onAdd }: FurniturePanelProps) => {
         </div>
       </Section>
 
-      <Section>
-        {custom && (
-          <div className="custom-box">
-            <label className="field">
-              Name
-              <input value={size.name} onChange={(e) => setSize({ ...size, name: e.target.value })} />
-            </label>
-            <div className="row">
-              <NumberField label="Width cm" value={size.width} onCommit={(width) => setSize({ ...size, width })} />
-              <NumberField label="Depth cm" value={size.depth} onCommit={(depth) => setSize({ ...size, depth })} />
-              <NumberField label="Height cm" value={size.height} onCommit={(height) => setSize({ ...size, height })} />
+      {!q && group === 'Lights' ? (
+        lights
+      ) : (
+        <Section>
+          {custom && (
+            <div className="custom-box">
+              <label className="field">
+                Name
+                <input value={size.name} onChange={(e) => setSize({ ...size, name: e.target.value })} />
+              </label>
+              <div className="row">
+                <NumberField label="Width cm" value={size.width} onCommit={(width) => setSize({ ...size, width })} />
+                <NumberField label="Depth cm" value={size.depth} onCommit={(depth) => setSize({ ...size, depth })} />
+                <NumberField
+                  label="Height cm"
+                  value={size.height}
+                  onCommit={(height) => setSize({ ...size, height })}
+                />
+              </div>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={() =>
+                  onAdd({
+                    name: size.name.trim() || 'Box',
+                    width: size.width / 100,
+                    depth: size.depth / 100,
+                    height: size.height / 100,
+                  })
+                }
+              >
+                <Plus size={16} />
+                Add box
+              </button>
             </div>
-            <button
-              className="btn btn-primary btn-block"
-              onClick={() =>
-                onAdd({
-                  name: size.name.trim() || 'Box',
-                  width: size.width / 100,
-                  depth: size.depth / 100,
-                  height: size.height / 100,
-                })
-              }
-            >
-              <Plus size={16} />
-              Add box
-            </button>
-          </div>
-        )}
+          )}
 
-        <div className="catalog">
-          <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
-            <Plus size={22} />
-            <span>Custom box</span>
-          </button>
-          {entries.map((e) => (
-            <button
-              key={e.model}
-              className="catalog-item"
-              onClick={() =>
-                onAdd({
-                  name: e.name,
-                  model: e.model,
-                  width: e.width / 100,
-                  depth: e.depth / 100,
-                  height: e.height / 100,
-                })
-              }
-            >
-              <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
-              <span>{e.name}</span>
-              <span className="catalog-size">
-                {e.width} × {e.depth}
-              </span>
+          <div className="catalog">
+            <button className="catalog-item catalog-custom" aria-expanded={custom} onClick={() => setCustom(!custom)}>
+              <Plus size={22} />
+              <span>Custom box</span>
             </button>
-          ))}
-        </div>
-      </Section>
+            {entries.map((e) => (
+              <button
+                key={e.model}
+                className="catalog-item"
+                onClick={() =>
+                  onAdd({
+                    name: e.name,
+                    model: e.model,
+                    width: e.width / 100,
+                    depth: e.depth / 100,
+                    height: e.height / 100,
+                  })
+                }
+              >
+                <img src={thumbnailUrl(e.model)} alt="" loading="lazy" />
+                <span>{e.name}</span>
+                <span className="catalog-size">
+                  {e.width} × {e.depth}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+      {q && foundLights(q)}
     </>
   )
 }

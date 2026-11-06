@@ -15,6 +15,7 @@ import type {
 } from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
 import { ELECTRICAL_DEVICES } from '../devices/electrical'
+import type { Scene } from '../devices/scenes'
 import { house } from '../layout/layout'
 import { withBuiltInFixtures } from './builtInFixtures'
 import { withBuiltInFinishes } from './builtInFinishes'
@@ -39,6 +40,7 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 const HISTORY_LIMIT = 100
 
 const NO_VERSIONS: Version[] = []
+const NO_SCENES: Scene[] = []
 const withBuiltIns = (state: HouseState) => withBuiltInFinishes(withBuiltInFixtures(state, house.floors), house.floors)
 const BARE_STATE = withBuiltIns(EMPTY_STATE)
 
@@ -283,6 +285,19 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
 
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
 
+  /** Adds scenes as one undo step. */
+  const addScenes = (...scenes: Scene[]) => edit((s) => ({ ...s, scenes: [...(s.scenes ?? []), ...scenes] }))
+
+  /** Changes a scene; changes with the same `key` (one slider being dragged) undo as one step. */
+  const changeScene = (id: string, change: (scene: Scene) => Scene, key?: string) =>
+    edit((s) => ({ ...s, scenes: (s.scenes ?? []).map((scene) => (scene.id === id ? change(scene) : scene)) }), key)
+
+  const removeScene = (id: string) =>
+    edit((s) => {
+      const scenes = (s.scenes ?? []).filter((scene) => scene.id !== id)
+      return { ...s, scenes: scenes.length ? scenes : undefined }
+    })
+
   // The version made live by someone else since editing began; the bare house is `null`. Drafts kept from before
   // this was noted count from the version they started on.
   const live = liveId ?? null
@@ -363,6 +378,10 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     patchDevice,
     renameDevice,
     removeDevice,
+    scenes: state.scenes ?? NO_SCENES,
+    addScenes,
+    changeScene,
+    removeScene,
   }
 }
 

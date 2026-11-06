@@ -76,7 +76,7 @@ export const RoomOverview = ({
               {rest.length ? (
                 <SmartRows items={rest} {...rows} />
               ) : (
-                <p className="hint">No smart items here yet. Place them under Edit → Devices.</p>
+                <p className="hint">No smart items here yet. Add lights under Edit → Lights.</p>
               )}
             </div>
           </section>

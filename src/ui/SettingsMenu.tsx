@@ -16,15 +16,15 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
       title: 'Modes & measuring',
       context: 'Inside a floor, in any interaction mode. Mode changes clear the selection and device placement.',
       rows: [
-        ['E', 'View → Edit; Edit or Devices → View.'],
-        ['L', 'View or Edit → Devices; Devices → Edit.'],
+        ['E', 'View → Edit; Edit → View.'],
+        ['L', 'In Edit: Interior → Scenes; Scenes → Interior.'],
         ['M', 'Toggle measuring. Turning it off clears measurements; changing interaction mode keeps measuring on.'],
       ],
     },
     {
       title: 'Furniture & devices',
       context:
-        'Inside a floor. Select furniture in Edit mode, or a device in Devices mode. Measuring replaces selection.',
+        'Inside a floor. Select furniture or a light in Edit. Measuring replaces selection.',
       rows: [
         ['R / Shift+R', 'Rotate selected furniture or group by +15° / −15°.'],
         [`${modifier}+D`, 'Duplicate selected furniture or group beside the originals.'],
@@ -49,7 +49,7 @@ export const SettingsMenu = ({ open, onClose }: { open: boolean; onClose: () => 
         [`${modifier}+S`, 'Save the changes as a new version (opens the save dialog).'],
         [
           'Escape',
-          'Step back in order: clear selection, cancel device placement, clear an unfinished measurement, stop measuring (clearing measurements), then leave Devices for Edit mode. One step per press.',
+          'Step back in order: clear selection, cancel device placement, clear an unfinished measurement, stop measuring (clearing measurements), then close a scene. One step per press.',
         ],
       ],
     },

@@ -1,3 +1,4 @@
+import type { Scene } from '../devices/scenes'
 import type { RoomOrder } from '../rooms/roomOrder'
 import type { WallFace, WallSide } from '../layout/types'
 
@@ -117,6 +118,8 @@ export type HouseState = {
   devices?: Device[]
   /** Absent in versions saved before the electrical plan's lights could be renamed. */
   deviceNames?: DeviceName[]
+  /** Absent in versions saved before scenes were kept with the house. */
+  scenes?: Scene[]
 }
 
 export const EMPTY_STATE: HouseState = { walls: [], wallAreas: [], furniture: [], rooms: [], devices: [] }

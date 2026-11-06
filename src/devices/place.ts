@@ -98,6 +98,16 @@ export const placeDevice = (
   return mount && { floor: floor.id, kind, z, ...mount }
 }
 
+/**
+ * A device moved to height `z` (metres above the floor), kept below the ceiling. One on a wall stays on its face but
+ * slides clear of whatever door or window is at the new height.
+ */
+export const atHeight = (device: Device, z: number, floor: Floor): Partial<Device> => {
+  const height = Math.min(floor.height, Math.max(0, z))
+  if (!device.wall) return { z: height }
+  return { z: height, ...snapToWall([device.x, device.y], floor, height, Infinity, device.wall) }
+}
+
 /** Emit in front of a wall fitting or beneath a ceiling fitting, clear of the casing and wall. */
 export const lightPosition = (device: Device, floor: Floor): [number, number, number] => {
   const wall = device.wall && floor.walls.find((w) => w.id === device.wall!.wallId)

@@ -337,8 +337,11 @@ export const DevicePlacer = ({ floor, placement, onPlace, cutaway, plan }: Devic
       const placed = placedAt(e)
       if (placed) onPlace(placed)
     },
-    onPointerMove: (e: ThreeEvent<PointerEvent>) => setPreview(placedAt(e)),
-    onPointerOver: () => (document.body.style.cursor = 'crosshair'),
+    onPointerMove: (e: ThreeEvent<PointerEvent>) => {
+      const placed = placedAt(e)
+      setPreview(placed)
+      document.body.style.cursor = placed ? 'crosshair' : 'not-allowed'
+    },
     onPointerOut: () => {
       document.body.style.cursor = ''
       setPreview(undefined)
