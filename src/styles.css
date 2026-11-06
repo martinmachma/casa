@@ -3184,30 +3184,12 @@ input[type='range'] {
   scroll-margin: 6px;
 }
 
-.scene-head {
-  display: flex;
-  align-items: center;
-}
-
-.scene-head .scene-tick {
-  margin-left: 0;
-}
-
-.scene-tick[aria-checked='mixed'] {
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-
 .scene-tile {
   flex: none;
-  margin-right: 8px;
+  margin: 0 8px 0 6px;
   padding: 0;
   border: 0;
   cursor: pointer;
-}
-
-.scene-tile:disabled {
-  cursor: inherit;
 }
 
 .scene-set-all {
@@ -3308,7 +3290,6 @@ input[type='range'] {
   place-items: center;
   width: 18px;
   height: 18px;
-  margin: 0 8px 0 6px;
   padding: 0;
   border: 1px solid var(--line-strong);
   border-radius: 5px;
@@ -3322,7 +3303,7 @@ input[type='range'] {
   background: var(--accent);
 }
 
-/* The same box over an item in the view. */
+/* Over an item in the view. */
 .scene-pin {
   position: absolute;
   left: 0;
@@ -3330,7 +3311,6 @@ input[type='range'] {
   translate: -50% 0;
   width: 22px;
   height: 22px;
-  margin: 0;
   box-shadow:
     0 1px 2px rgb(34 26 18 / 0.08),
     0 3px 10px rgb(34 26 18 / 0.18);
@@ -3414,7 +3394,7 @@ input[type='range'] {
 }
 
 .smart-row[data-on],
-.scene-row[data-picked] {
+.scene-row {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LightState } from './lights'
-import { newSceneName, type Scene, sceneCount, sceneFromNow, sceneSummary, sceneSwitched, sceneWith } from './scenes'
+import { newSceneName, type Scene, sceneCount, sceneSummary, sceneSwitched, sceneWith } from './scenes'
 import { SHADE_UP } from './shades'
 
 const off: LightState = { on: false, brightness: 0.5, mode: 'white', kelvin: 3000, color: '#ffffff' }
@@ -23,17 +23,6 @@ describe('scenes', () => {
   it('switches every light, keeping its level', () => {
     const scene = sceneSwitched({ ...empty, lights: { lamp: off } }, true)
     expect(scene.lights.lamp).toEqual({ ...off, on: true })
-  })
-
-  it('starts from only what is on or let down', () => {
-    const scene = sceneFromNow(
-      empty,
-      [lamp, { id: 'dark', kind: 'light' }, blind],
-      (id) => ({ ...off, on: id === 'lamp' }),
-      () => ({ position: 0.5, tilt: 0 }),
-    )
-    expect(Object.keys(scene.lights)).toEqual(['lamp'])
-    expect(Object.keys(scene.shades)).toEqual(['blind'])
   })
 
   it('does not count what is gone from this version', () => {

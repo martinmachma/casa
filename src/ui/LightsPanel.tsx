@@ -40,33 +40,32 @@ export const LightList = ({ sections, ...rows }: LightListProps) => (
   </div>
 )
 
-type LightsPanelProps = LightListProps & {
+type LightsPanelProps = {
   /** The device kind the next click places, if one is picked. */
   placing: DevicePlacement | undefined
   onPlacing: (kind: DevicePlacement | undefined) => void
 }
 
-/** Lights to put in, and those already in the house. */
-export const LightsPanel = ({ placing, onPlacing, sections, ...rows }: LightsPanelProps) => (
-  <>
-    <Section>
-      <div className="catalog">
-        {ADD.map((d) => (
-          <button
-            key={d.kind}
-            className="catalog-item"
-            aria-pressed={placing === d.kind}
-            onClick={() => onPlacing(placing === d.kind ? undefined : d.kind)}
-          >
-            <span className="device-swatch" style={{ background: DEVICE_KINDS.light.color }}>
-              <DeviceIcon kind="light" size={18} />
-            </span>
-            <span>{d.name}</span>
-          </button>
-        ))}
-      </div>
-      {placing && <p className="hint light-hint">{ADD.find((d) => d.kind === placing)?.hint}</p>}
-    </Section>
-    <LightList sections={sections} {...rows} />
-  </>
+/** Lights to put in; those already in the house are picked in the view. */
+export const LightsPanel = ({ placing, onPlacing }: LightsPanelProps) => (
+  <Section>
+    <div className="catalog">
+      {ADD.map((d) => (
+        <button
+          key={d.kind}
+          className="catalog-item"
+          aria-pressed={placing === d.kind}
+          onClick={() => onPlacing(placing === d.kind ? undefined : d.kind)}
+        >
+          <span className="device-swatch" style={{ background: DEVICE_KINDS.light.color }}>
+            <DeviceIcon kind="light" size={18} />
+          </span>
+          <span>{d.name}</span>
+        </button>
+      ))}
+    </div>
+    <p className="hint light-hint">
+      {placing ? ADD.find((d) => d.kind === placing)?.hint : 'Pick a light in the view to edit it.'}
+    </p>
+  </Section>
 )

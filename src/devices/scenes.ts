@@ -53,20 +53,6 @@ export const sceneSwitched = (scene: Scene, on: boolean): Scene => ({
   lights: Object.fromEntries(Object.entries(scene.lights).map(([id, l]) => [id, { ...l, on }])),
 })
 
-/** A first version of a scene: the lights that are on and the shades that are down, as they are. */
-export const sceneFromNow = (
-  scene: Scene,
-  items: Item[],
-  light: (id: string) => LightState,
-  shade: (id: string) => ShadeState,
-) =>
-  sceneWith(
-    scene,
-    items.filter((i) => (isShade(i) ? shade(i.id).position > 0 : light(i.id).on)),
-    light,
-    shade,
-  )
-
 /** How many of `items` the scene sets; what it names that's no longer in this version doesn't count. */
 export const sceneCount = (scene: Scene, items: Item[]) => {
   const inScene = items.filter((i) => sceneHas(scene, i.id))

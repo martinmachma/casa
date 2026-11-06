@@ -14,7 +14,6 @@ type FurniturePanelProps = {
   onAdd: (piece: NewPiece) => void
   group: PanelGroup
   onGroup: (group: PanelGroup) => void
-  lightCount: number
   /** The Lights group's own contents. */
   lights: ReactNode
   /** The lights matching a search. */
@@ -22,7 +21,7 @@ type FurniturePanelProps = {
 }
 
 /** The catalog and the lights, shown in Interior with nothing selected. */
-export const FurniturePanel = ({ onAdd, group, onGroup, lightCount, lights, foundLights }: FurniturePanelProps) => {
+export const FurniturePanel = ({ onAdd, group, onGroup, lights, foundLights }: FurniturePanelProps) => {
   // Sizes are entered in centimetres, stored in metres.
   const [size, setSize] = useState({ name: 'Box', width: 120, depth: 60, height: 75 })
   const [query, setQuery] = useState('')
@@ -81,7 +80,7 @@ export const FurniturePanel = ({ onAdd, group, onGroup, lightCount, lights, foun
                 }}
               >
                 {g}
-                <span className="num">{g === 'Lights' ? lightCount : CATALOG.filter((e) => e.group === g).length}</span>
+                {g !== 'Lights' && <span className="num">{CATALOG.filter((e) => e.group === g).length}</span>}
               </button>
             ))}
           </div>

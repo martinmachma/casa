@@ -825,7 +825,7 @@ export const House = ({ backend, account }: HouseProps) => {
           onOpen={openSceneItem}
           hovered={hoveredItem}
           onHover={setHoveredItem}
-          onTick={tickSceneItem}
+          onRemove={tickSceneItem}
           light={lightNow}
           shade={shadeNow}
           night={!!nightFrom}
@@ -922,7 +922,6 @@ export const House = ({ backend, account }: HouseProps) => {
             setPanelGroup(group)
             setPlacing(undefined)
           }}
-          lightCount={lightItems.length}
           lights={
             <LightsPanel
               placing={placing}
@@ -935,8 +934,6 @@ export const House = ({ backend, account }: HouseProps) => {
                 // On a phone the sheet covers the house; tuck it away so there's room to tap.
                 if (kind && isNarrow()) setRightOpen(false)
               }}
-              sections={lightSections(lightItems)}
-              {...lightRows}
             />
           }
           foundLights={(q) => {
