@@ -69,6 +69,9 @@ import { SceneEditor } from './ui/SceneEditor'
 import { ScenePins } from './ui/ScenePins'
 import { ScenesPanel } from './ui/ScenesPanel'
 import { ElectricalPanel } from './ui/ElectricalPanel'
+import { PhoneHome } from './ui/PhoneHome'
+import { isNarrow, useNarrow } from './ui/useNarrow'
+import { arrangeRooms } from './rooms/roomOrder'
 
 type HouseProps = { backend: Backend; account: Account }
 
@@ -83,10 +86,6 @@ type SceneEdit = {
   /** The item whose settings are showing. */
   open: string | undefined
 }
-
-// Phones start with both panels tucked away, leaving the screen to the house.
-const NARROW = '(max-width: 820px)'
-const isNarrow = () => window.matchMedia(NARROW).matches
 
 /** The time of day scenes are looked at after dark: well past sunset, all year. */
 const NIGHT_MINUTES = 23 * 60
@@ -107,6 +106,8 @@ const saveSection = (section: Section) => {
 export const House = ({ backend, account }: HouseProps) => {
   const [section, setSection] = useState(savedSection)
   const editing = section === 'edit'
+  // Home on a phone has its own menus at the bottom; editing keeps the desktop's panels.
+  const phone = useNarrow() && !editing
   const data = useHouseData(backend, !editing)
   const [floorIndex, setFloorIndex] = useState(0)
   // The app opens on the whole house.
@@ -725,6 +726,11 @@ export const House = ({ backend, account }: HouseProps) => {
       focus?.room,
     )
   const closeRight = () => setRightOpen(false)
+  // The rooms in the order they're arranged in on a wide screen, the small ones after.
+  const roomsArranged = arrangeRooms(rooms, roomOrder.order)
+  const phoneRooms = [...roomsArranged.main, ...roomsArranged.minor].flatMap(
+    (id) => rooms.find((r) => r.id === id) ?? [],
+  )
   const modeBar = (
     <ModeBar
       editing={editing}
@@ -946,7 +952,7 @@ export const House = ({ backend, account }: HouseProps) => {
   })()
 
   return (
-    <div className="app" data-right={rightOpen ? 'open' : 'closed'}>
+    <div className="app" data-right={rightOpen ? 'open' : 'closed'} data-phone={phone || undefined}>
       <TopBar
         // Already home, the name puts the camera back where it started.
         onHome={focus || popover ? leaveRoom : () => setViewKey((k) => k + 1)}
@@ -974,7 +980,7 @@ export const House = ({ backend, account }: HouseProps) => {
           onWalkCaptured={setWalkCaptured}
           outside={outside}
           camera={camera}
-          cutaway={cutaway}
+          cutaway={cutaway || phone}
           electrical={editing && electrical}
           data={data}
           // Nothing's moved on the scenes tab: a scene's items are picked, as they are when looking round.
@@ -1028,7 +1034,7 @@ export const House = ({ backend, account }: HouseProps) => {
         />
 
         {/* While editing, the editor takes the room's place on the right. */}
-        {focus && focusFloor && !rightOpen && (
+        {focus && focusFloor && !rightOpen && !phone && (
           <RoomOverview
             title={focus.label}
             items={focusItems}
@@ -1048,7 +1054,7 @@ export const House = ({ backend, account }: HouseProps) => {
         )}
 
         {/* Between rooms, smart items keep their tags; outside, so do lights without a room. */}
-        {floorTags.length > 0 && !popover && (
+        {floorTags.length > 0 && !popover && !phone && (
           <FloorOverview
             items={floorTags}
             roomName={(item) => rooms.find((r) => r.room === item.room)?.label}
@@ -1070,7 +1076,9 @@ export const House = ({ backend, account }: HouseProps) => {
             onLight={(id, patch) => lights.set(id, patch, dark)}
             shade={(id) => shades.states[id] ?? SHADE_UP}
             onShade={shades.set}
-            open={popover}
+            // On a phone the open item's card sits at the bottom instead of by its tag.
+            open={phone ? undefined : popover}
+            picked={phone ? popover : undefined}
             onOpen={openItem}
             onHover={setHoveredItem}
             hovered={hoveredItem}
@@ -1106,39 +1114,84 @@ export const House = ({ backend, account }: HouseProps) => {
           />
         )}
 
-        <ViewDock
-          floors={house.floors}
-          floorIndex={floorIndex}
-          onFloor={switchFloor}
-          outside={outside}
-          onOutside={goOutside}
-          camera={camera}
-          onCamera={(next) => (next === 'walk' ? startWalk() : setCamera(next))}
-          onExitWalk={exitWalk}
-          onWalkDrag={(x, y) => walkPlacement.current?.preview(x, y) ?? false}
-          onWalkDrop={(x, y) => {
-            const start = walkPlacement.current?.point(x, y)
-            walkPlacement.current?.clear()
-            if (start) startWalk(start)
-          }}
-          onWalkCancel={() => walkPlacement.current?.clear()}
-          canPlan={editing}
-          inRoom={!!focus || !!popover}
-        >
-          {camera !== 'walk' && roomOrder.ready && (
-            <RoomNav
-              rooms={rooms}
-              room={roomView}
+        {phone && camera !== 'walk' && (
+          <>
+            {focus && (
+              <ItemPins
+                items={focusItems}
+                light={lightNow}
+                onLight={lightRows.onLight}
+                shade={shadeNow}
+                onShade={shades.set}
+                open={undefined}
+                picked={popover}
+                onOpen={openPopover}
+                onHover={setHoveredItem}
+                hovered={hoveredItem}
+                pinRefs={pinRefs}
+              />
+            )}
+            <PhoneHome
+              floors={house.floors}
+              floorIndex={floorIndex}
+              onFloor={switchFloor}
+              outside={outside}
+              onOutside={goOutside}
+              rooms={phoneRooms}
+              room={focus}
               onRoom={openRoom}
               onLeave={leaveRoom}
-              saved={roomOrder.order}
-              onSave={roomOrder.save}
-              lights={roomLights}
+              lit={roomLights}
+              scenes={focus ? data.scenes.filter((s) => focusItems.some((i) => sceneHas(s, i.id))) : floorScenes}
+              sceneIds={smartItems.map((i) => i.id)}
+              items={focusItems}
+              open={smartItems.find((i) => i.id === popover)}
+              onOpen={openPopover}
+              onHover={setHoveredItem}
+              hovered={hoveredItem}
+              light={lightNow}
+              onLight={lightRows.onLight}
+              shade={shadeNow}
+              onShade={shades.set}
             />
-          )}
-        </ViewDock>
+          </>
+        )}
 
-        {modeBar}
+        {!phone && (
+          <ViewDock
+            floors={house.floors}
+            floorIndex={floorIndex}
+            onFloor={switchFloor}
+            outside={outside}
+            onOutside={goOutside}
+            camera={camera}
+            onCamera={(next) => (next === 'walk' ? startWalk() : setCamera(next))}
+            onExitWalk={exitWalk}
+            onWalkDrag={(x, y) => walkPlacement.current?.preview(x, y) ?? false}
+            onWalkDrop={(x, y) => {
+              const start = walkPlacement.current?.point(x, y)
+              walkPlacement.current?.clear()
+              if (start) startWalk(start)
+            }}
+            onWalkCancel={() => walkPlacement.current?.clear()}
+            canPlan={editing}
+            inRoom={!!focus || !!popover}
+          >
+            {camera !== 'walk' && roomOrder.ready && (
+              <RoomNav
+                rooms={rooms}
+                room={roomView}
+                onRoom={openRoom}
+                onLeave={leaveRoom}
+                saved={roomOrder.order}
+                onSave={roomOrder.save}
+                lights={roomLights}
+              />
+            )}
+          </ViewDock>
+        )}
+
+        {!phone && modeBar}
 
         {/* Drags and pinches move the 3D view; walking on a touch screen needs the buttons. */}
         {walkCaptured && <div className="crosshair" aria-hidden />}

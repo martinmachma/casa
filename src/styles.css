@@ -4441,3 +4441,257 @@ input[type='range'].light-brightness::-moz-range-thumb {
   text-align: left;
   padding: 8px 0;
 }
+
+/* Home on a phone: the floor and room menus along the bottom, the scenes floating over them, an item's card in their
+   place, and everything in a room in a sheet. */
+.app[data-phone] .compass {
+  display: none;
+}
+
+.phone-bar {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 8px;
+}
+
+.phone-bar button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  height: 52px;
+  padding: 0 12px 0 14px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.phone-bar button.grow {
+  flex: 1;
+}
+
+.phone-bar span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phone-bar svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.phone-bar button[aria-expanded='true'] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.phone-bar button[aria-expanded='true'] svg {
+  color: var(--accent-ink);
+}
+
+/* Over the bar: the scenes, and in a room the button for its list. */
+.phone-over {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  right: 12px;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 62px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.phone-over .chip {
+  flex: none;
+  height: 44px;
+  padding: 0 16px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.phone-over .chip[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.phone-list-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+}
+
+/* Closes a menu when the view is tapped. */
+.phone-scrim {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+}
+
+.phone-menu {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 62px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 140px);
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--surface);
+  animation: fade-in 120ms ease-out;
+}
+
+.phone-menu-floor {
+  left: 12px;
+  width: 200px;
+}
+
+.phone-menu-room {
+  left: 12px;
+  right: 12px;
+}
+
+.phone-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  height: 48px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.phone-menu button b {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phone-menu button[aria-current] {
+  color: var(--accent-text);
+}
+
+.phone-menu button:active {
+  background: var(--surface-3);
+}
+
+.phone-menu-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.phone-menu-group h3 {
+  margin: 10px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* A room (or floor) with a light on. */
+.phone-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.phone-dot[data-on] {
+  background: var(--lamp);
+  box-shadow: 0 0 8px rgb(255 190 90 / 0.8);
+}
+
+/* The open item's controls, over the bar where the scenes were. */
+.phone-card {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  right: 12px;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 62px);
+  padding: 8px 12px 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  animation: fade-in 120ms ease-out;
+}
+
+.phone-card .light-controls {
+  align-items: center;
+}
+
+.phone-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.phone-card-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Everything in the room, up from the bottom over the bar. */
+.phone-sheet {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 62%;
+  overflow-y: auto;
+  padding: 12px 14px max(14px, env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  box-shadow: var(--shadow-lg);
+  animation: todo-in 160ms ease-out;
+}
+
+/* A shade's arrows in a row over its slats; the card has its own close button. */
+.phone-card .shade-controls > .shade-group:first-child {
+  display: none;
+}
+
+.phone-card .shade-buttons {
+  flex-direction: column;
+}
+
+.phone-card .shade-group {
+  flex-direction: row;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}

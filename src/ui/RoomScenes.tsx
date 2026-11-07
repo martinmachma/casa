@@ -13,27 +13,39 @@ type RoomScenesProps = {
   onShade: (id: string, patch: Partial<ShadeState>) => void
 }
 
-/** The scenes here, a card of their own as they set shades as well as lights: chips that set them. */
-export const RoomScenes = ({ scenes, ids, light, onLight, shade, onShade }: RoomScenesProps) => {
+/** A chip per scene, pressed while all it sets is as it says; tapping one sets all of it. */
+export const SceneChips = ({
+  scenes,
+  ids,
+  light,
+  onLight,
+  shade,
+  onShade,
+  className = '',
+}: RoomScenesProps & { className?: string }) => {
   const apply = (scene: Scene) => {
     Object.entries(scene.lights).forEach(([id, s]) => onLight(id, s))
     Object.entries(scene.shades).forEach(([id, s]) => onShade(id, s))
   }
+  return scenes.map((scene) => (
+    <button
+      key={scene.id}
+      className={`chip ${className}`}
+      aria-pressed={sceneActive(scene, light, shade, ids)}
+      onClick={() => apply(scene)}
+    >
+      {scene.name}
+    </button>
+  ))
+}
 
-  if (!scenes.length) return null
+/** The scenes here, a card of their own as they set shades as well as lights: chips that set them. */
+export const RoomScenes = (props: RoomScenesProps) => {
+  if (!props.scenes.length) return null
   return (
     <SmartCard title="Scenes">
       <div className="smart-scene-chips" role="group" aria-label="Scenes">
-        {scenes.map((scene) => (
-          <button
-            key={scene.id}
-            className="chip"
-            aria-pressed={sceneActive(scene, light, shade, ids)}
-            onClick={() => apply(scene)}
-          >
-            {scene.name}
-          </button>
-        ))}
+        <SceneChips {...props} />
       </div>
     </SmartCard>
   )
