@@ -42,7 +42,7 @@ describe('point shadow atlas geometry', () => {
     atlas.dispose()
   })
 
-  it('keeps dark bulbs in the same tiles without redrawing their shadows or their neighbours', () => {
+  it.each([1, 0.5])('keeps dark bulbs and their neighbours cached (detail %s)', (detail) => {
     const scene = new Scene()
     const lights = Array.from({ length: 12 }, (_, i) => {
       const light = new PointLight()
@@ -60,7 +60,7 @@ describe('point shadow atlas geometry', () => {
     } as unknown as WebGLRenderer
     const camera = new PerspectiveCamera()
     const focus = new Vector3()
-    atlas.prepare(gl, scene, camera, focus)
+    atlas.prepare(gl, scene, camera, focus, false, detail)
     const tiles = atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())
     const map = lights[0].shadow.map!
     const size = [map.width, map.height]
@@ -69,7 +69,7 @@ describe('point shadow atlas geometry', () => {
 
     lights[0].intensity = 0
     lights[0].shadow.needsUpdate = true
-    atlas.prepare(gl, scene, camera, focus)
+    atlas.prepare(gl, scene, camera, focus, false, detail)
     expect(atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())).toEqual(tiles)
     expect([map.width, map.height]).toEqual(size)
     expect(lights.every((l) => !l.shadow.needsUpdate)).toBe(true)
@@ -78,21 +78,21 @@ describe('point shadow atlas geometry', () => {
     // ShadowUpdates requests fresh occlusion when a dormant fixture becomes active again.
     lights[0].intensity = 1
     lights[0].shadow.needsUpdate = true
-    atlas.prepare(gl, scene, camera, focus)
+    atlas.prepare(gl, scene, camera, focus, false, detail)
     expect(atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())).toEqual(tiles)
     expect(lights[0].shadow.needsUpdate).toBe(true)
     expect(lights.slice(1).every((l) => !l.shadow.needsUpdate)).toBe(true)
     expect(gl.shadowMap.needsUpdate).toBe(true)
     for (const light of lights) light.intensity = 0
     gl.shadowMap.needsUpdate = false
-    atlas.prepare(gl, scene, camera, focus)
+    atlas.prepare(gl, scene, camera, focus, false, detail)
     expect(lights.every((l) => !l.shadow.needsUpdate)).toBe(true)
     expect(gl.shadowMap.needsUpdate).toBe(false)
     expect(gl.initRenderTarget).toHaveBeenLastCalledWith(map)
     atlas.dispose()
   })
 
-  it('keeps shadow faces in place while walking, then gives detail to the nearest bulbs once settled', () => {
+  it.each([1, 0.5])('keeps faces stable while moving and reprioritises once settled (detail %s)', (detail) => {
     const scene = new Scene()
     const lights = Array.from({ length: 12 }, (_, i) => {
       const light = new PointLight()
@@ -108,7 +108,7 @@ describe('point shadow atlas geometry', () => {
       initRenderTarget: vi.fn(),
     } as unknown as WebGLRenderer
     const camera = new PerspectiveCamera()
-    atlas.prepare(gl, scene, camera, new Vector3())
+    atlas.prepare(gl, scene, camera, new Vector3(), false, detail)
     const tiles = atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())
     const detailed = lights[0].shadow.mapSize.x
     const distant = lights[11].shadow.mapSize.x
@@ -117,7 +117,7 @@ describe('point shadow atlas geometry', () => {
     gl.shadowMap.needsUpdate = false
 
     const destination = new Vector3(22, 0, 0)
-    atlas.prepare(gl, scene, camera, destination, true)
+    atlas.prepare(gl, scene, camera, destination, true, detail)
     expect(atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())).toEqual(tiles)
     expect(lights.every((l, i) => l.shadow.getViewport(0) === faces[i])).toBe(true)
     expect(lights.every((l) => !l.shadow.needsUpdate)).toBe(true)
@@ -125,11 +125,11 @@ describe('point shadow atlas geometry', () => {
 
     // A real light or geometry change still refreshes occlusion during movement.
     lights[0].shadow.needsUpdate = true
-    atlas.prepare(gl, scene, camera, destination, true)
+    atlas.prepare(gl, scene, camera, destination, true, detail)
     expect(lights[0].shadow.needsUpdate).toBe(true)
     expect(gl.shadowMap.needsUpdate).toBe(true)
 
-    atlas.prepare(gl, scene, camera, destination, false)
+    atlas.prepare(gl, scene, camera, destination, false, detail)
     expect(lights[11].shadow.mapSize.x).toBe(detailed)
     expect(lights[0].shadow.mapSize.x).toBe(distant)
     expect(atlas.uniforms.casaPointShadowTiles.value.map((v) => v.toArray())).not.toEqual(tiles)

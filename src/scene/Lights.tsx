@@ -3,6 +3,8 @@ import { Color, MathUtils, Object3D } from 'three'
 import { sunDirection, type SunPosition } from '../sun/sun'
 
 type LightsProps = {
+  /** Less shadow texture detail on phones, with the same physical occluders and light. */
+  compact?: boolean
   /** Sunlight at a real date and time, or undefined for the even studio light. */
   sun: SunPosition | undefined
   north: number
@@ -23,7 +25,7 @@ export const daylight = (sun: SunPosition | undefined) =>
 
 const mix = (a: string, b: string, t: number) => `#${new Color(a).lerp(new Color(b), t).getHexString()}`
 
-export const Lights = ({ sun, north, center }: LightsProps) => {
+export const Lights = ({ sun, north, center, compact = false }: LightsProps) => {
   const target = useMemo(() => new Object3D(), [])
 
   let position: [number, number, number] = [center[0] + 9, center[1] + 24, center[2] + 6]
@@ -67,7 +69,7 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
         intensity={moon}
         castShadow={moonCasts}
         shadow-autoUpdate={false}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={compact ? [1024, 1024] : [2048, 2048]}
         shadow-bias={-0.00001}
         shadow-normalBias={0.01}
         shadow-radius={1.5}
@@ -79,7 +81,7 @@ export const Lights = ({ sun, north, center }: LightsProps) => {
         intensity={sunIntensity}
         castShadow={!moonCasts}
         shadow-autoUpdate={false}
-        shadow-mapSize={[4096, 4096]}
+        shadow-mapSize={compact ? [2048, 2048] : [4096, 4096]}
         shadow-bias={-0.00001}
         shadow-normalBias={0.01}
         shadow-radius={1.5}
