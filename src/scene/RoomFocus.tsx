@@ -7,6 +7,7 @@ import type { FurnitureItem } from '../data/types'
 import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 import { ZOOM_SPEED } from './cameraNudge'
+import { focusFraming } from './focusFraming'
 import { ZoomToSurface } from './ZoomToSurface'
 
 const FLIGHT_SECONDS = 1.1
@@ -28,6 +29,7 @@ export const RoomCamera = ({
   roomId,
   furniture,
   closeUp,
+  bottomInset = 0,
   from,
   onView,
 }: {
@@ -35,13 +37,17 @@ export const RoomCamera = ({
   roomId?: string
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
-  /** An opened item to come in close to and keep in the middle, from the way it's best seen; dragging tilts round it. */
+  /** An opened item to come in close to, from the way it's best seen; dragging tilts round it. */
   closeUp?: Pin
+  /** Bottom of the view covered by the item's controls, in CSS pixels. */
+  bottomInset?: number
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
   onView?: (position: Vector3, target: Vector3, flying: boolean) => void
 }) => {
   const size = useThree((s) => s.size)
+  const inset = closeUp ? bottomInset : 0
+  const framing = useMemo(() => focusFraming(size, inset), [size, inset])
   // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
   const [placed, setPlaced] = useState({ roomId, furniture })
   if (placed.roomId !== roomId) setPlaced({ roomId, furniture })
@@ -70,7 +76,7 @@ export const RoomCamera = ({
             ? level.setY(FACING_RISE).normalize()
             : toward.normalize()
     const distance = mount === 'ceiling' ? CLOSE_UNDER : closeUp?.look && roomId ? CLOSE_UP_FACING : CLOSE_UP
-    // The item in the middle of the screen, its card beside it.
+    // Keep the orbit's pivot on the item; the projection leaves space for its card.
     return { position: item.clone().addScaledVector(back, distance), target: item }
   }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin])
   const [firstPosition] = useState(() => pose?.position.toArray())
@@ -89,7 +95,8 @@ export const RoomCamera = ({
   }
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
   // Close up, dragging only tilts the view up and down round the item, never round behind it.
-  const azimuth = closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
+  const azimuth =
+    closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
   useFrame(({ camera, invalidate }, delta) => {
     if (!pose) return
     // The controls take the new pose's target as soon as it's set, so the flight starts from where it last looked.
@@ -118,7 +125,7 @@ export const RoomCamera = ({
   }, -1)
   return (
     <>
-      <PerspectiveCamera makeDefault fov={FOV} near={0.1} far={200} position={firstPosition} />
+      <PerspectiveCamera makeDefault fov={FOV} near={0.1} far={200} position={firstPosition} {...framing} />
       {pose && (
         <OrbitControls
           ref={controls}

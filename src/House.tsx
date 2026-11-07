@@ -159,6 +159,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // A room on its own, from the menu: a fixed view of it with its smart items alongside.
   const [roomView, setRoomView] = useState<string>()
   const [popover, setPopover] = useState<string>()
+  const [focusInset, setFocusInset] = useState(0)
   const [walkCaptured, setWalkCaptured] = useState(false)
   const walkPlacement: WalkPlacement = useRef(undefined)
   const [walkStart, setWalkStart] = useState<WalkStart>()
@@ -1029,6 +1030,7 @@ export const House = ({ backend, account }: HouseProps) => {
           ]}
           pinRefs={pinRefs}
           open={popover}
+          focusInset={phone ? focusInset : 0}
           hovered={hoveredItem}
           onHoverItem={setHoveredItem}
         />
@@ -1146,6 +1148,7 @@ export const House = ({ backend, account }: HouseProps) => {
               sceneIds={smartItems.map((i) => i.id)}
               items={focusItems}
               open={smartItems.find((i) => i.id === popover)}
+              onFocusInset={setFocusInset}
               onOpen={openPopover}
               onHover={setHoveredItem}
               hovered={hoveredItem}

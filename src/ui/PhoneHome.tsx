@@ -1,5 +1,5 @@
-import { Check, ChevronUp, List, X } from 'lucide-react'
-import { useState } from 'react'
+import { Check, ChevronUp, DoorOpen, House, Layers, List, X } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { LightState } from '../devices/lights'
 import type { Scene } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
@@ -36,6 +36,8 @@ type PhoneHomeProps = {
   items: SmartItem[]
   /** The item whose card is open. */
   open: SmartItem | undefined
+  /** Space covered at the bottom of the view, so the close-up stays above its card. */
+  onFocusInset: (pixels: number) => void
   onOpen: (id: string | undefined) => void
   onHover: (id: string | undefined) => void
   hovered: string | undefined
@@ -66,6 +68,7 @@ export const PhoneHome = ({
   sceneIds,
   items,
   open,
+  onFocusInset,
   onOpen,
   onHover,
   hovered,
@@ -75,6 +78,21 @@ export const PhoneHome = ({
   onShade,
 }: PhoneHomeProps) => {
   const [menu, setMenu] = useState<Menu>()
+  const card = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = card.current
+    const view = el?.parentElement
+    if (!el || !view) {
+      onFocusInset(0)
+      return
+    }
+    const measure = () => onFocusInset(view.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 16)
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    observer.observe(view)
+    measure()
+    return () => observer.disconnect()
+  }, [open?.id, onFocusInset])
   const toggle = (next: Menu) => setMenu(menu === next ? undefined : next)
   const pick = (go: () => void) => () => {
     setMenu(undefined)
@@ -92,7 +110,7 @@ export const PhoneHome = ({
       {menu && <div className="phone-scrim" onClick={() => setMenu(undefined)} />}
 
       {open ? (
-        <div className="phone-card float" role="dialog" aria-label={open.name}>
+        <div ref={card} className="phone-card float" role="dialog" aria-label={open.name}>
           <div className="phone-card-head">
             <h2>{open.name}</h2>
             <IconButton label="Close" small onClick={() => onOpen(undefined)}>
@@ -204,12 +222,14 @@ export const PhoneHome = ({
         </div>
       )}
 
-      <nav className="phone-bar" aria-label="Where">
-        <button className="float" aria-expanded={menu === 'floor'} onClick={() => toggle('floor')}>
+      <nav className="phone-bar float" aria-label="Where">
+        <button aria-haspopup="menu" aria-expanded={menu === 'floor'} onClick={() => toggle('floor')}>
+          {here ? <Layers size={18} /> : <House size={18} />}
           <span>{here ? ordinal(floorIndex + 1) : 'House'}</span>
           <ChevronUp size={16} />
         </button>
-        <button className="float grow" aria-expanded={menu === 'room'} onClick={() => toggle('room')}>
+        <button className="grow" aria-haspopup="menu" aria-expanded={menu === 'room'} onClick={() => toggle('room')}>
+          <DoorOpen size={18} />
           <span>{room?.label ?? 'All rooms'}</span>
           <ChevronUp size={16} />
         </button>

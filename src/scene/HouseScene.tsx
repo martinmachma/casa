@@ -131,6 +131,8 @@ type HouseSceneProps = {
   pins?: Pin[]
   /** The smart item opened in the focused room: everything else is dimmed behind it. */
   open?: string
+  /** Bottom of the canvas covered by the open item's controls, in CSS pixels. */
+  focusInset?: number
   /** The smart item pointed at, outlined. */
   hovered?: string
   /** A smart item pointed at in the focused room. */
@@ -190,6 +192,7 @@ export const HouseScene = ({
   temporaryFocus,
   pins = [],
   open,
+  focusInset = 0,
   hovered,
   onHoverItem,
   pinRefs,
@@ -432,6 +435,7 @@ export const HouseScene = ({
               roomId={focusRoom}
               furniture={data.furniture}
               closeUp={closeUp}
+              bottomInset={focusInset}
               from={
                 lastView.mode === 'orbit'
                   ? { position: lastView.position.clone(), target: lastView.target.clone() }
