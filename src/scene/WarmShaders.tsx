@@ -1,7 +1,7 @@
 import { useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { HalfFloatType, WebGLRenderTarget } from 'three'
-import { makeTools } from './RoomBlur'
+import { makeTools } from './blurTools'
 
 /** Long enough for the furniture to arrive and the ambient occlusion to patch what's in view. */
 const WAIT_MS = 3000
