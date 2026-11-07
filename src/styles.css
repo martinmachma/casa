@@ -37,7 +37,11 @@
   --lamp-glow: drop-shadow(0 0 7px rgb(255 190 90 / 0.9));
   --danger: #ff6259;
   --danger-soft: rgb(255 98 89 / 0.14);
+  --danger-hover: #ff7d75;
+  --danger-ink: #2e0705;
   --good: #4cd08a;
+  --good-hover: #66dc9e;
+  --good-ink: #05241a;
 
   --shell:
     radial-gradient(1180px 760px at 100% 0%, rgb(255 122 26 / 0.24), rgb(255 122 26 / 0) 72%),
@@ -2331,13 +2335,13 @@ input[type='range'] {
   padding: 0 18px;
   border-color: transparent;
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: var(--good);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: var(--shadow-sm);
   font: inherit;
   font-weight: 600;
-  color: var(--accent-ink);
+  color: var(--good-ink);
   cursor: pointer;
   transition: background 120ms;
 }
@@ -2350,7 +2354,7 @@ input[type='range'] {
 }
 
 .save-toggle:not(:disabled):hover {
-  background: var(--accent-hover);
+  background: var(--good-hover);
 }
 
 /* While editing it's the way out. */
@@ -2360,14 +2364,15 @@ input[type='range'] {
   padding: 0 14px;
   border-color: transparent;
   border-radius: var(--radius-sm);
-  background: var(--surface-3);
+  background: var(--danger);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: var(--press);
+  box-shadow: var(--shadow-sm);
+  color: var(--danger-ink);
 }
 
 .edit-toggle[aria-pressed='true']:hover {
-  background: rgb(255 255 255 / 0.14);
+  background: var(--danger-hover);
 }
 
 .save-dialog {
