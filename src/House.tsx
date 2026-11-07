@@ -1042,6 +1042,7 @@ export const House = ({ backend, account }: HouseProps) => {
             hovered={hoveredItem}
             pinRefs={pinRefs}
             scenes={data.scenes.filter((s) => focusItems.some((i) => sceneHas(s, i.id)))}
+            sceneIds={smartItems.map((i) => i.id)}
             onLeave={leaveRoom}
           />
         )}

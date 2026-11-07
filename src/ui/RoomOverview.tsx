@@ -25,6 +25,8 @@ type RoomOverviewProps = {
   /** The open item's popover, moved over its item every frame. */
   pinRefs: RefObject<Map<string, HTMLElement | null>>
   scenes: Scene[]
+  /** Every item in the house: a scene here is on when all it sets is as it says, not just what's in the room. */
+  sceneIds: string[]
   /** Out of the room, back to its whole floor. */
   onLeave: () => void
 }
@@ -43,6 +45,7 @@ export const RoomOverview = ({
   hovered,
   pinRefs,
   scenes,
+  sceneIds,
   onLeave,
 }: RoomOverviewProps) => {
   const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
@@ -65,7 +68,7 @@ export const RoomOverview = ({
               {lightIds.length > 0 && (
                 <RoomScenes
                   scenes={scenes}
-                  ids={items.map((i) => i.id)}
+                  ids={sceneIds}
                   light={light}
                   onLight={onLight}
                   shade={shade}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LightState } from './lights'
-import { newSceneName, type Scene, sceneCount, sceneSummary, sceneSwitched, sceneWith } from './scenes'
+import { newSceneName, type Scene, sceneActive, sceneCount, sceneSummary, sceneSwitched, sceneWith } from './scenes'
 import { SHADE_UP } from './shades'
 
 const off: LightState = { on: false, brightness: 0.5, mode: 'white', kelvin: 3000, color: '#ffffff' }
@@ -30,6 +30,15 @@ describe('scenes', () => {
     expect(sceneCount(scene, [lamp, blind])).toEqual({ lights: 1, shades: 1 })
     expect(sceneSummary({ lights: 2, shades: 1 })).toBe('2 lights · 1 shade')
     expect(sceneSummary({ lights: 0, shades: 0 })).toBe('Empty')
+  })
+
+  it('is active only while everything it sets, among the items given, is as it says', () => {
+    const scene = { ...empty, lights: { lamp: off, removed: { ...off, on: true } }, shades: { blind: SHADE_UP } }
+    const lights = (on: boolean) => (id: string) => (id === 'lamp' ? { ...off, on } : off)
+    const shade = () => SHADE_UP
+    expect(sceneActive(scene, lights(false), shade, ['lamp', 'blind', 'other'])).toBe(true)
+    expect(sceneActive(scene, lights(true), shade, ['lamp', 'blind', 'other'])).toBe(false)
+    expect(sceneActive(scene, lights(false), shade, ['other'])).toBe(false)
   })
 
   it('names a new scene apart from the others', () => {

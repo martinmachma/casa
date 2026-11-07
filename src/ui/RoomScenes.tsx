@@ -5,7 +5,7 @@ import type { ShadeState } from '../devices/shades'
 
 type RoomScenesProps = {
   scenes: Scene[]
-  /** The items here, which decide whether a scene is on. */
+  /** Every item in the house, which decide whether a scene is on: tapping one sets all of it. */
   ids: string[]
   light: (id: string) => LightState
   onLight: (id: string, patch: Partial<LightState>) => void
