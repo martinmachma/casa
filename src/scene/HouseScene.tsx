@@ -60,6 +60,7 @@ import { Railings, Stairs } from './Stairs'
 import { WalkCamera } from './WalkCamera'
 import { WalkPlacementTracker, type WalkPlacement } from './WalkPlacement'
 import type { WalkStart } from '../walk/start'
+import { WarmShaders } from './WarmShaders'
 import { ZoomToSurface } from './ZoomToSurface'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
@@ -707,6 +708,7 @@ export const HouseScene = ({
             })}
           <ShadowUpdates />
           <AmbientOcclusion />
+          <WarmShaders ready={!data.loading} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
         </ViewedFloor.Provider>
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />

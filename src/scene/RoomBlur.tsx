@@ -73,7 +73,7 @@ const blurMaterial = () =>
     depthWrite: false,
   })
 
-const makeTools = () => {
+export const makeTools = () => {
   // The outside is drawn small straight into `a`: it's blurred anyway, and that's a fraction of the pixels.
   const a = new WebGLRenderTarget(1, 1, { type: HalfFloatType })
   const b = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false })
