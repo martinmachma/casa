@@ -34,6 +34,7 @@ import { Fade, ViewedFloor } from './Fade'
 import { Fixtures } from './Fixtures'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import { FloorWalls, type Brush, type PaintFace, type PaintStroke } from './FloorWalls'
+import { blendFocusFraming, type CameraFraming } from './focusFraming'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { FurniturePlacer } from './FurniturePlacer'
 import { HouseLights, isLamp } from './HouseLights'
@@ -441,12 +442,17 @@ export const HouseScene = ({
                   ? { position: lastView.position.clone(), target: lastView.target.clone() }
                   : undefined
               }
-              onView={(position, target, moving) => {
+              onView={(position, target, moving, framing) => {
                 // A close-up or a pose on the way is no view to stay in: leaving flies from it to the last settled one.
                 if (temporaryFocus || closeUp || moving) {
-                  lastView.returnFrom ??= { position: new Vector3(), target: new Vector3() }
+                  lastView.returnFrom ??= {
+                    position: new Vector3(),
+                    target: new Vector3(),
+                    framing: { zoom: 1, offsetY: 0 },
+                  }
                   lastView.returnFrom.position.copy(position)
                   lastView.returnFrom.target.copy(target)
+                  Object.assign(lastView.returnFrom.framing, framing)
                   return
                 }
                 lastView.returnFrom = undefined
@@ -791,7 +797,7 @@ const lastView = {
   zoom: 1,
   elevation: NaN,
   /** The item's last camera pose, for the flight back to the saved house view. */
-  returnFrom: undefined as Pose | undefined,
+  returnFrom: undefined as (Pose & { framing: CameraFraming }) | undefined,
 }
 
 const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
@@ -819,7 +825,11 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
         position: lastView.position.clone(),
         target: lastView.target.clone(),
         zoom: lastView.zoom,
-        from: { position: lastView.returnFrom.position.clone(), target: lastView.returnFrom.target.clone() },
+        from: {
+          position: lastView.returnFrom.position.clone(),
+          target: lastView.returnFrom.target.clone(),
+          framing: { ...lastView.returnFrom.framing },
+        },
       }
     // Carried over, within this floor's bounds so it's neither lost in a corner nor far off: those limit the plan's
     // zoom (top) or the distance to the target (3D). From one floor to another, the 3D view moves up or down with the floor, so it sees the new one as it saw
@@ -844,6 +854,7 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     lastView.returnFrom = undefined
   }, [])
   const flight = useRef(start.from ? 0 : 1)
+  const framing = useMemo(() => ({ zoom: start.zoom, offsetY: 0 }), [start.zoom])
   const [flying, setFlying] = useState(!!start.from)
   useFrame(({ camera, controls, invalidate }, delta) => {
     const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
@@ -853,11 +864,12 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       const k = easeInOut(flight.current)
       camera.position.lerpVectors(start.from.position, start.position, k)
       orbit.target.lerpVectors(start.from.target, start.target, k)
+      blendFocusFraming(camera, size, start.from.framing, framing, k)
       orbit.update()
       invalidate()
       if (flight.current >= 1) setFlying(false)
     }
-  })
+  }, -1)
   useFrame(({ camera, controls }) => {
     if (!controls) return
     const orbit = controls as OrbitControlsImpl
