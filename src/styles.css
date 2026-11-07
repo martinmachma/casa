@@ -3301,7 +3301,6 @@ input[type='range'].sunbar-slider {
   /* Sits at the bottom of the screen and grows upwards. */
   justify-content: flex-end;
   gap: 10px;
-  overflow: hidden;
   pointer-events: none;
 }
 
@@ -3313,7 +3312,6 @@ input[type='range'].sunbar-slider {
   min-height: 0;
   pointer-events: auto;
   border-radius: var(--radius-lg);
-  overflow: hidden;
 }
 
 .room-cards[hidden] {
