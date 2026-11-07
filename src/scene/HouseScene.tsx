@@ -30,7 +30,7 @@ import { CutAway, type Focus } from './CutawayWall'
 import { DebugHover } from './DebugHover'
 import { DevicePlacer, Devices } from './Devices'
 import { ElectricalRoutes } from './ElectricalRoutes'
-import { Fade } from './Fade'
+import { Fade, ViewedFloor } from './Fade'
 import { Fixtures } from './Fixtures'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import { FloorWalls, type Brush, type PaintFace, type PaintStroke } from './FloorWalls'
@@ -409,301 +409,305 @@ export const HouseScene = ({
         frameloop="demand"
         onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
       >
-        <InputInvalidator />
-        {camera !== 'walk' && (
-          <WalkPlacementTracker
-            placementRef={walkPlacement}
-            floors={floors}
-            outdoor={house.outdoor}
-            activeFloor={walkFloorIndex}
-            shownCount={shownCount}
-            furniture={data.furniture}
-            openDoors={openDoors}
-          />
-        )}
-        <MotionQuality view={[floor.id, outside, camera, focusRoom, open].join()} />
-        <PointerReach />
-        <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
-        {focusRoom || closeUp ? (
-          <RoomCamera
-            floor={floor}
-            roomId={focusRoom}
-            furniture={data.furniture}
-            closeUp={closeUp}
-            from={
-              lastView.mode === 'orbit'
-                ? { position: lastView.position.clone(), target: lastView.target.clone() }
-                : undefined
-            }
-            onView={(position, target, moving) => {
-              // A close-up or a pose on the way is no view to stay in: leaving flies from it to the last settled one.
-              if (temporaryFocus || closeUp || moving) {
-                lastView.returnFrom ??= { position: new Vector3(), target: new Vector3() }
-                lastView.returnFrom.position.copy(position)
-                lastView.returnFrom.target.copy(target)
-                return
-              }
-              lastView.returnFrom = undefined
-              Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: floor.elevation })
-              lastView.position.copy(position)
-              lastView.target.copy(target)
-            }}
-          />
-        ) : camera === 'walk' ? (
-          <WalkCamera
-            key={`${viewKey}-${outside}`}
-            floor={floor}
-            start={walkStart}
-            floors={floors}
-            onFloorChange={onWalkFloorChange}
-            furniture={data.furniture}
-            nudge={nudge}
-            openDoors={openDoors}
-            outdoor={house.outdoor}
-            cursorNeed={walkCursorNeed}
-            onCaptured={onWalkCaptured}
-          />
-        ) : (
-          <CameraRig
-            key={`${camera}-${outside ? 'outside' : floor.id}-${viewKey}`}
-            mode={camera}
-            floor={outside ? floors[0] : floor}
-            houseHeight={outside ? roofTop(floors) : undefined}
-            viewKey={viewKey}
-          />
-        )}
-        <DebugHover copies={interaction === 'view'} />
-        {blurred && (
-          <RoomBlur
-            floor={blurred.floor}
-            roomId={blurred.roomId}
-            open={blurHere ? open : undefined}
-            leaving={!blurHere}
-            onLeft={() => setBlurred(undefined)}
-          />
-        )}
-        {!focusRoom && !closeUp && <CameraNudger nudge={nudge} />}
-        <ItemOutline
-          item={hovered}
-          over={!!focusRoom && !whole}
-          // With the whole house shown round a shade, the room's smart items are seen through its walls.
-          seen={whole ? pins.flatMap((p) => (p.key.startsWith('tag:') ? [p.key.slice(4)] : [])) : undefined}
-        />
-        <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
-        <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
-        <HouseLights
-          floors={floors}
-          litFloorCount={litFloorCount}
-          devices={data.devices}
-          furniture={data.furniture}
-          level={level}
-          tint={tint}
-        />
-        <CompassTracker north={north} needle={needle} />
-
-        {house.outdoor && <Outdoor outdoor={house.outdoor} />}
-        <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} groundLevel={house.outdoor?.level} />
-        <SolidShadeShader />
-
-        {/* Walking shows the connected floors, including the landing and the slab overhead. */}
-        {floors.map((f, i) => (
-          <Fade key={f.id} shown={i < shownCount}>
-            {/* The ground floor's slab reaches down into the garden, so the house stands on the ground; an upper
-                one down to the walls below, so there's no slit between the floors. */}
-            <Slab
-              floor={f}
-              depth={
-                i === 0
-                  ? house.outdoor
-                    ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1)
-                    : SLAB
-                  : Math.max(SLAB, f.elevation - floors[i - 1].elevation - floors[i - 1].height)
-              }
+        <ViewedFloor.Provider value={outside ? '' : floor.id}>
+          <InputInvalidator />
+          {camera !== 'walk' && (
+            <WalkPlacementTracker
+              placementRef={walkPlacement}
+              floors={floors}
+              outdoor={house.outdoor}
+              activeFloor={walkFloorIndex}
+              shownCount={shownCount}
+              furniture={data.furniture}
+              openDoors={openDoors}
             />
-            {floors[i + 1] && (
-              <Stairs
+          )}
+          <MotionQuality view={[floor.id, outside, camera, focusRoom, open].join()} />
+          <PointerReach />
+          <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
+          {focusRoom || closeUp ? (
+            <RoomCamera
+              floor={floor}
+              roomId={focusRoom}
+              furniture={data.furniture}
+              closeUp={closeUp}
+              from={
+                lastView.mode === 'orbit'
+                  ? { position: lastView.position.clone(), target: lastView.target.clone() }
+                  : undefined
+              }
+              onView={(position, target, moving) => {
+                // A close-up or a pose on the way is no view to stay in: leaving flies from it to the last settled one.
+                if (temporaryFocus || closeUp || moving) {
+                  lastView.returnFrom ??= { position: new Vector3(), target: new Vector3() }
+                  lastView.returnFrom.position.copy(position)
+                  lastView.returnFrom.target.copy(target)
+                  return
+                }
+                lastView.returnFrom = undefined
+                Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: floor.elevation })
+                lastView.position.copy(position)
+                lastView.target.copy(target)
+              }}
+            />
+          ) : camera === 'walk' ? (
+            <WalkCamera
+              key={`${viewKey}-${outside}`}
+              floor={floor}
+              start={walkStart}
+              floors={floors}
+              onFloorChange={onWalkFloorChange}
+              furniture={data.furniture}
+              nudge={nudge}
+              openDoors={openDoors}
+              outdoor={house.outdoor}
+              cursorNeed={walkCursorNeed}
+              onCaptured={onWalkCaptured}
+            />
+          ) : (
+            <CameraRig
+              key={`${camera}-${outside ? 'outside' : floor.id}-${viewKey}`}
+              mode={camera}
+              floor={outside ? floors[0] : floor}
+              houseHeight={outside ? roofTop(floors) : undefined}
+              viewKey={viewKey}
+            />
+          )}
+          <DebugHover copies={interaction === 'view'} />
+          {blurred && (
+            <RoomBlur
+              floor={blurred.floor}
+              roomId={blurred.roomId}
+              open={blurHere ? open : undefined}
+              leaving={!blurHere}
+              onLeft={() => setBlurred(undefined)}
+            />
+          )}
+          {!focusRoom && !closeUp && <CameraNudger nudge={nudge} />}
+          <ItemOutline
+            item={hovered}
+            over={!!focusRoom && !whole}
+            // With the whole house shown round a shade, the room's smart items are seen through its walls.
+            seen={whole ? pins.flatMap((p) => (p.key.startsWith('tag:') ? [p.key.slice(4)] : [])) : undefined}
+          />
+          <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
+          <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
+          <HouseLights
+            floors={floors}
+            litFloorCount={litFloorCount}
+            devices={data.devices}
+            furniture={data.furniture}
+            level={level}
+            tint={tint}
+          />
+          <CompassTracker north={north} needle={needle} />
+
+          {house.outdoor && <Outdoor outdoor={house.outdoor} />}
+          <HouseShadow floors={floors} roof={house.roof} openDoors={openDoors} groundLevel={house.outdoor?.level} />
+          <SolidShadeShader />
+
+          {/* Walking shows the connected floors, including the landing and the slab overhead. */}
+          {floors.map((f, i) => (
+            <Fade key={f.id} shown={i < shownCount}>
+              {/* The ground floor's slab reaches down into the garden, so the house stands on the ground; an upper
+                one down to the walls below, so there's no slit between the floors. */}
+              <Slab
                 floor={f}
-                next={floors[i + 1]}
-                // A room the stairs open onto shows them whole, up to the floor they reach.
-                cut={
-                  i === floorIndex &&
-                  !outside &&
-                  !whole &&
-                  camera !== 'walk' &&
-                  !(focusRoom && f.stairs?.rooms?.includes(focusRoom))
-                    ? f.height
-                    : undefined
+                depth={
+                  i === 0
+                    ? house.outdoor
+                      ? Math.max(SLAB, f.elevation - house.outdoor.level + 0.1)
+                      : SLAB
+                    : Math.max(SLAB, f.elevation - floors[i - 1].elevation - floors[i - 1].height)
                 }
               />
-            )}
-            <Railings floor={f} />
-            <CutAway.Provider value={cutWalls && !focusRoom && f.id === floor.id}>
-              <Fixtures floor={f} />
-            </CutAway.Provider>
-            <RoomFloors floor={f} />
-            <FloorWalls
-              floor={f}
-              colors={data.wallColors}
-              areas={data.wallAreas}
-              interactive={pickable && (outside || f.id === floor.id)}
-              doors={!measure && interaction !== 'paint' && !placingPiece && !placing && (outside || f.id === floor.id)}
-              openDoors={openDoors}
-              onToggleDoor={toggleDoor}
-              shades={shades}
-              onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? pickShade : undefined}
-              onHoverShade={onHoverItem}
-              hoveredShade={hovered}
-              cutaway={cutWalls && f.id === floor.id}
-              focus={focusPoint}
-              onTap={selectNothing}
-              brush={interaction === 'paint' && (outside || f.id === floor.id) ? brush : undefined}
-              onPaint={paintStroke}
-              onPaintWall={paintFace}
-            />
-          </Fade>
-        ))}
-
-        <Fade shown={outside || whole}>
-          {house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
-        </Fade>
-
-        {floors.flatMap((f) =>
-          (['inside', 'outside'] as const).map((area) => (
-            <Fade key={`electrical-${f.id}-${area}`} shown={area === 'inside' ? furnished(f) : outside}>
-              <CutAway.Provider value={cutWalls && f.id === floor.id}>
-                {planDevices(
-                  f,
-                  data.devices.filter(
-                    (d) =>
-                      d.plan &&
-                      d.floor === f.id &&
-                      (d.plan.area === 'inside') === (area === 'inside') &&
-                      !outsideLights.has(d.id),
-                  ),
-                )}
-              </CutAway.Provider>
-            </Fade>
-          )),
-        )}
-        {floors.map((f) => (
-          <Fragment key={f.id}>
-            {planDevices(
-              f,
-              data.devices.filter((d) => d.plan && d.floor === f.id && outsideLights.has(d.id)),
-            )}
-            {placedDevices(
-              f,
-              data.devices.filter((d) => !d.plan && d.floor === f.id && outsideLights.has(d.id)),
-            )}
-            {data.furniture.filter((item) => item.floor === f.id && outsideLights.has(item.id)).map(piece(f))}
-          </Fragment>
-        ))}
-        {electrical && outside && <ElectricalRoutes />}
-
-        {interaction === 'edit' && placing && (!outside || placing === 'wall-light') && (
-          <DevicePlacer
-            floor={furnitureFloor}
-            placement={placing}
-            onPlace={onPlaceDevice}
-            cutaway={cutaway && camera === 'orbit'}
-            plan={camera === 'top'}
-          />
-        )}
-        {interaction === 'edit' && placingPiece && (
-          <FurniturePlacer
-            floor={furnitureFloor}
-            piece={placingPiece}
-            ground={(p) => ground(furnitureFloor, p)}
-            wallSnap={wallSnap}
-            furnitureSnap={furnitureSnap}
-            snapWalls={snapWalls}
-            items={items}
-            obstacles={fixtures}
-            wallRects={wallRects}
-            onPlace={onPlacePiece}
-          />
-        )}
-        {floors.map((f) => (
-          <Fade key={f.id} shown={furnished(f)}>
-            <Fade shown={outside || f.id === floor.id}>
-              <CutAway.Provider value={cutWalls && f.id === floor.id}>
-                {placedDevices(
-                  f,
-                  data.devices.filter((d) => !d.plan && d.floor === f.id && !outsideLights.has(d.id)),
-                )}
-              </CutAway.Provider>
-            </Fade>
-            {measurements
-              .filter((m) => m.floor === f.id && !outside)
-              .map((m) => (
-                <Line
-                  key={m.id}
-                  points={[
-                    [m.from[0], f.elevation + 0.03, m.from[1]],
-                    [m.to[0], f.elevation + 0.03, m.to[1]],
-                  ]}
-                  color={SELECTED_OUTLINE}
-                  lineWidth={3}
-                  renderOrder={1000}
-                  transparent
-                  depthTest={false}
-                  depthWrite={false}
-                  userData={OVERLAY}
+              {floors[i + 1] && (
+                <Stairs
+                  floor={f}
+                  next={floors[i + 1]}
+                  // A room the stairs open onto shows them whole, up to the floor they reach.
+                  cut={
+                    i === floorIndex &&
+                    !outside &&
+                    !whole &&
+                    camera !== 'walk' &&
+                    !(focusRoom && f.stairs?.rooms?.includes(focusRoom))
+                      ? f.height
+                      : undefined
+                  }
                 />
-              ))}
-            {/* Looking at one room, only its walls are cut; its furniture is what's being looked at. */}
-            <CutAway.Provider value={cutWalls && !focusRoom && f.id === floor.id}>
-              {data.furniture.filter((item) => item.floor === f.id && !outsideLights.has(item.id)).map(piece(f))}
-            </CutAway.Provider>
+              )}
+              <Railings floor={f} />
+              <CutAway.Provider value={cutWalls && !focusRoom && f.id === floor.id}>
+                <Fixtures floor={f} />
+              </CutAway.Provider>
+              <RoomFloors floor={f} />
+              <FloorWalls
+                floor={f}
+                colors={data.wallColors}
+                areas={data.wallAreas}
+                interactive={pickable && (outside || f.id === floor.id)}
+                doors={
+                  !measure && interaction !== 'paint' && !placingPiece && !placing && (outside || f.id === floor.id)
+                }
+                openDoors={openDoors}
+                onToggleDoor={toggleDoor}
+                shades={shades}
+                onPickShade={interaction === 'view' && (outside || f.id === floor.id) ? pickShade : undefined}
+                onHoverShade={onHoverItem}
+                hoveredShade={hovered}
+                cutaway={cutWalls && f.id === floor.id}
+                focus={focusPoint}
+                onTap={selectNothing}
+                brush={interaction === 'paint' && (outside || f.id === floor.id) ? brush : undefined}
+                onPaint={paintStroke}
+                onPaintWall={paintFace}
+              />
+            </Fade>
+          ))}
+
+          <Fade shown={outside || whole}>
+            {house.roof && <Roof roof={house.roof} floor={floors[floors.length - 1]} />}
           </Fade>
-        ))}
-        {measure && (
-          <CutAway.Provider value={cutWalls}>
-            <MeasureTool
-              floor={floor}
-              items={items}
-              measure={measure}
-              onPick={onMeasurePick}
-              focus={focusPoint}
+
+          {floors.flatMap((f) =>
+            (['inside', 'outside'] as const).map((area) => (
+              <Fade key={`electrical-${f.id}-${area}`} shown={area === 'inside' ? furnished(f) : outside}>
+                <CutAway.Provider value={cutWalls && f.id === floor.id}>
+                  {planDevices(
+                    f,
+                    data.devices.filter(
+                      (d) =>
+                        d.plan &&
+                        d.floor === f.id &&
+                        (d.plan.area === 'inside') === (area === 'inside') &&
+                        !outsideLights.has(d.id),
+                    ),
+                  )}
+                </CutAway.Provider>
+              </Fade>
+            )),
+          )}
+          {floors.map((f) => (
+            <Fragment key={f.id}>
+              {planDevices(
+                f,
+                data.devices.filter((d) => d.plan && d.floor === f.id && outsideLights.has(d.id)),
+              )}
+              {placedDevices(
+                f,
+                data.devices.filter((d) => !d.plan && d.floor === f.id && outsideLights.has(d.id)),
+              )}
+              {data.furniture.filter((item) => item.floor === f.id && outsideLights.has(item.id)).map(piece(f))}
+            </Fragment>
+          ))}
+          {electrical && outside && <ElectricalRoutes />}
+
+          {interaction === 'edit' && placing && (!outside || placing === 'wall-light') && (
+            <DevicePlacer
+              floor={furnitureFloor}
+              placement={placing}
+              onPlace={onPlaceDevice}
+              cutaway={cutaway && camera === 'orbit'}
+              plan={camera === 'top'}
+            />
+          )}
+          {interaction === 'edit' && placingPiece && (
+            <FurniturePlacer
+              floor={furnitureFloor}
+              piece={placingPiece}
+              ground={(p) => ground(furnitureFloor, p)}
               wallSnap={wallSnap}
               furnitureSnap={furnitureSnap}
+              snapWalls={snapWalls}
+              items={items}
+              obstacles={fixtures}
+              wallRects={wallRects}
+              onPlace={onPlacePiece}
             />
-          </CutAway.Provider>
-        )}
-
-        <AnnotationProjector items={annotations} refs={annotationRefs} />
-        {gaps.map((g, i) => (
-          <Line
-            key={i}
-            points={[
-              [g.from[0], gapY, g.from[1]],
-              [g.to[0], gapY, g.to[1]],
-            ]}
-            color={SELECTED_OUTLINE}
-            lineWidth={2}
-            dashed
-            dashSize={0.08}
-            gapSize={0.05}
-            userData={OVERLAY}
-          />
-        ))}
-        {showSweeps &&
-          sweeps.map((s) => {
-            const y = furnitureFloor.elevation + 0.02
-            // The leaf drawn open, then the arc its edge travels back to the wall.
-            const [hinge, ...arc] = sweepOutline(s)
-            return (
-              <Line
-                key={s.id}
-                points={[hinge, ...arc.reverse()].map(([x, z]) => [x, y, z] as [number, number, number])}
-                color={blocked.has(s.id) ? COLLIDING : DOOR_SWEEP}
-                lineWidth={blocked.has(s.id) ? 2.5 : 1.5}
-                raycast={() => null}
+          )}
+          {floors.map((f) => (
+            <Fade key={f.id} shown={furnished(f)}>
+              <Fade shown={outside || f.id === floor.id}>
+                <CutAway.Provider value={cutWalls && f.id === floor.id}>
+                  {placedDevices(
+                    f,
+                    data.devices.filter((d) => !d.plan && d.floor === f.id && !outsideLights.has(d.id)),
+                  )}
+                </CutAway.Provider>
+              </Fade>
+              {measurements
+                .filter((m) => m.floor === f.id && !outside)
+                .map((m) => (
+                  <Line
+                    key={m.id}
+                    points={[
+                      [m.from[0], f.elevation + 0.03, m.from[1]],
+                      [m.to[0], f.elevation + 0.03, m.to[1]],
+                    ]}
+                    color={SELECTED_OUTLINE}
+                    lineWidth={3}
+                    renderOrder={1000}
+                    transparent
+                    depthTest={false}
+                    depthWrite={false}
+                    userData={OVERLAY}
+                  />
+                ))}
+              {/* Looking at one room, only its walls are cut; its furniture is what's being looked at. */}
+              <CutAway.Provider value={cutWalls && !focusRoom && f.id === floor.id}>
+                {data.furniture.filter((item) => item.floor === f.id && !outsideLights.has(item.id)).map(piece(f))}
+              </CutAway.Provider>
+            </Fade>
+          ))}
+          {measure && (
+            <CutAway.Provider value={cutWalls}>
+              <MeasureTool
+                floor={floor}
+                items={items}
+                measure={measure}
+                onPick={onMeasurePick}
+                focus={focusPoint}
+                wallSnap={wallSnap}
+                furnitureSnap={furnitureSnap}
               />
-            )
-          })}
-        <ShadowUpdates />
-        <AmbientOcclusion />
+            </CutAway.Provider>
+          )}
+
+          <AnnotationProjector items={annotations} refs={annotationRefs} />
+          {gaps.map((g, i) => (
+            <Line
+              key={i}
+              points={[
+                [g.from[0], gapY, g.from[1]],
+                [g.to[0], gapY, g.to[1]],
+              ]}
+              color={SELECTED_OUTLINE}
+              lineWidth={2}
+              dashed
+              dashSize={0.08}
+              gapSize={0.05}
+              userData={OVERLAY}
+            />
+          ))}
+          {showSweeps &&
+            sweeps.map((s) => {
+              const y = furnitureFloor.elevation + 0.02
+              // The leaf drawn open, then the arc its edge travels back to the wall.
+              const [hinge, ...arc] = sweepOutline(s)
+              return (
+                <Line
+                  key={s.id}
+                  points={[hinge, ...arc.reverse()].map(([x, z]) => [x, y, z] as [number, number, number])}
+                  color={blocked.has(s.id) ? COLLIDING : DOOR_SWEEP}
+                  lineWidth={blocked.has(s.id) ? 2.5 : 1.5}
+                  raycast={() => null}
+                />
+              )
+            })}
+          <ShadowUpdates />
+          <AmbientOcclusion />
+        </ViewedFloor.Provider>
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />
       {!focusRoom && <Compass needle={needle} />}
@@ -755,7 +759,7 @@ const orbitPose = (floor: Floor, aspect: number, houseHeight?: number): Pose => 
 
 /**
  * How far in or out a view carried over to another floor may be, as a share of that floor's own
- * starting view. Further in or out than this and the new floor eases to the nearer bound instead.
+ * starting view. Further in or out than this and the new floor starts at the nearer bound instead.
  * These bound only the switch; zooming afterwards is as free as ever.
  */
 const FLOOR_ZOOM = {
@@ -767,7 +771,6 @@ const FLOOR_ZOOM = {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-const ZOOM_EASE_SECONDS = 0.6
 const RETURN_SECONDS = 1.1
 
 /**
@@ -803,52 +806,39 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
             zoom: Math.min(size.width, size.height) / (span * 1.35),
           }
         : { ...orbitPose(floor, size.width / size.height, houseHeight), zoom: 1 }
-    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return { ...own, ease: undefined, from: undefined }
+    if (lastView.mode !== mode || lastView.viewKey !== viewKey) return { ...own, from: undefined }
     // Restore the exact saved framing, including a zoom beyond the usual floor-switch bounds.
     if (lastView.returnFrom)
       return {
         position: lastView.position.clone(),
         target: lastView.target.clone(),
         zoom: lastView.zoom,
-        ease: undefined,
         from: { position: lastView.returnFrom.position.clone(), target: lastView.returnFrom.target.clone() },
       }
-    // Carried over, then eased within this floor's bounds so it ends neither lost in a corner nor far off:
-    // `ease` runs the plan's zoom (top) or the distance to the target (3D) from what it was to the bound.
-    // From one floor to another, the 3D view moves up or down with the floor, so it sees the new one as it saw
+    // Carried over, within this floor's bounds so it's neither lost in a corner nor far off: those limit the plan's
+    // zoom (top) or the distance to the target (3D). From one floor to another, the 3D view moves up or down with the floor, so it sees the new one as it saw
     // the old; left where it was, it would end down among the new floor's walls.
     const rise = mode === 'orbit' && !houseHeight ? floor.elevation - lastView.elevation || 0 : 0
-    const carried = {
-      position: lastView.position.clone().setY(lastView.position.y + rise),
-      target: lastView.target.clone().setY(lastView.target.y + rise),
-      zoom: lastView.zoom,
+    const position = lastView.position.clone().setY(lastView.position.y + rise)
+    const target = lastView.target.clone().setY(lastView.target.y + rise)
+    if (mode === 'top') {
+      const zoom = clamp(lastView.zoom, own.zoom * FLOOR_ZOOM.top.out, own.zoom * FLOOR_ZOOM.top.in)
+      return { position, target, zoom, from: undefined }
     }
-    const [from, lo, hi] =
-      mode === 'top'
-        ? [carried.zoom, own.zoom * FLOOR_ZOOM.top.out, own.zoom * FLOOR_ZOOM.top.in]
-        : [
-            carried.position.distanceTo(carried.target),
-            own.position.distanceTo(own.target) * FLOOR_ZOOM.orbit.closest,
-            own.position.distanceTo(own.target) * FLOOR_ZOOM.orbit.furthest,
-          ]
-    const to = clamp(from, lo, hi)
-    return { ...carried, ease: to === from ? undefined : { from, to }, from: undefined }
+    const reach = own.position.distanceTo(own.target)
+    const distance = clamp(
+      position.distanceTo(target),
+      reach * FLOOR_ZOOM.orbit.closest,
+      reach * FLOOR_ZOOM.orbit.furthest,
+    )
+    position.sub(target).setLength(distance).add(target)
+    return { position, target, zoom: lastView.zoom, from: undefined }
   })
   useEffect(() => {
     lastView.returnFrom = undefined
   }, [])
   const flight = useRef(start.from ? 0 : 1)
   const [flying, setFlying] = useState(!!start.from)
-  const easing = useRef(start.ease ? 0 : 1)
-  // Zooming or dragging meanwhile takes over from the ease.
-  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
-  useEffect(() => {
-    // Walk mode's stand-in for the controls can still be in the store on the render that leaves it.
-    if (!controls?.addEventListener) return
-    const stop = () => (easing.current = 1)
-    controls.addEventListener('start', stop)
-    return () => controls.removeEventListener('start', stop)
-  }, [controls])
   useFrame(({ camera, controls, invalidate }, delta) => {
     const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
     if (orbit && start.from && flight.current < 1) {
@@ -860,17 +850,7 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       orbit.update()
       invalidate()
       if (flight.current >= 1) setFlying(false)
-      return
     }
-    if (!orbit || !start.ease || easing.current >= 1) return
-    easing.current = Math.min(1, easing.current + delta / ZOOM_EASE_SECONDS)
-    const value = MathUtils.lerp(start.ease.from, start.ease.to, easeInOut(easing.current))
-    if (mode === 'top') {
-      camera.zoom = value
-      camera.updateProjectionMatrix()
-    } else camera.position.sub(orbit.target).setLength(value).add(orbit.target)
-    orbit.update()
-    invalidate()
   })
   useFrame(({ camera, controls }) => {
     if (!controls) return

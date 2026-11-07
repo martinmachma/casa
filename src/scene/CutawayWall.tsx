@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'react'
 import { Vector3, type Camera, type Group } from 'three'
-import { applyFade, fadeStep } from './Fade'
+import { applyFade, fadeStep, ViewedFloor } from './Fade'
 import { animating } from './MotionQuality'
 import { blocksView, separates, wallAngle, wallHeight, wallOutside, wallOwner } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
@@ -102,19 +102,22 @@ export const CutawayWall = ({
   stub: ReactNode
 }) => {
   const cutaway = useContext(CutAway)
+  const viewed = useContext(ViewedFloor)
+  const lastViewed = useRef(viewed)
   const fullRef = useRef<Group>(null)
   const stubRef = useRef<Group>(null)
   const outside = useMemo(() => wallOutside(other ?? wall, floor), [other, wall, floor])
   const decider = useMemo(() => decidingWall(other ?? wall, floor), [other, wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall fades out as the stub fades in.
   const k = useRef<number>(undefined)
-  // Only switching the cut on or off animates; walls cut as the camera moves just go.
+  // Only switching the cut on or off animates; walls cut as the camera moves, or by a switch of floor, just go.
   const animate = useRef(false)
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => {
-    animate.current = true
+    animate.current = lastViewed.current === viewed
+    lastViewed.current = viewed
     redraw()
-  }, [cutaway, focus, redraw])
+  }, [cutaway, focus, viewed, redraw])
   useFrame(({ camera, invalidate }, delta) => {
     const target = isCut(decider, outside, camera, cutaway, focus) ? 1 : 0
     const now = k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta)
