@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Power } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import { lightColor, type LightState } from '../devices/lights'
 import { shadeText, type ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
@@ -161,28 +161,13 @@ export const SmartRows = ({ items, light, onLight, shade, onShade, onOpen, onHov
   </ul>
 )
 
-type AllLightsProps = {
-  /** The lights it switches. */
-  ids: string[]
-  light: (id: string) => LightState
-  onLight: (id: string, patch: Partial<LightState>) => void
-}
-
-/** Switches every light off, or on when all are off. */
-export const AllLights = ({ ids, light, onLight }: AllLightsProps) => {
-  const on = ids.some((id) => light(id).on)
-  const label = on ? 'All off' : 'All on'
-  return (
-    <button
-      className="smart-all"
-      aria-label={label}
-      title={label}
-      onClick={() => ids.forEach((id) => onLight(id, { on: !on }))}
-    >
-      <Power size={14} />
-    </button>
-  )
-}
+/** A card down the side of the view: its small header stays put while what's under it scrolls. */
+export const SmartCard = ({ title, children }: { title: string; children: ReactNode }) => (
+  <section className="room-card float">
+    <h3 className="smart-card-head">{title}</h3>
+    <div className="smart-card-body">{children}</div>
+  </section>
+)
 
 type SmartTagProps = {
   item: SmartItem

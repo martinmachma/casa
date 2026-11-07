@@ -25,6 +25,9 @@ export type SmartItem = {
   beside?: [number, number, number]
 }
 
+/** The header for what isn't a shade: lights, unless something else is in with them. */
+export const itemsTitle = (items: SmartItem[]) => (items.every((i) => i.kind === 'light') ? 'Lights' : 'Devices')
+
 /** Every smart item on a floor, with the room it's in (if any). */
 export const floorItems = (
   floor: Floor,

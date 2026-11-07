@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
 import type { LightState } from '../devices/lights'
 import { type Scene, sceneActive } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
+import { SmartCard } from './SmartList'
 
 type RoomScenesProps = {
   scenes: Scene[]
@@ -11,19 +11,18 @@ type RoomScenesProps = {
   onLight: (id: string, patch: Partial<LightState>) => void
   shade: (id: string) => ShadeState
   onShade: (id: string, patch: Partial<ShadeState>) => void
-  /** Stands at the end of the chips' row. */
-  end?: ReactNode
 }
 
-/** The scenes here as chips that set their lights and shades. */
-export const RoomScenes = ({ scenes, ids, light, onLight, shade, onShade, end }: RoomScenesProps) => {
+/** The scenes here, a card of their own as they set shades as well as lights: chips that set them. */
+export const RoomScenes = ({ scenes, ids, light, onLight, shade, onShade }: RoomScenesProps) => {
   const apply = (scene: Scene) => {
     Object.entries(scene.lights).forEach(([id, s]) => onLight(id, s))
     Object.entries(scene.shades).forEach(([id, s]) => onShade(id, s))
   }
 
+  if (!scenes.length) return null
   return (
-    <div className="smart-scenes">
+    <SmartCard title="Scenes">
       <div className="smart-scene-chips" role="group" aria-label="Scenes">
         {scenes.map((scene) => (
           <button
@@ -35,8 +34,7 @@ export const RoomScenes = ({ scenes, ids, light, onLight, shade, onShade, end }:
             {scene.name}
           </button>
         ))}
-        {end}
       </div>
-    </div>
+    </SmartCard>
   )
 }

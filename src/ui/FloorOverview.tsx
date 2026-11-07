@@ -2,9 +2,9 @@ import { Fragment } from 'react'
 import type { LightState } from '../devices/lights'
 import type { Scene } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
-import type { SmartItem } from '../rooms/roomItems'
+import { itemsTitle, type SmartItem } from '../rooms/roomItems'
 import { RoomScenes } from './RoomScenes'
-import { AllLights, SmartRows } from './SmartList'
+import { SmartCard, SmartRows } from './SmartList'
 
 type FloorOverviewProps = {
   /** The items in view, with the room each is in. */
@@ -23,7 +23,7 @@ type FloorOverviewProps = {
   sceneIds: string[]
 }
 
-/** Between rooms: the floor's lights over its shades, each room by room, with what isn't in a room first, as outside. */
+/** Between rooms: the floor's scenes over its lights over its shades, each room by room, with what isn't in a room first, as outside. */
 export const FloorOverview = ({ items, roomName, scenes, sceneIds, ...rows }: FloorOverviewProps) => {
   const byRoom = (list: FloorOverviewProps['items']) => {
     // In the floor's order, so both cards run the same way.
@@ -37,32 +37,18 @@ export const FloorOverview = ({ items, roomName, scenes, sceneIds, ...rows }: Fl
   }
   const shades = items.filter((i) => i.kind === 'blind')
   const rest = items.filter((i) => i.kind !== 'blind')
-  const lightIds = items.filter((i) => i.kind === 'light').map((i) => i.id)
   return (
     <div className="room-cards" data-floor>
-      {rest.length > 0 && (
-        <section className="room-card float">
-          <div className="smart-card-body">
-            {lightIds.length > 0 && (
-              <RoomScenes
-                scenes={scenes}
-                ids={sceneIds}
-                light={rows.light}
-                onLight={rows.onLight}
-                shade={rows.shade}
-                onShade={rows.onShade}
-                end={<AllLights ids={lightIds} light={rows.light} onLight={rows.onLight} />}
-              />
-            )}
-            {byRoom(rest)}
-          </div>
-        </section>
-      )}
-      {shades.length > 0 && (
-        <section className="room-card float">
-          <div className="smart-card-body">{byRoom(shades)}</div>
-        </section>
-      )}
+      <RoomScenes
+        scenes={scenes}
+        ids={sceneIds}
+        light={rows.light}
+        onLight={rows.onLight}
+        shade={rows.shade}
+        onShade={rows.onShade}
+      />
+      {rest.length > 0 && <SmartCard title={itemsTitle(rest)}>{byRoom(rest)}</SmartCard>}
+      {shades.length > 0 && <SmartCard title="Shades">{byRoom(shades)}</SmartCard>}
     </div>
   )
 }

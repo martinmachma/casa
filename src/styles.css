@@ -3304,8 +3304,8 @@ input[type='range'].sunbar-slider {
   pointer-events: none;
 }
 
-/* The smart items cards, at the bottom right, lights over shades; each one's list scrolls once they fill the height
-   up to the Edit button. */
+/* The smart items cards, at the bottom right, scenes over lights over shades; each one's list scrolls under its header
+   once they fill the height up to the Edit button. */
 .room-card {
   display: flex;
   flex-direction: column;
@@ -3318,22 +3318,34 @@ input[type='range'].sunbar-slider {
   display: none;
 }
 
+.room-card:has(.smart-scene-chips) {
+  flex: none;
+}
+
+.smart-card-head {
+  flex: none;
+  margin: 0;
+  padding: 10px 12px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
 .smart-card-body {
   min-height: 0;
   overflow-y: auto;
   padding: 10px;
 }
 
-.smart-card-body > .hint {
-  margin: 4px 6px 6px;
+.smart-card-head + .smart-card-body {
+  padding-top: 0;
 }
 
-.smart-scenes {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 6px;
-  padding: 0 0 8px;
-  border-bottom: 1px solid var(--line);
+.smart-card-body > .hint {
+  margin: 4px 6px 6px;
 }
 
 .smart-scene-chips {
@@ -3779,16 +3791,8 @@ button.smart-row-toggle:hover .smart-row-action {
   line-height: 16px;
 }
 
-.smart-scenes + .smart-room {
+.smart-card-body > .smart-room:first-child {
   padding-top: 2px;
-}
-
-.smart-scene-chips button.smart-all {
-  justify-content: center;
-  width: 32px;
-  margin-left: auto;
-  padding: 0;
-  color: var(--ink-2);
 }
 
 .smart-group {
