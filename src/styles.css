@@ -1030,6 +1030,80 @@ p {
   box-shadow: var(--shadow);
 }
 
+/* A list that scrolls shades its edge while there's more past it. Both stay 0 when it doesn't scroll. */
+@property --more-above {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --more-below {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes more-above {
+  to {
+    --more-above: 1;
+  }
+}
+
+@keyframes more-below {
+  from {
+    --more-below: 1;
+  }
+}
+
+.settings-scroll,
+.sidebar-inner,
+.room-nav,
+.catalog-body,
+.version-menu,
+.todo-scroll,
+.smart-card-body {
+  animation: more-above linear both, more-below linear both;
+  animation-timeline: scroll(self);
+  animation-range: 0 24px, calc(100% - 24px) 100%;
+}
+
+/* Rows have their own fill, so the list itself fades under its panel. */
+.settings-scroll,
+.sidebar-inner,
+.catalog-body,
+.todo-scroll,
+.smart-card-body {
+  --more-fade: linear-gradient(
+    rgb(0 0 0 / calc(1 - 0.85 * var(--more-above))),
+    #000 28px,
+    #000 calc(100% - 28px),
+    rgb(0 0 0 / calc(1 - 0.85 * var(--more-below)))
+  );
+  -webkit-mask-image: var(--more-fade);
+  mask-image: var(--more-fade);
+}
+
+/* The sticky foot closes the list off, and would fade with it. */
+.sidebar-inner:has(.panel-foot) {
+  animation-name: more-above, none;
+}
+
+/* These are their own panel, which a fade would take with it. */
+.room-nav,
+.version-menu {
+  --more-shade:
+    inset 0 calc(var(--more-above) * 28px) 18px -18px rgb(0 0 0 / 0.95),
+    inset 0 calc(var(--more-below) * -28px) 18px -18px rgb(0 0 0 / 0.95);
+}
+
+.room-nav {
+  box-shadow: var(--shadow), var(--more-shade);
+}
+
+.version-menu {
+  box-shadow: var(--shadow-lg), var(--more-shade);
+}
+
 .modebar {
   position: absolute;
   top: 14px;
