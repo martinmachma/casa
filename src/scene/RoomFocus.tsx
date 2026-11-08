@@ -1,6 +1,6 @@
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { FurnitureItem } from '../data/types'
@@ -8,6 +8,7 @@ import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
+import { roomFlight } from './motionState'
 import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
 import { wallHeight } from '../layout/geometry'
 import { clearView, crosses, mayBlock } from './clearView'
@@ -118,6 +119,15 @@ export const RoomCamera = ({
   const t = useRef(from ? 0 : 1)
   const started = useRef<number>(undefined)
   const midway = useRef(false)
+  // The room the camera last set off for, to tell a flight to another room from one round this one (to an item).
+  const headingRoom = useRef(from ? undefined : roomId)
+  useEffect(
+    () => () => {
+      roomFlight.kind = 'none'
+      roomFlight.progress = 1
+    },
+    [],
+  )
   // The pose the camera is flying to or resting at; another room picked flies over from wherever it is now.
   const heading = useRef(pose)
   const look = useMemo(() => new Vector3(), [])
@@ -159,6 +169,10 @@ export const RoomCamera = ({
       started.current = undefined
       midway.current = false
     }
+    if (headingRoom.current !== roomId) {
+      roomFlight.kind = headingRoom.current ? 'switch' : 'enter'
+      headingRoom.current = roomId
+    } else if (t.current === 0) roomFlight.kind = 'none'
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
       onView?.(camera.position, look, p.t < 1, p.current)
@@ -170,6 +184,7 @@ export const RoomCamera = ({
     t.current = animationProgress(started.current, now, FLIGHT_SECONDS)
     const s = start.current
     const k = ease(t.current)
+    roomFlight.progress = k
     invalidate()
     camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)

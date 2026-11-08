@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Mesh, Object3D, WebGLRenderTarget, type Camera } from 'three'
 import { floorRegions } from '../layout/rooms'
 import { DIM, makeTools } from './blurTools'
+import { roomFlight } from './motionState'
 import { roomMeshClassifier } from './roomMeshes'
 import type { Floor } from '../layout/types'
 
@@ -19,9 +20,8 @@ const DIM_IN = 220
 const DIM_OUT = 320
 /** How long the blur takes to clear after the room is left, in ms. */
 const BLUR_OUT = 500
-/** How long it takes to come in, and to clear on the way to another room: over a camera flight's second and first half. */
+/** How long it takes to come in, when no flight brings it in. */
 const BLUR_IN = 500
-const BLUR_CLEAR = 300
 
 const ease = (t: number) => t * t * (3 - 2 * t)
 
@@ -103,15 +103,13 @@ export const RoomBlur = ({
   useFrame(({ gl, scene, camera, size, invalidate }) => {
     const now = performance.now()
     const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
-    const blurMoving = step(
-      blurring.current,
-      leaving || clear ? undefined : roomId,
-      now,
-      BLUR_IN,
-      clear ? BLUR_CLEAR : BLUR_OUT,
-    )
+    const blurMoving = step(blurring.current, leaving || clear ? undefined : roomId, now, BLUR_IN, BLUR_OUT)
     if (dimMoving || blurMoving) invalidate()
-    const blur = ease(blurring.current.value)
+    // While the camera flies into the room, or over from another, the blur goes with it (the camera redraws).
+    const { kind, progress } = roomFlight
+    const flown = !leaving && progress < 1 && kind !== 'none'
+    if (flown) blurring.current.value = kind === 'enter' ? progress : Math.abs(1 - 2 * progress)
+    const blur = flown ? blurring.current.value : ease(blurring.current.value)
     const shown = dimming.current.item
     scene.updateMatrixWorld()
     // Sort the meshes, and sum up where everything is, to tell when the shadows need redrawing.
