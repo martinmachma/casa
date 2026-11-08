@@ -164,8 +164,7 @@ export const PhoneHome = ({
     >
       {room && (
         <button className="phone-leave float" aria-label={`Leave ${room.label}`} onClick={onLeave}>
-          <span>{room.label}</span>
-          <X size={16} />
+          <X size={18} />
         </button>
       )}
 
