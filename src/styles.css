@@ -4755,6 +4755,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
 }
 
 .phone-room-card {
+  position: relative;
   display: grid;
   align-content: space-between;
   flex: none;
@@ -4788,6 +4789,17 @@ input[type='range'].light-brightness::-moz-range-thumb {
 .phone-room-card[aria-current] {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+.phone-room-card[aria-current] b {
+  padding-right: 14px;
+}
+
+/* The picked room's card leaves it again. */
+.phone-room-leave {
+  position: absolute;
+  top: 7px;
+  right: 6px;
 }
 
 .phone-room-card[aria-current] span {

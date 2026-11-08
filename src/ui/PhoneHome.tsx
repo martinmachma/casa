@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import type { LightState } from '../devices/lights'
 import type { Scene } from '../devices/scenes'
@@ -197,8 +197,10 @@ export const PhoneHome = ({
               key={r.id}
               className="phone-room-card"
               aria-current={r === room || undefined}
+              aria-label={r === room ? `Leave ${r.label}` : undefined}
               onClick={() => (r === room ? onLeave() : onRoom(r.id))}
             >
+              {r === room && <X className="phone-room-leave" size={14} />}
               <b>{r.label}</b>
               <span>
                 {lit.get(r.room) && <i className="phone-dot" data-on />}
