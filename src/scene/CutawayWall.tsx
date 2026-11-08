@@ -12,6 +12,7 @@ import {
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep, ViewedFloor } from './Fade'
 import { animating } from './MotionQuality'
+import { betweenRooms } from './motionState'
 import { blocksView, separates, wallAngle, wallHeight, wallOutside, wallOwner } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
@@ -112,11 +113,12 @@ export const CutawayWall = ({
   const decider = useMemo(() => decidingWall(other ?? wall, floor), [other, wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall fades out as the stub fades in.
   const k = useRef<number>(undefined)
-  // Only switching the cut on or off animates; walls cut as the camera moves, or by a switch of floor, just go.
+  // Only switching the cut on or off animates; walls cut as the camera moves, or by a switch of floor, just go (but
+  // not one on the way between rooms).
   const animate = useRef(false)
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => {
-    animate.current = lastViewed.current === viewed
+    animate.current = lastViewed.current === viewed || betweenRooms()
     lastViewed.current = viewed
     redraw()
   }, [cutaway, focus, viewed, redraw])

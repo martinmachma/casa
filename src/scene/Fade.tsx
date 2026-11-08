@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Group, Material, Mesh, Object3D } from 'three'
 import { animating } from './MotionQuality'
+import { betweenRooms } from './motionState'
 
 export const FADE_SECONDS = 0.35
 /** How much of a shade or device shows while the walls are cut away to see inside. */
@@ -65,7 +66,7 @@ export const fadedAway = (o: Object3D) => {
 
 /**
  * Fades its contents in when shown and out when hidden. Whatever is shown from the start, or by a switch of floor, is
- * just there. Faded away they stay mounted, only not drawn: taking them down would rebuild a whole floor, and link its shaders again, on
+ * just there, unless the floor is switched on the way from one room to another. Faded away they stay mounted, only not drawn: taking them down would rebuild a whole floor, and link its shaders again, on
  * every switch.
  */
 export const Fade = ({ shown, children }: { shown: boolean; children: ReactNode }) => {
@@ -86,7 +87,7 @@ export const Fade = ({ shown, children }: { shown: boolean; children: ReactNode 
   useFrame(({ invalidate }, delta) => {
     const g = group.current
     const target = shown ? 1 : 0
-    const switched = lastViewed.current !== viewed
+    const switched = lastViewed.current !== viewed && !betweenRooms()
     lastViewed.current = viewed
     if (!g || (k.current === target && g.userData.fade === target)) return
     k.current = switched ? target : fadeStep(k.current, target, delta)

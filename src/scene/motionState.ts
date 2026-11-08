@@ -6,3 +6,6 @@ export const motionState = { moving: false }
  * rooms away over its first half and in over its second.
  */
 export const roomFlight = { kind: 'none' as 'none' | 'enter' | 'switch', progress: 1 }
+
+/** Flying from one room to another: a switch of floor on the way fades, as the rest of the view does. */
+export const betweenRooms = () => roomFlight.kind === 'switch' && roomFlight.progress < 1
