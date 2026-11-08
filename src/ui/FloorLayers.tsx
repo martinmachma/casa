@@ -1,3 +1,4 @@
+import { House } from 'lucide-react'
 import { useRef, useState, type PointerEvent } from 'react'
 import type { Floor } from '../layout/types'
 import { ordinal } from './ordinal'
@@ -47,7 +48,7 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
-    <div className="floor-layers">
+    <div className="floor-layers" data-dragging={dragging || undefined}>
       <div
         className="floor-layers-strip"
         role="slider"
@@ -77,6 +78,10 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
           e.preventDefault()
         }}
       >
+        {/* While dragging, each stop's place shows as a faint cell, so the layers can be told apart. */}
+        {Array.from({ length: stops }, (_, k) => (
+          <b key={k} className="floor-layers-cell" data-on={k === stop || undefined} style={{ top: centre(k) }} />
+        ))}
         {floors.map((f, i) => {
           const k = floors.length - i
           return (
@@ -89,6 +94,13 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
             />
           )
         })}
+      </div>
+      <div className="floor-layers-marks" aria-hidden>
+        {Array.from({ length: stops }, (_, k) => (
+          <span key={k} data-on={k === stop || undefined} style={{ top: centre(k) }}>
+            {k === 0 ? <House size={11} /> : floors.length - k + 1}
+          </span>
+        ))}
       </div>
       {dragging && (
         <div className="floor-layers-label float" style={{ top: centre(stop) }}>

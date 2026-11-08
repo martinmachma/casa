@@ -4573,9 +4573,54 @@ input[type='range'].light-brightness::-moz-range-thumb {
   box-shadow: 0 0 12px rgb(224 138 63 / 0.6);
 }
 
+.floor-layers-cell {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 17px;
+  translate: 0 -50%;
+  border: 1px dashed rgb(243 245 248 / 0.22);
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 150ms;
+  pointer-events: none;
+}
+
+.floor-layers-cell[data-on] {
+  border-style: solid;
+  border-color: rgb(224 138 63 / 0.55);
+}
+
+.floor-layers-marks span {
+  position: absolute;
+  right: 36px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  translate: 0 -50%;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(243 245 248 / 0.5);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+  opacity: 0;
+  transition: opacity 150ms;
+  pointer-events: none;
+}
+
+.floor-layers-marks span[data-on] {
+  color: var(--accent);
+}
+
+.floor-layers[data-dragging] .floor-layers-cell,
+.floor-layers[data-dragging] .floor-layers-marks span {
+  opacity: 1;
+}
+
 .floor-layers-label {
   position: absolute;
-  right: 42px;
+  right: 56px;
   display: grid;
   padding: 7px 12px;
   border-radius: 12px;
