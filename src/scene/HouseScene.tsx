@@ -57,6 +57,7 @@ import { RoomFloors } from './RoomFloors'
 import { FocusProjector, RoomCamera, type Pin } from './RoomFocus'
 import type { CameraMode, EditMode, Interaction, Selection } from './selection'
 import { ShadowUpdates } from './ShadowUpdates'
+import { TapOutside } from './TapOutside'
 import { Railings, Stairs } from './Stairs'
 import { WalkCamera } from './WalkCamera'
 import { WalkPlacementTracker, type WalkPlacement } from './WalkPlacement'
@@ -139,6 +140,8 @@ type HouseSceneProps = {
   /** A smart item pointed at in the focused room. */
   onHoverItem?: (id: string | undefined) => void
   pinRefs?: RefObject<Map<string, HTMLElement | null>>
+  /** A tap on the view away from the focused room. */
+  onTapOutside?: () => void
 }
 
 const NO_BLOCKED = new Map<string, string[]>()
@@ -197,6 +200,7 @@ export const HouseScene = ({
   hovered,
   onHoverItem,
   pinRefs,
+  onTapOutside,
 }: HouseSceneProps) => {
   const noPins = useRef(new Map<string, HTMLElement | null>())
   useEffect(() => {
@@ -416,6 +420,7 @@ export const HouseScene = ({
       >
         <ViewedFloor.Provider value={outside ? '' : floor.id}>
           <InputInvalidator />
+          {focusRoom && onTapOutside && <TapOutside floor={floor} roomId={focusRoom} onTap={onTapOutside} />}
           {camera !== 'walk' && (
             <WalkPlacementTracker
               placementRef={walkPlacement}

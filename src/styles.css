@@ -4513,6 +4513,38 @@ input[type='range'].light-brightness::-moz-range-thumb {
   pointer-events: auto;
 }
 
+/* The room looked at, top centre, to leave it. */
+.phone-leave {
+  position: absolute;
+  z-index: 2;
+  top: calc(env(safe-area-inset-top) + var(--topbar) / 2);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 180px);
+  height: 36px;
+  padding: 0 10px 0 14px;
+  translate: -50% -50%;
+  border: 0;
+  border-radius: 18px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.phone-leave span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.phone-leave svg {
+  flex: none;
+  color: var(--muted);
+}
+
 /* The floors, a faint strip of slabs above the scenes, or above the sheet when it's raised. */
 .floor-layers {
   position: absolute;

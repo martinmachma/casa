@@ -162,6 +162,13 @@ export const PhoneHome = ({
       data-raised={raised || undefined}
       style={{ '--sheet': `${sheetHeight}px` } as CSSProperties}
     >
+      {room && (
+        <button className="phone-leave float" aria-label={`Leave ${room.label}`} onClick={onLeave}>
+          <span>{room.label}</span>
+          <X size={16} />
+        </button>
+      )}
+
       <FloorLayers
         floors={floors}
         floorIndex={floorIndex}

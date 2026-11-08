@@ -1033,6 +1033,7 @@ export const House = ({ backend, account }: HouseProps) => {
           pinRefs={pinRefs}
           open={popover}
           focusInset={phone ? focusInset : 0}
+          onTapOutside={phone && !popover ? leaveRoom : undefined}
           hovered={hoveredItem}
           onHoverItem={setHoveredItem}
         />

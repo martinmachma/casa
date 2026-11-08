@@ -30,6 +30,12 @@ export const roomBox = (floor: Floor, roomId: string, margin = 0.15): { min: Poi
   }
 }
 
+/** Whether a point on the plan lies in the room, or within `margin` of it. */
+export const inRoom = (floor: Floor, roomId: string, [x, y]: Point, margin = 0) =>
+  (floorRegions(floor).get(roomId)?.cells ?? []).some(
+    (c) => x >= c.x0 - margin && x <= c.x1 + margin && y >= c.y0 - margin && y <= c.y1 + margin,
+  )
+
 const UP = new Vector3(0, 1, 0)
 /** How much of a wide screen's width the rooms list on the left and the cards on the right each take, in pixels. */
 const PANEL = 250
