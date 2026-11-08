@@ -12,7 +12,7 @@ import {
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep, ViewedFloor } from './Fade'
 import { animating } from './MotionQuality'
-import { betweenRooms } from './motionState'
+import { cameraFlight, flightFade, followCameraFlight } from './cameraFlight'
 import { blocksView, separates, wallAngle, wallHeight, wallOutside, wallOwner } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
@@ -113,18 +113,25 @@ export const CutawayWall = ({
   const decider = useMemo(() => decidingWall(other ?? wall, floor), [other, wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall fades out as the stub fades in.
   const k = useRef<number>(undefined)
-  // Only switching the cut on or off animates; walls cut as the camera moves, or by a switch of floor, just go (but
-  // not one on the way between rooms).
+  const flight = useRef(flightFade())
+  const changedWithFlight = useRef(false)
+  const lastFocus = useRef(focus)
+  // Manual orbit cuts immediately; navigation follows the camera and the cut toggle fades on its own.
   const animate = useRef(false)
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => {
-    animate.current = lastViewed.current === viewed || betweenRooms()
+    changedWithFlight.current =
+      cameraFlight.kind !== 'none' && (lastViewed.current !== viewed || lastFocus.current !== focus)
+    lastFocus.current = focus
+    animate.current = lastViewed.current === viewed
     lastViewed.current = viewed
     redraw()
   }, [cutaway, focus, viewed, redraw])
   useFrame(({ camera, invalidate }, delta) => {
     const target = isCut(decider, outside, camera, cutaway, focus) ? 1 : 0
-    const now = k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta)
+    const flown = followCameraFlight(flight.current, k.current ?? target, target, changedWithFlight.current)
+    changedWithFlight.current = false
+    const now = flown ?? (k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta))
     if (now !== target) {
       invalidate()
       animating()

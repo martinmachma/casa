@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Mesh, Object3D, WebGLRenderTarget, type Camera } from 'three'
 import { floorRegions } from '../layout/rooms'
 import { DIM, makeTools } from './blurTools'
-import { roomFlight } from './motionState'
+import { cameraFlight, flightFade, followCameraFlight, roomBlurAmount } from './cameraFlight'
 import { roomMeshClassifier } from './roomMeshes'
 import type { Floor } from '../layout/types'
 
@@ -75,6 +75,8 @@ export const RoomBlur = ({
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [open, clear, leaving, redraw])
   const dimming = useRef<Fade>({ value: 0 })
+  const dimFlight = useRef(flightFade())
+  const blurFlight = useRef({ id: -1, from: 0 })
   // Eases in, so a room arrived at from another comes into focus rather than snapping.
   const blurring = useRef<Fade>({ value: 0 })
   // What's around the room is marked as it's sorted, so the pointer passes it by (see `reachable`).
@@ -102,14 +104,30 @@ export const RoomBlur = ({
 
   useFrame(({ gl, scene, camera, size, invalidate }) => {
     const now = performance.now()
-    const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
-    const blurMoving = step(blurring.current, leaving || clear ? undefined : roomId, now, BLUR_IN, BLUR_OUT)
+    const dim = dimming.current
+    const dimFlown = followCameraFlight(dimFlight.current, dim.value, open ? 1 : 0)
+    let dimMoving = false
+    if (dimFlown !== undefined) {
+      dim.value = dimFlown
+      dim.item = open ?? (dim.value ? dim.item : undefined)
+      dim.last = undefined
+    } else dimMoving = step(dim, open, now, DIM_IN, DIM_OUT)
+    if (blurFlight.current.id !== cameraFlight.id) {
+      blurFlight.current.id = cameraFlight.id
+      blurFlight.current.from = blurring.current.value
+    }
+    // The camera owns the entire enter/switch/leave effect, including its exact endpoint.
+    const flown = roomBlurAmount(cameraFlight, blurFlight.current.from, !leaving && !clear)
+    if (flown !== undefined) {
+      blurring.current.value = flown
+      blurring.current.last = undefined
+    }
+    const blurMoving =
+      flown !== undefined
+        ? cameraFlight.progress < 1
+        : step(blurring.current, leaving || clear ? undefined : roomId, now, BLUR_IN, BLUR_OUT)
     if (dimMoving || blurMoving) invalidate()
-    // While the camera flies into the room, or over from another, the blur goes with it (the camera redraws).
-    const { kind, progress } = roomFlight
-    const flown = !leaving && progress < 1 && kind !== 'none'
-    if (flown) blurring.current.value = kind === 'enter' ? progress : Math.abs(1 - 2 * progress)
-    const blur = flown ? blurring.current.value : ease(blurring.current.value)
+    const blur = ease(blurring.current.value)
     const shown = dimming.current.item
     scene.updateMatrixWorld()
     // Sort the meshes, and sum up where everything is, to tell when the shadows need redrawing.
@@ -162,7 +180,7 @@ export const RoomBlur = ({
         gl.autoClear = autoClear
         camera.layers.set(0)
       }
-      if (leaving) onLeft?.()
+      if (leaving && !dimMoving && !blurMoving) onLeft?.()
       return
     }
     const tools = (kit.current ??= makeTools())

@@ -8,7 +8,7 @@ import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
-import { roomFlight } from './motionState'
+import { advanceCameraFlight, beginCameraFlight, CAMERA_FLIGHT_SECONDS, cameraFlight, flightEase } from './cameraFlight'
 import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
 import { wallHeight } from '../layout/geometry'
 import { clearView, crosses, mayBlock } from './clearView'
@@ -16,7 +16,6 @@ import { decidingWall, focusCut, type Focus } from './CutawayWall'
 import { SeeThrough } from './SeeThrough'
 import { ZoomToSurface } from './ZoomToSurface'
 
-const FLIGHT_SECONDS = 1.1
 /** How far from an opened item the camera comes in to. */
 const CLOSE_UP = 2.2
 /** Further back from one looked at from a given way (a window's shade), to take in the whole window. */
@@ -30,7 +29,6 @@ const UNDER = 0.9
 /** How far round a close-up may turn from the way it's meant to be seen from, to get a clear view (degrees). */
 const TURN_FACING = 60
 const TURN_ANY = 180
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
 export const RoomCamera = ({
@@ -118,13 +116,14 @@ export const RoomCamera = ({
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
   const started = useRef<number>(undefined)
+  const initialized = useRef(false)
   const midway = useRef(false)
   // The room the camera last set off for, to tell a flight to another room from one round this one (to an item).
   const headingRoom = useRef(from ? undefined : roomId)
   useEffect(
     () => () => {
-      roomFlight.kind = 'none'
-      roomFlight.progress = 1
+      cameraFlight.kind = 'none'
+      cameraFlight.progress = 1
     },
     [],
   )
@@ -145,6 +144,10 @@ export const RoomCamera = ({
     closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
   useFrame(({ camera, invalidate }) => {
     if (!pose) return
+    if (!initialized.current) {
+      initialized.current = true
+      if (from) beginCameraFlight(roomId ? 'enter' : 'move')
+    }
     const p = projection.current
     if (p.to !== framing) {
       Object.assign(p.from, p.current)
@@ -155,8 +158,8 @@ export const RoomCamera = ({
     if (p.t < 1) {
       const now = performance.now()
       p.started ??= now
-      p.t = animationProgress(p.started, now, FLIGHT_SECONDS)
-      blendFocusFraming(camera, size, p.from, p.to, ease(p.t))
+      p.t = animationProgress(p.started, now, CAMERA_FLIGHT_SECONDS)
+      blendFocusFraming(camera, size, p.from, p.to, flightEase(p.t))
       p.current.zoom = camera.zoom
       p.current.offsetY = camera.view?.offsetY ?? 0
       invalidate()
@@ -168,14 +171,11 @@ export const RoomCamera = ({
       t.current = 0
       started.current = undefined
       midway.current = false
-      roomFlight.kind = headingRoom.current === roomId ? 'none' : headingRoom.current ? 'switch' : 'enter'
+      beginCameraFlight(headingRoom.current === roomId ? 'move' : headingRoom.current ? 'switch' : 'enter')
       headingRoom.current = roomId
     }
     // Into the room from the house: the first flight, with no pose before it.
-    if (headingRoom.current !== roomId) {
-      roomFlight.kind = 'enter'
-      headingRoom.current = roomId
-    }
+    if (headingRoom.current !== roomId) headingRoom.current = roomId
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
       onView?.(camera.position, look, p.t < 1, p.current)
@@ -184,10 +184,9 @@ export const RoomCamera = ({
     // Ignore the idle gap only once; slow frames still count in full, so the flight keeps its duration.
     const now = performance.now()
     started.current ??= now
-    t.current = animationProgress(started.current, now, FLIGHT_SECONDS)
+    t.current = advanceCameraFlight(started.current, now)
     const s = start.current
-    const k = ease(t.current)
-    roomFlight.progress = k
+    const k = cameraFlight.progress
     invalidate()
     camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)

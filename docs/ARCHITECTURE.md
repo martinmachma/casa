@@ -78,7 +78,8 @@ Performance-sensitive; read `docs/LIGHTING.md` before touching lights, shadows o
 
 - Canvas runs `frameloop="demand"`; quality drops to 1x DPR while the camera moves. Phones/coarse pointers and
   narrow windows stay at 1x, skip SSAO and room blur, and use smaller shadow maps with every light retained.
-  Camera flights use elapsed time so slow frames do not stretch their duration.
+  Camera flights, floor fades, cut walls and room blur share elapsed-time progress so they finish together even
+  on slow frames.
 - Shadow maps are cached across frames by a caster signature; point-light shadows share an atlas.
 - Fixtures and lights stay mounted at zero intensity (changing the light count recompiles shaders). Floors fade
   rather than unmount.

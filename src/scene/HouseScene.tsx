@@ -21,7 +21,7 @@ import { distance, formatLength, type MeasuredLine, type Measurement, type Measu
 import { floorItems, outsideLight } from '../rooms/roomItems'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
 import type { SunPosition } from '../sun/sun'
-import { animationProgress } from './animation'
+import { advanceCameraFlight, beginCameraFlight, cameraFlight, flightEase } from './cameraFlight'
 import { useCompactGraphics } from './useCompactGraphics'
 import { AmbientOcclusion } from './AmbientOcclusion'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
@@ -814,8 +814,6 @@ const FLOOR_ZOOM = {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-const RETURN_SECONDS = 1.1
-
 /**
  * The last orbit or top camera, so switching floors or to the whole house keeps the view.
  * `elevation` is the floor it was looking at, or NaN for the whole house from outside.
@@ -833,6 +831,8 @@ const lastView = {
 
 const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   const size = useThree((s) => s.size)
+  const [leaving] = useState(!!lastView.returnFrom)
+  const [fromElevation] = useState(lastView.elevation)
   // Chosen once: carried over from the previous floor's camera, or this view's own start
   // (after Reset view, or a change between 3D and top). Resizing doesn't move it.
   const [start] = useState(() => {
@@ -868,9 +868,19 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     const rise = mode === 'orbit' && !houseHeight ? floor.elevation - lastView.elevation || 0 : 0
     const position = lastView.position.clone().setY(lastView.position.y + rise)
     const target = lastView.target.clone().setY(lastView.target.y + rise)
+    const changedFloor = !Object.is(lastView.elevation, houseHeight ? NaN : floor.elevation)
+    const from = changedFloor
+      ? {
+          position: lastView.position.clone(),
+          target: lastView.target.clone(),
+          framing: { zoom: lastView.zoom, offsetY: 0 },
+        }
+      : undefined
     if (mode === 'top') {
+      position.y = floor.elevation + 40
+      target.y = floor.elevation
       const zoom = clamp(lastView.zoom, own.zoom * FLOOR_ZOOM.top.out, own.zoom * FLOOR_ZOOM.top.in)
-      return { position, target, zoom, from: undefined }
+      return { position, target, zoom, from }
     }
     const reach = own.position.distanceTo(own.target)
     const distance = clamp(
@@ -879,22 +889,35 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       reach * FLOOR_ZOOM.orbit.furthest,
     )
     position.sub(target).setLength(distance).add(target)
-    return { position, target, zoom: lastView.zoom, from: undefined }
+    return { position, target, zoom: lastView.zoom, from }
   })
   useEffect(() => {
     lastView.returnFrom = undefined
+    return () => {
+      cameraFlight.kind = 'none'
+      cameraFlight.progress = 1
+    }
   }, [])
   const flight = useRef(start.from ? 0 : 1)
   const framing = useMemo(() => ({ zoom: start.zoom, offsetY: 0 }), [start.zoom])
   const flightStarted = useRef<number>(undefined)
+  const initialized = useRef(false)
   const [flying, setFlying] = useState(!!start.from)
   useFrame(({ camera, controls, invalidate }) => {
     const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
+    if (!initialized.current) {
+      initialized.current = true
+      if (start.from) beginCameraFlight(leaving ? 'leave' : 'move')
+      else {
+        cameraFlight.kind = 'none'
+        cameraFlight.progress = 1
+      }
+    }
     if (orbit && start.from && flight.current < 1) {
       const now = performance.now()
       flightStarted.current ??= now
-      flight.current = animationProgress(flightStarted.current, now, RETURN_SECONDS)
-      const k = easeInOut(flight.current)
+      flight.current = advanceCameraFlight(flightStarted.current, now)
+      const k = cameraFlight.progress
       camera.position.lerpVectors(start.from.position, start.position, k)
       orbit.target.lerpVectors(start.from.target, start.target, k)
       blendFocusFraming(camera, size, start.from.framing, framing, k)
@@ -913,7 +936,14 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       orbit.panSpeed = PAN_SPEED * Math.max(1, boost)
       orbit.zoomSpeed = ZOOM_SPEED * Math.max(1, boost / 2)
     }
-    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation: houseHeight ? NaN : floor.elevation })
+    // A second floor picked mid-flight rises from the height actually reached, avoiding accumulated offsets.
+    const elevation =
+      start.from && !leaving && Number.isFinite(fromElevation) && !houseHeight
+        ? MathUtils.lerp(fromElevation, floor.elevation, cameraFlight.progress)
+        : houseHeight
+          ? NaN
+          : floor.elevation
+    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation })
     lastView.position.copy(camera.position)
     lastView.target.copy(orbit.target)
   })
@@ -966,7 +996,6 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
 }
 
 const INTRO_SECONDS = 2.2
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /**
  * Starts high above the house looking straight down with the house square on, drops towards it,
@@ -993,8 +1022,8 @@ const IntroFlight = () => {
     if (f.t >= 1) return
     f.t = Math.min(1, f.t + delta / INTRO_SECONDS)
     invalidate()
-    const down = easeInOut(f.t)
-    const turn = easeInOut(Math.max(0, (f.t - 0.45) / 0.55))
+    const down = flightEase(f.t)
+    const turn = flightEase(Math.max(0, (f.t - 0.45) / 0.55))
     const at = new Spherical(
       MathUtils.lerp(f.start.radius, f.end.radius, down),
       MathUtils.lerp(f.start.phi, f.end.phi, turn),
