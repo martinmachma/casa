@@ -41,6 +41,7 @@ export const RoomCamera = ({
   bottomInset = 0,
   from,
   onView,
+  onArrive,
 }: {
   floor: Floor
   roomId?: string
@@ -55,6 +56,8 @@ export const RoomCamera = ({
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
   onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
+  /** When a flight ends, with the room it ended in. */
+  onArrive?: (roomId: string | undefined) => void
 }) => {
   const size = useThree((s) => s.size)
   const scene = useThree((s) => s.scene)
@@ -170,7 +173,10 @@ export const RoomCamera = ({
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
     onView?.(camera.position, look, t.current < 1 || p.t < 1, p.current)
-    if (k >= 1) setFlying(false)
+    if (k >= 1) {
+      setFlying(false)
+      onArrive?.(roomId)
+    }
     // Ahead of whatever goes by the camera this frame: mounted after it all, this would otherwise run last, and the
     // pins would be placed for one frame with the new camera still at the pose it's flying to.
   }, -1)

@@ -69,7 +69,8 @@ export const RoomBlur = ({
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [open, leaving, redraw])
   const dimming = useRef<Fade>({ value: 0 })
-  const blurring = useRef<Fade>({ value: 1 })
+  // Eases in, so a room arrived at from another comes into focus rather than snapping.
+  const blurring = useRef<Fade>({ value: 0 })
   // What's around the room is marked as it's sorted, so the pointer passes it by (see `reachable`).
   const scene = useThree((s) => s.scene)
   useEffect(() => () => scene.traverse((o) => delete o.userData.outside), [scene])
