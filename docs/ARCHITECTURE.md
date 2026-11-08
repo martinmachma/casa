@@ -28,7 +28,7 @@ A module may import from the left of itself, not the right. (A few small upward 
 | `rooms` | room views, items per room, room order | pure + one query hook |
 | `lib` | Supabase client, query client, realtime, `useStable`, a person's saved menu order (`order`, `useSavedOrder`) | leaf helpers |
 | `auth` | `AuthGate`, `useAccess` (guest list check, Google sign-in) | React |
-| `scene` | everything inside the R3F `<Canvas>`: walls, floors, openings, furniture, device models, lights, shadows, AO, cameras, picking. Pure helpers (`shadows`, `pick`, `raycast`, `itemSection`, `lightEmission`, `pointShadowLayout`, `roomMeshes`) are separate files with tests | R3F + pure |
+| `scene` | everything inside the R3F `<Canvas>`: walls, floors, openings, furniture, device models, lights, shadows, AO, cameras, picking. Pure helpers (`shadows`, `pick`, `raycast`, `clearView`, `itemSection`, `lightEmission`, `pointShadowLayout`, `roomMeshes`) are separate files with tests | R3F + pure |
 | `ui` | DOM panels, top bar, room nav, kit primitives (`kit.tsx`), todo popup. No R3F | React |
 
 ## Data model
@@ -83,6 +83,8 @@ Performance-sensitive; read `docs/LIGHTING.md` before touching lights, shadows o
 - Fixtures and lights stay mounted at zero intensity (changing the light count recompiles shaders). Floors fade
   rather than unmount.
 - Raycasting is off outside Edit for most meshes.
+- An item's close-up picks a view nothing stands in front of (`clearView`: turned, nearer or from below), and
+  fades whatever is still in the way (`SeeThrough`, on its own copies of the materials).
 
 ## Features that exist / don't
 

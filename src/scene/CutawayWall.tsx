@@ -48,22 +48,24 @@ const beyond = (wall: Wall, eye: Point, { min, max }: Focus['box']) =>
     return (eye[a] > max[a] && lo >= max[a]) || (eye[a] < min[a] && hi <= min[a])
   })
 
+/** Looking at a room from `eye`, whether a wall is cut (the one it goes with, see `decidingWall`). */
+export const focusCut = (wall: Wall, eye: Point, focus: Focus) => {
+  const out = focus.sides.get(wall.id)
+  if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0
+  return separates(wall, eye, focus.center) || beyond(wall, eye, focus.box)
+}
+
 const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean, focus?: Focus) => {
   if (!cutaway) return false
   // Looking at one room, only walls between the camera and it go: its own walls seen from outside, and
   // walls beyond it in the way. Walls inside it and its far walls stay up.
-  if (focus) {
-    const out = focus.sides.get(wall.id)
-    const eye: Point = [camera.position.x, camera.position.z]
-    if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0
-    return separates(wall, eye, focus.center) || beyond(wall, eye, focus.box)
-  }
+  if (focus) return focusCut(wall, [camera.position.x, camera.position.z], focus)
   camera.getWorldDirection(forward)
   return blocksView(wall, outside, [camera.position.x, camera.position.z], [forward.x, forward.z])
 }
 
 /** A wall built against another (a shaft, a chimney breast) is cut or left standing with it. */
-const decidingWall = (wall: Wall, floor: Floor) => {
+export const decidingWall = (wall: Wall, floor: Floor) => {
   const owner = wallOwner(wall, floor)
   return (owner.against && floor.walls.find((w) => w.id === owner.against)) || owner
 }

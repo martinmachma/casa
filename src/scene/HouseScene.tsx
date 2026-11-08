@@ -442,6 +442,7 @@ export const HouseScene = ({
             <RoomCamera
               floor={floor}
               roomId={focusRoom}
+              focus={focusPoint}
               furniture={data.furniture}
               closeUp={closeUp}
               bottomInset={focusInset}

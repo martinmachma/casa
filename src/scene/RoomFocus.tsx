@@ -9,6 +9,10 @@ import { roomPose } from '../rooms/roomViews'
 import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
 import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
+import { wallHeight } from '../layout/geometry'
+import { clearView, crosses, mayBlock } from './clearView'
+import { decidingWall, focusCut, type Focus } from './CutawayWall'
+import { SeeThrough } from './SeeThrough'
 import { ZoomToSurface } from './ZoomToSurface'
 
 const FLIGHT_SECONDS = 1.1
@@ -22,12 +26,16 @@ const FACING_RISE = 0.15
 /** How far below a ceiling light the camera comes in to, and how far off straight up it looks. */
 const CLOSE_UNDER = 2
 const UNDER = 0.9
+/** How far round a close-up may turn from the way it's meant to be seen from, to get a clear view (degrees). */
+const TURN_FACING = 60
+const TURN_ANY = 180
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
 export const RoomCamera = ({
   floor,
   roomId,
+  focus,
   furniture,
   closeUp,
   bottomInset = 0,
@@ -36,6 +44,8 @@ export const RoomCamera = ({
 }: {
   floor: Floor
   roomId?: string
+  /** The room looked at, for which walls are cut from where. */
+  focus?: Focus
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
   /** An opened item to come in close to, from the way it's best seen; dragging tilts round it. */
@@ -47,6 +57,7 @@ export const RoomCamera = ({
   onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
 }) => {
   const size = useThree((s) => s.size)
+  const scene = useThree((s) => s.scene)
   const inset = bottomInset
   const framing = useMemo(() => focusFraming(size, inset), [size, inset])
   const projection = useRef({
@@ -66,6 +77,7 @@ export const RoomCamera = ({
   const [cx, cy, cz] = closeUp?.look ?? closeUp?.at ?? []
   const [fx, fz] = closeUp?.facing ?? []
   const mount = closeUp?.mount
+  const itemId = closeUp?.key.replace(/^tag:/, '')
   const [origin] = useState(from)
   const pose = useMemo(() => {
     if (cx === undefined) return roomView
@@ -84,9 +96,20 @@ export const RoomCamera = ({
             ? level.setY(FACING_RISE).normalize()
             : toward.normalize()
     const distance = mount === 'ceiling' ? CLOSE_UNDER : closeUp?.look && roomId ? CLOSE_UP_FACING : CLOSE_UP
+    // Turned or brought nearer if something stands in the way. Looking into a room, the walls in the way are cut.
+    const skip = (o: Parameters<typeof mayBlock>[0]) => !mayBlock(o, itemId, !focus)
+    const standing = (eye: Vector3) =>
+      !!focus &&
+      floor.walls.some(
+        (w) =>
+          crosses(w, floor.elevation, floor.elevation + wallHeight(w, floor), eye, item) &&
+          !focusCut(decidingWall(w, floor), [eye.x, eye.z], focus),
+      )
+    const turn = fx !== undefined ? TURN_FACING : TURN_ANY
+    const position = clearView(scene, item, back, distance, turn, skip, standing)
     // Keep the orbit's pivot on the item; the projection leaves space for its card.
-    return { position: item.clone().addScaledVector(back, distance), target: item }
-  }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin])
+    return { position, target: item }
+  }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin, scene, itemId, focus, floor])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
@@ -172,6 +195,9 @@ export const RoomCamera = ({
         />
       )}
       {pose && <ZoomToSurface />}
+      {closeUp && pose && itemId && (
+        <SeeThrough target={pose.target} itemId={itemId} resting={flying ? pose.position : undefined} />
+      )}
     </>
   )
 }
