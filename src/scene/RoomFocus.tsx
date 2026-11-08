@@ -168,11 +168,14 @@ export const RoomCamera = ({
       t.current = 0
       started.current = undefined
       midway.current = false
-    }
-    if (headingRoom.current !== roomId) {
-      roomFlight.kind = headingRoom.current ? 'switch' : 'enter'
+      roomFlight.kind = headingRoom.current === roomId ? 'none' : headingRoom.current ? 'switch' : 'enter'
       headingRoom.current = roomId
-    } else if (t.current === 0) roomFlight.kind = 'none'
+    }
+    // Into the room from the house: the first flight, with no pose before it.
+    if (headingRoom.current !== roomId) {
+      roomFlight.kind = 'enter'
+      headingRoom.current = roomId
+    }
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
       onView?.(camera.position, look, p.t < 1, p.current)
