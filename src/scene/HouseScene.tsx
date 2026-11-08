@@ -224,8 +224,8 @@ export const HouseScene = ({
   // A window's shade opened is seen from outside on the whole house: every floor and the roof, nothing cut or dimmed.
   const whole = !!open && !!shadeWall(open)
   const closeUp = open ? pins.find((p) => p.key === `tag:${open}`) : undefined
-  // Going from one room to another, the first one's blur eases away as the camera sets off, and the next one's only
-  // comes in once it's there.
+  // Going from one room to another, the first one's blur eases away as the camera sets off, and the next one's comes in
+  // over the second half of the flight.
   const [settled, setSettled] = useState(focusRoom)
   const [lastFocus, setLastFocus] = useState(focusRoom)
   if (lastFocus !== focusRoom) {
@@ -234,6 +234,8 @@ export const HouseScene = ({
   }
   // The room stays blurred round it a moment after it's left, for that to ease away.
   const blurHere = !!focusRoom && settled === focusRoom && !whole
+  // On the way between rooms the blur is only eased away, not taken down: putting it back up costs a shader compile.
+  const between = !!focusRoom && settled !== focusRoom && !whole
   const [blurred, setBlurred] = useState<{ floor: Floor; roomId: string }>()
   if (blurHere && (blurred?.roomId !== focusRoom || blurred.floor !== floors[floorIndex]))
     setBlurred({ floor: floors[floorIndex], roomId: focusRoom })
@@ -459,7 +461,7 @@ export const HouseScene = ({
                   ? { position: lastView.position.clone(), target: lastView.target.clone() }
                   : undefined
               }
-              onArrive={setSettled}
+              onMidway={setSettled}
               onView={(position, target, moving, framing) => {
                 // A close-up or a pose on the way is no view to stay in: leaving flies from it to the last settled one.
                 if (temporaryFocus || closeUp || moving) {
@@ -509,7 +511,8 @@ export const HouseScene = ({
               floor={blurred.floor}
               roomId={blurred.roomId}
               open={blurHere ? open : undefined}
-              leaving={!blurHere}
+              clear={between}
+              leaving={!blurHere && !between}
               onLeft={() => setBlurred(undefined)}
             />
           )}

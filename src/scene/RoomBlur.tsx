@@ -19,6 +19,9 @@ const DIM_IN = 220
 const DIM_OUT = 320
 /** How long the blur takes to clear after the room is left, in ms. */
 const BLUR_OUT = 500
+/** How long it takes to come in, and to clear on the way to another room: over a camera flight's second and first half. */
+const BLUR_IN = 500
+const BLUR_CLEAR = 300
 
 const ease = (t: number) => t * t * (3 - 2 * t)
 
@@ -55,6 +58,7 @@ export const RoomBlur = ({
   roomId,
   soften = true,
   open,
+  clear,
   leaving,
   onLeft,
 }: {
@@ -63,11 +67,13 @@ export const RoomBlur = ({
   /** Phones keep room picking and item dimming without the offscreen blur/compositing passes. */
   soften?: boolean
   open?: string
+  /** Eased away, but kept up for the next room (on the way to it). */
+  clear?: boolean
   leaving?: boolean
   onLeft?: () => void
 }) => {
   const redraw = useThree((s) => s.invalidate)
-  useEffect(() => redraw(), [open, leaving, redraw])
+  useEffect(() => redraw(), [open, clear, leaving, redraw])
   const dimming = useRef<Fade>({ value: 0 })
   // Eases in, so a room arrived at from another comes into focus rather than snapping.
   const blurring = useRef<Fade>({ value: 0 })
@@ -97,7 +103,13 @@ export const RoomBlur = ({
   useFrame(({ gl, scene, camera, size, invalidate }) => {
     const now = performance.now()
     const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
-    const blurMoving = step(blurring.current, leaving ? undefined : roomId, now, DIM_IN, BLUR_OUT)
+    const blurMoving = step(
+      blurring.current,
+      leaving || clear ? undefined : roomId,
+      now,
+      BLUR_IN,
+      clear ? BLUR_CLEAR : BLUR_OUT,
+    )
     if (dimMoving || blurMoving) invalidate()
     const blur = ease(blurring.current.value)
     const shown = dimming.current.item

@@ -41,7 +41,7 @@ export const RoomCamera = ({
   bottomInset = 0,
   from,
   onView,
-  onArrive,
+  onMidway,
 }: {
   floor: Floor
   roomId?: string
@@ -56,8 +56,8 @@ export const RoomCamera = ({
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
   onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
-  /** When a flight ends, with the room it ended in. */
-  onArrive?: (roomId: string | undefined) => void
+  /** Halfway through a flight, with the room it's flying to. */
+  onMidway?: (roomId: string | undefined) => void
 }) => {
   const size = useThree((s) => s.size)
   const scene = useThree((s) => s.scene)
@@ -117,6 +117,7 @@ export const RoomCamera = ({
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
   const started = useRef<number>(undefined)
+  const midway = useRef(false)
   // The pose the camera is flying to or resting at; another room picked flies over from wherever it is now.
   const heading = useRef(pose)
   const look = useMemo(() => new Vector3(), [])
@@ -156,6 +157,7 @@ export const RoomCamera = ({
       heading.current = pose
       t.current = 0
       started.current = undefined
+      midway.current = false
     }
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
@@ -173,10 +175,11 @@ export const RoomCamera = ({
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
     onView?.(camera.position, look, t.current < 1 || p.t < 1, p.current)
-    if (k >= 1) {
-      setFlying(false)
-      onArrive?.(roomId)
+    if (t.current >= 0.5 && !midway.current) {
+      midway.current = true
+      onMidway?.(roomId)
     }
+    if (k >= 1) setFlying(false)
     // Ahead of whatever goes by the camera this frame: mounted after it all, this would otherwise run last, and the
     // pins would be placed for one frame with the new camera still at the pose it's flying to.
   }, -1)
