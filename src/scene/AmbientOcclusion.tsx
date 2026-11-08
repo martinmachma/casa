@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import {
   Color,
   DepthTexture,
@@ -118,8 +118,15 @@ const restoreMaterial = (m: Material, p: Patched) => {
 }
 
 /** Half-resolution SSAO, applied in the material before tone mapping, including the layered room view. */
-export const AmbientOcclusion = () => {
+export const AmbientOcclusion = ({ enabled = true, shadowScale = 1 }: { enabled?: boolean; shadowScale?: number }) => {
   const tools = useMemo(() => makeTools(), [])
+  // The lighting/atlas patch is needed even without SSAO. A complete 1×1 texture keeps its sampler valid.
+  const enabledRef = useRef(enabled)
+  const aoTexture = useRef({ value: tools.blur.texture })
+  useLayoutEffect(() => {
+    enabledRef.current = enabled
+    aoTexture.current.value = enabled ? tools.blur.texture : tools.noise
+  }, [enabled, tools, aoTexture])
   const atlas = useMemo(() => new PointShadowAtlas(), [])
   const focus = useMemo(() => new Vector3(), [])
   // One normal material per way of drawing (side, clipping, offset), shared by every mesh drawn that way: the
@@ -158,6 +165,7 @@ export const AmbientOcclusion = () => {
       camera,
       (controls as { target?: Vector3 } | null)?.target ?? camera.getWorldPosition(focus),
       motionState.moving,
+      shadowScale,
     )
     const normals = normalsRef.current
     const patched = patchedRef.current
@@ -167,7 +175,8 @@ export const AmbientOcclusion = () => {
     const scale = Math.min(0.5, 960 / (Math.max(size.width, size.height) * dpr))
     const w = Math.max(1, Math.round(size.width * dpr * scale))
     const h = Math.max(1, Math.round(size.height * dpr * scale))
-    for (const rt of [tools.normal, tools.ao, tools.blur]) if (rt.width !== w || rt.height !== h) rt.setSize(w, h)
+    for (const rt of enabled ? [tools.normal, tools.ao, tools.blur] : [])
+      if (rt.width !== w || rt.height !== h) rt.setSize(w, h)
     const hidden: Object3D[] = []
     const replaced = new Map<Mesh, Material | Material[]>()
     const active = new Set<Material>()
@@ -190,7 +199,7 @@ export const AmbientOcclusion = () => {
               : fixtureLighting
             const wrapped: Material['onBeforeCompile'] = (shader, renderer) => {
               compile.call(m, shader, renderer)
-              shader.uniforms.casaAO = { value: tools.blur.texture }
+              shader.uniforms.casaAO = aoTexture.current
               shader.uniforms.casaViewport = viewportSize
               shader.uniforms.casaCeilingLights = ceilingMask.current
               shader.uniforms.casaAOAmount = aoAmount
@@ -210,7 +219,7 @@ export const AmbientOcclusion = () => {
             }
             const beforeRender: Material['onBeforeRender'] = (...args) => {
               render.apply(m, args)
-              aoAmount.value = m.transparent || section ? 0 : STRENGTH
+              aoAmount.value = !enabledRef.current || m.transparent || section ? 0 : STRENGTH
               gl.getCurrentViewport(viewport)
               viewportSize.value.set(viewport.z, viewport.w)
             }
@@ -232,6 +241,7 @@ export const AmbientOcclusion = () => {
             m.needsUpdate = true
           }
         }
+        if (!enabled) return
         // Fat lines (selection outlines) are meshes of instanced quads; drawn plain they'd be big phantom planes.
         if (
           (o as { isLineSegments2?: boolean }).isLineSegments2 ||
@@ -267,6 +277,7 @@ export const AmbientOcclusion = () => {
         o.material = Array.isArray(o.material) ? depthMaterials : depthMaterials[0]
       } else if ((o as { isLine?: boolean }).isLine || (o as { isSprite?: boolean }).isSprite) hidden.push(o)
     })
+    if (!enabled) return
     for (const o of hidden) o.visible = false
     const target = gl.getRenderTarget()
     const autoUpdate = gl.shadowMap.autoUpdate

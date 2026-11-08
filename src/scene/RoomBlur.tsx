@@ -53,12 +53,15 @@ const itemOf = (o: Object3D) => {
 export const RoomBlur = ({
   floor,
   roomId,
+  soften = true,
   open,
   leaving,
   onLeft,
 }: {
   floor: Floor
   roomId: string
+  /** Phones keep room picking and item dimming without the offscreen blur/compositing passes. */
+  soften?: boolean
   open?: string
   leaving?: boolean
   onLeft?: () => void
@@ -91,7 +94,6 @@ export const RoomBlur = ({
   const inRoom = useMemo(() => roomMeshClassifier(floor, roomId), [floor, roomId])
 
   useFrame(({ gl, scene, camera, size, invalidate }) => {
-    const tools = (kit.current ??= makeTools())
     const now = performance.now()
     const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
     const blurMoving = step(blurring.current, leaving ? undefined : roomId, now, DIM_IN, BLUR_OUT)
@@ -130,6 +132,29 @@ export const RoomBlur = ({
       }
     })
 
+    // A phone draws straight to the screen: no linear-output house variants to link on the first room tap.
+    // Sorting still limits picking to this room, and an opened item's dim and overlay stay available.
+    if (!soften) {
+      camera.layers.set(0)
+      gl.render(scene, camera)
+      if (shown) {
+        const tools = (kit.current ??= makeTools())
+        tools.dim.material.uniforms.alpha.value = DIM * ease(dimming.current.value)
+        const autoClear = gl.autoClear
+        const background = scene.background
+        gl.autoClear = false
+        gl.render(tools.dimScene, tools.camera)
+        scene.background = null
+        camera.layers.set(ITEM_LAYER)
+        gl.render(scene, camera)
+        scene.background = background
+        gl.autoClear = autoClear
+        camera.layers.set(0)
+      }
+      if (leaving) onLeft?.()
+      return
+    }
+    const tools = (kit.current ??= makeTools())
     // Sized and blurred by CSS pixels, not the drawing buffer's: the pixel ratio drops while the camera moves, and
     // the outside mustn't turn blurrier then and sharper again as it settles.
     const { a, b, quad, camera: flat } = tools

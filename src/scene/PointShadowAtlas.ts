@@ -43,7 +43,7 @@ export class PointShadowAtlas {
     this.target.scissorTest = true
   }
 
-  prepare(gl: WebGLRenderer, scene: Scene, camera: Camera, focus: Vector3, moving = false) {
+  prepare(gl: WebGLRenderer, scene: Scene, camera: Camera, focus: Vector3, moving = false, detail = 1) {
     scene.updateMatrixWorld()
     const lights = scenePointLights(scene, camera).filter((l) => l.castShadow)
     const current = new Set(lights)
@@ -57,7 +57,7 @@ export class PointShadowAtlas {
     // change it; dimming a bulb cannot change its brightness or its neighbours' quality priority.
     const distance = (l: PointLight) => {
       const d = Math.max(1, l.getWorldPosition(this.position).distanceToSquared(focus))
-      return d * (this.bindings.get(l)?.tile.size === 512 ? 0.75 : 1)
+      return d * (this.bindings.get(l)?.tile.size === 512 * detail ? 0.75 : 1)
     }
     // Changing the detailed set repacks the atlas and redraws many six-face shadows. Keep the allocation
     // while moving; MotionQuality asks for another frame when settled, when it can catch up once. Unless every
@@ -67,7 +67,7 @@ export class PointShadowAtlas {
     const ranked = keepDetail ? [] : [...lights].sort((a, b) => distance(a) - distance(b))
     const sizes = keepDetail
       ? new Map(lights.map((l) => [l, this.bindings.get(l)!.tile.size]))
-      : new Map(ranked.map((l, i) => [l, i < 4 ? 512 : i < 8 ? 256 : 128]))
+      : new Map(ranked.map((l, i) => [l, (i < 4 ? 512 : i < 8 ? 256 : 128) * detail]))
     const { width, height, tiles } = pointShadowLayout(
       lights.map((l) => sizes.get(l)!),
       Math.min(4096, gl.capabilities.maxTextureSize),

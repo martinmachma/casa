@@ -152,3 +152,21 @@ more than orbiting a static scene. Distant shadows lose fine detail as their res
 remain transparent to all point-light shadow passes, not only their own bulb. Cutaway furniture retains its
 complete physical shadow, matching the existing behaviour. The atlas integration follows Three r186's
 shadow viewport API and shader chunks; an engine upgrade needs visual verification of both.
+
+## Phone rendering and camera timing (2026-11-07)
+
+Coarse-pointer devices (including landscape phones) and windows up to 820 CSS pixels wide use a lighter graphics
+profile. The canvas stays at 1× DPR; directional and point-shadow faces are half the desktop width and height.
+Every bulb and physical occluder remains, with the same intensity, colour, reach and switching behaviour. The
+lighting/atlas material patch stays active while the SSAO normal, occlusion and blur passes are skipped.
+
+Focused rooms draw straight to the screen on phones, avoiding the offscreen house programs and blur passes.
+Room-only picking, item close-ups, dimming and controls remain. The desktop blur, AO and resolution are unchanged.
+Phones also skip background compilation of the blur programs they no longer use. The profile updates when the
+viewport or primary pointer changes; it applies in Edit as well as Home and changes no saved data.
+
+Room and return flights now advance by elapsed time from their first active frame, instead of capping every frame
+at 1/30 second. The cap stretched a nominal 1.1-second flight to 5.145 seconds in a local Chrome demo with 120 ms of
+artificial work per frame. With the fix, a phone-sized room flight took 1.136 seconds under the same artificial load;
+a light close-up took 1.107 seconds. These measure animation timing on this Mac, not FPS or a physical-phone benchmark.
+Phone checks also covered opening and switching a light: switching retained the same 22 shader programs.

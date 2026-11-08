@@ -21,6 +21,8 @@ import { distance, formatLength, type MeasuredLine, type Measurement, type Measu
 import { floorItems, outsideLight } from '../rooms/roomItems'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
 import type { SunPosition } from '../sun/sun'
+import { animationProgress } from './animation'
+import { useCompactGraphics } from './useCompactGraphics'
 import { AmbientOcclusion } from './AmbientOcclusion'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
 import { NEAR_PACE, PAN_SPEED, ZOOM_SPEED, type CameraNudge } from './cameraNudge'
@@ -202,6 +204,7 @@ export const HouseScene = ({
   pinRefs,
   onTapOutside,
 }: HouseSceneProps) => {
+  const compact = useCompactGraphics()
   const noPins = useRef(new Map<string, HTMLElement | null>())
   useEffect(() => {
     if (!focusRoom && camera === 'walk') lastView.returnFrom = undefined
@@ -414,7 +417,7 @@ export const HouseScene = ({
       <Canvas
         events={pointerEvents}
         shadows="percentage"
-        dpr={[1, 2]}
+        dpr={compact ? 1 : [1, 2]}
         frameloop="demand"
         onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
       >
@@ -492,6 +495,7 @@ export const HouseScene = ({
           <DebugHover copies={interaction === 'view'} />
           {blurred && (
             <RoomBlur
+              soften={!compact}
               floor={blurred.floor}
               roomId={blurred.roomId}
               open={blurHere ? open : undefined}
@@ -507,7 +511,7 @@ export const HouseScene = ({
             seen={whole ? pins.flatMap((p) => (p.key.startsWith('tag:') ? [p.key.slice(4)] : [])) : undefined}
           />
           <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
-          <Lights sun={sun} north={north} center={[cx, floor.elevation, cz]} />
+          <Lights compact={compact} sun={sun} north={north} center={[cx, floor.elevation, cz]} />
           <HouseLights
             floors={floors}
             litFloorCount={litFloorCount}
@@ -722,8 +726,8 @@ export const HouseScene = ({
               )
             })}
           <ShadowUpdates />
-          <AmbientOcclusion />
-          <WarmShaders ready={!data.loading} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
+          <AmbientOcclusion enabled={!compact} shadowScale={compact ? 0.5 : 1} />
+          <WarmShaders ready={!data.loading && !compact} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
         </ViewedFloor.Provider>
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />
@@ -860,12 +864,14 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   }, [])
   const flight = useRef(start.from ? 0 : 1)
   const framing = useMemo(() => ({ zoom: start.zoom, offsetY: 0 }), [start.zoom])
+  const flightStarted = useRef<number>(undefined)
   const [flying, setFlying] = useState(!!start.from)
-  useFrame(({ camera, controls, invalidate }, delta) => {
+  useFrame(({ camera, controls, invalidate }) => {
     const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
     if (orbit && start.from && flight.current < 1) {
-      // A view that's been idle carries a large first delta; keep the return flight from skipping ahead.
-      flight.current = Math.min(1, flight.current + Math.min(delta, 1 / 30) / RETURN_SECONDS)
+      const now = performance.now()
+      flightStarted.current ??= now
+      flight.current = animationProgress(flightStarted.current, now, RETURN_SECONDS)
       const k = easeInOut(flight.current)
       camera.position.lerpVectors(start.from.position, start.position, k)
       orbit.target.lerpVectors(start.from.target, start.target, k)
