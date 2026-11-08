@@ -1,7 +1,5 @@
 import type { Device } from '../data/types'
-import type { ReactNode } from 'react'
 import { ELECTRICAL_ROUTES } from '../devices/electrical'
-import { DEVICE_KINDS } from '../devices/kinds'
 import { deviceRoom } from '../devices/place'
 import { floorRegions } from '../layout/rooms'
 import { roomLabel } from '../layout/roomName'
@@ -110,36 +108,3 @@ export const ElectricalPanel = ({
     </>
   )
 }
-
-export const ElectricalDetails = ({
-  device,
-  room,
-  onClose,
-  children,
-}: {
-  device: Device
-  room?: string
-  onClose: () => void
-  children?: ReactNode
-}) => (
-  <>
-    <PanelHead
-      eyebrow={DEVICE_KINDS[device.kind].label}
-      title={device.name}
-      sub={[room, `${Math.round(device.z * 100)} cm above floor`].filter(Boolean).join(' · ')}
-      onClose={onClose}
-    />
-    {children}
-    <Section>
-      <p>
-        <strong>{device.plan!.symbol}</strong>
-      </p>
-      {device.plan!.ports && (
-        <p>
-          {device.plan!.ports} {device.kind === 'data' ? 'RJ45 ports' : 'outlet'}
-        </p>
-      )}
-      {device.plan!.notes && <p className="hint">{device.plan!.notes}</p>}
-    </Section>
-  </>
-)

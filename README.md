@@ -3,6 +3,8 @@
 Our house in 3D: walls traced from the plan, paint colours per wall side, and box furniture you can drag around. A
 Vite + React + TypeScript PWA using React Three Fiber, backed by Supabase and deployed on Vercel.
 
+> Agent/contributor guidance: [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md). The code map below is partly out of date; the architecture doc is current.
+
 ## Run it
 
 ```bash
@@ -21,7 +23,8 @@ saved only in this browser's localStorage.
 | `npm run preview`   | serve the production build locally                       |
 | `npm run lint`      | eslint (`npm run format` runs prettier)                  |
 | `npm run typecheck` | `tsc -b`                                                 |
-| `npm test`          | vitest: wall splitting, layout validation, wall snapping |
+| `npm test`          | vitest: core logic (geometry, snapping, collision, ...)  |
+| `npm run check`     | typecheck + tests                                        |
 | `npm run icons`     | regenerate PWA icons from `public/favicon.svg`           |
 
 ## One-time setup
@@ -174,7 +177,7 @@ The two panel buttons in the top bar tuck either side away (on a phone they slid
   `house.json` (degrees clockwise from the plan's up), along with the exact `latitude`/`longitude` (Prague for now).
 - **Floors** (top bar) show that floor plus the ones below it (for context; only the current floor is tappable).
 - **Plan** is a top-down view (drag to pan, scroll/pinch to zoom); **3D** orbits.
-- **Walk** puts you in the biggest room at eye height (1.6 m). Drag to look around; walk with W A S D or the
+- **Walk** puts you in the biggest room at eye height (1.6 m). The mouse is captured: it looks around and a crosshair aims every click; Esc frees it and a click on the view takes it back, and it frees itself for panels and Edit (where you drag to look, as on a touch screen). Walk with W A S D or the
   arrow keys (Q/E or ←/→ turn), or the on-screen buttons. Walls stop you except at doors, and so does furniture;
   the house button takes you back to the start. The floor above is drawn as a ceiling so sunlight comes in through
   the windows.

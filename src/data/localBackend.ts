@@ -1,3 +1,4 @@
+import type { Order } from '../lib/order'
 import type { RoomOrder } from '../rooms/roomOrder'
 import type { Backend, Version } from './types'
 
@@ -28,6 +29,7 @@ const channel = typeof BroadcastChannel === 'undefined' ? undefined : new Broadc
 const announce = () => channel?.postMessage('changed')
 
 let demoRoomOrder: RoomOrder | undefined
+let demoSceneOrder: Order | undefined
 
 const versions = () => read<Version[]>(VERSIONS_KEY, [])
 
@@ -85,10 +87,14 @@ export const localBackend: Backend = {
     return true
   },
 
-  // The demo has no one signed in, so the room order lasts until the page is reloaded.
+  // The demo has no one signed in, so the room and scene orders last until the page is reloaded.
   loadRoomOrder: async () => demoRoomOrder,
   saveRoomOrder: async (order) => {
     demoRoomOrder = order
+  },
+  loadSceneOrder: async () => demoSceneOrder,
+  saveSceneOrder: async (order) => {
+    demoSceneOrder = order
   },
 
   subscribe: (onChange) => {

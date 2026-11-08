@@ -3,6 +3,7 @@ import { memo, useMemo, useRef } from 'react'
 import { FrontSide, Quaternion, Vector2, Vector3, type Group } from 'three'
 import type { FurnitureItem } from '../data/types'
 import type { Fixture, Floor } from '../layout/types'
+import { FollowCut } from './CutawayWall'
 import { useItemCut } from './ItemCut'
 import { MergeParts } from './MergeParts'
 import { Radiator } from './Radiator'
@@ -155,8 +156,9 @@ const WaterTank = ({ fixture }: { fixture: Fixture }) => {
 }
 
 /** One fixture, cut down with the walls like a piece of furniture when it's in the way. */
-const FixtureModel = memo(({ fixture, floor, cutaway }: { fixture: Fixture; floor: Floor; cutaway: boolean }) => {
+const FixtureModel = memo(({ fixture, floor }: { fixture: Fixture; floor: Floor }) => {
   const group = useRef<Group>(null)
+  const cutaway = useRef(false)
   const item = useMemo((): FurnitureItem => ({ ...fixture, floor: floor.id, color: CASING }), [fixture, floor.id])
   useItemCut(group, item, floor, cutaway)
   return (
@@ -170,21 +172,22 @@ const FixtureModel = memo(({ fixture, floor, cutaway }: { fixture: Fixture; floo
           <Boiler fixture={fixture} />
         ) : fixture.kind === 'waterTank' ? (
           <WaterTank fixture={fixture} />
-        ) : fixture.kind === 'shower' || fixture.kind === 'vanity' || fixture.kind === 'toilet' ? (
+        ) : ['shower', 'vanity', 'basin', 'toilet'].includes(fixture.kind) ? (
           <BathroomFitting fixture={fixture} />
         ) : (
           <Radiator fixture={fixture} />
         )}
       </MergeParts>
+      <FollowCut intoRef={cutaway} />
     </group>
   )
 })
 
 /** The floor's built-in heating and bathroom fittings, shared by every saved version. */
-export const Fixtures = ({ floor, cutaway }: { floor: Floor; cutaway: boolean }) => (
+export const Fixtures = memo(({ floor }: { floor: Floor }) => (
   <>
     {(floor.fixtures ?? []).map((f) => (
-      <FixtureModel key={f.id} fixture={f} floor={floor} cutaway={cutaway} />
+      <FixtureModel key={f.id} fixture={f} floor={floor} />
     ))}
   </>
-)
+))

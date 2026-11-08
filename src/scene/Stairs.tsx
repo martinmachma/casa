@@ -1,5 +1,5 @@
 import { FrontSide } from 'three'
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import type { Floor, Point } from '../layout/types'
 import { floorBump, floorTexture, STAIR_FLOOR } from './floorMaterials'
 import { RAILING } from './palette'
@@ -44,7 +44,7 @@ type StairsProps = {
 }
 
 /** The floor's stairs, rising evenly from its surface to the next floor's. */
-export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
+export const Stairs = memo(({ floor, next, cut = Infinity }: StairsProps) => {
   const steps = floor.stairs?.steps
   const rise = steps ? (next.elevation - floor.elevation) / steps.length : 0
   const geometries = useMemo(
@@ -77,10 +77,10 @@ export const Stairs = ({ floor, next, cut = Infinity }: StairsProps) => {
       ))}
     </group>
   )
-}
+})
 
 /** Handrails with a glass infill along the floor's railings. */
-export const Railings = ({ floor }: { floor: Floor }) => (
+export const Railings = memo(({ floor }: { floor: Floor }) => (
   <group position={[0, floor.elevation, 0]}>
     {(floor.railings ?? []).flatMap((line, li) =>
       line.slice(1).map((to, k) => {
@@ -112,4 +112,4 @@ export const Railings = ({ floor }: { floor: Floor }) => (
       }),
     )}
   </group>
-)
+))

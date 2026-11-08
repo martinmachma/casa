@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { FrontSide, MeshBasicMaterial } from 'three'
 import type { Floor, Roof } from '../layout/types'
 import { houseSolid } from './houseGeometry'
@@ -10,23 +10,25 @@ const shadowOnly = new MeshBasicMaterial({ colorWrite: false, depthWrite: false,
  * The whole house casting its shadow, whichever floor is shown and whichever walls are cut away.
  * It's invisible and unpickable; the visible walls, slabs and roof leave the shadow to it.
  */
-export const HouseShadow = ({
-  floors,
-  roof,
-  openDoors,
-  groundLevel,
-}: {
-  floors: Floor[]
-  roof: Roof | undefined
-  groundLevel?: number
-  openDoors: ReadonlySet<string>
-}) => {
-  const geometry = useMemo(
-    () => houseSolid(floors, roof, openDoors, groundLevel),
-    [floors, roof, openDoors, groundLevel],
-  )
-  useEffect(() => () => geometry.dispose(), [geometry])
-  return (
-    <mesh geometry={geometry} material={shadowOnly} userData={{ shadowOnly: true }} castShadow raycast={() => null} />
-  )
-}
+export const HouseShadow = memo(
+  ({
+    floors,
+    roof,
+    openDoors,
+    groundLevel,
+  }: {
+    floors: Floor[]
+    roof: Roof | undefined
+    groundLevel?: number
+    openDoors: ReadonlySet<string>
+  }) => {
+    const geometry = useMemo(
+      () => houseSolid(floors, roof, openDoors, groundLevel),
+      [floors, roof, openDoors, groundLevel],
+    )
+    useEffect(() => () => geometry.dispose(), [geometry])
+    return (
+      <mesh geometry={geometry} material={shadowOnly} userData={{ shadowOnly: true }} castShadow raycast={() => null} />
+    )
+  },
+)

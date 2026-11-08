@@ -1,5 +1,5 @@
 import type { Device, FurnitureItem } from '../data/types'
-import { lightPosition } from '../devices/place'
+import { lightPosition, overVoid } from '../devices/place'
 import { groundLevel } from '../layout/ground'
 import { house } from '../layout/layout'
 import type { Floor } from '../layout/types'
@@ -53,15 +53,18 @@ export const HouseLights = ({ floors, litFloorCount, devices, furniture, level, 
   for (const [index, f] of floors.entries()) {
     const brightness = (id: string) => (index < litFloorCount ? level(id) : 0)
     for (const d of devices)
-      if (d.floor === f.id && d.kind === 'light')
+      if (d.floor === f.id && d.kind === 'light') {
+        // A light over the stairwell shines down it onto the floor below, even with its own floor left off.
+        const lit = index === litFloorCount && overVoid(d, f) ? level(d.id) : brightness(d.id)
         bulbs.push({
           id: d.id,
           downlight: d.wall ? WALL_DOWNLIGHT : 1,
           shadowRadius: d.wall ? WALL_SHADOW_RADIUS : SHADOW_RADIUS,
           position: lightPosition(d, f),
-          intensity: CEILING_INTENSITY * brightness(d.id),
+          intensity: CEILING_INTENSITY * lit,
           color: tint(d.id),
         })
+      }
     for (const item of furniture)
       if (item.floor === f.id && isLamp(item.model))
         bulbs.push({

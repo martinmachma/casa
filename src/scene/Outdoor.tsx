@@ -1,6 +1,6 @@
 import { Line } from '@react-three/drei'
 import { FrontSide } from 'three'
-import { useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import type { GardenBlock, Outdoor as OutdoorLayout, Point, Shed } from '../layout/types'
 import { surroundingsTexture } from './groundTexture'
 import { COPING, DEFAULT_WALL, EXTERIOR_FRAME, HEDGE, LAWN, PAVING, PLOT_EDGE, SHED_ROOF, SHED_WOOD } from './palette'
@@ -17,7 +17,7 @@ const GROUND_DROP = 0.01
 const noRaycast = () => null
 
 /** The plot: lawn, the paved terrace and front, the shed and the bits standing in the front yard, edged and set in soft blurred surroundings. */
-export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
+export const Outdoor = memo(({ outdoor }: { outdoor: OutdoorLayout }) => {
   const lawn = useMemo(() => prismGeometry(outdoor.garden, LAWN_DEPTH), [outdoor.garden])
   const terrace = useMemo(
     () => prismGeometry(outdoor.terrace.outline, outdoor.terrace.level - outdoor.level),
@@ -64,7 +64,7 @@ export const Outdoor = ({ outdoor }: { outdoor: OutdoorLayout }) => {
       ))}
     </group>
   )
-}
+})
 
 /** Paving laid on the lawn, its top at `level`. */
 const Paving = ({ outline, level, ground }: { outline: Point[]; level: number; ground: number }) => {

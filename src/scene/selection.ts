@@ -12,3 +12,6 @@ export type CameraMode = 'top' | 'orbit' | 'walk'
  * paint the walls.
  */
 export type Interaction = 'view' | 'edit' | 'measure' | 'paint'
+
+/** What's being edited: everything fitted and standing in the rooms, or the scenes that set the lights and shades. */
+export type EditMode = 'interior' | 'scenes'

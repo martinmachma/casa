@@ -22,13 +22,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png', 'textures/wc-patterned-stone.jpg'],
       manifest: {
         name: 'Casa',
         short_name: 'Casa',
         description: 'Our house: walls, colours and furniture.',
-        theme_color: '#ffffff',
-        background_color: '#f4f2ee',
+        theme_color: '#0b0f11',
+        background_color: '#0b0f11',
         display: 'standalone',
         start_url: '/',
         icons: [

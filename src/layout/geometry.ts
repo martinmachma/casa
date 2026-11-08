@@ -283,7 +283,7 @@ export const wallJoints = (wall: Wall, floor: Floor): Record<WallSide, number[]>
     return { u: dx * dir[0] + dz * dir[1], d: dx * nx + dz * nz }
   }
   for (const other of floor.walls) {
-    if (other.id === wall.id) continue
+    if (other.id === wall.id || other.roomBoundary === false) continue
     for (const [end, far] of [
       [other.from, other.to],
       [other.to, other.from],

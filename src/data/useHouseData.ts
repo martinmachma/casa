@@ -15,8 +15,10 @@ import type {
 } from './types'
 import { EMPTY_STATE, wallColorKey } from './types'
 import { ELECTRICAL_DEVICES } from '../devices/electrical'
+import type { Scene } from '../devices/scenes'
 import { house } from '../layout/layout'
 import { withBuiltInFixtures } from './builtInFixtures'
+import { withBuiltInFinishes } from './builtInFinishes'
 
 /** What is being looked at: whichever version is live, the bare house, or one version by id. */
 export type Viewing = typeof LIVE | typeof BARE | string
@@ -38,7 +40,9 @@ type History = { draft: Draft | undefined; past: (Draft | undefined)[]; future: 
 const HISTORY_LIMIT = 100
 
 const NO_VERSIONS: Version[] = []
-const BARE_STATE = withBuiltInFixtures(EMPTY_STATE, house.floors)
+const NO_SCENES: Scene[] = []
+const withBuiltIns = (state: HouseState) => withBuiltInFinishes(withBuiltInFixtures(state, house.floors), house.floors)
+const BARE_STATE = withBuiltIns(EMPTY_STATE)
 
 /** Deep equality of plain JSON data, whatever order object keys come in (the database stores them sorted). */
 export const sameJson = (a: unknown, b: unknown): boolean => {
@@ -61,7 +65,7 @@ const readDraft = (backend: Backend): Draft | undefined => {
     const raw = localStorage.getItem(draftKey(backend))
     if (!raw) return undefined
     const draft = JSON.parse(raw) as Draft
-    return { ...draft, state: withBuiltInFixtures(draft.state, house.floors) }
+    return { ...draft, state: withBuiltIns(draft.state) }
   } catch {
     return undefined
   }
@@ -118,7 +122,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const versions = useMemo(
     () =>
       savedVersions.map((version) => {
-        const data = withBuiltInFixtures(version.data, house.floors)
+        const data = withBuiltIns(version.data)
         return data === version.data ? version : { ...version, data }
       }),
     [savedVersions],
@@ -161,8 +165,8 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     return !sameHouse(draft.state, base)
   }, [draft, versions])
 
-  // Ask before leaving with edits that aren't saved as a version. Away from planning there are none to lose
-  // (leaving planning discards them, and a draft kept from an earlier visit waits on this device), so leaving is quiet.
+  // Ask before leaving with edits that aren't saved as a version. Away from Edit there are none to lose
+  // (leaving Edit discards them, and a draft kept from an earlier visit waits on this device), so leaving is quiet.
   const warnOnLeave = dirty && !liveOnly
   useEffect(() => {
     if (!warnOnLeave) return
@@ -172,7 +176,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   }, [warnOnLeave])
 
   // A version deleted elsewhere falls back to the live one.
-  // At home only the saved live version shows; the draft waits for planning.
+  // At home only the saved live version shows; the draft waits for Edit.
   const viewedId =
     liveOnly || viewing === LIVE
       ? liveId
@@ -184,7 +188,11 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const viewed = versions.find((v) => v.id === viewedId)
   const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? BARE_STATE
   // Built-in electrical infrastructure is shared by every version, including old snapshots and the bare house.
-  const devices = useMemo(() => [...ELECTRICAL_DEVICES, ...(state.devices ?? [])], [state.devices])
+  const devices = useMemo(() => {
+    const names = new Map((state.deviceNames ?? []).map((n) => [n.deviceId, n.name]))
+    const built = ELECTRICAL_DEVICES.map((d) => (names.has(d.id) ? { ...d, name: names.get(d.id)! } : d))
+    return [...built, ...(state.devices ?? [])]
+  }, [state.devices, state.deviceNames])
 
   const wallColors = useMemo(
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
@@ -266,7 +274,29 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const patchDevice = (id: string, patch: Partial<Device>, key?: string) =>
     edit((s) => ({ ...s, devices: (s.devices ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)) }), key)
 
+  /** Names a device from the electrical plan; its plan name takes it back to having none of its own. */
+  const renameDevice = (id: string, name: string) =>
+    edit((s) => {
+      const others = (s.deviceNames ?? []).filter((n) => n.deviceId !== id)
+      const planned = ELECTRICAL_DEVICES.some((d) => d.id === id && d.name === name)
+      const deviceNames = planned ? others : [...others, { deviceId: id, name }]
+      return { ...s, deviceNames: deviceNames.length ? deviceNames : undefined }
+    })
+
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
+
+  /** Adds scenes as one undo step. */
+  const addScenes = (...scenes: Scene[]) => edit((s) => ({ ...s, scenes: [...(s.scenes ?? []), ...scenes] }))
+
+  /** Changes a scene; changes with the same `key` (one slider being dragged) undo as one step. */
+  const changeScene = (id: string, change: (scene: Scene) => Scene, key?: string) =>
+    edit((s) => ({ ...s, scenes: (s.scenes ?? []).map((scene) => (scene.id === id ? change(scene) : scene)) }), key)
+
+  const removeScene = (id: string) =>
+    edit((s) => {
+      const scenes = (s.scenes ?? []).filter((scene) => scene.id !== id)
+      return { ...s, scenes: scenes.length ? scenes : undefined }
+    })
 
   // The version made live by someone else since editing began; the bare house is `null`. Drafts kept from before
   // this was noted count from the version they started on.
@@ -346,7 +376,12 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     devices,
     addDevice,
     patchDevice,
+    renameDevice,
     removeDevice,
+    scenes: state.scenes ?? NO_SCENES,
+    addScenes,
+    changeScene,
+    removeScene,
   }
 }
 

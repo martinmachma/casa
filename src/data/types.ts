@@ -1,3 +1,5 @@
+import type { Scene } from '../devices/scenes'
+import type { Order } from '../lib/order'
 import type { RoomOrder } from '../rooms/roomOrder'
 import type { WallFace, WallSide } from '../layout/types'
 
@@ -52,6 +54,9 @@ export type FurnitureItem = {
 /** A name given to a room, replacing the plan's; the plan number stays. */
 export type RoomName = { roomId: string; name: string }
 
+/** A name given to a light from the electrical plan, replacing the plan's. */
+export type DeviceName = { deviceId: string; name: string }
+
 export type NewFurnitureItem = Omit<FurnitureItem, 'id'>
 
 export type DeviceKind =
@@ -100,6 +105,8 @@ export type NewDevice = Omit<Device, 'id'>
 
 /** Everything placed in the house: what a version records. */
 export type HouseState = {
+  /** Fixed room redesigns already applied, so subsequent paint edits survive saving and reopening. */
+  builtInFinishes?: string[]
   /** Built-in fittings whose older catalog equivalents have already been retired from this state. */
   builtInFixtures?: string[]
   walls: WallColor[]
@@ -110,6 +117,10 @@ export type HouseState = {
   rooms?: RoomName[]
   /** Absent in versions saved before devices could be placed. */
   devices?: Device[]
+  /** Absent in versions saved before the electrical plan's lights could be renamed. */
+  deviceNames?: DeviceName[]
+  /** Absent in versions saved before scenes were kept with the house. */
+  scenes?: Scene[]
 }
 
 export const EMPTY_STATE: HouseState = { walls: [], wallAreas: [], furniture: [], rooms: [], devices: [] }
@@ -140,6 +151,9 @@ export type Backend = {
   /** The signed-in person's order of the room menu; undefined until they first arrange it. */
   loadRoomOrder: () => Promise<RoomOrder | undefined>
   saveRoomOrder: (order: RoomOrder) => Promise<void>
+  /** The signed-in person's scenes shown on the phone, then the rest; undefined until they first arrange them. */
+  loadSceneOrder: () => Promise<Order | undefined>
+  saveSceneOrder: (order: Order) => Promise<void>
   /** Calls `onChange` whenever versions or the live one may have changed elsewhere. Returns the unsubscribe. */
   subscribe: (onChange: () => void) => () => void
 }

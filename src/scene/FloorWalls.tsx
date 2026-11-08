@@ -1,5 +1,5 @@
 import { useThree, type ThreeElements, type ThreeEvent } from '@react-three/fiber'
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   BoxGeometry,
   BufferAttribute,
@@ -42,10 +42,10 @@ import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
 import { wallPartColor, type NewWallArea, type WallArea } from '../data/types'
 import type { ShadeState } from '../devices/shades'
 import { DEFAULT_WALL, SELECTED_OUTLINE, WALL_CAP } from './palette'
-import { OpeningFills } from './OpeningFills'
+import { OpeningFills, OpeningTaps } from './OpeningFills'
 import { BathroomWallTiles } from './BathroomWallTiles'
 import { raycastIfShown } from './raycast'
-import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
+import { CutAway, CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 
 // Keep overlapping end caps just inside the neighbouring wall's face to avoid z-fighting.
 const CORNER_INSET = 0.002
@@ -218,51 +218,49 @@ export const FloorWalls = ({
       window.removeEventListener('keydown', key, { capture: true })
     }
   }, [painting, getState, showPreview, onPaint])
+  const taps = useMemo(() => ({ clickable: doors, onPickShade }), [doors, onPickShade])
   return (
-    <group>
-      {floor.walls.map((wall) => (
-        <WallMesh
-          key={wall.id}
-          cutaway={cutaway}
-          focus={focus}
-          wall={wall}
-          floor={floor}
-          colors={colors}
-          areas={areas}
-          interactive={interactive}
-          doors={doors}
-          openDoors={openDoors}
-          onToggleDoor={onToggleDoor}
-          shades={shades}
-          onPickShade={onPickShade}
-          onHoverShade={onHoverShade}
-          hoveredShade={hoveredShade}
-          onTap={onTap}
-          brush={brush}
-          preview={brush && preview?.wallId === wallOwner(wall, floor).id ? preview : undefined}
-          onPreview={showPreview}
-          startRef={start}
-          onPaintWall={onPaintWall}
-        />
-      ))}
-    </group>
+    <CutAway.Provider value={cutaway}>
+      <OpeningTaps.Provider value={taps}>
+        <group>
+          {floor.walls.map((wall) => (
+            <WallMesh
+              key={wall.id}
+              focus={focus}
+              wall={wall}
+              floor={floor}
+              colors={colors}
+              areas={areas}
+              interactive={interactive}
+              openDoors={openDoors}
+              onToggleDoor={onToggleDoor}
+              shades={shades}
+              onHoverShade={onHoverShade}
+              hoveredShade={hoveredShade}
+              onTap={onTap}
+              brush={brush}
+              preview={brush && preview?.wallId === wallOwner(wall, floor).id ? preview : undefined}
+              onPreview={showPreview}
+              startRef={start}
+              onPaintWall={onPaintWall}
+            />
+          ))}
+        </group>
+      </OpeningTaps.Provider>
+    </CutAway.Provider>
   )
 }
 
 type WallMeshProps = {
-  cutaway: boolean
   focus?: Focus
   wall: Wall
   floor: Floor
   colors: Map<string, string>
   areas: WallArea[]
   interactive: boolean
-  doors: boolean
   openDoors: ReadonlySet<string>
   onToggleDoor: (id: string) => void
   shades: Readonly<Record<string, ShadeState>>
-  /** Opens a shade's controls when it's tapped. */
-  onPickShade?: (id: string) => void
   /** The shade pointed at, while shades can be picked. */
   onHoverShade?: (id: string | undefined) => void
   hoveredShade?: string
@@ -279,19 +277,16 @@ type WallMeshProps = {
 // Switching back must name the default: R3F leaves a raycast set to undefined unset, and nothing gets hit.
 const noRaycast = () => null
 
-const WallMesh = ({
-  cutaway,
+const WallMeshParts = ({
   focus,
   wall,
   floor,
   colors,
   areas: allAreas,
   interactive,
-  doors,
   openDoors,
   onToggleDoor,
   shades,
-  onPickShade,
   onHoverShade,
   hoveredShade,
   onTap,
@@ -680,14 +675,11 @@ const WallMesh = ({
         exterior={isExteriorWall(wall, floor)}
         outside={outside}
         thickness={thickness}
-        clickable={doors}
         openDoors={openDoors}
         onToggleDoor={onToggleDoor}
         shades={shades}
-        onPickShade={onPickShade}
         onHoverShade={onHoverShade}
         hoveredShade={hoveredShade}
-        ghostShades={cutaway}
         top={top}
       />
     )
@@ -697,7 +689,6 @@ const WallMesh = ({
       <CutawayWall
         wall={wall}
         floor={floor}
-        cutaway={cutaway}
         focus={focus}
         full={
           <>
@@ -721,7 +712,6 @@ const WallMesh = ({
             key={id}
             wall={wall}
             floor={floor}
-            cutaway={cutaway}
             focus={focus}
             decider={floor.walls.find((w) => w.id === id)}
             full={
@@ -742,6 +732,8 @@ const WallMesh = ({
     </>
   )
 }
+
+const WallMesh = memo(WallMeshParts)
 
 /** A wall piece: its size, where its middle is, and its faces' colours in BoxGeometry's order (+x, -x, top, bottom, a, b). */
 type WallBox = {

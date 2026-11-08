@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Group, Material, Mesh, Object3D } from 'three'
 import { animating } from './MotionQuality'
 
@@ -10,6 +10,9 @@ export const GHOST_OPACITY = 0.35
 type Own = { opacity: number; transparent: boolean; depthWrite: boolean }
 // Each faded material's own settings, to go back to once it's fully shown again.
 const own = new Map<Material, Own>()
+
+/** The floor in view, or outside. Going from one to another cuts straight to it: nothing that follows from that fades. */
+export const ViewedFloor = createContext('')
 
 /** A material's own opacity settings, as they are when it isn't faded. */
 export const unfaded = (m: Material): Own =>
@@ -61,13 +64,15 @@ export const fadedAway = (o: Object3D) => {
 }
 
 /**
- * Fades its contents in when shown and out when hidden. Whatever is shown from the start is just there. Faded away
- * they stay mounted, only not drawn: taking them down would rebuild a whole floor, and link its shaders again, on
+ * Fades its contents in when shown and out when hidden. Whatever is shown from the start, or by a switch of floor, is
+ * just there. Faded away they stay mounted, only not drawn: taking them down would rebuild a whole floor, and link its shaders again, on
  * every switch.
  */
 export const Fade = ({ shown, children }: { shown: boolean; children: ReactNode }) => {
   const group = useRef<Group>(null)
   const k = useRef(shown ? 1 : 0)
+  const viewed = useContext(ViewedFloor)
+  const lastViewed = useRef(viewed)
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => redraw(), [shown, redraw])
   useLayoutEffect(() => {
@@ -81,8 +86,10 @@ export const Fade = ({ shown, children }: { shown: boolean; children: ReactNode 
   useFrame(({ invalidate }, delta) => {
     const g = group.current
     const target = shown ? 1 : 0
+    const switched = lastViewed.current !== viewed
+    lastViewed.current = viewed
     if (!g || (k.current === target && g.userData.fade === target)) return
-    k.current = fadeStep(k.current, target, delta)
+    k.current = switched ? target : fadeStep(k.current, target, delta)
     g.userData.fade = k.current
     g.userData.fadedAway = !k.current
     g.visible = !!k.current

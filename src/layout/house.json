@@ -197,9 +197,53 @@
               "height": 1.97
             }
           ]
+        },
+        {
+          "id": "g-wc-frame",
+          "against": "g-west",
+          "roomBoundary": false,
+          "from": [0.2755, 6.488],
+          "to": [0.2755, 5.366],
+          "thickness": 0.15,
+          "height": 1.2
+        },
+        {
+          "id": "g-wc-basin-frame",
+          "against": "g-storage-wc",
+          "roomBoundary": false,
+          "from": [0.3505, 5.416],
+          "to": [2.335, 5.416],
+          "thickness": 0.1,
+          "height": 1.2
         }
       ],
       "fixtures": [
+        {
+          "id": "g-wc-toilet",
+          "name": "Wall-hung WC on the left wall",
+          "kind": "toilet",
+          "replaces": { "room": "g-wc", "models": ["toilet"] },
+          "x": 0.6205,
+          "y": 6.05,
+          "rotation": -1.5707963267948966,
+          "width": 0.37,
+          "depth": 0.54,
+          "height": 0.26,
+          "z": 0.18
+        },
+        {
+          "id": "g-wc-basin",
+          "name": "Small wall-hung basin with chrome tap and exposed trap",
+          "kind": "basin",
+          "replaces": { "room": "g-wc", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
+          "x": 1.4,
+          "y": 5.596,
+          "rotation": 0,
+          "width": 0.4,
+          "depth": 0.26,
+          "height": 0.13,
+          "z": 0.72
+        },
         {
           "id": "g-dining-radiator",
           "name": "Dining radiator by the terrace glazing",
@@ -425,7 +469,7 @@
           "name": "Bathroom heated towel rail",
           "kind": "towelRail",
           "x": 3.8805,
-          "y": 1.85,
+          "y": 1.91,
           "rotation": -1.5707963267948966,
           "width": 0.5,
           "depth": 0.08,
@@ -450,7 +494,7 @@
           "name": "Floating walnut vanity with inset basin",
           "kind": "vanity",
           "replaces": { "room": "u-bath", "models": ["bathroomSink", "bathroomCabinetDrawer"] },
-          "x": 4.0405,
+          "x": 4.1305,
           "y": 0.91,
           "rotation": -1.5707963267948966,
           "width": 1,
@@ -593,6 +637,15 @@
           "to": [3.7505, 3.21]
         },
         {
+          "id": "u-bath-basin-frame",
+          "against": "u-205-bath",
+          "roomBoundary": false,
+          "from": [3.8505, 0.3855],
+          "to": [3.8505, 1.5855],
+          "thickness": 0.1,
+          "height": 1.2
+        },
+        {
           "id": "u-bath-south",
           "from": [3.7505, 3.21],
           "to": [6.138, 3.21],
@@ -648,9 +701,9 @@
         {
           "id": "u-shaft-s14",
           "against": "u-205-south",
-          "from": [0.2005, 3.01],
-          "to": [0.6155, 3.01],
-          "thickness": 0.3
+          "from": [0.408, 2.9525],
+          "to": [0.443, 2.9525],
+          "thickness": 0.415
         },
         {
           "id": "u-shaft-s15",

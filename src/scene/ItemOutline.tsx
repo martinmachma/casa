@@ -1,8 +1,10 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
+import { GHOST_OPACITY } from './Fade'
 import {
   Color,
   type Camera,
+  HalfFloatType,
   type Light,
   type WebGLRenderer,
   Mesh,
@@ -31,10 +33,35 @@ const WIDTH = 2
 
 const ease = (t: number) => t * t * (3 - 2 * t)
 
+const QUAD = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }'
+const clearColor = new Color()
+
 const makeTools = () => {
   const mask = new WebGLRenderTarget(1, 1)
+  // The item as it's lit, on nothing, laid over the view like a ghosted shade. Half float, as a light's glow runs past 1.
+  const ghost = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 })
+  const flatQuad = new PlaneGeometry(2, 2)
+  const veil = new Mesh(
+    flatQuad,
+    new ShaderMaterial({
+      uniforms: { image: { value: ghost.texture }, alpha: { value: 0 } },
+      vertexShader: QUAD,
+      fragmentShader: `
+        uniform sampler2D image; uniform float alpha; varying vec2 vUv;
+        void main() {
+          vec4 c = texture2D(image, vUv);
+          gl_FragColor = vec4(c.rgb / max(c.a, 0.0001), 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+          gl_FragColor.a = c.a * alpha;
+        }`,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  )
   const ring = new Mesh(
-    new PlaneGeometry(2, 2),
+    flatQuad,
     new ShaderMaterial({
       uniforms: {
         mask: { value: mask.texture },
@@ -42,7 +69,7 @@ const makeTools = () => {
         color: { value: ACCENT },
         alpha: { value: 0 },
       },
-      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      vertexShader: QUAD,
       fragmentShader: `
         uniform sampler2D mask; uniform vec2 step; uniform vec3 color; uniform float alpha; varying vec2 vUv;
         void main() {
@@ -62,10 +89,11 @@ const makeTools = () => {
       toneMapped: false,
     }),
   )
-  // Drawn straight to the screen whatever the camera.
-  ring.frustumCulled = false
+  // Drawn straight to the screen whatever the camera, the veil under the ring.
+  veil.frustumCulled = ring.frustumCulled = false
+  ring.renderOrder = 1
   const ringScene = new Scene()
-  ringScene.add(ring)
+  ringScene.add(veil, ring)
   // White, cut by the same planes as what it stands in for, so a cut item's silhouette is cut too.
   const whites = new Map<string, MeshBasicMaterial>()
   const planes = new WeakMap<Plane[], number>()
@@ -81,11 +109,20 @@ const makeTools = () => {
     }
     return white
   }
-  return { mask, ring, ringScene, flat: new OrthographicCamera(), whites, whiteFor }
+  return { mask, ghost, veil, ring, ringScene, flat: new OrthographicCamera(), whites, whiteFor }
 }
 
-/** Draws the given items again over everything already drawn, each still hiding its own far side. */
-const drawOver = (gl: WebGLRenderer, scene: Scene, camera: Camera, ids: ReadonlySet<string>) => {
+/**
+ * Draws the given items again over everything already drawn, each still hiding its own far side; or, given a
+ * `target`, on their own in it.
+ */
+const drawOver = (
+  gl: WebGLRenderer,
+  scene: Scene,
+  camera: Camera,
+  ids: ReadonlySet<string>,
+  target?: WebGLRenderTarget,
+) => {
   const raised: Object3D[] = []
   const raise = (o: Object3D) => {
     o.layers.enable(XRAY_LAYER)
@@ -103,8 +140,19 @@ const drawOver = (gl: WebGLRenderer, scene: Scene, camera: Camera, ids: Readonly
   scene.background = null
   camera.layers.set(XRAY_LAYER)
   gl.autoClear = false
-  gl.clearDepth()
-  gl.render(scene, camera)
+  if (target) {
+    gl.setRenderTarget(target)
+    gl.getClearColor(clearColor)
+    const clearAlpha = gl.getClearAlpha()
+    gl.setClearColor(0x000000, 0)
+    gl.clear()
+    gl.render(scene, camera)
+    gl.setClearColor(clearColor, clearAlpha)
+    gl.setRenderTarget(null)
+  } else {
+    gl.clearDepth()
+    gl.render(scene, camera)
+  }
   gl.autoClear = autoClear
   camera.layers.mask = layers
   scene.background = background
@@ -113,8 +161,8 @@ const drawOver = (gl: WebGLRenderer, scene: Scene, camera: Camera, ids: Readonly
 }
 
 /**
- * Rings the smart item pointed at, wherever it can be picked, easing in and out; drawn over everything, so an
- * item behind a wall it's picked through still shows. Unless `over` (something else draws the scene first, as
+ * Rings the smart item pointed at, wherever it can be picked, easing in and out; ring and a faint copy of the item
+ * are drawn over everything, so an item behind a wall it's picked through still shows. Unless `over` (something else draws the scene first, as
  * RoomBlur does), it draws the scene itself. The `seen` items are drawn over the walls in front of them.
  */
 export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean; seen?: readonly string[] }) => {
@@ -125,8 +173,10 @@ export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean
     () => () => {
       const t = kit.current
       t?.mask.dispose()
+      t?.ghost.dispose()
       t?.ring.geometry.dispose()
       t?.ring.material.dispose()
+      t?.veil.material.dispose()
       t?.whites.forEach((m) => m.dispose())
     },
     [],
@@ -154,6 +204,12 @@ export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean
     if (!ringed) return
 
     const tools = (kit.current ??= makeTools())
+    gl.getDrawingBufferSize(size)
+    if (tools.mask.width !== size.x || tools.mask.height !== size.y) {
+      tools.mask.setSize(size.x, size.y)
+      tools.ghost.setSize(size.x, size.y)
+    }
+    drawOver(gl, scene, camera, new Set([ringed]), tools.ghost)
     // The item's meshes that are drawn, each swapped for white while its silhouette is drawn.
     const swapped: [Mesh, Material | Material[]][] = []
     const walk = (o: Object3D) => {
@@ -175,9 +231,7 @@ export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean
     })
     if (!swapped.length) return
 
-    const { mask, ring } = tools
-    gl.getDrawingBufferSize(size)
-    if (mask.width !== size.x || mask.height !== size.y) mask.setSize(size.x, size.y)
+    const { mask, ring, veil } = tools
     const autoClear = gl.autoClear
     const background = scene.background
     gl.getClearColor(clear)
@@ -205,6 +259,7 @@ export const ItemOutline = ({ item, over, seen }: { item?: string; over: boolean
     const width = WIDTH * gl.getPixelRatio()
     ring.material.uniforms.step.value.set(width / size.x, width / size.y)
     ring.material.uniforms.alpha.value = ease(f.value)
+    veil.material.uniforms.alpha.value = ease(f.value) * GHOST_OPACITY
     gl.autoClear = false
     gl.render(tools.ringScene, tools.flat)
     gl.autoClear = autoClear

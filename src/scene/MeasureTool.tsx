@@ -26,18 +26,19 @@ import {
   type MeasurePick,
   type Measurement,
 } from '../measure/measure'
-import { SELECTED_OUTLINE } from './palette'
+import { MEASURE } from './palette'
 import { CutawayWall, STUB_HEIGHT, type Focus } from './CutawayWall'
 import { OVERLAY } from './pick'
 import { raycastIfShown } from './raycast'
 
 const CLICK_SLOP_PX = 5
-// Drawn just above the floor finishes and rugs.
+// Anchored just above the floor; dots and lines draw over the scene.
 const LIFT = 0.03
 // Taps this close on screen to a wall face land on it, whatever the zoom.
 const SNAP_PX = 16
 // Measuring between faces, a tap this close on screen to a side picks it.
 const FACE_PX = 28
+const MEASURE_TARGET = { measureTarget: true }
 
 type MeasureToolProps = {
   floor: Floor
@@ -45,8 +46,7 @@ type MeasureToolProps = {
   items: FurnitureItem[]
   measure: Measurement
   onPick: (pick: MeasurePick) => void
-  /** Cut walls the same way as the scene's, so hidden ones don't catch the pointer. */
-  cutaway: boolean
+  /** The walls are cut the same way as the scene's (`CutAway`), so hidden ones don't catch the pointer. */
   focus?: Focus
   /** Measuring between points, taps snap to wall faces and to pieces' corners and sides only when these are on. */
   wallSnap: boolean
@@ -64,16 +64,7 @@ type Owner = { wall: Wall } | { item: FurnitureItem }
  * snap to wall faces and corners; face to face, they pick the nearest side of a wall or piece, and the whole wall
  * or piece lights up. Draws the line being measured; finished ones are drawn by the scene.
  */
-export const MeasureTool = ({
-  floor,
-  items,
-  measure,
-  onPick,
-  cutaway,
-  focus,
-  wallSnap,
-  furnitureSnap,
-}: MeasureToolProps) => {
+export const MeasureTool = ({ floor, items, measure, onPick, focus, wallSnap, furnitureSnap }: MeasureToolProps) => {
   const walls = useMemo(() => floorWallRects(floor), [floor])
   const footprints = useMemo(() => items.map(footprintOutline), [items])
   const outlines = useMemo(() => [...footprints, ...walls.map(rectOutline)], [footprints, walls])
@@ -142,7 +133,7 @@ export const MeasureTool = ({
         rotation-x={-Math.PI / 2}
         position={[(min[0] + max[0]) / 2, floor.elevation + 0.01, (min[1] + max[1]) / 2]}
         // A tap on a piece measures from where it stands on the floor; looking at a room, it's part of the room.
-        userData={{ pastFurniture: true, everyRoom: true }}
+        userData={{ ...MEASURE_TARGET, everyRoom: true }}
         {...catcher}
       >
         <planeGeometry args={[200, 200]} />
@@ -156,6 +147,7 @@ export const MeasureTool = ({
           <mesh
             position={[(wallLength(wall) + extension.to - extension.from) / 2, height / 2, 0]}
             raycast={raycastIfShown}
+            userData={MEASURE_TARGET}
             {...catcher}
           >
             <boxGeometry args={[wallLength(wall) + extension.from + extension.to, height, thickness]} />
@@ -167,14 +159,19 @@ export const MeasureTool = ({
             key={wall.id}
             wall={wall}
             floor={floor}
-            cutaway={cutaway}
             focus={focus}
             full={target(floor.height)}
             stub={stubPieces(
               wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor, 0.002)),
               STUB_HEIGHT,
             ).map((p, i) => (
-              <mesh key={i} position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]} raycast={raycastIfShown} {...catcher}>
+              <mesh
+                key={i}
+                position={[(p.u0 + p.u1) / 2, (p.y0 + p.y1) / 2, 0]}
+                raycast={raycastIfShown}
+                userData={MEASURE_TARGET}
+                {...catcher}
+              >
                 <boxGeometry args={[p.u1 - p.u0, p.y1 - p.y0, thickness]} />
                 <meshBasicMaterial visible={false} />
               </mesh>
@@ -185,7 +182,7 @@ export const MeasureTool = ({
 
       {lit.map(({ owner, ghost }, i) =>
         'wall' in owner ? (
-          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} cutaway={cutaway} focus={focus} />
+          <WallHighlight key={i} wall={owner.wall} floor={floor} ghost={ghost} focus={focus} />
         ) : (
           <ItemHighlight key={i} item={owner.item} elevation={floor.elevation} ghost={ghost} />
         ),
@@ -193,18 +190,35 @@ export const MeasureTool = ({
       {preview && (
         <Line
           points={[at(preview.from), at(preview.to)]}
-          color={SELECTED_OUTLINE}
+          color={MEASURE}
           lineWidth={2}
           dashed
           dashSize={0.1}
           gapSize={0.06}
+          renderOrder={1000}
+          transparent
+          depthTest={false}
+          depthWrite={false}
           userData={OVERLAY}
         />
       )}
       {dots.map((p, i) => (
-        <mesh key={i} position={at(p.at)} rotation-x={-Math.PI / 2} raycast={noRaycast} userData={OVERLAY}>
+        <mesh
+          key={i}
+          position={at(p.at)}
+          rotation-x={-Math.PI / 2}
+          renderOrder={1001}
+          raycast={noRaycast}
+          userData={OVERLAY}
+        >
           <circleGeometry args={[0.05, 20]} />
-          <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={i < picks.length ? 1 : 0.5} />
+          <meshBasicMaterial
+            color={MEASURE}
+            transparent
+            opacity={i < picks.length ? 1 : 0.5}
+            depthTest={false}
+            depthWrite={false}
+          />
         </mesh>
       ))}
     </group>
@@ -212,23 +226,11 @@ export const MeasureTool = ({
 }
 
 const HighlightMaterial = ({ ghost }: { ghost: boolean }) => (
-  <meshBasicMaterial color={SELECTED_OUTLINE} transparent opacity={ghost ? 0.28 : 0.6} depthWrite={false} />
+  <meshBasicMaterial color={MEASURE} transparent opacity={ghost ? 0.28 : 0.6} depthWrite={false} />
 )
 
 /** The whole wall, openings and all, washed in the accent colour. */
-const WallHighlight = ({
-  wall,
-  floor,
-  ghost,
-  cutaway,
-  focus,
-}: {
-  wall: Wall
-  floor: Floor
-  ghost: boolean
-  cutaway: boolean
-  focus?: Focus
-}) => {
+const WallHighlight = ({ wall, floor, ghost, focus }: { wall: Wall; floor: Floor; ghost: boolean; focus?: Focus }) => {
   const thickness = wallThickness(wall, floor)
   const pieces = useMemo(() => wallPieces(wall, wallHeight(wall, floor), wallEndExtensions(wall, floor)), [wall, floor])
   const boxes = (list: typeof pieces) =>
@@ -242,7 +244,6 @@ const WallHighlight = ({
     <CutawayWall
       wall={wall}
       floor={floor}
-      cutaway={cutaway}
       focus={focus}
       full={boxes(pieces)}
       stub={boxes(stubPieces(pieces, STUB_HEIGHT))}

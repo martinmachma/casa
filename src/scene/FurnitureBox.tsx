@@ -8,6 +8,7 @@ import { footprint, footprintOutline } from '../furniture/collision'
 import type { Point } from '../layout/types'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
 import type { Floor } from '../layout/types'
+import { FollowCut } from './CutawayWall'
 import { FurnitureModel } from './FurnitureModel'
 import { useItemCut } from './ItemCut'
 import { COLLIDING, SELECTED_OUTLINE } from './palette'
@@ -23,14 +24,11 @@ type FurnitureBoxProps = {
   elevation: number
   /** What it stands on, when that isn't the floor: the lawn or terrace outside the ground floor. */
   ground?: number
-  /** The floor it stands on, and whether its walls are cut ): a tall piece is cut with them. */
+  /** The floor it stands on: a tall piece is cut with its walls. */
   floor?: Floor
-  cutaway?: boolean
   selected: boolean
   /** Runs into a wall or another piece. */
   colliding?: boolean
-  /** Whether the rotate/duplicate/remove buttons float over this one (one item of a group carries them). */
-  showActions: boolean
   /** False while another tool (measuring) owns the pointer. */
   interactive: boolean
   wallSnap: boolean
@@ -47,7 +45,8 @@ type FurnitureBoxProps = {
   onPickLight?: (id: string) => void
   /** The lamp pointed at, while lamps can be picked. */
   onHoverLight?: (id: string | undefined) => void
-  actions: ItemActions
+  /** Set for the one the rotate/duplicate/remove buttons float over (one item of a group carries them). */
+  actions?: ItemActions
 }
 
 /** What the buttons floating over the selection do. */
@@ -69,10 +68,8 @@ export const FurnitureBox = ({
   elevation,
   ground = elevation,
   floor,
-  cutaway = false,
   selected,
   colliding,
-  showActions,
   interactive,
   wallSnap,
   furnitureSnap,
@@ -99,6 +96,7 @@ export const FurnitureBox = ({
   const tap = useRef<{ add: boolean }>(undefined)
   const hit = useMemo(() => new Vector3(), [])
   const group = useRef<Group>(null)
+  const cutaway = useRef(false)
   useItemCut(group, item, floor, cutaway)
 
   // Stops the camera from orbiting/panning along with a drag.
@@ -268,7 +266,7 @@ export const FurnitureBox = ({
           />
         </Suspense>
       )}
-      {showActions && interactive && (
+      {actions && interactive && (
         <Html position={[0, hitHeight, 0]} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
           <div className="float item-actions" onPointerDown={(e) => e.stopPropagation()}>
             <button title="Rotate 15° (R)" aria-label="Rotate" onClick={() => actions.onRotate()}>
@@ -283,6 +281,7 @@ export const FurnitureBox = ({
           </div>
         </Html>
       )}
+      <FollowCut intoRef={cutaway} />
     </group>
   )
 }

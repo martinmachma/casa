@@ -11,7 +11,7 @@ export const groundLevel = (floor: Floor, outdoor: Outdoor | undefined, p: Point
   return paved.length ? Math.max(...paved.map((a) => a.level)) : outdoor.level
 }
 
-const onSlab = (floor: Floor, p: Point): boolean => {
+export const onSlab = (floor: Floor, p: Point): boolean => {
   if (floor.outline) return insidePolygon(p, floor.outline)
   const { min, max } = floorBounds(floor)
   return p[0] >= min[0] && p[0] <= max[0] && p[1] >= min[1] && p[1] <= max[1]

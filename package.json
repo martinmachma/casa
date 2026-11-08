@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "check": "tsc -b && vitest run",
     "icons": "pwa-assets-generator",
     "format": "prettier --write ."
   },

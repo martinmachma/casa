@@ -4,7 +4,8 @@ import { Plane, Raycaster, Vector2, Vector3 } from 'three'
 import type { FurnitureItem, NewFurnitureItem } from '../data/types'
 import { colliding, type Solid } from '../furniture/collision'
 import { snapFurniture, type SnapWall } from '../furniture/snap'
-import type { Floor, Point, Rect } from '../layout/types'
+import type { WallRect } from '../layout/rooms'
+import type { Floor, Point } from '../layout/types'
 import { FurnitureBox } from './FurnitureBox'
 
 // A pointer that moved further than this between down and up was an orbit/pan, not a tap.
@@ -24,7 +25,7 @@ type FurniturePlacerProps = {
   snapWalls: SnapWall[]
   items: FurnitureItem[]
   obstacles: Solid[]
-  wallRects: Rect[]
+  wallRects: WallRect[]
   onPlace: (at: Pick<FurnitureItem, 'x' | 'y' | 'rotation'>) => void
 }
 
@@ -125,7 +126,6 @@ export const FurniturePlacer = ({
           ground={ground([placed.x, placed.y])}
           selected
           colliding={colliding([...items, placed], wallRects, obstacles).has(PLACING)}
-          showActions={false}
           interactive={false}
           wallSnap={false}
           furnitureSnap={false}
@@ -135,7 +135,6 @@ export const FurniturePlacer = ({
           onMove={noop}
           onMoveEnd={noop}
           onTap={noop}
-          actions={{ onRotate: noop, onDuplicate: noop, onDelete: noop }}
         />
       )}
     </>

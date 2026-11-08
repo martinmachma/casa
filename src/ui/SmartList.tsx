@@ -1,142 +1,170 @@
-import { Power } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowDown, ArrowUp, Power } from 'lucide-react'
+import { type ReactNode, useRef, useState } from 'react'
 import { lightColor, type LightState } from '../devices/lights'
 import { shadeText, type ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
 import { DeviceIcon } from './deviceIcons'
 
+/** How far a press moves along a row before it's a drag rather than a click. */
+const DRAG_START = 4
+
 type SmartRowProps = {
   item: SmartItem
-  sub?: string
   /** Its settings, for a light. */
   light?: LightState
-  pressed?: boolean
+  /** Its position, for a window's shade. */
+  shade?: ShadeState
   /** Its item is pointed at in the scene. */
   hovered?: boolean
   onOpen: () => void
-  onHover?: (hovering: boolean) => void
-  onLight?: (patch: Partial<LightState>) => void
+  onHover: (hovering: boolean) => void
+  onLight: (patch: Partial<LightState>) => void
+  onShade: (patch: Partial<ShadeState>) => void
 }
 
-/** One smart item: its tile lit in the light's own colour while on, and a switch for a light. */
-export const SmartRow = ({ item, sub, light, pressed, hovered, onOpen, onHover, onLight }: SmartRowProps) => {
+/** The colour a light gives off, by its level. */
+export const LightDot = ({ light }: { light: LightState }) => (
+  <span className="smart-row-dot" style={{ background: lightColor(light) }} />
+)
+
+/** One smart item, filled as far as it's lit or let down: its tile switches it, the rest of the row opens it, and a drag along the row sets the level. */
+const SmartRow = ({ item, light, shade, hovered, onOpen, onHover, onLight, onShade }: SmartRowProps) => {
   const on = !!light?.on
+  const level = light ? (on ? light.brightness : 0) : shade?.position
+  const active = !!level && level > 0.005
+  const press = useRef<{ x: number; from: number; width: number }>(undefined)
+  const dragged = useRef(false)
+  const [dragging, setDragging] = useState(false)
+  const setLevel = (to: number) => {
+    if (shade) onShade({ position: to })
+    else onLight(to > 0.005 ? { on: true, brightness: to } : { on: false })
+  }
+  const release = () => {
+    press.current = undefined
+    setDragging(false)
+  }
+  const icon = (
+    <span className="smart-tile" data-on={active || undefined}>
+      <span className="smart-row-device">
+        <DeviceIcon kind={item.kind} size={15} />
+      </span>
+      {light && <Power className="smart-row-action" size={15} />}
+      {shade &&
+        (shade.position > 0 ? (
+          <ArrowUp className="smart-row-action" size={15} />
+        ) : (
+          <ArrowDown className="smart-row-action" size={15} />
+        ))}
+    </span>
+  )
   return (
     <li
       className="smart-row"
+      data-kind={item.kind}
+      data-on={active || undefined}
       data-hovered={hovered || undefined}
-      onPointerEnter={() => onHover?.(true)}
-      onPointerLeave={() => onHover?.(false)}
+      data-dragging={dragging || undefined}
+      onPointerEnter={() => onHover(true)}
+      onPointerLeave={() => onHover(false)}
+      onPointerDown={(e) => {
+        dragged.current = false
+        if (level !== undefined && e.button === 0)
+          press.current = { x: e.clientX, from: level, width: e.currentTarget.offsetWidth }
+      }}
+      onPointerMove={(e) => {
+        const p = press.current
+        if (!p) return
+        if (!e.buttons) return release()
+        const moved = e.clientX - p.x
+        if (!dragged.current) {
+          if (Math.abs(moved) < DRAG_START) return
+          dragged.current = true
+          e.currentTarget.setPointerCapture(e.pointerId)
+          setDragging(true)
+        }
+        setLevel(Math.min(1, Math.max(0, p.from + moved / p.width)))
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      // The click that ends a drag isn't a click on the row.
+      onClickCapture={(e) => {
+        if (dragged.current) e.stopPropagation()
+        dragged.current = false
+      }}
     >
-      <button className="smart-item" aria-pressed={pressed} onClick={onOpen}>
-        <span
-          className="smart-tile"
-          data-on={on || undefined}
-          style={on ? { background: lightColor(light) } : undefined}
+      {level !== undefined && <span className="smart-row-fill" style={{ width: `${level * 100}%` }} />}
+      {light || shade ? (
+        <button
+          className="smart-row-toggle"
+          aria-label={
+            light
+              ? `Switch ${item.name} ${on ? 'off' : 'on'}`
+              : `${shade!.position > 0 ? 'Raise' : 'Lower'} ${item.name}`
+          }
+          title={light ? (on ? 'Switch off' : 'Switch on') : shade!.position > 0 ? 'Raise' : 'Lower'}
+          onClick={() => (light ? onLight({ on: !on }) : onShade({ position: shade!.position > 0 ? 0 : 1 }))}
         >
-          <DeviceIcon kind={item.kind} size={16} />
-        </span>
-        <span className="smart-item-text">
-          <span className="smart-item-name">{item.name}</span>
-          {sub && <span className="muted">{sub}</span>}
+          {icon}
+        </button>
+      ) : (
+        <span className="smart-row-toggle">{icon}</span>
+      )}
+      <button className="smart-row-open" title={item.name} onClick={onOpen}>
+        <span className="smart-row-name">{item.name}</span>
+        <span className="smart-row-state">
+          {on && <LightDot light={light!} />}
+          {light
+            ? on
+              ? `${Math.round(light.brightness * 100)} %`
+              : 'Off'
+            : shade
+              ? shadeText(shade)
+              : item.lamp
+                ? 'Lamp'
+                : 'Not linked'}
         </span>
       </button>
-      {light && onLight && (
-        <label className="switch smart-switch">
-          <input
-            type="checkbox"
-            role="switch"
-            aria-label={`${item.name} on`}
-            checked={on}
-            onChange={(e) => onLight({ on: e.target.checked })}
-          />
-          <span className="switch-track" aria-hidden />
-        </label>
-      )}
     </li>
   )
 }
 
-type SmartTileProps = {
-  item: SmartItem
-  /** Its settings, for a light: a tap switches it. */
-  light?: LightState
-  /** Its position, for a window's shade. */
-  shade?: ShadeState
-  /** Its card is open. */
-  pressed?: boolean
-  /** Its item is pointed at in the scene. */
-  hovered?: boolean
-  /** Opens its card: a tap for anything but a light, a right-click for a light. */
-  onOpen: () => void
-  onHover: (hovering: boolean) => void
-  onLight: (patch: Partial<LightState>) => void
+type SmartRowsProps = {
+  items: SmartItem[]
+  light: (id: string) => LightState
+  onLight: (id: string, patch: Partial<LightState>) => void
+  shade: (id: string) => ShadeState
+  onShade: (id: string, patch: Partial<ShadeState>) => void
+  onOpen: (id: string) => void
+  onHover: (id: string | undefined) => void
+  /** The item pointed at, here or in the view. */
+  hovered: string | undefined
 }
 
-/** A smart item as a tile: its icon, lit in the light's colour while on, over its name and state. */
-export const SmartTile = ({ item, light, shade, pressed, hovered, onOpen, onHover, onLight }: SmartTileProps) => {
-  const on = !!light?.on
-  return (
-    <button
-      className="smart-light"
-      aria-pressed={light ? on : undefined}
-      data-open={pressed || undefined}
-      data-hovered={hovered || undefined}
-      title={light ? `${item.name}: click to switch, right-click for brightness and colour` : item.name}
-      onClick={() => (light ? onLight({ on: !on }) : onOpen())}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        onOpen()
-      }}
-      onPointerEnter={() => onHover(true)}
-      onPointerLeave={() => onHover(false)}
-    >
-      <span
-        className="smart-light-bulb"
-        data-on={on || undefined}
-        style={on ? { background: lightColor(light) } : undefined}
-      >
-        <DeviceIcon kind={item.kind} size={18} />
-      </span>
-      <span className="smart-light-name">{item.name}</span>
-      <span className="smart-light-state">
-        {light
-          ? on
-            ? `${Math.round(light.brightness * 100)} %`
-            : 'Off'
-          : shade
-            ? shadeText(shade)
-            : item.lamp
-              ? 'Lamp'
-              : 'Not linked'}
-      </span>
-    </button>
-  )
-}
+/** A list of smart items, each kind together: lights and shades tell themselves apart by their icons. */
+export const SmartRows = ({ items, light, onLight, shade, onShade, onOpen, onHover, hovered }: SmartRowsProps) => (
+  <ul className="smart-rows">
+    {[...new Set(items.map((i) => i.kind))]
+      .flatMap((kind) => items.filter((i) => i.kind === kind))
+      .map((item) => (
+        <SmartRow
+          key={item.id}
+          item={item}
+          light={item.kind === 'light' ? light(item.id) : undefined}
+          shade={item.kind === 'blind' ? shade(item.id) : undefined}
+          hovered={hovered === item.id}
+          onOpen={() => onOpen(item.id)}
+          onHover={(h) => onHover(h ? item.id : undefined)}
+          onLight={(p) => onLight(item.id, p)}
+          onShade={(p) => onShade(item.id, p)}
+        />
+      ))}
+  </ul>
+)
 
-type SmartCardProps = {
-  title: string
-  summary: string
-  /** Switches every light off, or on when all are off; left out when there are none. */
-  allLights?: { on: boolean; onChange: (on: boolean) => void }
-  children: ReactNode
-}
-
-/** The card down the right that lists smart items, with a switch for all the lights. */
-export const SmartCard = ({ title, summary, allLights, children }: SmartCardProps) => (
+/** A card down the side of the view: its small header stays put while what's under it scrolls. */
+export const SmartCard = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="room-card float">
-    <header className="smart-card-head">
-      <div>
-        <h3 className="smart-card-title">{title}</h3>
-        <div className="muted">{summary}</div>
-      </div>
-      {allLights && (
-        <button className="btn btn-small" onClick={() => allLights.onChange(!allLights.on)}>
-          <Power size={15} />
-          {allLights.on ? 'All off' : 'All on'}
-        </button>
-      )}
-    </header>
+    <h3 className="smart-card-head">{title}</h3>
     <div className="smart-card-body">{children}</div>
   </section>
 )

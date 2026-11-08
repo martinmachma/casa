@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Matrix4 } from 'three'
+import { motionState } from './motionState'
 
 // How long the view must stay still before it's drawn at full quality again.
 const SETTLE_MS = 150
@@ -33,17 +34,14 @@ export const MotionQuality = ({ view }: { view: string }) => {
   const settled = useRef(false)
   const timer = useRef<number | undefined>(undefined)
 
-  useEffect(
-    () => () => window.clearTimeout(timer.current),
-    [],
-  )
+  useEffect(() => () => window.clearTimeout(timer.current), [])
   useEffect(() => {
     animating()
     invalidate()
   }, [view, invalidate])
 
-  // Runs before the camera rigs' own frame callbacks, so a move is seen a frame late; the settling frame is drawn in
-  // full whatever it shows, and a camera still easing after it goes back to cheap frames.
+  // Runs before most camera rigs' frame callbacks, so their moves are seen a frame late; held keys and buttons go first.
+  // Switching ratio can stall a frame past SETTLE_MS, so a settling frame that finds the view moved stays cheap.
   useFrame(({ camera, gl, viewport }) => {
     camera.updateMatrixWorld()
     // Measured from where it last moved, so a slow drift still adds up to a move.
@@ -54,10 +52,11 @@ export const MotionQuality = ({ view }: { view: string }) => {
     }
     const animated = asked.frame
     asked.frame = false
-    if (settled.current) {
-      settled.current = false
-      moving.current = false
-    } else if (!still || animated) {
+    const settling = settled.current
+    settled.current = false
+    if (still && !animated) {
+      if (settling) moving.current = false
+    } else {
       moving.current = true
       window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => {
@@ -66,6 +65,7 @@ export const MotionQuality = ({ view }: { view: string }) => {
       }, SETTLE_MS)
     }
     // R3F puts its own ratio back on a resize, so this is checked every frame.
+    motionState.moving = moving.current
     const ratio = moving.current ? Math.min(MOVING_DPR, viewport.dpr) : viewport.dpr
     if (gl.getPixelRatio() !== ratio) gl.setPixelRatio(ratio)
   })

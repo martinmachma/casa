@@ -31,6 +31,26 @@ it("reaches a window's shade through the wall it's set in, but not through anoth
   expect(reachable(ray.intersectObject(shade), scene, ray)).toHaveLength(0)
 })
 
+it('reaches measurement wall and floor targets through overlapping items, keeping the nearest target first', () => {
+  const scene = new Scene()
+  const item = box(-2)
+  const wallTarget = box(-5)
+  const floorTarget = box(-8)
+  for (const target of [wallTarget, floorTarget]) {
+    target.material = new MeshBasicMaterial({ visible: false })
+    target.userData.measureTarget = true
+  }
+  scene.add(item, wallTarget, floorTarget)
+  scene.updateMatrixWorld()
+  const ray = new Raycaster(new Vector3(0.2, 0, 0), new Vector3(0, 0, -1))
+  const hits = ray.intersectObjects([wallTarget, floorTarget])
+  expect(reachable(hits, scene, ray).map((h) => h.object)).toEqual([wallTarget, floorTarget])
+
+  // Other tools still cannot reach behind a solid item.
+  for (const target of [wallTarget, floorTarget]) delete target.userData.measureTarget
+  expect(reachable(hits, scene, ray)).toHaveLength(0)
+})
+
 it('leaves out what a Fade has hidden, though it stays mounted', () => {
   const scene = new Scene()
   const floor = new Group()
@@ -43,5 +63,6 @@ it('leaves out what a Fade has hidden, though it stays mounted', () => {
 
   floor.visible = false
   floor.userData.fadedAway = true
+  piece.userData.measureTarget = true
   expect(reachable(ray.intersectObject(piece), scene, ray)).toHaveLength(0)
 })

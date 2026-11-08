@@ -11,7 +11,7 @@ export const IconButton = ({ label, small, className = '', children, ...rest }: 
   </button>
 )
 
-const SLIDE_MS = 220
+export const SLIDE_MS = 220
 
 /**
  * Slides its contents in and out sideways (or, `vertical`, down from above) as `show` changes, the neighbours making

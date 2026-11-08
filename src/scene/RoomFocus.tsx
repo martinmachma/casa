@@ -6,7 +6,9 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { FurnitureItem } from '../data/types'
 import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
+import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
+import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
 import { ZoomToSurface } from './ZoomToSurface'
 
 const FLIGHT_SECONDS = 1.1
@@ -28,6 +30,7 @@ export const RoomCamera = ({
   roomId,
   furniture,
   closeUp,
+  bottomInset = 0,
   from,
   onView,
 }: {
@@ -35,13 +38,24 @@ export const RoomCamera = ({
   roomId?: string
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
-  /** An opened item to come in close to and keep in the middle, from the way it's best seen; dragging tilts round it. */
+  /** An opened item to come in close to, from the way it's best seen; dragging tilts round it. */
   closeUp?: Pin
+  /** Bottom of the view covered by the controls (a phone's sheet, an item's card), in CSS pixels. */
+  bottomInset?: number
   from?: { position: Vector3; target: Vector3 }
-  /** Where it is and looks each frame, for the house's camera to carry on from after the room. */
-  onView?: (position: Vector3, target: Vector3) => void
+  /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
+  onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
 }) => {
   const size = useThree((s) => s.size)
+  const inset = bottomInset
+  const framing = useMemo(() => focusFraming(size, inset), [size, inset])
+  const projection = useRef({
+    from: { zoom: 1, offsetY: 0 },
+    to: framing,
+    current: { zoom: 1, offsetY: 0 },
+    t: inset ? 0 : 1,
+    started: undefined as number | undefined,
+  })
   // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
   const [placed, setPlaced] = useState({ roomId, furniture })
   if (placed.roomId !== roomId) setPlaced({ roomId, furniture })
@@ -70,12 +84,13 @@ export const RoomCamera = ({
             ? level.setY(FACING_RISE).normalize()
             : toward.normalize()
     const distance = mount === 'ceiling' ? CLOSE_UNDER : closeUp?.look && roomId ? CLOSE_UP_FACING : CLOSE_UP
-    // The item in the middle of the screen, its card beside it.
+    // Keep the orbit's pivot on the item; the projection leaves space for its card.
     return { position: item.clone().addScaledVector(back, distance), target: item }
   }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
+  const started = useRef<number>(undefined)
   // The pose the camera is flying to or resting at; another room picked flies over from wherever it is now.
   const heading = useRef(pose)
   const look = useMemo(() => new Vector3(), [])
@@ -89,31 +104,53 @@ export const RoomCamera = ({
   }
   const reach = pose ? pose.position.distanceTo(pose.target) : 1
   // Close up, dragging only tilts the view up and down round the item, never round behind it.
-  const azimuth = closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
-  useFrame(({ camera, invalidate }, delta) => {
+  const azimuth =
+    closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
+  useFrame(({ camera, invalidate }) => {
     if (!pose) return
+    const p = projection.current
+    if (p.to !== framing) {
+      Object.assign(p.from, p.current)
+      p.to = framing
+      p.t = 0
+      p.started = undefined
+    }
+    if (p.t < 1) {
+      const now = performance.now()
+      p.started ??= now
+      p.t = animationProgress(p.started, now, FLIGHT_SECONDS)
+      blendFocusFraming(camera, size, p.from, p.to, ease(p.t))
+      p.current.zoom = camera.zoom
+      p.current.offsetY = camera.view?.offsetY ?? 0
+      invalidate()
+    }
     // The controls take the new pose's target as soon as it's set, so the flight starts from where it last looked.
     if (heading.current !== pose) {
       start.current = { position: camera.position.clone(), target: look.clone() }
       heading.current = pose
       t.current = 0
+      started.current = undefined
     }
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
-      onView?.(camera.position, look)
+      onView?.(camera.position, look, p.t < 1, p.current)
       return
     }
-    // The first frame after the view sat still carries all the time it sat, which would skip the flight.
-    t.current = Math.min(1, t.current + Math.min(delta, 1 / 30) / FLIGHT_SECONDS)
+    // Ignore the idle gap only once; slow frames still count in full, so the flight keeps its duration.
+    const now = performance.now()
+    started.current ??= now
+    t.current = animationProgress(started.current, now, FLIGHT_SECONDS)
     const s = start.current
     const k = ease(t.current)
     invalidate()
     camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
-    onView?.(camera.position, look)
+    onView?.(camera.position, look, t.current < 1 || p.t < 1, p.current)
     if (k >= 1) setFlying(false)
-  })
+    // Ahead of whatever goes by the camera this frame: mounted after it all, this would otherwise run last, and the
+    // pins would be placed for one frame with the new camera still at the pose it's flying to.
+  }, -1)
   return (
     <>
       <PerspectiveCamera makeDefault fov={FOV} near={0.1} far={200} position={firstPosition} />

@@ -1,9 +1,21 @@
 import { openingId, openingSill, wallAngle, wallEndExtensions, wallPieces, wallThickness } from '../layout/geometry'
-import type { Floor, Point } from '../layout/types'
+import type { Floor, Outdoor, Point } from '../layout/types'
 import type { Solid } from '../furniture/collision'
 
 /** A solid rectangle in the plan: centre, half sizes along its own axes, and its angle. */
 export type Obstacle = { cx: number; cy: number; hu: number; hv: number; angle: number }
+
+/** Sheds, garden walls and trellises block both placing the walker and moving afterwards. */
+export const outdoorObstacles = (outdoor: Outdoor | undefined): Obstacle[] =>
+  outdoor
+    ? [...outdoor.sheds, ...(outdoor.blocks ?? [])].map((r) => ({
+        cx: (r.x0 + r.x1) / 2,
+        cy: (r.y0 + r.y1) / 2,
+        hu: (r.x1 - r.x0) / 2,
+        hv: (r.y1 - r.y0) / 2,
+        angle: 0,
+      }))
+    : []
 
 // Anything lower than this can't be walked through (sills, furniture); door openings start at 0.
 const FOOT_HEIGHT = 0.3

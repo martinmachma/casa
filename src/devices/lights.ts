@@ -39,6 +39,22 @@ export const kelvinColor = (kelvin: number) => {
   return `#${hex(r)}${hex(g)}${hex(b)}`
 }
 
+/** A hue as a colour a bulb can show, 0 to 360 degrees round the wheel. */
+export const hueColor = (hue: number) => {
+  const channel = (n: number) => {
+    const k = (n + hue / 30) % 12
+    return 255 * (0.6 - 0.4 * Math.max(-1, Math.min(k - 3, 9 - k, 1)))
+  }
+  return `#${hex(channel(0))}${hex(channel(8))}${hex(channel(4))}`
+}
+
+/** The hue of a hex colour, 0 to 359 degrees. */
+export const colorHue = (color: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
+  const hue = (Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180) / Math.PI
+  return Math.round((hue + 360) % 360)
+}
+
 /** The colour a light gives off. */
 export const lightColor = (state: LightState | undefined) => {
   const s = { ...DEFAULTS, ...state }

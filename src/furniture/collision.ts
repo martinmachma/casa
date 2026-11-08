@@ -1,5 +1,6 @@
 import type { FurnitureItem } from '../data/types'
 import { DOOR_SWING, OPENING_FRAME, openingId, openingSill, wallLength } from '../layout/geometry'
+import type { WallRect } from '../layout/rooms'
 import type { Floor, Point, Rect } from '../layout/types'
 import FOOTPRINTS from './footprints.json'
 
@@ -85,11 +86,14 @@ const stacked = (a: Solid, b: Solid) => {
 }
 
 /** What a piece runs into: other pieces by id, walls as `wall:<index>`. */
-export const hits = (piece: Solid, others: Solid[], walls: Rect[]): string[] => {
+export const hits = (piece: Solid, others: Solid[], walls: WallRect[]): string[] => {
   const boxes = boxesOf(piece)
   const touches = (others: Box[]) => boxes.some((a) => others.some((b) => overlaps(a, b)))
   const result: string[] = []
-  walls.forEach((w, i) => touches([rectBox(w)]) && result.push(`wall:${i}`))
+  walls.forEach((w, i) => {
+    // Raised pieces can sit above low installation boxing, with the same slack as stacked furniture.
+    if ((piece.z ?? 0) < (w.height ?? Infinity) - TOLERANCE && touches([rectBox(w)])) result.push(`wall:${i}`)
+  })
   if (piece.height <= FLAT) return result
   for (const o of others) {
     if (o.id === piece.id || o.floor !== piece.floor || o.height <= FLAT || !stacked(piece, o) || tucks(piece, o))
@@ -100,7 +104,7 @@ export const hits = (piece: Solid, others: Solid[], walls: Rect[]): string[] => 
 }
 
 /** Movable pieces that run into walls, each other or fixed equipment. */
-export const colliding = (items: Solid[], walls: Rect[], obstacles: Solid[] = []): Set<string> => {
+export const colliding = (items: Solid[], walls: WallRect[], obstacles: Solid[] = []): Set<string> => {
   const others = [...items, ...obstacles]
   return new Set(items.filter((item) => hits(item, others, walls).length).map((item) => item.id))
 }

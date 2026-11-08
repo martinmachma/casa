@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest'
 import { blockedDoors, doorSweeps, fixtureSolids, hits } from '../furniture/collision'
 import { house } from './layout'
-import { wallEndExtensions } from './geometry'
-import { floorRegions, floorWallRects, roomAt } from './rooms'
+import { wallEndExtensions, wallJoints } from './geometry'
+import { floorRegions, floorWallRects, roomAt, wallRect } from './rooms'
 
 const floor = house.floors.find((f) => f.id === 'upper')!
 const bathroom = fixtureSolids(floor).filter((f) => f.id.startsWith('u-bath-'))
@@ -42,5 +42,23 @@ it('fits the 110 × 90 shower flush with the WC partition, leaving the window an
   // Its south edge meets the partition next to the WC, rather than the window corner.
   expect(shower.y + shower.width / 2).toBeCloseTo(partition.from[1] - floor.wallThickness / 2)
   expect(shower.y - shower.width / 2).toBeGreaterThan(0.9)
-  expect(shower.x - shower.depth / 2 - (vanity.x + vanity.depth / 2)).toBeGreaterThan(0.85)
+  expect(shower.x - shower.depth / 2 - (vanity.x + vanity.depth / 2)).toBeGreaterThan(0.75)
+})
+
+it('adds the plan’s 10 cm basin boxing and 1.2 m ledge without changing room or paint boundaries', () => {
+  const partition = floor.walls.find((w) => w.id === 'u-205-bath')!
+  const boxing = floor.walls.find((w) => w.id === 'u-bath-basin-frame')!
+  const vanity = bathroom.find((f) => f.id === 'u-bath-vanity')!
+  const rail = bathroom.find((f) => f.id === 'u-bath-towel-rail')!
+  const structure = { ...floor, walls: floor.walls.filter((w) => w !== boxing) }
+  const footprint = wallRect(boxing.from, boxing.to, boxing.thickness!)
+  expect(footprint.x0).toBeCloseTo(partition.from[0] + floor.wallThickness / 2)
+  expect(footprint.x1 - footprint.x0).toBeCloseTo(0.1)
+  expect(boxing.height).toBe(1.2)
+  expect(vanity.x - vanity.depth / 2).toBeCloseTo(footprint.x1)
+  expect(vanity.y - vanity.width / 2).toBeGreaterThan(footprint.y0)
+  expect(vanity.y + vanity.width / 2).toBeLessThan(footprint.y1)
+  expect(rail.y - rail.width / 2).toBeGreaterThan(footprint.y1)
+  expect(floorRegions(floor).get('u-bath')!.area).toBeCloseTo(floorRegions(structure).get('u-bath')!.area)
+  for (const wall of structure.walls) expect(wallJoints(wall, floor), wall.id).toEqual(wallJoints(wall, structure))
 })

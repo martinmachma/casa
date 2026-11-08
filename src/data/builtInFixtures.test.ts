@@ -18,13 +18,16 @@ const oldFitting = (id: string, model: string, x: number, y: number, floor = 'up
   color: '#fff',
 })
 
-it('retires the old bathroom fittings while preserving other rooms, floors and furniture', () => {
+it('retires the old bathroom and WC fittings while preserving other rooms, floors and furniture', () => {
   const obsolete = [
     oldFitting('shower', 'shower', 5.6, 1.6),
     oldFitting('round', 'showerRound', 5.6, 1.5),
     oldFitting('wc', 'toilet', 5.2, 2.7),
     oldFitting('basin', 'bathroomSink', 4.04, 0.9),
     oldFitting('vanity', 'bathroomCabinetDrawer', 4.04, 0.9),
+    oldFitting('ground-wc', 'toilet', 0.5, 6.05, 'ground'),
+    oldFitting('ground-basin', 'bathroomSink', 1.4, 5.5, 'ground'),
+    oldFitting('ground-vanity', 'bathroomCabinetDrawer', 1.4, 5.5, 'ground'),
   ]
   const keep = [
     oldFitting('downstairs', 'toilet', 5.2, 2.7, 'ground'),
@@ -34,7 +37,7 @@ it('retires the old bathroom fittings while preserving other rooms, floors and f
   const state = { ...EMPTY_STATE, furniture: [...obsolete, ...keep] }
   const upgraded = withBuiltInFixtures(state, house.floors)
   expect(upgraded.furniture).toEqual(keep)
-  expect(state.furniture).toHaveLength(8) // The stored snapshot is still intact.
+  expect(state.furniture).toHaveLength(11) // The stored snapshot is still intact.
 })
 
 it('preserves deliberate additions after the upgrade, including after a save and reload', () => {

@@ -1,19 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
-import {
-  AlwaysDepth,
-  Color,
-  HalfFloatType,
-  Mesh,
-  Object3D,
-  OrthographicCamera,
-  PlaneGeometry,
-  Scene,
-  ShaderMaterial,
-  Vector2,
-  WebGLRenderTarget,
-} from 'three'
+import { Mesh, Object3D, WebGLRenderTarget, type Camera } from 'three'
 import { floorRegions } from '../layout/rooms'
+import { DIM, makeTools } from './blurTools'
 import { roomMeshClassifier } from './roomMeshes'
 import type { Floor } from '../layout/types'
 
@@ -25,11 +14,11 @@ const ITEM_LAYER = 3
 const BLUR_PASSES = 3
 /** The outside is drawn at this much of the canvas's CSS size, whatever the pixel ratio (see MotionQuality). */
 const OUTSIDE_SCALE = 0.5
-const TINT = new Color('#ebe7e1')
-const DIM = 0.3
 /** How long the dimming takes to come and go, in ms. */
 const DIM_IN = 220
 const DIM_OUT = 320
+/** How long the blur takes to clear after the room is left, in ms. */
+const BLUR_OUT = 500
 
 const ease = (t: number) => t * t * (3 - 2 * t)
 
@@ -48,55 +37,6 @@ const step = (f: Fade, item: string | undefined, now: number, fadeIn: number, fa
   return moving
 }
 
-const blurMaterial = () =>
-  new ShaderMaterial({
-    uniforms: { map: { value: null }, dir: { value: new Vector2() }, tint: { value: 0 }, color: { value: TINT } },
-    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-    fragmentShader: `
-      uniform sampler2D map; uniform vec2 dir; uniform float tint; uniform vec3 color; varying vec2 vUv;
-      void main() {
-        vec4 c = texture2D(map, vUv) * 0.227027;
-        c += (texture2D(map, vUv + dir * 1.3846) + texture2D(map, vUv - dir * 1.3846)) * 0.3162162;
-        c += (texture2D(map, vUv + dir * 3.2308) + texture2D(map, vUv - dir * 3.2308)) * 0.0702703;
-        float grey = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-        c.rgb = mix(c.rgb, mix(vec3(grey), c.rgb, 0.8), tint);
-        c.rgb = mix(c.rgb, color, tint * 0.25);
-        gl_FragColor = vec4(c.rgb, 1.0);
-        // Drawn to the screen, the linear picture gets the tone mapping and colour space the scene would have.
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
-    depthTest: false,
-    depthWrite: false,
-  })
-
-const makeTools = () => {
-  // The outside is drawn small straight into `a`: it's blurred anyway, and that's a fraction of the pixels.
-  const a = new WebGLRenderTarget(1, 1, { type: HalfFloatType })
-  const b = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false })
-  const quad = new Mesh(new PlaneGeometry(2, 2), blurMaterial())
-  // Drawn straight to the screen whatever the camera.
-  quad.frustumCulled = false
-  const scene = new Scene()
-  scene.add(quad)
-  // A dark wash over the whole picture, to set a highlighted item off from everything else. It also puts the depth
-  // back to the far plane, so the item is drawn over everything without clearing it (see `over`).
-  const dim = new Mesh(
-    new PlaneGeometry(2, 2),
-    new ShaderMaterial({
-      uniforms: { alpha: { value: DIM } },
-      vertexShader: 'void main() { gl_Position = vec4(position.xy, 1.0, 1.0); }',
-      fragmentShader: 'uniform float alpha; void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, alpha); }',
-      transparent: true,
-      depthFunc: AlwaysDepth,
-    }),
-  )
-  dim.frustumCulled = false
-  const dimScene = new Scene()
-  dimScene.add(dim)
-  return { a, b, quad, scene, dim, dimScene, camera: new OrthographicCamera() }
-}
-
 /** Where a mesh was when it was last sorted, so only meshes that move are looked at again. */
 type Sorted = { x: number; y: number; z: number; geometry: unknown; cells: unknown; inRoom: boolean }
 
@@ -108,20 +48,28 @@ const itemOf = (o: Object3D) => {
 /**
  * Draws the outside blurred, then the room's own meshes sharp over it: everything else is out of focus,
  * whatever stands where on screen. Each mesh is drawn once; shadows are only redrawn when something moves.
- * With an item open, everything else is dimmed, easing in and out, and it's drawn over it.
+ * With an item open, everything else is dimmed, easing in and out, and it's drawn over it. Left, it all eases away.
  */
 export const RoomBlur = ({
   floor,
   roomId,
+  soften = true,
   open,
+  leaving,
+  onLeft,
 }: {
   floor: Floor
   roomId: string
+  /** Phones keep room picking and item dimming without the offscreen blur/compositing passes. */
+  soften?: boolean
   open?: string
+  leaving?: boolean
+  onLeft?: () => void
 }) => {
   const redraw = useThree((s) => s.invalidate)
-  useEffect(() => redraw(), [open, redraw])
+  useEffect(() => redraw(), [open, leaving, redraw])
   const dimming = useRef<Fade>({ value: 0 })
+  const blurring = useRef<Fade>({ value: 1 })
   // What's around the room is marked as it's sorted, so the pointer passes it by (see `reachable`).
   const scene = useThree((s) => s.scene)
   useEffect(() => () => scene.traverse((o) => delete o.userData.outside), [scene])
@@ -146,16 +94,19 @@ export const RoomBlur = ({
   const inRoom = useMemo(() => roomMeshClassifier(floor, roomId), [floor, roomId])
 
   useFrame(({ gl, scene, camera, size, invalidate }) => {
-    const tools = (kit.current ??= makeTools())
     const now = performance.now()
     const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
-    if (dimMoving) invalidate()
+    const blurMoving = step(blurring.current, leaving ? undefined : roomId, now, DIM_IN, BLUR_OUT)
+    if (dimMoving || blurMoving) invalidate()
+    const blur = ease(blurring.current.value)
     const shown = dimming.current.item
     scene.updateMatrixWorld()
     // Sort the meshes, and sum up where everything is, to tell when the shadows need redrawing.
     let shadows = 0
     let i = 0
     scene.traverseVisible((o) => {
+      // The view's camera is in the scene too, and moving it moves no shadow.
+      if ((o as Camera).isCamera) return
       const e = o.matrixWorld.elements
       i++
       shadows += i * (e[12] + 2 * e[13] + 3 * e[14] + 5 * e[0] + 7 * e[2])
@@ -181,6 +132,29 @@ export const RoomBlur = ({
       }
     })
 
+    // A phone draws straight to the screen: no linear-output house variants to link on the first room tap.
+    // Sorting still limits picking to this room, and an opened item's dim and overlay stay available.
+    if (!soften) {
+      camera.layers.set(0)
+      gl.render(scene, camera)
+      if (shown) {
+        const tools = (kit.current ??= makeTools())
+        tools.dim.material.uniforms.alpha.value = DIM * ease(dimming.current.value)
+        const autoClear = gl.autoClear
+        const background = scene.background
+        gl.autoClear = false
+        gl.render(tools.dimScene, tools.camera)
+        scene.background = null
+        camera.layers.set(ITEM_LAYER)
+        gl.render(scene, camera)
+        scene.background = background
+        gl.autoClear = autoClear
+        camera.layers.set(0)
+      }
+      if (leaving) onLeft?.()
+      return
+    }
+    const tools = (kit.current ??= makeTools())
     // Sized and blurred by CSS pixels, not the drawing buffer's: the pixel ratio drops while the camera moves, and
     // the outside mustn't turn blurrier then and sharper again as it settles.
     const { a, b, quad, camera: flat } = tools
@@ -221,8 +195,8 @@ export const RoomBlur = ({
     camera.layers.set(OUTSIDE_LAYER)
     gl.render(scene, camera)
     for (let k = 0; k < BLUR_PASSES; k++) {
-      pass(a, b, 1 + k, 0)
-      pass(b, a, 0, 1 + k)
+      pass(a, b, (1 + k) * blur, 0)
+      pass(b, a, 0, (1 + k) * blur)
     }
     const autoClear = gl.autoClear
     // A colour background clears the screen whatever autoClear says.
@@ -237,7 +211,7 @@ export const RoomBlur = ({
       scene.background = background
       gl.autoClear = autoClear
     }
-    pass(a, null, 0, 0, 1)
+    pass(a, null, 0, 0, blur)
     // The room, sharp, over it.
     over(ROOM_LAYER)
     if (shown) {
@@ -250,6 +224,10 @@ export const RoomBlur = ({
     }
     camera.layers.set(0)
     gl.shadowMap.autoUpdate = autoUpdate
+    if (leaving && !blurMoving) {
+      onLeft?.()
+      invalidate()
+    }
   }, 1)
   return null
 }

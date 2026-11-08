@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { OrthographicCamera, PerspectiveCamera, Spherical, Vector3 } from 'three'
 import { isTyping } from '../ui/isTyping'
-import { NEAR_PACE, type CameraNudge } from './cameraNudge'
+import { NEAR_PACE, heldStep, type CameraNudge } from './cameraNudge'
 
 type OrbitLike = { target: Vector3; maxPolarAngle: number; update: () => void }
 
@@ -23,6 +23,7 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
   )
   const up = useMemo(() => new Vector3(0, 1, 0), [])
   const keys = useRef(new Set<string>())
+  const step = useRef(0)
 
   useEffect(() => {
     const held = keys.current
@@ -55,9 +56,12 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
     const { zoom, turn, tilt } = nudge.current
     const forward = nudge.current.forward + axis(k.has('w') || k.has('arrowup'), k.has('s') || k.has('arrowdown'))
     const right = nudge.current.right + axis(k.has('d') || k.has('arrowright'), k.has('a') || k.has('arrowleft'))
-    if (!forward && !right && !zoom && !turn && !tilt) return
+    if (!forward && !right && !zoom && !turn && !tilt) {
+      step.current = 0
+      return
+    }
     invalidate()
-    const dt = Math.min(delta, 0.1)
+    const dt = (step.current = heldStep(delta, step.current))
     const { offset } = tmp
     offset.copy(camera.position).sub(orbit.target)
 
@@ -99,7 +103,8 @@ export const CameraNudger = ({ nudge }: { nudge: RefObject<CameraNudge> }) => {
 
     camera.position.copy(orbit.target).add(offset)
     orbit.update()
-  })
+    // Before MotionQuality, so a move's very first frame is already cheap.
+  }, -1)
 
   return null
 }
