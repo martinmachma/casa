@@ -1,15 +1,16 @@
-import { Check, ChevronUp, DoorOpen, House, Layers, List, X } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { ChevronLeft } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import type { LightState } from '../devices/lights'
 import type { Scene } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
 import type { Floor } from '../layout/types'
-import { itemsTitle, type SmartItem } from '../rooms/roomItems'
+import type { Order } from '../lib/order'
+import type { SmartItem } from '../rooms/roomItems'
 import type { RoomView } from '../rooms/roomViews'
-import { IconButton } from './kit'
+import { FloorLayers } from './FloorLayers'
 import { LightControls } from './LightControls'
 import { ordinal } from './ordinal'
-import { SceneChips } from './RoomScenes'
+import { PhoneScenes } from './PhoneScenes'
 import { ShadeControls } from './ShadeControls'
 import { SmartRows } from './SmartList'
 
@@ -20,7 +21,7 @@ type PhoneHomeProps = {
   /** Looking at the whole house from outside instead of one floor. */
   outside: boolean
   onOutside: () => void
-  /** Every room, in the order they're listed. */
+  /** Every room, in this person's order. */
   rooms: RoomView[]
   /** The room being looked at on its own, if any. */
   room: RoomView | undefined
@@ -29,14 +30,18 @@ type PhoneHomeProps = {
   onLeave: () => void
   /** The rooms with lights, and whether any is on. */
   lit: Map<string, boolean>
+  /** The scenes that reach what's in view. */
   scenes: Scene[]
+  allScenes: Scene[]
+  sceneOrder: Order | undefined
+  onSceneOrder: (order: Order) => void
   /** Every item in the house: a scene is on when all it sets is as it says. */
   sceneIds: string[]
   /** What's in the room, for its list. */
   items: SmartItem[]
-  /** The item whose card is open. */
+  /** The item whose controls are open. */
   open: SmartItem | undefined
-  /** Space covered at the bottom of the view, so the close-up stays above its card. */
+  /** Space covered at the bottom of the view, so the room and a close-up stay above the sheet. */
   onFocusInset: (pixels: number) => void
   onOpen: (id: string | undefined) => void
   onHover: (id: string | undefined) => void
@@ -47,11 +52,12 @@ type PhoneHomeProps = {
   onShade: (id: string, patch: Partial<ShadeState>) => void
 }
 
-type Menu = 'floor' | 'room' | 'list'
+/** How far a drag on the sheet's handle goes before it raises or lowers the sheet, in CSS pixels. */
+const SWIPE = 18
 
 /**
- * Home on a phone: the floor and the room picked from two menus at the bottom, the scenes floating over them, an item's
- * card in their place while it's open, and everything in the room in a sheet.
+ * Home on a phone: the floors as layers at the right edge, the chosen scenes over a low sheet of the floor's rooms.
+ * Swiped up, the sheet has what's in the picked room, and an item's controls in its place when one is open.
  */
 export const PhoneHome = ({
   floors,
@@ -65,6 +71,9 @@ export const PhoneHome = ({
   onLeave,
   lit,
   scenes,
+  allScenes,
+  sceneOrder,
+  onSceneOrder,
   sceneIds,
   items,
   open,
@@ -77,163 +86,175 @@ export const PhoneHome = ({
   shade,
   onShade,
 }: PhoneHomeProps) => {
-  const [menu, setMenu] = useState<Menu>()
-  const card = useRef<HTMLDivElement>(null)
+  const [raisedByHand, setRaised] = useState(false)
+  const raised = raisedByHand || !!open
+  const [sheetHeight, setSheetHeight] = useState(0)
+  const sheet = useRef<HTMLDivElement>(null)
+  const cards = useRef<HTMLDivElement>(null)
+
   useLayoutEffect(() => {
-    const el = card.current
+    const el = sheet.current
     const view = el?.parentElement
-    if (!el || !view) {
-      onFocusInset(0)
-      return
+    if (!el || !view) return
+    const measure = () => {
+      const covered = view.getBoundingClientRect().bottom - el.getBoundingClientRect().top
+      setSheetHeight(covered)
+      onFocusInset(covered + 16)
     }
-    const measure = () => onFocusInset(view.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 16)
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     observer.observe(view)
     measure()
-    return () => observer.disconnect()
-  }, [open?.id, onFocusInset])
-  const toggle = (next: Menu) => setMenu(menu === next ? undefined : next)
-  const pick = (go: () => void) => () => {
-    setMenu(undefined)
-    go()
-  }
-  const floorLit = (floor: Floor) => rooms.some((r) => r.floor === floor.id && lit.get(r.room))
+    return () => {
+      observer.disconnect()
+      onFocusInset(0)
+    }
+  }, [onFocusInset])
+
+  // The picked room's card is kept in sight.
+  useEffect(() => {
+    cards.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [room?.id, floorIndex, outside])
+
   const here = outside ? undefined : floors[floorIndex]
-  // From outside the menu has every room, under its floor.
-  const roomFloors = here ? [here] : floors
-  const dot = (on: boolean | undefined) => <i className="phone-dot" data-on={on || undefined} />
-  const list = room && menu === 'list'
+  // From outside, every room, each with its floor.
+  const shownRooms = here ? rooms.filter((r) => r.floor === here.id) : rooms
+  const floorName = (id: string) => `${ordinal(floors.findIndex((f) => f.id === id) + 1)} floor`
+  const describe = (index: number | undefined) => {
+    const inIt = index === undefined ? rooms : rooms.filter((r) => r.floor === floors[index].id)
+    const on = inIt.filter((r) => lit.get(r.room)).length
+    return `${inIt.length} rooms · ${on ? `${on} lit` : 'all dark'}`
+  }
+  const lower = () => {
+    setRaised(false)
+    onOpen(undefined)
+  }
+
+  // A short drag on the handle raises or lowers the sheet; a tap toggles it.
+  const swipe = useRef<{ y: number; done: boolean } | undefined>(undefined)
+  const handle = {
+    onPointerDown: (e: PointerEvent) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      swipe.current = { y: e.clientY, done: false }
+    },
+    onPointerMove: (e: PointerEvent) => {
+      const s = swipe.current
+      if (!s || s.done) return
+      const dy = e.clientY - s.y
+      if (Math.abs(dy) < SWIPE) return
+      s.done = true
+      if (dy < 0) setRaised(true)
+      else lower()
+    },
+    onPointerUp: () => {
+      if (swipe.current && !swipe.current.done) {
+        if (raised) lower()
+        else setRaised(true)
+      }
+      swipe.current = undefined
+    },
+    onPointerCancel: () => (swipe.current = undefined),
+  }
 
   return (
-    <>
-      {menu && <div className="phone-scrim" onClick={() => setMenu(undefined)} />}
+    <div
+      className="phone-home"
+      data-raised={raised || undefined}
+      style={{ '--sheet': `${sheetHeight}px` } as CSSProperties}
+    >
+      <FloorLayers
+        floors={floors}
+        floorIndex={floorIndex}
+        outside={outside}
+        onFloor={onFloor}
+        onOutside={onOutside}
+        describe={describe}
+      />
 
-      {open ? (
-        <div ref={card} className="phone-card float" role="dialog" aria-label={open.name}>
-          <div className="phone-card-head">
-            <h2>{open.name}</h2>
-            <IconButton label="Close" small onClick={() => onOpen(undefined)}>
-              <X size={16} />
-            </IconButton>
-          </div>
-          {open.kind === 'light' ? (
-            <LightControls light={light(open.id)} onChange={(p) => onLight(open.id, p)} />
-          ) : open.kind === 'blind' ? (
-            <ShadeControls
-              name={open.name}
-              shade={shade(open.id)}
-              onChange={(p) => onShade(open.id, p)}
-              onClose={() => onOpen(undefined)}
-            />
-          ) : (
-            <p className="hint">
-              {open.entity
-                ? `It will show ${open.entity} once Home Assistant is linked.`
-                : 'Give it a Home Assistant entity under Edit to control it here.'}
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="phone-over">
-          <SceneChips
-            scenes={scenes}
-            ids={sceneIds}
-            light={light}
-            onLight={onLight}
-            shade={shade}
-            onShade={onShade}
-            className="float"
-          />
-          {room && items.length > 0 && (
-            <IconButton label="Everything in the room" className="float phone-list-btn" onClick={() => toggle('list')}>
-              <List size={18} />
-            </IconButton>
-          )}
-        </div>
+      {!raised && (
+        <PhoneScenes
+          scenes={scenes}
+          all={allScenes}
+          saved={sceneOrder}
+          onSave={onSceneOrder}
+          ids={sceneIds}
+          light={light}
+          onLight={onLight}
+          shade={shade}
+          onShade={onShade}
+        />
       )}
 
-      {menu === 'floor' && (
-        <div className="phone-menu phone-menu-floor float" role="menu" aria-label="Floor">
-          <button role="menuitem" aria-current={outside || undefined} onClick={pick(onOutside)}>
-            {dot(floors.some(floorLit))}
-            <b>Whole house</b>
-            {outside && <Check size={16} />}
-          </button>
-          {floors.map((f, i) => (
-            <button key={f.id} role="menuitem" aria-current={f === here || undefined} onClick={pick(() => onFloor(i))}>
-              {dot(floorLit(f))}
-              <b>{ordinal(i + 1)} floor</b>
-              {f === here && <Check size={16} />}
+      {raised && <div className="phone-scrim" onClick={lower} />}
+
+      <div ref={sheet} className="phone-rooms float" aria-label="Rooms">
+        <div className="phone-grab" aria-label={raised ? 'Lower' : 'Raise'} role="button" {...handle}>
+          <i />
+        </div>
+        <div ref={cards} className="phone-room-cards" data-wrap={(raised && !room) || undefined}>
+          {shownRooms.map((r) => (
+            <button
+              key={r.id}
+              className="phone-room-card"
+              aria-current={r === room || undefined}
+              onClick={() => (r === room ? onLeave() : onRoom(r.id))}
+            >
+              <b>{r.label}</b>
+              <span>
+                {lit.get(r.room) && <i className="phone-dot" data-on />}
+                {here ? (lit.has(r.room) ? (lit.get(r.room) ? 'On' : 'Off') : '') : floorName(r.floor)}
+              </span>
             </button>
           ))}
         </div>
-      )}
 
-      {menu === 'room' && (
-        <div className="phone-menu phone-menu-room float" role="menu" aria-label="Room">
-          {here && (
-            <button role="menuitem" aria-current={!room || undefined} onClick={pick(onLeave)}>
-              {dot(false)}
-              <b>All of the {ordinal(floorIndex + 1)} floor</b>
-              {!room && <Check size={16} />}
-            </button>
-          )}
-          {roomFloors.map((f) => (
-            <div key={f.id} className="phone-menu-group">
-              {!here && <h3>{ordinal(floors.indexOf(f) + 1)} floor</h3>}
-              {rooms
-                .filter((r) => r.floor === f.id)
-                .map((r) => (
-                  <button
-                    key={r.id}
-                    role="menuitem"
-                    aria-current={r === room || undefined}
-                    onClick={pick(() => onRoom(r.id))}
-                  >
-                    {dot(lit.get(r.room))}
-                    <b>{r.label}</b>
-                    {r === room && <Check size={16} />}
-                  </button>
-                ))}
+        {raised &&
+          room &&
+          (open ? (
+            <div className="phone-item" role="group" aria-label={open.name}>
+              <div className="phone-sheet-head">
+                <button className="phone-back" onClick={() => onOpen(undefined)}>
+                  <ChevronLeft size={16} />
+                  {room.label}
+                </button>
+              </div>
+              <h2>{open.name}</h2>
+              {open.kind === 'light' ? (
+                <LightControls light={light(open.id)} onChange={(p) => onLight(open.id, p)} />
+              ) : open.kind === 'blind' ? (
+                <ShadeControls
+                  name={open.name}
+                  shade={shade(open.id)}
+                  onChange={(p) => onShade(open.id, p)}
+                  onClose={() => onOpen(undefined)}
+                />
+              ) : (
+                <p className="hint">
+                  {open.entity
+                    ? `It will show ${open.entity} once Home Assistant is linked.`
+                    : 'Give it a Home Assistant entity under Edit to control it here.'}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="phone-items">
+              {items.length ? (
+                <SmartRows
+                  items={items}
+                  light={light}
+                  onLight={onLight}
+                  shade={shade}
+                  onShade={onShade}
+                  onOpen={onOpen}
+                  onHover={onHover}
+                  hovered={hovered}
+                />
+              ) : (
+                <p className="hint">Nothing to switch in here yet.</p>
+              )}
             </div>
           ))}
-        </div>
-      )}
-
-      {list && (
-        <div className="phone-sheet" role="dialog" aria-label={itemsTitle(items)}>
-          <div className="phone-card-head">
-            <h2>{room.label}</h2>
-            <IconButton label="Close" small onClick={() => setMenu(undefined)}>
-              <X size={16} />
-            </IconButton>
-          </div>
-          <SmartRows
-            items={items}
-            light={light}
-            onLight={onLight}
-            shade={shade}
-            onShade={onShade}
-            onOpen={(id) => pick(() => onOpen(id))()}
-            onHover={onHover}
-            hovered={hovered}
-          />
-        </div>
-      )}
-
-      <nav className="phone-bar float" aria-label="Where">
-        <button aria-haspopup="menu" aria-expanded={menu === 'floor'} onClick={() => toggle('floor')}>
-          {here ? <Layers size={18} /> : <House size={18} />}
-          <span>{here ? ordinal(floorIndex + 1) : 'House'}</span>
-          <ChevronUp size={16} />
-        </button>
-        <button className="grow" aria-haspopup="menu" aria-expanded={menu === 'room'} onClick={() => toggle('room')}>
-          <DoorOpen size={18} />
-          <span>{room?.label ?? 'All rooms'}</span>
-          <ChevronUp size={16} />
-        </button>
-      </nav>
-    </>
+      </div>
+    </div>
   )
 }

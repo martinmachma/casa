@@ -88,6 +88,16 @@ const sameLight = (a: LightState, b: LightState) =>
 const sameShade = (a: ShadeState, b: ShadeState) =>
   Math.round(a.position * 100) === Math.round(b.position * 100) && (a.position <= 0 || a.tilt === b.tilt)
 
+/** Sets everything the scene says. */
+export const applyScene = (
+  scene: Scene,
+  onLight: (id: string, state: LightState) => void,
+  onShade: (id: string, state: ShadeState) => void,
+) => {
+  Object.entries(scene.lights).forEach(([id, s]) => onLight(id, s))
+  Object.entries(scene.shades).forEach(([id, s]) => onShade(id, s))
+}
+
 /** Whether these items are as the scene sets them; those it doesn't set are left out. */
 export const sceneActive = (
   scene: Scene,

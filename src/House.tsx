@@ -62,6 +62,7 @@ import { floorItems, itemSections, outsideLight, type PlacedItem, roomItems } fr
 import { floorShades, SHADE_UP, useShades } from './devices/shades'
 import { RoomNav } from './ui/RoomNav'
 import { useRoomOrder } from './rooms/useRoomOrder'
+import { useSceneOrder } from './devices/useSceneOrder'
 import { ItemPins } from './ui/ItemPins'
 import { FloorOverview } from './ui/FloorOverview'
 import { RoomOverview } from './ui/RoomOverview'
@@ -132,6 +133,7 @@ export const House = ({ backend, account }: HouseProps) => {
   const [weatherOpen, setWeatherOpen] = useState(false)
   const openTodos = useOpenTodoCount()
   const roomOrder = useRoomOrder(backend)
+  const sceneOrder = useSceneOrder(backend)
   // The right panel is the editor: it's there while editing, and on a phone can be tucked away meanwhile.
   const [rightTucked, setRightTucked] = useState(false)
   const setRightOpen = (open: boolean) => setRightTucked(!open)
@@ -1145,6 +1147,9 @@ export const House = ({ backend, account }: HouseProps) => {
               onLeave={leaveRoom}
               lit={roomLights}
               scenes={focus ? data.scenes.filter((s) => focusItems.some((i) => sceneHas(s, i.id))) : floorScenes}
+              allScenes={reachingScenes}
+              sceneOrder={sceneOrder.order}
+              onSceneOrder={sceneOrder.save}
               sceneIds={smartItems.map((i) => i.id)}
               items={focusItems}
               open={smartItems.find((i) => i.id === popover)}

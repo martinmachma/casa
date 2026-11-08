@@ -1,5 +1,5 @@
 import type { LightState } from '../devices/lights'
-import { type Scene, sceneActive } from '../devices/scenes'
+import { applyScene, type Scene, sceneActive } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
 import { SmartCard } from './SmartList'
 
@@ -23,10 +23,7 @@ export const SceneChips = ({
   onShade,
   className = '',
 }: RoomScenesProps & { className?: string }) => {
-  const apply = (scene: Scene) => {
-    Object.entries(scene.lights).forEach(([id, s]) => onLight(id, s))
-    Object.entries(scene.shades).forEach(([id, s]) => onShade(id, s))
-  }
+  const apply = (scene: Scene) => applyScene(scene, onLight, onShade)
   return scenes.map((scene) => (
     <button
       key={scene.id}

@@ -1,4 +1,5 @@
 import type { Scene } from '../devices/scenes'
+import type { Order } from '../lib/order'
 import type { RoomOrder } from '../rooms/roomOrder'
 import type { WallFace, WallSide } from '../layout/types'
 
@@ -150,6 +151,9 @@ export type Backend = {
   /** The signed-in person's order of the room menu; undefined until they first arrange it. */
   loadRoomOrder: () => Promise<RoomOrder | undefined>
   saveRoomOrder: (order: RoomOrder) => Promise<void>
+  /** The signed-in person's scenes shown on the phone, then the rest; undefined until they first arrange them. */
+  loadSceneOrder: () => Promise<Order | undefined>
+  saveSceneOrder: (order: Order) => Promise<void>
   /** Calls `onChange` whenever versions or the live one may have changed elsewhere. Returns the unsubscribe. */
   subscribe: (onChange: () => void) => () => void
 }

@@ -26,7 +26,7 @@ A module may import from the left of itself, not the right. (A few small upward 
 | `data` | `HouseState`, versions, the `Backend` interface, `useHouseData`, local (demo) and Supabase backends, migrations of saved state (`builtInFixtures`, `builtInFinishes`), wall areas | hooks + pure |
 | `devices` | the 135 fixed electrical points, device kinds, placement, lights, shades, scenes | mostly pure + small hooks |
 | `rooms` | room views, items per room, room order | pure + one query hook |
-| `lib` | Supabase client, query client, realtime, `useStable` | leaf helpers |
+| `lib` | Supabase client, query client, realtime, `useStable`, a person's saved menu order (`order`, `useSavedOrder`) | leaf helpers |
 | `auth` | `AuthGate`, `useAccess` (guest list check, Google sign-in) | React |
 | `scene` | everything inside the R3F `<Canvas>`: walls, floors, openings, furniture, device models, lights, shadows, AO, cameras, picking. Pure helpers (`shadows`, `pick`, `raycast`, `itemSection`, `lightEmission`, `pointShadowLayout`, `roomMeshes`) are separate files with tests | R3F + pure |
 | `ui` | DOM panels, top bar, room nav, kit primitives (`kit.tsx`), todo popup. No R3F | React |
@@ -38,7 +38,7 @@ A module may import from the left of itself, not the right. (A few small upward 
   field needs no migration.
 - **Versions** are immutable snapshots (`house.versions`, jsonb). `house.live_version` is a one-row pointer to the
   version that is "the house now" (null = bare house). The `Backend` interface covers load, save, rename, delete,
-  setLive, `replaceLive` (conditional, one winner when two people go live at once), room order, and subscribe.
+  setLive, `replaceLive` (conditional, one winner when two people go live at once), room and scene order, and subscribe.
 - **Unsaved edits** live in `useHouseData`: a history (draft, past, future, limit 100). `edit(change, key?)` merges
   same-key edits into one undo step. The draft persists to localStorage (`casa.draft.<backend.kind>`) and survives a
   reload on that device. Saving creates a new version. `newerLive` flags that someone made another version live while
@@ -86,6 +86,7 @@ Performance-sensitive; read `docs/LIGHTING.md` before touching lights, shadows o
 
 Exist: versions + undo/redo, Edit with Interior (furniture and lights) and Scenes tabs, scenes, paint areas, furniture, bathroom fittings,
 roof/outdoor/stairs, electrical routes view, walk mode, sun and moon, weather, todos popup, per-user room order,
+per-user scenes on the phone (`house.scene_orders`: which are shown over the rooms, in what order),
 nicknames, PWA.
 Not built: Home Assistant. Lights, shades and scenes switch in-app only. Devices carry an optional `entity` for later.
 Don't build HA integration until Martin says it's set up, then ask how the app should reach it (browser with token

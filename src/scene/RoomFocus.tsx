@@ -39,14 +39,14 @@ export const RoomCamera = ({
   furniture: FurnitureItem[]
   /** An opened item to come in close to, from the way it's best seen; dragging tilts round it. */
   closeUp?: Pin
-  /** Bottom of the view covered by the item's controls, in CSS pixels. */
+  /** Bottom of the view covered by the controls (a phone's sheet, an item's card), in CSS pixels. */
   bottomInset?: number
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
   onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
 }) => {
   const size = useThree((s) => s.size)
-  const inset = closeUp ? bottomInset : 0
+  const inset = bottomInset
   const framing = useMemo(() => focusFraming(size, inset), [size, inset])
   const projection = useRef({
     from: { zoom: 1, offsetY: 0 },
