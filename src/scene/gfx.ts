@@ -19,3 +19,6 @@ const off = new Set<Flag>(requested.has('safe') ? FLAGS : FLAGS.filter((f) => re
 if (off.size) console.info('Casa graphics switched off:', [...off].join(', '))
 
 export const gfxOff = (flag: Flag) => off.has(flag)
+
+/** What's switched off, for a label on screen ('' when nothing is). */
+export const gfxLabel = off.size ? `Graphics off: ${[...off].join(', ')}` : ''
