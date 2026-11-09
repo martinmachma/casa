@@ -59,10 +59,12 @@ export const FloorLayers = ({
   }
   const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
 
-  // Closed, the slabs sit close together in the middle of the floors' stops; a drag spreads them out onto their stops.
+  // Closed, the house and the slabs sit close together in the middle of the strip, the slabs 7px apart and the house
+  // just above them; a drag spreads them out onto their stops.
   const spread = open || dragging
-  const middle = (centre(1) + centre(stops - 1)) / 2
-  const slabTop = (k: number) => (spread ? centre(k) : middle + (k - stops / 2) * 7)
+  const cluster = 14 + (stops - 2) * 7
+  const clusterTop = centre(0) - step / 2 + (step * stops - cluster) / 2
+  const slabTop = (k: number) => (spread ? centre(k) : clusterTop + (k === 0 ? 0 : 14 + (k - 1) * 7))
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
@@ -137,7 +139,7 @@ export const FloorLayers = ({
             aria-hidden
             data-on={k === stop || undefined}
             data-hover={(!dragging && k === hover) || undefined}
-            style={{ top: centre(k) }}
+            style={{ top: slabTop(k) }}
           >
             {k === 0 ? <House size={open ? 17 : 13} /> : floors.length - k + 1}
           </span>

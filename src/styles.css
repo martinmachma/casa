@@ -4646,7 +4646,9 @@ input[type='range'].light-brightness::-moz-range-thumb {
   color: rgb(243 245 248 / 0.85);
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
   opacity: 0;
-  transition: opacity 150ms;
+  transition:
+    opacity 150ms,
+    top 200ms ease;
   pointer-events: none;
 }
 
