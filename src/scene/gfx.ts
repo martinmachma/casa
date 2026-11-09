@@ -14,11 +14,19 @@ const read = () => {
     return param ?? ''
   }
 }
-const requested = new Set(read().split(','))
+const raw = read()
+const requested = new Set(raw.split(','))
 const off = new Set<Flag>(requested.has('safe') ? FLAGS : FLAGS.filter((f) => requested.has(f)))
 if (off.size) console.info('Casa graphics switched off:', [...off].join(', '))
 
 export const gfxOff = (flag: Flag) => off.has(flag)
 
-/** What's switched off, for a label on screen ('' when nothing is). */
-export const gfxLabel = off.size ? `Graphics off: ${[...off].join(', ')}` : ''
+/** Leaves the house out altogether, to tell whether the 3D view is what freezes a machine at all. */
+export const gfxNoHouse = requested.has('nohouse')
+
+/** For a label on screen whenever ?gfx= is given ('' otherwise); the build shows a page an old service worker kept. */
+export const gfxLabel = raw
+  ? [`Build ${__BUILD__}`, gfxNoHouse && 'house left out', off.size && `graphics off: ${[...off].join(', ')}`]
+      .filter(Boolean)
+      .join(' · ')
+  : ''

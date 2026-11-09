@@ -65,7 +65,7 @@ import { WalkCamera } from './WalkCamera'
 import { WalkPlacementTracker, type WalkPlacement } from './WalkPlacement'
 import type { WalkStart } from '../walk/start'
 import { WarmShaders } from './WarmShaders'
-import { gfxLabel, gfxOff } from './gfx'
+import { gfxOff } from './gfx'
 import { ZoomToSurface } from './ZoomToSurface'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
@@ -756,25 +756,6 @@ export const HouseScene = ({
         </ViewedFloor.Provider>
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />
-      {gfxLabel && (
-        <div
-          style={{
-            position: 'fixed',
-            left: '50%',
-            bottom: 8,
-            transform: 'translateX(-50%)',
-            padding: '2px 8px',
-            borderRadius: 6,
-            background: '#b00020',
-            color: 'white',
-            font: '12px system-ui',
-            pointerEvents: 'none',
-            zIndex: 1000,
-          }}
-        >
-          {gfxLabel}
-        </div>
-      )}
       {!focusRoom && <Compass needle={needle} />}
     </>
   )
