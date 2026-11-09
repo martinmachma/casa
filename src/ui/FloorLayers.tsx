@@ -18,7 +18,7 @@ type FloorLayersProps = {
 
 /** Height of each stop along the strip, in CSS pixels: closed, and spread out for good. */
 const STEP = 20
-const OPEN_STEP = 30
+const OPEN_STEP = 40
 const PAD = 4
 
 /**
@@ -39,6 +39,8 @@ export const FloorLayers = ({
   const stops = floors.length + 1
   const stop = outside ? 0 : floors.length - floorIndex
   const [dragging, setDragging] = useState(false)
+  // The stop under a mouse that isn't dragging, lit up so a click's target shows.
+  const [hover, setHover] = useState<number>()
   // The stop the thumb last went to, so a drag switches once per stop it passes.
   const last = useRef(stop)
   const step = open ? OPEN_STEP : STEP
@@ -51,10 +53,11 @@ export const FloorLayers = ({
     else onFloor(floors.length - k)
     navigator.vibrate?.(8)
   }
-  const pick = (e: PointerEvent<HTMLDivElement>) => {
+  const at = (e: PointerEvent<HTMLDivElement>) => {
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top
-    go(Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / step))))
+    return Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / step)))
   }
+  const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
 
   // Closed, the slabs sit close together in the middle of the floors' stops; a drag spreads them out onto their stops.
   const spread = open || dragging
@@ -88,7 +91,11 @@ export const FloorLayers = ({
           setDragging(true)
           pick(e)
         }}
-        onPointerMove={(e) => dragging && pick(e)}
+        onPointerMove={(e) => {
+          if (dragging) pick(e)
+          else if (e.pointerType === 'mouse') setHover(at(e))
+        }}
+        onPointerLeave={() => setHover(undefined)}
         onPointerUp={() => setDragging(false)}
         onPointerCancel={() => setDragging(false)}
         onKeyDown={(e) => {
@@ -101,7 +108,13 @@ export const FloorLayers = ({
       >
         {/* Spread out, each stop's place shows as a faint cell, so the layers can be told apart. */}
         {Array.from({ length: stops }, (_, k) => (
-          <b key={k} className="floor-layers-cell" data-on={k === stop || undefined} style={{ top: centre(k) }} />
+          <b
+            key={k}
+            className="floor-layers-cell"
+            data-on={k === stop || undefined}
+            data-hover={(!dragging && k === hover) || undefined}
+            style={{ top: centre(k) }}
+          />
         ))}
         {floors.map((f, i) => {
           const k = floors.length - i
@@ -111,6 +124,7 @@ export const FloorLayers = ({
               className="floor-layers-slab"
               data-on={k === stop || undefined}
               data-all={stop === 0 || undefined}
+              data-hover={(!dragging && k === hover) || undefined}
               style={{ top: slabTop(k) }}
             />
           )
@@ -122,9 +136,10 @@ export const FloorLayers = ({
             className="floor-layers-mark"
             aria-hidden
             data-on={k === stop || undefined}
+            data-hover={(!dragging && k === hover) || undefined}
             style={{ top: centre(k) }}
           >
-            {k === 0 ? <House size={13} /> : floors.length - k + 1}
+            {k === 0 ? <House size={open ? 17 : 13} /> : floors.length - k + 1}
           </span>
         ))}
       </div>
