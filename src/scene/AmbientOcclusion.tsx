@@ -25,6 +25,7 @@ import { atlasShadowVertex, atlasShadowVertexPars, receiverPlaneShadows, receive
 import { ceilingLightMask, fixtureLighting } from './lightEmission'
 import { PointShadowAtlas } from './PointShadowAtlas'
 import { motionState } from './motionState'
+import { gfxOff } from './gfx'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
 // Ways of drawing kept for the normal pass, used or not, before the unused ones are let go.
@@ -66,30 +67,37 @@ const makeTools = () => {
   noise.needsUpdate = true
   material.uniforms.tNoise.value = noise
   material.uniforms.kernelRadius.value = RADIUS
+  // Written like SSAOShader, which Windows (ANGLE on Direct3D) takes in its stride: the camera kind as a define and
+  // exact texels read. The same blur with a bool uniform and filtered reads in its loop froze the whole browser there.
+  // All three targets are the same size, so each read is the very texel the filtered one landed on.
   const blurMaterial = new ShaderMaterial({
+    defines: { PERSPECTIVE_CAMERA: 1 },
     uniforms: {
       map: { value: ao.texture },
       depth: { value: normal.depthTexture },
-      texel: { value: new Vector2() },
       near: { value: 0.1 },
       far: { value: 100 },
-      perspective: { value: true },
     },
-    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: `
       #include <packing>
-      uniform sampler2D map; uniform sampler2D depth; uniform vec2 texel;
-      uniform float near; uniform float far; uniform bool perspective; varying vec2 vUv;
-      float viewZ(vec2 uv) {
-        float d = texture2D(depth, uv).r;
-        return perspective ? perspectiveDepthToViewZ(d, near, far) : orthographicDepthToViewZ(d, near, far);
+      uniform sampler2D map; uniform sampler2D depth; uniform float near; uniform float far;
+      float viewZ(ivec2 p) {
+        float d = texelFetch(depth, p, 0).r;
+        #if PERSPECTIVE_CAMERA == 1
+          return perspectiveDepthToViewZ(d, near, far);
+        #else
+          return orthographicDepthToViewZ(d, near, far);
+        #endif
       }
       void main() {
-        float z = viewZ(vUv); float sum = 0.0; float weights = 0.0;
-        for (int x = -1; x <= 1; x++) for (int y = -1; y <= 1; y++) {
-          vec2 uv = vUv + vec2(float(x), float(y)) * texel;
-          float weight = exp(-abs(viewZ(uv) - z) / 0.04);
-          sum += texture2D(map, uv).r * weight; weights += weight;
+        ivec2 centre = ivec2(gl_FragCoord.xy);
+        ivec2 last = textureSize(map, 0) - 1;
+        float z = viewZ(centre); float sum = 0.0; float weights = 0.0;
+        for (int i = 0; i < 9; i++) {
+          ivec2 p = clamp(centre + ivec2(i % 3 - 1, i / 3 - 1), ivec2(0), last);
+          float weight = exp(-abs(viewZ(p) - z) / 0.04);
+          sum += texelFetch(map, p, 0).r * weight; weights += weight;
         }
         gl_FragColor = vec4(vec3(sum / max(weights, 0.0001)), 1.0);
       }`,
@@ -314,15 +322,17 @@ export const AmbientOcclusion = ({ enabled = true, shadowScale = 1 }: { enabled?
       u.maxDistance.value = RADIUS / (far - near)
       tools.quad.material = tools.material
       gl.setRenderTarget(tools.ao)
-      tools.quad.render(gl)
+      if (!gfxOff('noaoquad')) tools.quad.render(gl)
       const b = tools.blurMaterial.uniforms
       b.near.value = near
       b.far.value = far
-      b.perspective.value = perspective
-      b.texel.value.set(1 / w, 1 / h)
+      if (tools.blurMaterial.defines.PERSPECTIVE_CAMERA !== Number(perspective)) {
+        tools.blurMaterial.defines.PERSPECTIVE_CAMERA = Number(perspective)
+        tools.blurMaterial.needsUpdate = true
+      }
       tools.quad.material = tools.blurMaterial
       gl.setRenderTarget(tools.blur)
-      tools.quad.render(gl)
+      if (!gfxOff('noaoquad') && !gfxOff('noaoblur')) tools.quad.render(gl)
     } finally {
       for (const [mesh, material] of replaced) mesh.material = material
       for (const o of hidden) o.visible = true

@@ -65,6 +65,7 @@ import { WalkCamera } from './WalkCamera'
 import { WalkPlacementTracker, type WalkPlacement } from './WalkPlacement'
 import type { WalkStart } from '../walk/start'
 import { WarmShaders } from './WarmShaders'
+import { gfxOff } from './gfx'
 import { ZoomToSurface } from './ZoomToSurface'
 
 // Thick enough to close the gap between a floor's walls and the floor above (2.6 m walls, 2.9 m storey).
@@ -215,7 +216,7 @@ export const HouseScene = ({
   pinRefs,
   onTapOutside,
 }: HouseSceneProps) => {
-  const compact = useCompactGraphics()
+  const compact = useCompactGraphics() || gfxOff('compact')
   const noPins = useRef(new Map<string, HTMLElement | null>())
   useEffect(() => {
     if (!targetRoom && camera === 'walk') lastView.returnFrom = undefined
@@ -435,7 +436,7 @@ export const HouseScene = ({
     <>
       <Canvas
         events={pointerEvents}
-        shadows="percentage"
+        shadows={gfxOff('noshadows') ? false : 'percentage'}
         dpr={compact ? 1 : [1, 2]}
         frameloop="demand"
         onPointerMissed={() => (pickable || pickedLight) && onSelect(undefined)}
@@ -514,7 +515,7 @@ export const HouseScene = ({
             />
           )}
           <DebugHover copies={interaction === 'view'} />
-          {blurred && (
+          {blurred && !gfxOff('noblur') && (
             <RoomBlur
               soften={!compact}
               floor={blurred.floor}
@@ -534,14 +535,16 @@ export const HouseScene = ({
           />
           <FocusProjector pins={pins} pinRefs={pinRefs ?? noPins} />
           <Lights compact={compact} sun={sun} north={north} center={[cx, floor.elevation, cz]} />
-          <HouseLights
-            floors={floors}
-            litFloorCount={litFloorCount}
-            devices={data.devices}
-            furniture={data.furniture}
-            level={level}
-            tint={tint}
-          />
+          {!gfxOff('nolights') && (
+            <HouseLights
+              floors={floors}
+              litFloorCount={litFloorCount}
+              devices={data.devices}
+              furniture={data.furniture}
+              level={level}
+              tint={tint}
+            />
+          )}
           <CompassTracker north={north} needle={needle} />
 
           {house.outdoor && <Outdoor outdoor={house.outdoor} />}
@@ -748,8 +751,8 @@ export const HouseScene = ({
               )
             })}
           <ShadowUpdates />
-          <AmbientOcclusion enabled={!compact} shadowScale={compact ? 0.5 : 1} />
-          <WarmShaders ready={!data.loading && !compact} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
+          {!gfxOff('noao') && <AmbientOcclusion enabled={!compact && !gfxOff('nossao')} shadowScale={compact ? 0.5 : 1} />}
+          <WarmShaders ready={!data.loading && !compact && !gfxOff('noblur')} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
         </ViewedFloor.Provider>
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />

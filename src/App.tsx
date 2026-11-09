@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, type ComponentProps } from 'react'
 import { AuthGate, GateCard } from './auth/AuthGate'
+import { gfxLabel, gfxNoHouse } from './scene/gfx'
 
 // The house (three.js and the whole 3D scene) loads beside the sign-in check instead of before it, so the
 // sign-in card shows straight away. A failed early load is tried once more when the house is needed.
@@ -17,17 +18,44 @@ const House = (props: ComponentProps<typeof LazyHouse>) => {
 }
 
 export const App = () => (
-  <AuthGate>
-    {(backend, account) => (
-      <Suspense
-        fallback={
+  <>
+    <AuthGate>
+      {(backend, account) =>
+        gfxNoHouse ? (
           <GateCard>
-            <p className="muted">Opening the door…</p>
+            <p className="muted">Signed in. The house is left out (?gfx=nohouse).</p>
           </GateCard>
-        }
+        ) : (
+          <Suspense
+            fallback={
+              <GateCard>
+                <p className="muted">Opening the door…</p>
+              </GateCard>
+            }
+          >
+            <House backend={backend} account={account} />
+          </Suspense>
+        )
+      }
+    </AuthGate>
+    {gfxLabel && (
+      <div
+        style={{
+          position: 'fixed',
+          left: '50%',
+          bottom: 8,
+          transform: 'translateX(-50%)',
+          padding: '2px 8px',
+          borderRadius: 6,
+          background: '#b00020',
+          color: 'white',
+          font: '12px system-ui',
+          pointerEvents: 'none',
+          zIndex: 1000,
+        }}
       >
-        <House backend={backend} account={account} />
-      </Suspense>
+        {gfxLabel}
+      </div>
     )}
-  </AuthGate>
+  </>
 )

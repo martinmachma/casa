@@ -170,3 +170,13 @@ at 1/30 second. The cap stretched a nominal 1.1-second flight to 5.145 seconds i
 artificial work per frame. With the fix, a phone-sized room flight took 1.136 seconds under the same artificial load;
 a light close-up took 1.107 seconds. These measure animation timing on this Mac, not FPS or a physical-phone benchmark.
 Phone checks also covered opening and switching a light: switching retained the same 22 shader programs.
+
+## AO blur on Windows (2026-11-09)
+
+On a Windows PC (Chrome and Edge, ANGLE on Direct3D 11) the house froze the whole browser on its first frame. `?gfx=`
+switches pinned it to the AO's depth-aware blur: the normal pass and the SSAO quad alone ran fine. The blur read its
+camera kind from a bool uniform and sampled with filtered `texture2D` in a nested loop. It now takes the camera kind
+as a define and reads exact texels with `texelFetch`, like SSAOShader does. All three AO targets share one size, so
+the result is the same (a pixel diff against the old blur was no larger than one between two frames of the same code).
+An 8-bulb shadow cap tried first (shader size as the suspect) didn't help and was reverted: every bulb casts again,
+and the PC runs it fine.
