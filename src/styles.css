@@ -4575,7 +4575,9 @@ input[type='range'].light-brightness::-moz-range-thumb {
   background: rgb(11 15 17 / 0.3);
   touch-action: none;
   cursor: ns-resize;
-  transition: background 150ms;
+  transition:
+    background 150ms,
+    height 200ms ease;
 }
 
 .floor-layers-strip[data-dragging] {

@@ -53,18 +53,21 @@ export const FloorLayers = ({
     else onFloor(floors.length - k)
     navigator.vibrate?.(8)
   }
+  // Closed, the strip is only as tall as the house and the slabs stacked close together, the slabs 7px apart and the
+  // house on them as closely; a drag grows it upwards and spreads them out onto their stops.
+  const spread = open || dragging
+  const cluster = 10 + (stops - 2) * 7
+  const full = PAD * 2 + step * stops
+  const height = spread ? full : cluster + 29
+  // The strip keeps its bottom, so a stop's place in the full strip is that much further down than in this one.
+  const shift = full - height
   const at = (e: PointerEvent<HTMLDivElement>) => {
-    const y = e.clientY - e.currentTarget.getBoundingClientRect().top
+    const y = e.clientY - (e.currentTarget.getBoundingClientRect().bottom - full)
     return Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / step)))
   }
   const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
-
-  // Closed, the house and the slabs sit close together in the middle of the strip, the slabs 7px apart and the house
-  // stacked on them as closely; a drag spreads them out onto their stops.
-  const spread = open || dragging
-  const cluster = 10 + (stops - 2) * 7
-  const clusterTop = centre(0) - step / 2 + (step * stops - cluster) / 2
-  const slabTop = (k: number) => (spread ? centre(k) : clusterTop + (k === 0 ? 0 : 10 + (k - 1) * 7))
+  const place = (k: number) => centre(k) - shift
+  const slabTop = (k: number) => (spread ? centre(k) : 14.5 + (k === 0 ? 0 : 10 + (k - 1) * 7))
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
@@ -86,7 +89,7 @@ export const FloorLayers = ({
         aria-disabled={disabled || undefined}
         tabIndex={disabled ? -1 : 0}
         data-dragging={dragging || undefined}
-        style={{ height: PAD * 2 + step * stops }}
+        style={{ height }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
           last.current = stop
@@ -115,7 +118,7 @@ export const FloorLayers = ({
             className="floor-layers-cell"
             data-on={k === stop || undefined}
             data-hover={(!dragging && k === hover) || undefined}
-            style={{ top: centre(k) }}
+            style={{ top: place(k) }}
           />
         ))}
         {floors.map((f, i) => {
