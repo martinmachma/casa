@@ -4655,9 +4655,10 @@ input[type='range'].light-brightness::-moz-range-thumb {
   text-shadow: none;
 }
 
-/* The whole house has no slab under it, so its mark is lit in the accent instead. */
+/* The whole house has no slab under it, so its mark shows even when closed and is lit in the accent instead. */
 .floor-layers-mark:first-of-type {
   color: rgb(243 245 248 / 0.6);
+  opacity: 1;
 }
 
 .floor-layers-mark:first-of-type[data-on] {
