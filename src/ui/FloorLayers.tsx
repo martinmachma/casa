@@ -60,11 +60,11 @@ export const FloorLayers = ({
   const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
 
   // Closed, the house and the slabs sit close together in the middle of the strip, the slabs 7px apart and the house
-  // just above them; a drag spreads them out onto their stops.
+  // stacked on them as closely; a drag spreads them out onto their stops.
   const spread = open || dragging
-  const cluster = 14 + (stops - 2) * 7
+  const cluster = 10 + (stops - 2) * 7
   const clusterTop = centre(0) - step / 2 + (step * stops - cluster) / 2
-  const slabTop = (k: number) => (spread ? centre(k) : clusterTop + (k === 0 ? 0 : 14 + (k - 1) * 7))
+  const slabTop = (k: number) => (spread ? centre(k) : clusterTop + (k === 0 ? 0 : 10 + (k - 1) * 7))
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
