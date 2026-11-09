@@ -25,6 +25,7 @@ import { atlasShadowVertex, atlasShadowVertexPars, receiverPlaneShadows, receive
 import { ceilingLightMask, fixtureLighting } from './lightEmission'
 import { PointShadowAtlas } from './PointShadowAtlas'
 import { motionState } from './motionState'
+import { gfxOff } from './gfx'
 
 // Contact-scale occlusion of indirect light only. Direct sunlight and bulbs still rely on real shadow maps.
 // Ways of drawing kept for the normal pass, used or not, before the unused ones are let go.
@@ -314,7 +315,7 @@ export const AmbientOcclusion = ({ enabled = true, shadowScale = 1 }: { enabled?
       u.maxDistance.value = RADIUS / (far - near)
       tools.quad.material = tools.material
       gl.setRenderTarget(tools.ao)
-      tools.quad.render(gl)
+      if (!gfxOff('noaoquad')) tools.quad.render(gl)
       const b = tools.blurMaterial.uniforms
       b.near.value = near
       b.far.value = far
@@ -322,7 +323,7 @@ export const AmbientOcclusion = ({ enabled = true, shadowScale = 1 }: { enabled?
       b.texel.value.set(1 / w, 1 / h)
       tools.quad.material = tools.blurMaterial
       gl.setRenderTarget(tools.blur)
-      tools.quad.render(gl)
+      if (!gfxOff('noaoquad') && !gfxOff('noaoblur')) tools.quad.render(gl)
     } finally {
       for (const [mesh, material] of replaced) mesh.material = material
       for (const o of hidden) o.visible = true

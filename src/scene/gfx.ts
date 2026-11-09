@@ -1,7 +1,7 @@
 // `?gfx=` switches parts of the 3D view off, to find which one a machine can't cope with:
 // `?gfx=safe` for all of them, or a list such as `?gfx=noshadows,noao`. Kept for the tab through the login redirect;
 // `?gfx=` with nothing after it switches everything back on.
-const FLAGS = ['compact', 'noshadows', 'nolights', 'noao', 'nossao', 'noblur'] as const
+const FLAGS = ['compact', 'noshadows', 'nolights', 'noao', 'nossao', 'noaoquad', 'noaoblur', 'noblur'] as const
 type Flag = (typeof FLAGS)[number]
 
 const KEY = 'casa-gfx'
