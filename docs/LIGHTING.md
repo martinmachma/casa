@@ -183,3 +183,11 @@ light can leak through walls in a wide view. `PointShadowAtlas` sets `castShadow
 which bulbs cast never recompiles a material, only redraws atlas tiles. The set keeps hysteresis and holds still
 while the camera moves. Switching a casting bulb off now hands its shadow to the next lit one, which is redrawn.
 Not yet confirmed on the Windows PC.
+
+## AO blur on Windows (2026-11-09)
+
+On a Windows PC (Chrome and Edge, ANGLE on Direct3D 11) the house froze the whole browser on its first frame. `?gfx=`
+switches pinned it to the AO's depth-aware blur: the normal pass and the SSAO quad alone ran fine. The blur read its
+camera kind from a bool uniform and sampled with filtered `texture2D` in a nested loop. It now takes the camera kind
+as a define and reads exact texels with `texelFetch`, like SSAOShader does. All three AO targets share one size, so
+the result is the same (a pixel diff against the old blur was no larger than one between two frames of the same code).
