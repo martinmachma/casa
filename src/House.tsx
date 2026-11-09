@@ -4,7 +4,7 @@ import { TodoPopup } from './ui/TodoPopup'
 import { WeatherPopup } from './ui/WeatherPopup'
 import { useOpenTodoCount } from './ui/useOpenTodoCount'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Account } from './auth/AuthGate'
+import { GateCard, type Account } from './auth/AuthGate'
 import type { Backend, Device, FurnitureItem, NewFurnitureItem } from './data/types'
 import { useHouseData } from './data/useHouseData'
 import { newDeviceName, type DevicePlacement } from './devices/kinds'
@@ -21,6 +21,7 @@ import type { WalkPlacement } from './scene/WalkPlacement'
 import type { WalkStart } from './walk/start'
 import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
+import { useFirstView } from './scene/useFirstView'
 import type { CameraMode, EditMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
 import { DeviceEditor } from './ui/DeviceEditor'
@@ -110,6 +111,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // Home on a phone has its own menus at the bottom; editing keeps the desktop's panels.
   const phone = useNarrow() && !editing
   const data = useHouseData(backend, !editing)
+  const opened = useFirstView(data.loading)
   const [floorIndex, setFloorIndex] = useState(0)
   // The app opens on the whole house.
   const [outside, setOutside] = useState(true)
@@ -1213,7 +1215,6 @@ export const House = ({ backend, account }: HouseProps) => {
           />
         )}
 
-        {data.loading && <div className="toast">Loading the house…</div>}
         {data.error && (
           <div className="toast" role="alert" onClick={data.clearError}>
             Couldn't save: {data.error} (tap to dismiss)
@@ -1249,6 +1250,15 @@ export const House = ({ backend, account }: HouseProps) => {
           {inspector}
         </div>
       </aside>
+
+      {/* The card from sign-in stays up until the house is fit to be seen. */}
+      {!opened && (
+        <div className="gate-cover">
+          <GateCard>
+            <p className="muted">Opening the door…</p>
+          </GateCard>
+        </div>
+      )}
     </div>
   )
 }

@@ -51,7 +51,7 @@ export const App = () => (
           color: 'white',
           font: '12px system-ui',
           pointerEvents: 'none',
-          zIndex: 1000,
+          zIndex: 20000001,
         }}
       >
         {gfxLabel}

@@ -415,6 +415,17 @@ p {
   text-align: center;
 }
 
+/* Over the house while it opens, above its HTML labels (z-indexes up to ~16.8M) and below the ?gfx= label. */
+.gate-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 20000000;
+}
+
+.gate-cover .gate {
+  height: 100%;
+}
+
 .gate-card h1 {
   font-size: 24px;
   letter-spacing: -0.02em;
