@@ -1,5 +1,5 @@
 import { useTexture } from '@react-three/drei'
-import { useEffect, useMemo } from 'react'
+import { Suspense, useEffect, useMemo } from 'react'
 import { NoColorSpace, PlaneGeometry, RepeatWrapping, SRGBColorSpace } from 'three'
 import type { WallPiece } from '../layout/geometry'
 import type { Floor, Wall, WallFace, WallSide } from '../layout/types'
@@ -60,19 +60,23 @@ const TileFace = ({
     return g
   }, [width, height, u, v])
   useEffect(() => () => geometry.dispose(), [geometry])
+  // The stone image loads after the house opens; without a boundary here the whole canvas would suspend and
+  // bring the loading card back for a moment.
   return (
-    <mesh position={at} rotation={rotation} geometry={geometry} receiveShadow raycast={noRaycast}>
-      {'image' in finish ? (
-        <ImageTileMaterial finish={finish} />
-      ) : (
-        <meshStandardMaterial
-          map={floorTexture(finish)}
-          bumpMap={floorBump(finish)}
-          bumpScale={finish.bumpScale}
-          roughness={finish.roughness}
-        />
-      )}
-    </mesh>
+    <Suspense fallback={null}>
+      <mesh position={at} rotation={rotation} geometry={geometry} receiveShadow raycast={noRaycast}>
+        {'image' in finish ? (
+          <ImageTileMaterial finish={finish} />
+        ) : (
+          <meshStandardMaterial
+            map={floorTexture(finish)}
+            bumpMap={floorBump(finish)}
+            bumpScale={finish.bumpScale}
+            roughness={finish.roughness}
+          />
+        )}
+      </mesh>
+    </Suspense>
   )
 }
 
