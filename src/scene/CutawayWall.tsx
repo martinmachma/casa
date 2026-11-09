@@ -12,6 +12,7 @@ import {
 import { Vector3, type Camera, type Group } from 'three'
 import { applyFade, fadeStep, ViewedFloor } from './Fade'
 import { animating } from './MotionQuality'
+import { cameraFlight, flightFade, followCameraFlight } from './cameraFlight'
 import { blocksView, separates, wallAngle, wallHeight, wallOutside, wallOwner } from '../layout/geometry'
 import type { Floor, Point, Wall } from '../layout/types'
 
@@ -48,22 +49,24 @@ const beyond = (wall: Wall, eye: Point, { min, max }: Focus['box']) =>
     return (eye[a] > max[a] && lo >= max[a]) || (eye[a] < min[a] && hi <= min[a])
   })
 
+/** Looking at a room from `eye`, whether a wall is cut (the one it goes with, see `decidingWall`). */
+export const focusCut = (wall: Wall, eye: Point, focus: Focus) => {
+  const out = focus.sides.get(wall.id)
+  if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0
+  return separates(wall, eye, focus.center) || beyond(wall, eye, focus.box)
+}
+
 const isCut = (wall: Wall, outside: Point | undefined, camera: Camera, cutaway: boolean, focus?: Focus) => {
   if (!cutaway) return false
   // Looking at one room, only walls between the camera and it go: its own walls seen from outside, and
   // walls beyond it in the way. Walls inside it and its far walls stay up.
-  if (focus) {
-    const out = focus.sides.get(wall.id)
-    const eye: Point = [camera.position.x, camera.position.z]
-    if (out) return (eye[0] - wall.from[0]) * out[0] + (eye[1] - wall.from[1]) * out[1] > 0
-    return separates(wall, eye, focus.center) || beyond(wall, eye, focus.box)
-  }
+  if (focus) return focusCut(wall, [camera.position.x, camera.position.z], focus)
   camera.getWorldDirection(forward)
   return blocksView(wall, outside, [camera.position.x, camera.position.z], [forward.x, forward.z])
 }
 
 /** A wall built against another (a shaft, a chimney breast) is cut or left standing with it. */
-const decidingWall = (wall: Wall, floor: Floor) => {
+export const decidingWall = (wall: Wall, floor: Floor) => {
   const owner = wallOwner(wall, floor)
   return (owner.against && floor.walls.find((w) => w.id === owner.against)) || owner
 }
@@ -110,17 +113,25 @@ export const CutawayWall = ({
   const decider = useMemo(() => decidingWall(other ?? wall, floor), [other, wall, floor])
   // 0 standing, 1 cut down to the stub; the full wall fades out as the stub fades in.
   const k = useRef<number>(undefined)
-  // Only switching the cut on or off animates; walls cut as the camera moves, or by a switch of floor, just go.
+  const flight = useRef(flightFade())
+  const changedWithFlight = useRef(false)
+  const lastFocus = useRef(focus)
+  // Manual orbit cuts immediately; navigation follows the camera and the cut toggle fades on its own.
   const animate = useRef(false)
   const redraw = useThree((s) => s.invalidate)
   useEffect(() => {
+    changedWithFlight.current =
+      cameraFlight.kind !== 'none' && (lastViewed.current !== viewed || lastFocus.current !== focus)
+    lastFocus.current = focus
     animate.current = lastViewed.current === viewed
     lastViewed.current = viewed
     redraw()
   }, [cutaway, focus, viewed, redraw])
   useFrame(({ camera, invalidate }, delta) => {
     const target = isCut(decider, outside, camera, cutaway, focus) ? 1 : 0
-    const now = k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta)
+    const flown = followCameraFlight(flight.current, k.current ?? target, target, changedWithFlight.current)
+    changedWithFlight.current = false
+    const now = flown ?? (k.current === undefined || !animate.current ? target : fadeStep(k.current, target, delta))
     if (now !== target) {
       invalidate()
       animating()

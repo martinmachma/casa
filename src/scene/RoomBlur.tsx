@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Mesh, Object3D, WebGLRenderTarget, type Camera } from 'three'
 import { floorRegions } from '../layout/rooms'
 import { DIM, makeTools } from './blurTools'
+import { cameraFlight, flightFade, followCameraFlight, roomBlurAmount } from './cameraFlight'
 import { roomMeshClassifier } from './roomMeshes'
 import type { Floor } from '../layout/types'
 
@@ -19,6 +20,8 @@ const DIM_IN = 220
 const DIM_OUT = 320
 /** How long the blur takes to clear after the room is left, in ms. */
 const BLUR_OUT = 500
+/** How long it takes to come in, when no flight brings it in. */
+const BLUR_IN = 500
 
 const ease = (t: number) => t * t * (3 - 2 * t)
 
@@ -55,6 +58,7 @@ export const RoomBlur = ({
   roomId,
   soften = true,
   open,
+  clear,
   leaving,
   onLeft,
 }: {
@@ -63,13 +67,18 @@ export const RoomBlur = ({
   /** Phones keep room picking and item dimming without the offscreen blur/compositing passes. */
   soften?: boolean
   open?: string
+  /** Eased away, but kept up for the next room (on the way to it). */
+  clear?: boolean
   leaving?: boolean
   onLeft?: () => void
 }) => {
   const redraw = useThree((s) => s.invalidate)
-  useEffect(() => redraw(), [open, leaving, redraw])
+  useEffect(() => redraw(), [open, clear, leaving, redraw])
   const dimming = useRef<Fade>({ value: 0 })
-  const blurring = useRef<Fade>({ value: 1 })
+  const dimFlight = useRef(flightFade())
+  const blurFlight = useRef({ id: -1, from: 0 })
+  // Eases in, so a room arrived at from another comes into focus rather than snapping.
+  const blurring = useRef<Fade>({ value: 0 })
   // What's around the room is marked as it's sorted, so the pointer passes it by (see `reachable`).
   const scene = useThree((s) => s.scene)
   useEffect(() => () => scene.traverse((o) => delete o.userData.outside), [scene])
@@ -95,8 +104,28 @@ export const RoomBlur = ({
 
   useFrame(({ gl, scene, camera, size, invalidate }) => {
     const now = performance.now()
-    const dimMoving = step(dimming.current, open, now, DIM_IN, DIM_OUT)
-    const blurMoving = step(blurring.current, leaving ? undefined : roomId, now, DIM_IN, BLUR_OUT)
+    const dim = dimming.current
+    const dimFlown = followCameraFlight(dimFlight.current, dim.value, open ? 1 : 0)
+    let dimMoving = false
+    if (dimFlown !== undefined) {
+      dim.value = dimFlown
+      dim.item = open ?? (dim.value ? dim.item : undefined)
+      dim.last = undefined
+    } else dimMoving = step(dim, open, now, DIM_IN, DIM_OUT)
+    if (blurFlight.current.id !== cameraFlight.id) {
+      blurFlight.current.id = cameraFlight.id
+      blurFlight.current.from = blurring.current.value
+    }
+    // The camera owns the entire enter/switch/leave effect, including its exact endpoint.
+    const flown = roomBlurAmount(cameraFlight, blurFlight.current.from, !leaving && !clear)
+    if (flown !== undefined) {
+      blurring.current.value = flown
+      blurring.current.last = undefined
+    }
+    const blurMoving =
+      flown !== undefined
+        ? cameraFlight.progress < 1
+        : step(blurring.current, leaving || clear ? undefined : roomId, now, BLUR_IN, BLUR_OUT)
     if (dimMoving || blurMoving) invalidate()
     const blur = ease(blurring.current.value)
     const shown = dimming.current.item
@@ -151,7 +180,7 @@ export const RoomBlur = ({
         gl.autoClear = autoClear
         camera.layers.set(0)
       }
-      if (leaving) onLeft?.()
+      if (leaving && !dimMoving && !blurMoving) onLeft?.()
       return
     }
     const tools = (kit.current ??= makeTools())

@@ -1,6 +1,6 @@
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { FurnitureItem } from '../data/types'
@@ -8,10 +8,14 @@ import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
+import { advanceCameraFlight, beginCameraFlight, CAMERA_FLIGHT_SECONDS, cameraFlight, flightEase } from './cameraFlight'
 import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
+import { wallHeight } from '../layout/geometry'
+import { clearView, crosses, mayBlock } from './clearView'
+import { decidingWall, focusCut, type Focus } from './CutawayWall'
+import { SeeThrough } from './SeeThrough'
 import { ZoomToSurface } from './ZoomToSurface'
 
-const FLIGHT_SECONDS = 1.1
 /** How far from an opened item the camera comes in to. */
 const CLOSE_UP = 2.2
 /** Further back from one looked at from a given way (a window's shade), to take in the whole window. */
@@ -22,20 +26,26 @@ const FACING_RISE = 0.15
 /** How far below a ceiling light the camera comes in to, and how far off straight up it looks. */
 const CLOSE_UNDER = 2
 const UNDER = 0.9
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
+/** How far round a close-up may turn from the way it's meant to be seen from, to get a clear view (degrees). */
+const TURN_FACING = 60
+const TURN_ANY = 180
 
 /** The room's camera: it glides in from where the camera was, then turns all round the room, always looking at it. */
 export const RoomCamera = ({
   floor,
   roomId,
+  focus,
   furniture,
   closeUp,
   bottomInset = 0,
   from,
   onView,
+  onMidway,
 }: {
   floor: Floor
   roomId?: string
+  /** The room looked at, for which walls are cut from where. */
+  focus?: Focus
   /** Its tall pieces are kept out of the foreground. */
   furniture: FurnitureItem[]
   /** An opened item to come in close to, from the way it's best seen; dragging tilts round it. */
@@ -45,8 +55,11 @@ export const RoomCamera = ({
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
   onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
+  /** Halfway through a flight, with the room it's flying to. */
+  onMidway?: (roomId: string | undefined) => void
 }) => {
   const size = useThree((s) => s.size)
+  const scene = useThree((s) => s.scene)
   const inset = bottomInset
   const framing = useMemo(() => focusFraming(size, inset), [size, inset])
   const projection = useRef({
@@ -66,6 +79,7 @@ export const RoomCamera = ({
   const [cx, cy, cz] = closeUp?.look ?? closeUp?.at ?? []
   const [fx, fz] = closeUp?.facing ?? []
   const mount = closeUp?.mount
+  const itemId = closeUp?.key.replace(/^tag:/, '')
   const [origin] = useState(from)
   const pose = useMemo(() => {
     if (cx === undefined) return roomView
@@ -84,13 +98,35 @@ export const RoomCamera = ({
             ? level.setY(FACING_RISE).normalize()
             : toward.normalize()
     const distance = mount === 'ceiling' ? CLOSE_UNDER : closeUp?.look && roomId ? CLOSE_UP_FACING : CLOSE_UP
+    // Turned or brought nearer if something stands in the way. Looking into a room, the walls in the way are cut.
+    const skip = (o: Parameters<typeof mayBlock>[0]) => !mayBlock(o, itemId, !focus)
+    const standing = (eye: Vector3) =>
+      !!focus &&
+      floor.walls.some(
+        (w) =>
+          crosses(w, floor.elevation, floor.elevation + wallHeight(w, floor), eye, item) &&
+          !focusCut(decidingWall(w, floor), [eye.x, eye.z], focus),
+      )
+    const turn = fx !== undefined ? TURN_FACING : TURN_ANY
+    const position = clearView(scene, item, back, distance, turn, skip, standing)
     // Keep the orbit's pivot on the item; the projection leaves space for its card.
-    return { position: item.clone().addScaledVector(back, distance), target: item }
-  }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin])
+    return { position, target: item }
+  }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin, scene, itemId, focus, floor])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
   const started = useRef<number>(undefined)
+  const initialized = useRef(false)
+  const midway = useRef(false)
+  // The room the camera last set off for, to tell a flight to another room from one round this one (to an item).
+  const headingRoom = useRef(from ? undefined : roomId)
+  useEffect(
+    () => () => {
+      cameraFlight.kind = 'none'
+      cameraFlight.progress = 1
+    },
+    [],
+  )
   // The pose the camera is flying to or resting at; another room picked flies over from wherever it is now.
   const heading = useRef(pose)
   const look = useMemo(() => new Vector3(), [])
@@ -108,6 +144,10 @@ export const RoomCamera = ({
     closeUp && pose ? Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z) : undefined
   useFrame(({ camera, invalidate }) => {
     if (!pose) return
+    if (!initialized.current) {
+      initialized.current = true
+      if (from) beginCameraFlight(roomId ? 'enter' : 'move')
+    }
     const p = projection.current
     if (p.to !== framing) {
       Object.assign(p.from, p.current)
@@ -118,8 +158,8 @@ export const RoomCamera = ({
     if (p.t < 1) {
       const now = performance.now()
       p.started ??= now
-      p.t = animationProgress(p.started, now, FLIGHT_SECONDS)
-      blendFocusFraming(camera, size, p.from, p.to, ease(p.t))
+      p.t = animationProgress(p.started, now, CAMERA_FLIGHT_SECONDS)
+      blendFocusFraming(camera, size, p.from, p.to, flightEase(p.t))
       p.current.zoom = camera.zoom
       p.current.offsetY = camera.view?.offsetY ?? 0
       invalidate()
@@ -130,7 +170,12 @@ export const RoomCamera = ({
       heading.current = pose
       t.current = 0
       started.current = undefined
+      midway.current = false
+      beginCameraFlight(headingRoom.current === roomId ? 'move' : headingRoom.current ? 'switch' : 'enter')
+      headingRoom.current = roomId
     }
+    // Into the room from the house: the first flight, with no pose before it.
+    if (headingRoom.current !== roomId) headingRoom.current = roomId
     if (t.current >= 1) {
       if (controls.current) look.copy(controls.current.target)
       onView?.(camera.position, look, p.t < 1, p.current)
@@ -139,14 +184,18 @@ export const RoomCamera = ({
     // Ignore the idle gap only once; slow frames still count in full, so the flight keeps its duration.
     const now = performance.now()
     started.current ??= now
-    t.current = animationProgress(started.current, now, FLIGHT_SECONDS)
+    t.current = advanceCameraFlight(started.current, now)
     const s = start.current
-    const k = ease(t.current)
+    const k = cameraFlight.progress
     invalidate()
     camera.position.lerpVectors(s?.position ?? pose.position, pose.position, k)
     look.lerpVectors(s?.target ?? pose.target, pose.target, k)
     camera.lookAt(look)
     onView?.(camera.position, look, t.current < 1 || p.t < 1, p.current)
+    if (t.current >= 0.5 && !midway.current) {
+      midway.current = true
+      onMidway?.(roomId)
+    }
     if (k >= 1) setFlying(false)
     // Ahead of whatever goes by the camera this frame: mounted after it all, this would otherwise run last, and the
     // pins would be placed for one frame with the new camera still at the pose it's flying to.
@@ -172,6 +221,9 @@ export const RoomCamera = ({
         />
       )}
       {pose && <ZoomToSurface />}
+      {closeUp && pose && itemId && (
+        <SeeThrough target={pose.target} itemId={itemId} resting={flying ? pose.position : undefined} />
+      )}
     </>
   )
 }

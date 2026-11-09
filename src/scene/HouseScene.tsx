@@ -21,7 +21,7 @@ import { distance, formatLength, type MeasuredLine, type Measurement, type Measu
 import { floorItems, outsideLight } from '../rooms/roomItems'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
 import type { SunPosition } from '../sun/sun'
-import { animationProgress } from './animation'
+import { advanceCameraFlight, beginCameraFlight, cameraFlight, flightEase } from './cameraFlight'
 import { useCompactGraphics } from './useCompactGraphics'
 import { AmbientOcclusion } from './AmbientOcclusion'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
@@ -153,10 +153,21 @@ const noop = () => {}
 // With a floor switch nothing about most pieces changes, so a house's worth of them skip re-rendering.
 const Furniture = memo(FurnitureBox)
 
+/** Where the walls are cut from round a room: those between the camera and its middle. */
+const roomFocus = (floor: Floor, roomId: string | undefined): Focus | undefined => {
+  const box = roomId ? roomBox(floor, roomId) : undefined
+  if (!box || !roomId) return undefined
+  return {
+    center: [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2],
+    box: roomBox(floor, roomId, 0)!,
+    sides: roomWallSides(floor, roomId),
+  }
+}
+
 export const HouseScene = ({
   floorPointer,
   floors,
-  floorIndex,
+  floorIndex: targetIndex,
   onWalkFloorChange,
   walkPlacement,
   walkStart,
@@ -194,7 +205,7 @@ export const HouseScene = ({
   viewKey,
   onSelect,
   itemActions,
-  focusRoom,
+  focusRoom: targetRoom,
   temporaryFocus,
   pins = [],
   open,
@@ -207,8 +218,8 @@ export const HouseScene = ({
   const compact = useCompactGraphics()
   const noPins = useRef(new Map<string, HTMLElement | null>())
   useEffect(() => {
-    if (!focusRoom && camera === 'walk') lastView.returnFrom = undefined
-  }, [focusRoom, camera])
+    if (!targetRoom && camera === 'walk') lastView.returnFrom = undefined
+  }, [targetRoom, camera])
   const [openDoors, setOpenDoors] = useState<ReadonlySet<string>>(() => new Set())
   const toggleDoor = useCallback(
     (id: string) =>
@@ -220,15 +231,26 @@ export const HouseScene = ({
       }),
     [],
   )
-  const floor = floors[floorIndex]
   // A window's shade opened is seen from outside on the whole house: every floor and the roof, nothing cut or dimmed.
   const whole = !!open && !!shadeWall(open)
   const closeUp = open ? pins.find((p) => p.key === `tag:${open}`) : undefined
+  // Going from one room to another, the house stays as it is round the first one for the first half of the camera's
+  // flight (its blur easing away), and turns to the next one halfway: floors, cut walls, and its blur coming in.
+  const [settled, setSettled] = useState({ room: targetRoom, floor: targetIndex })
+  const [lastTarget, setLastTarget] = useState(targetRoom)
+  if (lastTarget !== targetRoom) {
+    setLastTarget(targetRoom)
+    if (!lastTarget || !targetRoom) setSettled({ room: targetRoom, floor: targetIndex })
+  }
+  const between = !!targetRoom && !!settled.room && settled.room !== targetRoom && !whole
+  const floorIndex = between ? settled.floor : targetIndex
+  const focusRoom = between ? settled.room : targetRoom
+  const floor = floors[floorIndex]
+  const targetFloor = floors[targetIndex]
   // The room stays blurred round it a moment after it's left, for that to ease away.
-  const blurHere = !!focusRoom && !whole
+  const blurHere = !!focusRoom && !between && !whole
   const [blurred, setBlurred] = useState<{ floor: Floor; roomId: string }>()
-  if (blurHere && (blurred?.roomId !== focusRoom || blurred.floor !== floors[floorIndex]))
-    setBlurred({ floor: floors[floorIndex], roomId: focusRoom })
+  if (blurHere && (blurred?.roomId !== focusRoom || blurred.floor !== floor)) setBlurred({ floor, roomId: focusRoom })
   // Floors above the one looked at are left off; one taken off fades out, one put back fades in.
   const shownCount = camera === 'walk' || whole ? floors.length : floorIndex + 1
   // What's on a floor (furniture, devices, measurements) shows on the floor looked at, or all of them walking.
@@ -239,15 +261,12 @@ export const HouseScene = ({
   const ground = (f: Floor, p: [number, number]) => (f === floors[0] ? groundLevel(f, house.outdoor, p) : f.elevation)
   const snapWalls = useMemo(() => floorSnapWalls(furnitureFloor), [furnitureFloor])
   // Looking at a room, the walls between the camera and its middle are always cut, and only those.
-  const focusPoint = useMemo((): Focus | undefined => {
-    const box = focusRoom ? roomBox(floor, focusRoom) : undefined
-    if (!box || !focusRoom || whole) return undefined
-    return {
-      center: [(box.min[0] + box.max[0]) / 2, (box.min[1] + box.max[1]) / 2],
-      box: roomBox(floor, focusRoom, 0)!,
-      sides: roomWallSides(floor, focusRoom),
-    }
-  }, [floor, focusRoom, whole])
+  const focusPoint = useMemo(() => (whole ? undefined : roomFocus(floor, focusRoom)), [floor, focusRoom, whole])
+  // The camera aims for the room it's flying to from the start.
+  const targetFocus = useMemo(
+    () => (whole ? undefined : roomFocus(targetFloor, targetRoom)),
+    [targetFloor, targetRoom, whole],
+  )
   const { min, max } = floorBounds(floor)
   const cx = (min[0] + max[0]) / 2
   const cz = (min[1] + max[1]) / 2
@@ -438,10 +457,11 @@ export const HouseScene = ({
           <MotionQuality view={[floor.id, outside, camera, focusRoom, open].join()} />
           <PointerReach />
           <FloorPointerTracker elevation={furnitureFloor.elevation} pointRef={floorPointer} />
-          {focusRoom || closeUp ? (
+          {targetRoom || closeUp ? (
             <RoomCamera
-              floor={floor}
-              roomId={focusRoom}
+              floor={targetFloor}
+              roomId={targetRoom}
+              focus={targetFocus}
               furniture={data.furniture}
               closeUp={closeUp}
               bottomInset={focusInset}
@@ -450,6 +470,7 @@ export const HouseScene = ({
                   ? { position: lastView.position.clone(), target: lastView.target.clone() }
                   : undefined
               }
+              onMidway={(room) => setSettled({ room, floor: targetIndex })}
               onView={(position, target, moving, framing) => {
                 // A close-up or a pose on the way is no view to stay in: leaving flies from it to the last settled one.
                 if (temporaryFocus || closeUp || moving) {
@@ -464,7 +485,7 @@ export const HouseScene = ({
                   return
                 }
                 lastView.returnFrom = undefined
-                Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: floor.elevation })
+                Object.assign(lastView, { mode: 'orbit', viewKey, zoom: 1, elevation: targetFloor.elevation })
                 lastView.position.copy(position)
                 lastView.target.copy(target)
               }}
@@ -499,7 +520,8 @@ export const HouseScene = ({
               floor={blurred.floor}
               roomId={blurred.roomId}
               open={blurHere ? open : undefined}
-              leaving={!blurHere}
+              clear={between}
+              leaving={!blurHere && !between}
               onLeft={() => setBlurred(undefined)}
             />
           )}
@@ -792,8 +814,6 @@ const FLOOR_ZOOM = {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-const RETURN_SECONDS = 1.1
-
 /**
  * The last orbit or top camera, so switching floors or to the whole house keeps the view.
  * `elevation` is the floor it was looking at, or NaN for the whole house from outside.
@@ -811,6 +831,8 @@ const lastView = {
 
 const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
   const size = useThree((s) => s.size)
+  const [leaving] = useState(!!lastView.returnFrom)
+  const [fromElevation] = useState(lastView.elevation)
   // Chosen once: carried over from the previous floor's camera, or this view's own start
   // (after Reset view, or a change between 3D and top). Resizing doesn't move it.
   const [start] = useState(() => {
@@ -846,9 +868,19 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     const rise = mode === 'orbit' && !houseHeight ? floor.elevation - lastView.elevation || 0 : 0
     const position = lastView.position.clone().setY(lastView.position.y + rise)
     const target = lastView.target.clone().setY(lastView.target.y + rise)
+    const changedFloor = !Object.is(lastView.elevation, houseHeight ? NaN : floor.elevation)
+    const from = changedFloor
+      ? {
+          position: lastView.position.clone(),
+          target: lastView.target.clone(),
+          framing: { zoom: lastView.zoom, offsetY: 0 },
+        }
+      : undefined
     if (mode === 'top') {
+      position.y = floor.elevation + 40
+      target.y = floor.elevation
       const zoom = clamp(lastView.zoom, own.zoom * FLOOR_ZOOM.top.out, own.zoom * FLOOR_ZOOM.top.in)
-      return { position, target, zoom, from: undefined }
+      return { position, target, zoom, from }
     }
     const reach = own.position.distanceTo(own.target)
     const distance = clamp(
@@ -857,22 +889,35 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       reach * FLOOR_ZOOM.orbit.furthest,
     )
     position.sub(target).setLength(distance).add(target)
-    return { position, target, zoom: lastView.zoom, from: undefined }
+    return { position, target, zoom: lastView.zoom, from }
   })
   useEffect(() => {
     lastView.returnFrom = undefined
+    return () => {
+      cameraFlight.kind = 'none'
+      cameraFlight.progress = 1
+    }
   }, [])
   const flight = useRef(start.from ? 0 : 1)
   const framing = useMemo(() => ({ zoom: start.zoom, offsetY: 0 }), [start.zoom])
   const flightStarted = useRef<number>(undefined)
+  const initialized = useRef(false)
   const [flying, setFlying] = useState(!!start.from)
   useFrame(({ camera, controls, invalidate }) => {
     const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
+    if (!initialized.current) {
+      initialized.current = true
+      if (start.from) beginCameraFlight(leaving ? 'leave' : 'move')
+      else {
+        cameraFlight.kind = 'none'
+        cameraFlight.progress = 1
+      }
+    }
     if (orbit && start.from && flight.current < 1) {
       const now = performance.now()
       flightStarted.current ??= now
-      flight.current = animationProgress(flightStarted.current, now, RETURN_SECONDS)
-      const k = easeInOut(flight.current)
+      flight.current = advanceCameraFlight(flightStarted.current, now)
+      const k = cameraFlight.progress
       camera.position.lerpVectors(start.from.position, start.position, k)
       orbit.target.lerpVectors(start.from.target, start.target, k)
       blendFocusFraming(camera, size, start.from.framing, framing, k)
@@ -891,7 +936,14 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
       orbit.panSpeed = PAN_SPEED * Math.max(1, boost)
       orbit.zoomSpeed = ZOOM_SPEED * Math.max(1, boost / 2)
     }
-    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation: houseHeight ? NaN : floor.elevation })
+    // A second floor picked mid-flight rises from the height actually reached, avoiding accumulated offsets.
+    const elevation =
+      start.from && !leaving && Number.isFinite(fromElevation) && !houseHeight
+        ? MathUtils.lerp(fromElevation, floor.elevation, cameraFlight.progress)
+        : houseHeight
+          ? NaN
+          : floor.elevation
+    Object.assign(lastView, { mode, viewKey, zoom: camera.zoom, elevation })
     lastView.position.copy(camera.position)
     lastView.target.copy(orbit.target)
   })
@@ -944,7 +996,6 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
 }
 
 const INTRO_SECONDS = 2.2
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 /**
  * Starts high above the house looking straight down with the house square on, drops towards it,
@@ -971,8 +1022,8 @@ const IntroFlight = () => {
     if (f.t >= 1) return
     f.t = Math.min(1, f.t + delta / INTRO_SECONDS)
     invalidate()
-    const down = easeInOut(f.t)
-    const turn = easeInOut(Math.max(0, (f.t - 0.45) / 0.55))
+    const down = flightEase(f.t)
+    const turn = flightEase(Math.max(0, (f.t - 0.45) / 0.55))
     const at = new Spherical(
       MathUtils.lerp(f.start.radius, f.end.radius, down),
       MathUtils.lerp(f.start.phi, f.end.phi, turn),
