@@ -751,7 +751,7 @@ export const HouseScene = ({
               )
             })}
           <ShadowUpdates />
-          {!gfxOff('noao') && <AmbientOcclusion enabled={!compact} shadowScale={compact ? 0.5 : 1} />}
+          {!gfxOff('noao') && <AmbientOcclusion enabled={!compact && !gfxOff('nossao')} shadowScale={compact ? 0.5 : 1} />}
           <WarmShaders ready={!data.loading && !compact && !gfxOff('noblur')} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
         </ViewedFloor.Provider>
       </Canvas>
