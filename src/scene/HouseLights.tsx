@@ -17,7 +17,7 @@ const WALL_SHADOW_RADIUS = 8
 const SHADOW_RADIUS = 1.5
 // Past this, light is cut off so far rooms cost nothing.
 const REACH = 9
-// PointShadowAtlas shares one texture and gives the bulbs nearest the view their shadows (it sets castShadow).
+// PointShadowAtlas shares one texture and lowers distant shadow detail instead of omitting lights.
 const SHADOW_MAP = 512
 
 /** Where a lamp's bulb sits, as a share of the lamp's height. */
@@ -91,6 +91,7 @@ export const HouseLights = ({ floors, litFloorCount, devices, furniture, level, 
         <pointLight
           key={b.id}
           userData={{ downlight: b.downlight }}
+          castShadow
           position={b.position}
           color={b.color}
           intensity={b.intensity}

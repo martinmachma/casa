@@ -171,19 +171,6 @@ artificial work per frame. With the fix, a phone-sized room flight took 1.136 se
 a light close-up took 1.107 seconds. These measure animation timing on this Mac, not FPS or a physical-phone benchmark.
 Phone checks also covered opening and switching a light: switching retained the same 22 shader programs.
 
-## Shadow-casting cap (2026-11-09)
-
-The house froze Chrome and Edge on a Windows PC as soon as it loaded, with or without hardware acceleration. Every
-bulb cast a shadow, and Three unrolls each caster's filtered shadow lookup into every material's shader. ANGLE
-translates those into Direct3D programs, and the HLSL compiler took long enough to stall the browser's GPU process.
-
-Now only 8 bulbs cast shadows: lit ones first, then those nearest the view (four 512-pixel, four 256-pixel). The
-rest still light the house with the same brightness, colour and emission, but without shadows, so a distant room's
-light can leak through walls in a wide view. `PointShadowAtlas` sets `castShadow`; the count is fixed, so changing
-which bulbs cast never recompiles a material, only redraws atlas tiles. The set keeps hysteresis and holds still
-while the camera moves. Switching a casting bulb off now hands its shadow to the next lit one, which is redrawn.
-Not yet confirmed on the Windows PC.
-
 ## AO blur on Windows (2026-11-09)
 
 On a Windows PC (Chrome and Edge, ANGLE on Direct3D 11) the house froze the whole browser on its first frame. `?gfx=`
@@ -191,3 +178,5 @@ switches pinned it to the AO's depth-aware blur: the normal pass and the SSAO qu
 camera kind from a bool uniform and sampled with filtered `texture2D` in a nested loop. It now takes the camera kind
 as a define and reads exact texels with `texelFetch`, like SSAOShader does. All three AO targets share one size, so
 the result is the same (a pixel diff against the old blur was no larger than one between two frames of the same code).
+An 8-bulb shadow cap tried first (shader size as the suspect) didn't help and was reverted: every bulb casts again,
+and the PC runs it fine.

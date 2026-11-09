@@ -15,13 +15,6 @@ import {
 import { scenePointLights } from './lightEmission'
 import { pointShadowLayout, type ShadowTile } from './pointShadowLayout'
 
-/**
- * How many bulbs cast shadows; the rest still light the house. Every caster adds its whole filtered shadow lookup to
- * every material's shader, unrolled. With every bulb casting, Windows (ANGLE turning it into Direct3D) took long enough
- * compiling the house's programs to freeze the browser.
- */
-const SHADOWED = 8
-
 type Binding = {
   tile: ShadowTile
   extents: Vector2
@@ -52,39 +45,29 @@ export class PointShadowAtlas {
 
   prepare(gl: WebGLRenderer, scene: Scene, camera: Camera, focus: Vector3, moving = false, detail = 1) {
     scene.updateMatrixWorld()
-    const all = scenePointLights(scene, camera)
-    // Distance to the view, with hysteresis for bulbs that already have a shadow, and more for detailed ones.
-    // Orbit rotation alone cannot change the set; dimming a bulb cannot change its neighbours' priority.
-    const distance = (l: PointLight) => {
-      const d = Math.max(1, l.getWorldPosition(this.position).distanceToSquared(focus))
-      const size = this.bindings.get(l)?.tile.size
-      return d * (size === 512 * detail ? 0.75 : size ? 0.85 : 1)
-    }
-    // Changing the shadowed set repacks the atlas and redraws many six-face shadows. Keep it while moving;
-    // MotionQuality asks for another frame when settled, when it can catch up once. Unless every shadow is being
-    // redrawn anyway, as when the floor changes: then it costs nothing now, and that later frame less.
-    const count = Math.min(all.length, SHADOWED)
-    const redrawn = all.every((l) => !l.castShadow || l.shadow.needsUpdate || l.intensity <= 0)
-    const held = all.filter((l) => l.castShadow && this.bindings.has(l))
-    const keepDetail = moving && !redrawn && held.length === count
-    // Lit bulbs first, so a dark fixture nearby doesn't take a shadow from one that's on.
-    const ranked = keepDetail
-      ? held
-      : [...all].sort((a, b) => Number(b.intensity > 0) - Number(a.intensity > 0) || distance(a) - distance(b))
-    const shadowed = new Set(ranked.slice(0, count))
-    // The count is fixed, so which bulbs cast never changes a material's program; only the atlas is redrawn.
-    for (const l of all) l.castShadow = shadowed.has(l)
-    // In the renderer's order, which puts shadow casters first.
-    const lights = all.filter((l) => l.castShadow)
+    const lights = scenePointLights(scene, camera).filter((l) => l.castShadow)
     const current = new Set(lights)
     for (const [light, binding] of this.bindings)
       if (!current.has(light)) {
         binding.restore()
         this.bindings.delete(light)
       }
+
+    // Keep the current detailed set until another bulb is meaningfully nearer. Orbit rotation alone cannot
+    // change it; dimming a bulb cannot change its brightness or its neighbours' quality priority.
+    const distance = (l: PointLight) => {
+      const d = Math.max(1, l.getWorldPosition(this.position).distanceToSquared(focus))
+      return d * (this.bindings.get(l)?.tile.size === 512 * detail ? 0.75 : 1)
+    }
+    // Changing the detailed set repacks the atlas and redraws many six-face shadows. Keep the allocation
+    // while moving; MotionQuality asks for another frame when settled, when it can catch up once. Unless every
+    // shadow is being redrawn anyway, as when the floor changes: then it costs nothing now, and that later frame less.
+    const redrawn = lights.every((l) => l.shadow.needsUpdate || l.intensity <= 0)
+    const keepDetail = moving && !redrawn && lights.every((l) => this.bindings.has(l))
+    const ranked = keepDetail ? [] : [...lights].sort((a, b) => distance(a) - distance(b))
     const sizes = keepDetail
       ? new Map(lights.map((l) => [l, this.bindings.get(l)!.tile.size]))
-      : new Map(ranked.slice(0, count).map((l, i) => [l, (i < 4 ? 512 : 256) * detail]))
+      : new Map(ranked.map((l, i) => [l, (i < 4 ? 512 : i < 8 ? 256 : 128) * detail]))
     const { width, height, tiles } = pointShadowLayout(
       lights.map((l) => sizes.get(l)!),
       Math.min(4096, gl.capabilities.maxTextureSize),
