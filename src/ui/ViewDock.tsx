@@ -1,9 +1,9 @@
-import { Box, House, LogOut, Map as PlanIcon } from 'lucide-react'
+import { Box, LogOut, Map as PlanIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Floor } from '../layout/types'
 import type { CameraMode } from '../scene/selection'
+import { FloorLayers } from './FloorLayers'
 import { Segmented } from './kit'
-import { ordinal } from './ordinal'
 import { WalkButton } from './WalkButton'
 
 type ViewDockProps = {
@@ -13,6 +13,8 @@ type ViewDockProps = {
   /** Looking at the whole house from outside instead of one floor. */
   outside: boolean
   onOutside: () => void
+  /** What's on a floor (undefined: the whole house), shown while sliding through them. */
+  describeFloor: (floorIndex: number | undefined) => string
   camera: CameraMode
   onCamera: (camera: CameraMode) => void
   onExitWalk: () => void
@@ -27,15 +29,14 @@ type ViewDockProps = {
   children?: ReactNode
 }
 
-const OUTSIDE = 'outside'
-
-/** Floats over the left of the 3D view: which floor and how to look at it at the top, its rooms at the bottom. */
+/** Floats over the left of the 3D view: how to look at it and which floor at the top, its rooms at the bottom. */
 export const ViewDock = ({
   floors,
   floorIndex,
   onFloor,
   outside,
   onOutside,
+  describeFloor,
   camera,
   onCamera,
   onExitWalk,
@@ -61,19 +62,6 @@ export const ViewDock = ({
       <div className="dock-bars">
         <div className="dock-bar float">
           <Segmented
-            label="Floor"
-            value={outside ? OUTSIDE : floors[floorIndex].id}
-            onChange={(id) => (id === OUTSIDE ? onOutside() : onFloor(floors.findIndex((f) => f.id === id)))}
-            options={[
-              { value: OUTSIDE, label: 'Outside', icon: <House size={15} />, iconOnly: true },
-              ...floors.map((f, i) => ({ value: f.id, label: ordinal(i + 1) })),
-            ]}
-            disabled={inRoom}
-            className="floors"
-          />
-        </div>
-        <div className="dock-bar float">
-          <Segmented
             label="View"
             value={camera}
             onChange={onCamera}
@@ -95,6 +83,18 @@ export const ViewDock = ({
           </div>
         </div>
       </div>
+    )}
+    {camera !== 'walk' && (
+      <FloorLayers
+        floors={floors}
+        floorIndex={floorIndex}
+        outside={outside}
+        onFloor={onFloor}
+        onOutside={onOutside}
+        describe={describeFloor}
+        disabled={inRoom}
+        open
+      />
     )}
     {children}
   </div>

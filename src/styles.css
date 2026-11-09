@@ -292,12 +292,6 @@ p {
     box-shadow 120ms;
 }
 
-/* Which floor you're on. */
-.floors button[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
 .segmented button:not([aria-pressed='true']):hover {
   color: var(--ink);
 }
@@ -1444,14 +1438,16 @@ p {
   border-radius: var(--radius-sm);
 }
 
-.dock-bar .floors button {
-  justify-content: center;
-  min-width: 44px;
-  padding: 0;
+/* The floors under the switches, spread out; their names come up on the right while sliding. */
+.dock .floor-layers {
+  position: relative;
+  right: auto;
+  bottom: auto;
 }
 
-.dock-bar .floors button:first-child {
-  min-width: 40px;
+.dock .floor-layers-label {
+  left: 48px;
+  right: auto;
 }
 
 .walk-button {
@@ -4637,31 +4633,74 @@ input[type='range'].light-brightness::-moz-range-thumb {
   border-color: rgb(224 138 63 / 0.55);
 }
 
-.floor-layers-marks span {
+.floor-layers-mark {
   position: absolute;
-  right: 36px;
+  left: 50%;
   display: grid;
   place-items: center;
-  width: 14px;
-  height: 14px;
-  translate: 0 -50%;
-  font-size: 11px;
-  font-weight: 600;
+  translate: -50% -50%;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: rgb(243 245 248 / 0.5);
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+  color: rgb(243 245 248 / 0.85);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
   opacity: 0;
   transition: opacity 150ms;
   pointer-events: none;
 }
 
-.floor-layers-marks span[data-on] {
+.floor-layers-mark[data-on] {
+  color: var(--accent-ink);
+  text-shadow: none;
+}
+
+/* The whole house has no slab under it, so its mark is lit in the accent instead. */
+.floor-layers-mark:first-of-type {
+  color: rgb(243 245 248 / 0.6);
+}
+
+.floor-layers-mark:first-of-type[data-on] {
   color: var(--accent);
 }
 
 .floor-layers[data-dragging] .floor-layers-cell,
-.floor-layers[data-dragging] .floor-layers-marks span {
+.floor-layers[data-open] .floor-layers-cell,
+.floor-layers[data-dragging] .floor-layers-mark,
+.floor-layers[data-open] .floor-layers-mark {
   opacity: 1;
+}
+
+/* Spread out for good (desktop): bigger slabs, so the number fits on them. */
+.floor-layers[data-open] .floor-layers-strip {
+  width: 38px;
+  border-radius: 19px;
+  cursor: pointer;
+}
+
+.floor-layers[data-open] .floor-layers-slab {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+}
+
+.floor-layers[data-open] .floor-layers-cell {
+  left: 4px;
+  right: 4px;
+  height: 26px;
+  border-radius: 13px;
+}
+
+.floor-layers[data-open] .floor-layers-mark {
+  font-size: 11px;
+}
+
+.floor-layers[data-disabled] {
+  opacity: 0.45;
+}
+
+.floor-layers[data-disabled] .floor-layers-strip {
+  pointer-events: none;
 }
 
 .floor-layers-label {

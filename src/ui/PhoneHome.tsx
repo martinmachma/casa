@@ -7,6 +7,7 @@ import type { Floor } from '../layout/types'
 import type { Order } from '../lib/order'
 import type { SmartItem } from '../rooms/roomItems'
 import type { RoomView } from '../rooms/roomViews'
+import { describeFloor } from './describeFloor'
 import { FloorLayers } from './FloorLayers'
 import { LightControls } from './LightControls'
 import { ordinal } from './ordinal'
@@ -130,11 +131,6 @@ export const PhoneHome = ({
   }, [room?.id])
 
   const floorName = (id: string) => `${ordinal(floors.findIndex((f) => f.id === id) + 1)} floor`
-  const describe = (index: number | undefined) => {
-    const inIt = index === undefined ? rooms : rooms.filter((r) => r.floor === floors[index].id)
-    const on = inIt.filter((r) => lit.get(r.room)).length
-    return `${inIt.length} rooms · ${on ? `${on} lit` : 'all dark'}`
-  }
   const lower = () => {
     setRaised(false)
     onOpen(undefined)
@@ -196,7 +192,7 @@ export const PhoneHome = ({
         outside={outside}
         onFloor={onFloor}
         onOutside={onOutside}
-        describe={describe}
+        describe={describeFloor(floors, rooms, lit)}
       />
 
       <PhoneScenes

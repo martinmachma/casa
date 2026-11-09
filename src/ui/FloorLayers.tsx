@@ -11,24 +11,38 @@ type FloorLayersProps = {
   onOutside: () => void
   /** What's shown under a stop's name while dragging: undefined is the whole house. */
   describe: (floorIndex: number | undefined) => string
+  /** Always spread out with every floor's number on its slab, as on a desktop; otherwise it opens while dragged. */
+  open?: boolean
+  disabled?: boolean
 }
 
-/** Height of each stop along the strip, in CSS pixels. */
+/** Height of each stop along the strip, in CSS pixels: closed, and spread out for good. */
 const STEP = 20
+const OPEN_STEP = 30
 const PAD = 4
 
 /**
  * The floors as a small stack of slabs at the edge of the view, in the order they stack. A thumb slid up and down it
  * goes through them as it passes each one, with the floor's name beside it; above the top floor is the whole house.
  */
-export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, describe }: FloorLayersProps) => {
+export const FloorLayers = ({
+  floors,
+  floorIndex,
+  outside,
+  onFloor,
+  onOutside,
+  describe,
+  open = false,
+  disabled = false,
+}: FloorLayersProps) => {
   // Stop 0 is the whole house, then the floors from the top down.
   const stops = floors.length + 1
   const stop = outside ? 0 : floors.length - floorIndex
   const [dragging, setDragging] = useState(false)
   // The stop the thumb last went to, so a drag switches once per stop it passes.
   const last = useRef(stop)
-  const centre = (k: number) => PAD + STEP * k + STEP / 2
+  const step = open ? OPEN_STEP : STEP
+  const centre = (k: number) => PAD + step * k + step / 2
 
   const go = (k: number) => {
     if (k === last.current) return
@@ -39,16 +53,22 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
   }
   const pick = (e: PointerEvent<HTMLDivElement>) => {
     const y = e.clientY - e.currentTarget.getBoundingClientRect().top
-    go(Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / STEP))))
+    go(Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / step))))
   }
 
-  // At rest the slabs sit close together in the middle of the floors' stops; a drag spreads them out onto their stops.
+  // Closed, the slabs sit close together in the middle of the floors' stops; a drag spreads them out onto their stops.
+  const spread = open || dragging
   const middle = (centre(1) + centre(stops - 1)) / 2
-  const slabTop = (k: number) => (dragging ? centre(k) : middle + (k - stops / 2) * 7)
+  const slabTop = (k: number) => (spread ? centre(k) : middle + (k - stops / 2) * 7)
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
-    <div className="floor-layers" data-dragging={dragging || undefined}>
+    <div
+      className="floor-layers"
+      data-dragging={dragging || undefined}
+      data-open={open || undefined}
+      data-disabled={disabled || undefined}
+    >
       <div
         className="floor-layers-strip"
         role="slider"
@@ -58,9 +78,10 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
         aria-valuemax={stops - 1}
         aria-valuenow={stops - 1 - stop}
         aria-valuetext={name}
-        tabIndex={0}
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : 0}
         data-dragging={dragging || undefined}
-        style={{ height: PAD * 2 + STEP * stops }}
+        style={{ height: PAD * 2 + step * stops }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
           last.current = stop
@@ -78,7 +99,7 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
           e.preventDefault()
         }}
       >
-        {/* While dragging, each stop's place shows as a faint cell, so the layers can be told apart. */}
+        {/* Spread out, each stop's place shows as a faint cell, so the layers can be told apart. */}
         {Array.from({ length: stops }, (_, k) => (
           <b key={k} className="floor-layers-cell" data-on={k === stop || undefined} style={{ top: centre(k) }} />
         ))}
@@ -94,11 +115,16 @@ export const FloorLayers = ({ floors, floorIndex, outside, onFloor, onOutside, d
             />
           )
         })}
-      </div>
-      <div className="floor-layers-marks" aria-hidden>
+        {/* Each floor's number sits on its slab; the whole house, which has no slab of its own, is the house. */}
         {Array.from({ length: stops }, (_, k) => (
-          <span key={k} data-on={k === stop || undefined} style={{ top: centre(k) }}>
-            {k === 0 ? <House size={11} /> : floors.length - k + 1}
+          <span
+            key={k}
+            className="floor-layers-mark"
+            aria-hidden
+            data-on={k === stop || undefined}
+            style={{ top: centre(k) }}
+          >
+            {k === 0 ? <House size={13} /> : floors.length - k + 1}
           </span>
         ))}
       </div>

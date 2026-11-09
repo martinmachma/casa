@@ -48,6 +48,7 @@ import { measuredLine, type MeasuredLine, type MeasurePick, type Measurement } f
 import { MeasurePanel } from './ui/MeasurePanel'
 import { SunPanel } from './ui/SunPanel'
 import { ordinal } from './ui/ordinal'
+import { describeFloor } from './ui/describeFloor'
 import { ViewDock } from './ui/ViewDock'
 import { PaintPanel } from './ui/PaintPanel'
 import type { Brush, PaintFace, PaintStroke } from './scene/FloorWalls'
@@ -1175,6 +1176,7 @@ export const House = ({ backend, account }: HouseProps) => {
             onFloor={switchFloor}
             outside={outside}
             onOutside={goOutside}
+            describeFloor={describeFloor(house.floors, phoneRooms, roomLights)}
             camera={camera}
             onCamera={(next) => (next === 'walk' ? startWalk() : setCamera(next))}
             onExitWalk={exitWalk}
