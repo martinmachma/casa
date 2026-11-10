@@ -67,15 +67,14 @@ export const FloorLayers = ({
   const cluster = HOUSE_GAP + (stops - 2) * GAP
   const full = PAD * 2 + step * stops
   const height = spread ? full : cluster + 29
-  // The strip keeps its bottom, so a stop's place in the full strip is that much further down than in this one.
-  const shift = full - height
   const at = (e: PointerEvent<HTMLDivElement>) => {
     const y = (e.clientY - (e.currentTarget.getBoundingClientRect().bottom - full * scale)) / scale
     return Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / step)))
   }
   const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
-  const place = (k: number) => centre(k) - shift
   const slabTop = (k: number) => (spread ? centre(k) : 14.5 + (k === 0 ? 0 : HOUSE_GAP + (k - 1) * GAP))
+  // Everything on the strip is placed from its bottom, which stays put, so nothing slides while the strip grows or shrinks.
+  const fromBottom = (top: number) => height - top
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
@@ -127,7 +126,7 @@ export const FloorLayers = ({
             className="floor-layers-cell"
             data-on={k === stop || undefined}
             data-hover={(!dragging && k === hover) || undefined}
-            style={{ top: place(k) }}
+            style={{ bottom: full - centre(k) }}
           />
         ))}
         {floors.map((f, i) => {
@@ -139,7 +138,7 @@ export const FloorLayers = ({
               data-on={k === stop || undefined}
               data-all={stop === 0 || undefined}
               data-hover={(!dragging && k === hover) || undefined}
-              style={{ top: slabTop(k) }}
+              style={{ bottom: fromBottom(slabTop(k)) }}
             />
           )
         })}
@@ -151,7 +150,7 @@ export const FloorLayers = ({
             aria-hidden
             data-on={k === stop || undefined}
             data-hover={(!dragging && k === hover) || undefined}
-            style={{ top: slabTop(k) }}
+            style={{ bottom: fromBottom(slabTop(k)) }}
           >
             {k === 0 ? <House size={open ? 17 : dragging ? 15 : 13} /> : floors.length - k + 1}
           </span>

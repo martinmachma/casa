@@ -737,6 +737,15 @@ export const House = ({ backend, account }: HouseProps) => {
   const phoneRooms = [...roomsArranged.main, ...roomsArranged.minor].flatMap(
     (id) => rooms.find((r) => r.id === id) ?? [],
   )
+  // The phone's tiles: what's in the room, or from outside the lights out there, or on a floor what's in its rooms, room by room.
+  const roomRank = new Map(phoneRooms.map((r, i) => [r.room, i]))
+  const phoneItems = focus
+    ? focusItems
+    : outside
+      ? smartItems.filter(outsideLight)
+      : smartItems
+          .filter((i) => i.floorIndex === floorIndex && i.room)
+          .sort((a, b) => (roomRank.get(a.room!) ?? Infinity) - (roomRank.get(b.room!) ?? Infinity))
   const modeBar = (
     <ModeBar
       editing={editing}
@@ -1157,12 +1166,10 @@ export const House = ({ backend, account }: HouseProps) => {
               sceneOrder={sceneOrder.order}
               onSceneOrder={sceneOrder.save}
               sceneIds={smartItems.map((i) => i.id)}
-              items={focusItems}
+              items={phoneItems}
               open={smartItems.find((i) => i.id === popover)}
               onFocusInset={setFocusInset}
               onOpen={openPopover}
-              onHover={setHoveredItem}
-              hovered={hoveredItem}
               light={lightNow}
               onLight={lightRows.onLight}
               shade={shadeNow}

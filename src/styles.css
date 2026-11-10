@@ -4493,10 +4493,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
   -webkit-user-select: text;
 }
 
-.phone-rooms-head {
-  padding: 0 14px 8px;
-}
-
 .phone-rooms-order {
   padding: 0 14px;
 }
@@ -4622,13 +4618,13 @@ input[type='range'].light-brightness::-moz-range-thumb {
   left: 50%;
   width: 15px;
   height: 15px;
-  margin: -7.5px 0 0 -7.5px;
+  translate: -50% 50%;
   border: 1.5px solid rgb(243 245 248 / 0.7);
   border-radius: 3px;
   background: rgb(19 24 27 / 0.6);
   transform: scaleY(0.55) rotate(45deg);
   transition:
-    top 200ms ease,
+    bottom 200ms ease,
     background 120ms,
     border-color 120ms;
   pointer-events: none;
@@ -4650,12 +4646,16 @@ input[type='range'].light-brightness::-moz-range-thumb {
   left: 3px;
   right: 3px;
   height: 17px;
-  translate: 0 -50%;
+  translate: 0 50%;
   border: 1px dashed rgb(243 245 248 / 0.22);
   border-radius: 6px;
   opacity: 0;
-  transition: opacity 150ms;
   pointer-events: none;
+}
+
+/* The cells fade in as the strip spreads, but go at once when it closes, or the top one hangs above the shrunk strip. */
+.floor-layers[data-dragging] .floor-layers-cell {
+  transition: opacity 150ms;
 }
 
 .floor-layers-cell[data-on] {
@@ -4668,7 +4668,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   left: 50%;
   display: grid;
   place-items: center;
-  translate: -50% -50%;
+  translate: -50% 50%;
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
@@ -4678,7 +4678,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   opacity: 0;
   transition:
     opacity 150ms,
-    top 200ms ease;
+    bottom 200ms ease;
   pointer-events: none;
 }
 
@@ -4708,7 +4708,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
 .floor-layers[data-dragging]:not([data-open]) .floor-layers-slab {
   width: 18px;
   height: 18px;
-  margin: -9px 0 0 -9px;
 }
 
 .floor-layers[data-dragging]:not([data-open]) .floor-layers-cell {
@@ -4730,7 +4729,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
 .floor-layers[data-open] .floor-layers-slab {
   width: 30px;
   height: 30px;
-  margin: -15px 0 0 -15px;
   border-width: 2px;
 }
 
@@ -4940,13 +4938,14 @@ input[type='range'].light-brightness::-moz-range-thumb {
   background: var(--line-strong);
 }
 
-.phone-room-cards {
+/* The rooms on the floor, as chips over its tiles; the first is the whole floor. */
+.phone-room-chips {
   position: sticky;
   z-index: 1;
   top: 0;
   display: flex;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 12px 10px;
   overflow-x: auto;
   scroll-padding-inline: 12px;
   scrollbar-width: none;
@@ -4955,90 +4954,134 @@ input[type='range'].light-brightness::-moz-range-thumb {
   mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 40px), transparent);
 }
 
-.phone-room-cards[data-wrap] {
-  position: static;
+.phone-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 17px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.phone-chip[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.phone-chip[aria-pressed='true'] .phone-dot[data-on] {
+  background: var(--accent-ink);
+  box-shadow: none;
+}
+
+.phone-room-chips .phone-edit {
+  flex: none;
+  height: 34px;
+}
+
+/* What can be switched: one row to scroll while the sheet is low, a grid when it's raised. */
+.phone-tiles {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 40px), transparent);
+}
+
+.phone-tiles[data-wrap] {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   mask-image: none;
-  animation: fade-in 200ms ease-out;
 }
 
-.phone-room-card {
-  position: relative;
-  display: grid;
-  align-content: space-between;
-  /* Two and a half to a row, so the card cut off at the edge shows the row goes on. */
+.phone-tile {
+  /* A little over three to a row, so the one cut off at the edge shows the row goes on. */
   flex: none;
-  width: calc((100vw - 12px - 2 * 6px) / 2.5);
-  height: 60px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--radius-sm);
+  width: calc((100vw - 24px - 2 * 8px) / 3.3);
+  height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    background 150ms,
+    border-color 150ms;
 }
 
-.phone-room-cards[data-wrap] .phone-room-card {
+.phone-tiles[data-wrap] .phone-tile {
   width: auto;
 }
 
-.phone-room-card b {
-  font-weight: 500;
+.phone-tile[data-on] {
+  background: rgb(255 210 122 / 0.12);
+  border-color: rgb(255 210 122 / 0.28);
+}
+
+.phone-tile[data-kind='blind'][data-on] {
+  background: rgb(var(--cool-rgb) / 0.12);
+  border-color: rgb(var(--cool-rgb) / 0.3);
+}
+
+.phone-tile-icon {
+  display: flex;
+  color: var(--ink-2);
+}
+
+.phone-tile[data-on][data-kind='light'] .phone-tile-icon {
+  filter: var(--lamp-glow);
+}
+
+.phone-tile[data-on][data-kind='blind'] .phone-tile-icon {
+  color: var(--cool-text);
+}
+
+.phone-tile-text {
+  display: grid;
+  min-width: 0;
+}
+
+.phone-tile-text b,
+.phone-tile-text small {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.phone-room-card span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.phone-tile-text b {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.phone-tile-text small {
   font-size: 11px;
   color: var(--muted);
 }
 
-.phone-room-card[aria-current] {
-  background: var(--accent);
-  color: var(--accent-ink);
+.phone-tiles-hint {
+  margin: 12px 14px 0;
 }
 
-.phone-room-card[aria-current] b {
-  padding-right: 14px;
-}
-
-/* The picked room's card leaves it again. */
-.phone-room-leave {
-  position: absolute;
-  top: 7px;
-  right: 6px;
-}
-
-.phone-room-card[aria-current] span {
-  color: var(--accent-ink);
-}
-
-.phone-room-card[aria-current] .phone-dot[data-on] {
-  background: var(--accent-ink);
-  box-shadow: none;
-}
-
-.phone-items,
 .phone-item {
-  padding: 16px 14px 0;
-  opacity: 0;
-  translate: 0 8px;
-  transition:
-    opacity 220ms,
-    translate 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.phone-home[data-raised] :is(.phone-items, .phone-item),
-.phone-rooms[data-dragging] .phone-items {
-  opacity: 1;
-  translate: 0;
+  padding: 6px 14px 0;
 }
 
 .phone-item {

@@ -14,7 +14,7 @@ import { ordinal } from './ordinal'
 import { PhoneOrder } from './PhoneOrder'
 import { PhoneScenes } from './PhoneScenes'
 import { ShadeControls } from './ShadeControls'
-import { SmartRows } from './SmartList'
+import { PhoneTile } from './PhoneTile'
 
 type PhoneHomeProps = {
   floors: Floor[]
@@ -42,15 +42,13 @@ type PhoneHomeProps = {
   onSceneOrder: (order: Order) => void
   /** Every item in the house: a scene is on when all it sets is as it says. */
   sceneIds: string[]
-  /** What's in the room, for its list. */
-  items: SmartItem[]
+  /** What's in view, for the tiles: the room's items, or the floor's (each with its room) when no room is picked. */
+  items: (SmartItem & { room?: string })[]
   /** The item whose controls are open. */
   open: SmartItem | undefined
   /** Space covered at the bottom of the view, so the room and a close-up stay above the sheet. */
   onFocusInset: (pixels: number) => void
   onOpen: (id: string | undefined) => void
-  onHover: (id: string | undefined) => void
-  hovered: string | undefined
   light: (id: string) => LightState
   onLight: (id: string, patch: Partial<LightState>) => void
   shade: (id: string) => ShadeState
@@ -64,8 +62,9 @@ const FLOOR_SCALE = 1.45
 const SWIPE = 18
 
 /**
- * Home on a phone: the floors as layers at the right edge, the chosen scenes over a low sheet of the floor's rooms.
- * Swiped up, the sheet has what's in the picked room, and an item's controls in its place when one is open.
+ * Home on a phone: the floors as layers at the right edge, the chosen scenes over a low sheet about the floor: its rooms
+ * as chips, then a row of what can be switched on it, or in the picked room. Swiped up, the row becomes a grid, and an
+ * item's controls take its place when one is open.
  */
 export const PhoneHome = ({
   floors,
@@ -89,8 +88,6 @@ export const PhoneHome = ({
   open,
   onFocusInset,
   onOpen,
-  onHover,
-  hovered,
   light,
   onLight,
   shade,
@@ -105,7 +102,7 @@ export const PhoneHome = ({
   // Its height under a finger dragging the handle.
   const [dragged, setDragged] = useState<number>()
   const sheet = useRef<HTMLDivElement>(null)
-  const cards = useRef<HTMLDivElement>(null)
+  const chips = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
@@ -116,8 +113,10 @@ export const PhoneHome = ({
     const measure = () => {
       // Everything round the body: the handle, padding and border.
       const chrome = el.offsetHeight - (body.parentElement?.offsetHeight ?? 0)
-      const card = cards.current?.querySelector<HTMLElement>('.phone-room-card')?.offsetHeight ?? 0
-      setSizes({ low: chrome + card, full: chrome + body.offsetHeight, most: view.clientHeight * 0.64 })
+      // Low, the sheet shows the room chips and one row of tiles.
+      const last = body.querySelector<HTMLElement>('.phone-tile') ?? chips.current
+      const low = last ? last.getBoundingClientRect().bottom - body.getBoundingClientRect().top : 0
+      setSizes({ low: chrome + low, full: chrome + body.offsetHeight, most: view.clientHeight * 0.64 })
     }
     const observer = new ResizeObserver(measure)
     observer.observe(body)
@@ -136,12 +135,15 @@ export const PhoneHome = ({
   }, [settled, onFocusInset])
   useEffect(() => () => onFocusInset(0), [onFocusInset])
 
-  // The picked room's card is kept in sight.
+  // The picked room's chip is kept in sight.
   useEffect(() => {
-    cards.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    chips.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [room?.id])
 
-  const floorName = (id: string) => `${ordinal(floors.findIndex((f) => f.id === id) + 1)} floor`
+  // The chips are the rooms on the floor in view, or every room from outside.
+  const floorRooms = outside ? rooms : rooms.filter((r) => r.floor === floors[floorIndex]?.id)
+  const roomName = (id: string | undefined) => rooms.find((r) => r.room === id)?.label
+  const wrap = raised || dragged !== undefined
   const lower = () => {
     setRaised(false)
     setOrdering(false)
@@ -235,14 +237,28 @@ export const PhoneHome = ({
         </div>
         <div className="phone-sheet-body">
           <div ref={content}>
-            {!room && raised && roomOrder && (
-              <div className="phone-sheet-head phone-rooms-head">
-                <h2>Rooms</h2>
+            <div ref={chips} className="phone-room-chips" aria-label="Rooms">
+              <button className="phone-chip" aria-pressed={!room} onClick={room ? onLeave : undefined}>
+                {outside ? 'All' : `${ordinal(floorIndex + 1)} floor`}
+              </button>
+              {floorRooms.map((r) => (
+                <button
+                  key={r.id}
+                  className="phone-chip"
+                  aria-pressed={r === room}
+                  onClick={() => (r === room ? onLeave() : onRoom(r.id))}
+                >
+                  {lit.get(r.room) && <i className="phone-dot" data-on />}
+                  {r.label}
+                </button>
+              ))}
+              {!room && raised && roomOrder && (
                 <button className="phone-edit" aria-pressed={ordering} onClick={() => setOrdering(!ordering)}>
                   {ordering ? 'Done' : 'Edit'}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+
             {!room && raised && ordering && roomOrder ? (
               <div className="phone-rooms-order">
                 <PhoneOrder
@@ -254,78 +270,53 @@ export const PhoneHome = ({
                   onSave={onRoomOrder}
                 />
               </div>
-            ) : (
-              <div
-                ref={cards}
-                className="phone-room-cards"
-                data-wrap={(!room && (raised || dragged !== undefined)) || undefined}
-              >
-                {rooms.map((r) => (
-                  <button
-                    key={r.id}
-                    className="phone-room-card"
-                    aria-current={r === room || undefined}
-                    aria-label={r === room ? `Leave ${r.label}` : undefined}
-                    onClick={() => (r === room ? onLeave() : onRoom(r.id))}
-                  >
-                    {r === room && <X className="phone-room-leave" size={14} />}
-                    <b>{r.label}</b>
-                    <span>
-                      {lit.get(r.room) && <i className="phone-dot" data-on />}
-                      {floors.length > 1 && floorName(r.floor)}
-                      {floors.length > 1 && lit.has(r.room) && ' · '}
-                      {lit.has(r.room) && (lit.get(r.room) ? 'On' : 'Off')}
-                    </span>
+            ) : open ? (
+              <div className="phone-item" role="group" aria-label={open.name}>
+                <div className="phone-sheet-head">
+                  <button className="phone-back" onClick={() => onOpen(undefined)}>
+                    <ChevronLeft size={16} />
+                    {room?.label ?? (outside ? 'All' : `${ordinal(floorIndex + 1)} floor`)}
                   </button>
-                ))}
+                </div>
+                <h2>{open.name}</h2>
+                {open.kind === 'light' ? (
+                  <LightControls light={light(open.id)} onChange={(p) => onLight(open.id, p)} />
+                ) : open.kind === 'blind' ? (
+                  <ShadeControls
+                    name={open.name}
+                    shade={shade(open.id)}
+                    onChange={(p) => onShade(open.id, p)}
+                    onClose={() => onOpen(undefined)}
+                  />
+                ) : (
+                  <p className="hint">
+                    {open.entity
+                      ? `It will show ${open.entity} once Home Assistant is linked.`
+                      : 'Give it a Home Assistant entity under Edit to control it here.'}
+                  </p>
+                )}
               </div>
+            ) : items.length ? (
+              <>
+                <div className="phone-tiles" data-wrap={wrap || undefined}>
+                  {items.map((item) => (
+                    <PhoneTile
+                      key={item.id}
+                      item={item}
+                      place={room ? undefined : roomName(item.room)}
+                      light={item.kind === 'light' ? light(item.id) : undefined}
+                      shade={item.kind === 'blind' ? shade(item.id) : undefined}
+                      onLight={(p) => onLight(item.id, p)}
+                      onShade={(p) => onShade(item.id, p)}
+                      onOpen={() => onOpen(item.id)}
+                    />
+                  ))}
+                </div>
+                {raised && <p className="hint phone-tiles-hint">Tap to switch, hold for brightness or position.</p>}
+              </>
+            ) : (
+              <p className="hint phone-tiles-hint">Nothing to switch {room ? 'in here' : 'here'} yet.</p>
             )}
-
-            {room &&
-              (open ? (
-                <div className="phone-item" role="group" aria-label={open.name}>
-                  <div className="phone-sheet-head">
-                    <button className="phone-back" onClick={() => onOpen(undefined)}>
-                      <ChevronLeft size={16} />
-                      {room.label}
-                    </button>
-                  </div>
-                  <h2>{open.name}</h2>
-                  {open.kind === 'light' ? (
-                    <LightControls light={light(open.id)} onChange={(p) => onLight(open.id, p)} />
-                  ) : open.kind === 'blind' ? (
-                    <ShadeControls
-                      name={open.name}
-                      shade={shade(open.id)}
-                      onChange={(p) => onShade(open.id, p)}
-                      onClose={() => onOpen(undefined)}
-                    />
-                  ) : (
-                    <p className="hint">
-                      {open.entity
-                        ? `It will show ${open.entity} once Home Assistant is linked.`
-                        : 'Give it a Home Assistant entity under Edit to control it here.'}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="phone-items">
-                  {items.length ? (
-                    <SmartRows
-                      items={items}
-                      light={light}
-                      onLight={onLight}
-                      shade={shade}
-                      onShade={onShade}
-                      onOpen={onOpen}
-                      onHover={onHover}
-                      hovered={hovered}
-                    />
-                  ) : (
-                    <p className="hint">Nothing to switch in here yet.</p>
-                  )}
-                </div>
-              ))}
           </div>
         </div>
       </div>
