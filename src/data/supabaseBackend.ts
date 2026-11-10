@@ -111,7 +111,7 @@ export const supabaseBackend: Backend = {
   // Needs the tables in the `supabase_realtime` publication (see the migrations).
   subscribe: (onChange) => {
     const channel = supabase
-      .channel('casa-versions')
+      .channel('nest-versions')
       .on('postgres_changes', { event: '*', schema: 'house', table: 'versions' }, onChange)
       .on('postgres_changes', { event: '*', schema: 'house', table: 'live_version' }, onChange)
       .subscribe((status) => {

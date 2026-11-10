@@ -114,7 +114,7 @@ export const sceneActive = (
   )
 }
 
-const KEY = 'casa.house-scenes'
+const KEY = 'nest.house-scenes'
 
 /** Scenes from before they were saved with the house, still waiting in this browser to be brought in. */
 export const localScenes = (): Scene[] => {

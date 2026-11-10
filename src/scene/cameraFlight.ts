@@ -2,18 +2,23 @@ import { animationProgress } from './animation'
 
 /** Room changes, returns and floor changes share one clock, including their visual effects. */
 export const CAMERA_FLIGHT_SECONDS = 1.1
+/** A floor change only moves the view up or down, so it's quicker. */
+export const FLOOR_FLIGHT_SECONDS = 0.45
 
 type FlightKind = 'none' | 'enter' | 'switch' | 'leave' | 'move'
 export type CameraFlight = { id: number; kind: FlightKind; progress: number }
 
 /** Written by the active camera before fades and render passes run. Progress is eased, from 0 to 1. */
 export const cameraFlight: CameraFlight = { id: 0, kind: 'none', progress: 1 }
+// How long the current flight takes.
+let flightSeconds = CAMERA_FLIGHT_SECONDS
 
 /** A new destination starts from the current view, including when another flight is interrupted. */
-export const beginCameraFlight = (kind: FlightKind) => {
+export const beginCameraFlight = (kind: FlightKind, seconds = CAMERA_FLIGHT_SECONDS) => {
   cameraFlight.id++
   cameraFlight.kind = kind
   cameraFlight.progress = 0
+  flightSeconds = seconds
 }
 
 /** Cubic easing shared by camera position, framing and the effects travelling with them. */
@@ -21,7 +26,7 @@ export const flightEase = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t 
 
 /** Advance by elapsed time, so a slow frame cannot leave the visual transition behind the camera. */
 export const advanceCameraFlight = (started: number, now: number) => {
-  const t = animationProgress(started, now, CAMERA_FLIGHT_SECONDS)
+  const t = animationProgress(started, now, flightSeconds)
   cameraFlight.progress = flightEase(t)
   return t
 }

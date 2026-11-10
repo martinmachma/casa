@@ -28,8 +28,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png', 'textures/wc-patterned-stone.jpg'],
       manifest: {
-        name: 'Casa',
-        short_name: 'Casa',
+        name: 'Nest',
+        short_name: 'Nest',
         description: 'Our house: walls, colours and furniture.',
         theme_color: '#0b0f11',
         background_color: '#0b0f11',
@@ -51,7 +51,7 @@ export default defineConfig({
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/models/'),
             handler: 'CacheFirst',
-            options: { cacheName: 'casa-models', expiration: { maxEntries: 300 } },
+            options: { cacheName: 'nest-models', expiration: { maxEntries: 300 } },
           },
         ],
       },

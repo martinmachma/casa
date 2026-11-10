@@ -57,7 +57,7 @@ export const sameJson = (a: unknown, b: unknown): boolean => {
   )
 }
 
-const draftKey = (backend: Backend) => `casa.draft.${backend.kind}`
+const draftKey = (backend: Backend) => `nest.draft.${backend.kind}`
 
 // Unsaved edits survive a reload, on this device only.
 const readDraft = (backend: Backend): Draft | undefined => {

@@ -77,7 +77,7 @@ export const floorShades = (floor: Floor, regions: Map<string, RoomRegion>): Win
 export const shadeText = (s: ShadeState) =>
   s.position <= 0.005 ? 'Up' : s.position >= 0.995 ? 'Down' : `${Math.round(s.position * 100)} % down`
 
-const KEY = 'casa.shades'
+const KEY = 'nest.shades'
 
 const load = (): Record<string, ShadeState> => {
   try {

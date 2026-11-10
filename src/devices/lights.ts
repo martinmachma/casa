@@ -65,7 +65,7 @@ export const lightColor = (state: LightState | undefined) => {
 export const lightSettings = (state: LightState | undefined, dark: number): LightState =>
   state ?? { ...DEFAULTS, on: dark > 0.5 }
 
-const KEY = 'casa.lights'
+const KEY = 'nest.lights'
 
 const load = (): Record<string, LightState> => {
   try {

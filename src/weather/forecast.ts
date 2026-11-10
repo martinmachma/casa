@@ -23,7 +23,7 @@ const params = new URLSearchParams({
 })
 export const FORECAST_URL = `https://api.open-meteo.com/v1/forecast?${params}`
 export const CACHE_MAX_AGE = 60 * 60 * 1000
-const CACHE_KEY = `casa.weather.v1:${params}`
+const CACHE_KEY = `nest.weather.v1:${params}`
 
 export type ForecastDay = { date: string; models: (ModelValues | null)[] }
 type Forecast = { updatedAt: number; days: ForecastDay[] }

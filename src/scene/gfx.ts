@@ -4,7 +4,7 @@
 const FLAGS = ['compact', 'noshadows', 'nolights', 'noao', 'nossao', 'noaoquad', 'noaoblur', 'noblur'] as const
 type Flag = (typeof FLAGS)[number]
 
-const KEY = 'casa-gfx'
+const KEY = 'nest-gfx'
 const read = () => {
   const param = new URLSearchParams(window.location.search).get('gfx')
   try {
@@ -17,7 +17,7 @@ const read = () => {
 const raw = read()
 const requested = new Set(raw.split(','))
 const off = new Set<Flag>(requested.has('safe') ? FLAGS : FLAGS.filter((f) => requested.has(f)))
-if (off.size) console.info('Casa graphics switched off:', [...off].join(', '))
+if (off.size) console.info('Nest graphics switched off:', [...off].join(', '))
 
 export const gfxOff = (flag: Flag) => off.has(flag)
 

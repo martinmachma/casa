@@ -3,8 +3,8 @@ import type { RoomOrder } from '../rooms/roomOrder'
 import type { Backend, Version } from './types'
 
 // The demo keeps everything in this browser's localStorage.
-const VERSIONS_KEY = 'casa.demo.versions'
-const LIVE_KEY = 'casa.demo.live'
+const VERSIONS_KEY = 'nest.demo.versions'
+const LIVE_KEY = 'nest.demo.live'
 
 const read = <T>(key: string, fallback: T): T => {
   try {
@@ -25,7 +25,7 @@ const write = (key: string, value: unknown) => {
 }
 
 // Other tabs of the demo hear about changes through a BroadcastChannel (it never echoes to the sender).
-const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('casa.demo')
+const channel = typeof BroadcastChannel === 'undefined' ? undefined : new BroadcastChannel('nest.demo')
 const announce = () => channel?.postMessage('changed')
 
 let demoRoomOrder: RoomOrder | undefined

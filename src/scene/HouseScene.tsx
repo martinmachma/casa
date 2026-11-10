@@ -21,7 +21,14 @@ import { distance, formatLength, type MeasuredLine, type Measurement, type Measu
 import { floorItems, outsideLight } from '../rooms/roomItems'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
 import type { SunPosition } from '../sun/sun'
-import { advanceCameraFlight, beginCameraFlight, cameraFlight, flightEase } from './cameraFlight'
+import {
+  advanceCameraFlight,
+  beginCameraFlight,
+  CAMERA_FLIGHT_SECONDS,
+  cameraFlight,
+  FLOOR_FLIGHT_SECONDS,
+  flightEase,
+} from './cameraFlight'
 import { useCompactGraphics } from './useCompactGraphics'
 import { AmbientOcclusion } from './AmbientOcclusion'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
@@ -751,8 +758,13 @@ export const HouseScene = ({
               )
             })}
           <ShadowUpdates />
-          {!gfxOff('noao') && <AmbientOcclusion enabled={!compact && !gfxOff('nossao')} shadowScale={compact ? 0.5 : 1} />}
-          <WarmShaders ready={!data.loading && !compact && !gfxOff('noblur')} view={focusRoom ? 'room' : outside ? 'outside' : floor.id} />
+          {!gfxOff('noao') && (
+            <AmbientOcclusion enabled={!compact && !gfxOff('nossao')} shadowScale={compact ? 0.5 : 1} />
+          )}
+          <WarmShaders
+            ready={!data.loading && !compact && !gfxOff('noblur')}
+            view={focusRoom ? 'room' : outside ? 'outside' : floor.id}
+          />
         </ViewedFloor.Provider>
       </Canvas>
       <AnnotationLabels items={annotations} refs={annotationRefs} />
@@ -910,7 +922,9 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     const orbit = controls && 'update' in controls ? (controls as OrbitControlsImpl) : null
     if (!initialized.current) {
       initialized.current = true
-      if (start.from) beginCameraFlight(leaving ? 'leave' : 'move')
+      // Back out of a room at a room's pace; otherwise it's a floor change, which is quicker.
+      if (start.from)
+        beginCameraFlight(leaving ? 'leave' : 'move', leaving ? CAMERA_FLIGHT_SECONDS : FLOOR_FLIGHT_SECONDS)
       else {
         cameraFlight.kind = 'none'
         cameraFlight.progress = 1
