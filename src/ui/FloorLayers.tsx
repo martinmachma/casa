@@ -21,7 +21,7 @@ type FloorLayersProps = {
 }
 
 /** Height of each stop along the strip, in CSS pixels: closed, and spread out for good. */
-const STEP = 28
+const STEP = 23
 const OPEN_STEP = 40
 const PAD = 4
 /** Closed, how far apart the slabs sit, and the house above the top one. */
@@ -153,7 +153,7 @@ export const FloorLayers = ({
             data-hover={(!dragging && k === hover) || undefined}
             style={{ top: slabTop(k) }}
           >
-            {k === 0 ? <House size={open ? 17 : 13} /> : floors.length - k + 1}
+            {k === 0 ? <House size={open ? 17 : dragging ? 15 : 13} /> : floors.length - k + 1}
           </span>
         ))}
       </div>

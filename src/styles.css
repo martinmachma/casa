@@ -4704,6 +4704,22 @@ input[type='range'].light-brightness::-moz-range-thumb {
   opacity: 1;
 }
 
+/* Spread out by a drag (phone): the slabs grow a little and the cells close up around them. */
+.floor-layers[data-dragging]:not([data-open]) .floor-layers-slab {
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+}
+
+.floor-layers[data-dragging]:not([data-open]) .floor-layers-cell {
+  height: 21px;
+  border-radius: 8px;
+}
+
+.floor-layers[data-dragging]:not([data-open]) .floor-layers-mark {
+  font-size: 12px;
+}
+
 /* Spread out for good (desktop): bigger slabs, so the number fits on them. */
 .floor-layers[data-open] .floor-layers-strip {
   width: 48px;
