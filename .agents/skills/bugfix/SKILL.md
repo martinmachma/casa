@@ -1,6 +1,6 @@
 ---
 name: bugfix
-description: Fix a bug in Casa. Use when something that should work does not (wrong geometry, broken interaction, bad sync, visual glitch). Reproduces first, fixes the cause, checks for the same flaw elsewhere.
+description: Fix a bug in Nest. Use when something that should work does not (wrong geometry, broken interaction, bad sync, visual glitch). Reproduces first, fixes the cause, checks for the same flaw elsewhere.
 ---
 
 # Bugfix

@@ -1,6 +1,6 @@
-# Agent notes for Casa
+# Agent notes for Nest
 
-Casa is our house in 3D: a Vite + React + TypeScript PWA (React Three Fiber, Supabase, Vercel). Desktop first; ignore
+Nest is our house in 3D: a Vite + React + TypeScript PWA (React Three Fiber, Supabase, Vercel). Desktop first; ignore
 mobile layout unless Martin asks.
 
 ## Start here

@@ -7,7 +7,7 @@ Traced on 2026-11-01 from `A22_NJ6A_RD_C1_dsp_elektro_1.jpg` through `_4.jpg` in
 - Sheet 3: upper floor.
 - Sheet 4: roof, heated drains, antenna and lightning protection.
 
-Casa contains 135 fixed points: 54 inside the ground floor, 63 inside the upper floor and 18 exterior/roof
+Nest contains 135 fixed points: 54 inside the ground floor, 63 inside the upper floor and 18 exterior/roof
 points. These include individual power sockets, four TV outlets and four double RJ45 outlets (eight RJ45
 ports), appliance supplies, switches and timer buttons, smart lights, smoke/PIR/temperature
 sensors, fans, doorbells, distribution boards, bonding and lightning protection equipment.
@@ -28,7 +28,7 @@ and removed without touching the 17 plan lights.
 ## Placement and routes
 
 The drawings show schematic positions, not dimensioned installation coordinates. Points are projected onto
-the corresponding faces of Casa's existing architectural walls, avoiding doors and windows at their mounting
+the corresponding faces of Nest's existing architectural walls, avoiding doors and windows at their mounting
 height. The microwave socket uses the kitchen shaft face and the bedroom doorway controls use the structural
 projection beside the door. The entrance light sits above the architectural entrance door. The existing
 architectural geometry is retained where the electrical plan differs.
@@ -62,7 +62,7 @@ The architectural background also sketches panel radiators beneath windows, incl
 bedrooms. Heater positions can therefore be read from the drawing, but radiator sizes, heating pipework and
 underfloor heating loops are not specified.
 
-Casa models the six panel radiators shown in that background: two in the living/dining room (by the terrace
+Nest models the six panel radiators shown in that background: two in the living/dining room (by the terrace
 glazing and beneath the front window), one on the hall's entrance wall beside the window, and one beneath
 the window in each upstairs bedroom. A ladder towel rail sits on the bathroom's west wall at the marked
 **žebřík** position. These are permanent fixtures visible in every version and with electrical mode off.

@@ -1,4 +1,4 @@
-# Casa conventions
+# Nest conventions
 
 How code is written here. Follow what neighbouring files do; this lists the patterns that matter.
 

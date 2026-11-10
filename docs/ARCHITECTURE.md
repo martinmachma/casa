@@ -1,4 +1,4 @@
-# Casa architecture
+# Nest architecture
 
 How the app fits together. Read this before changes that cross modules or touch saved data. If you change a module's
 role, a dependency direction, or the data model, update this file in the same commit.
@@ -40,11 +40,11 @@ A module may import from the left of itself, not the right. (A few small upward 
   version that is "the house now" (null = bare house). The `Backend` interface covers load, save, rename, delete,
   setLive, `replaceLive` (conditional, one winner when two people go live at once), room and scene order, and subscribe.
 - **Unsaved edits** live in `useHouseData`: a history (draft, past, future, limit 100). `edit(change, key?)` merges
-  same-key edits into one undo step. The draft persists to localStorage (`casa.draft.<backend.kind>`) and survives a
+  same-key edits into one undo step. The draft persists to localStorage (`nest.draft.<backend.kind>`) and survives a
   reload on that device. Saving creates a new version. `newerLive` flags that someone made another version live while
   you were editing.
 - **Modes**: Home shows only the saved live version. Edit (`?edit` in the URL) works on the draft.
-- **Two backends, same interface**: Supabase (real) and local (demo: localStorage `casa.demo.*`, tabs synced with
+- **Two backends, same interface**: Supabase (real) and local (demo: localStorage `nest.demo.*`, tabs synced with
   BroadcastChannel). Demo is offered in dev or when Supabase isn't configured. Any data change must work in both.
 - **Realtime**: `supabaseBackend.subscribe` listens to `versions` and `live_version` and reloads the react-query cache.
 - **Server state** is react-query (keys such as `['versions', kind]`, `['roomOrder', kind]`, `['access', userId]`,

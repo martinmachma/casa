@@ -26,7 +26,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png', 'textures/wc-patterned-stone.jpg'],
+      includeAssets: ['favicon.ico', 'pwa-64x64.png', 'apple-touch-icon-180x180.png', 'textures/wc-patterned-stone.jpg'],
       manifest: {
         name: 'Nest',
         short_name: 'Nest',

@@ -4,7 +4,7 @@ Investigated and corrected on 2026-10-30.
 
 ## Existing stack
 
-Casa uses React Three Fiber 9.8.1 and Drei 10.7.9 with Three.js 0.186.1's WebGLRenderer. Walls, slabs, outdoor objects and GLTF furniture use standard PBR materials. R3F supplies ACES filmic tone mapping and sRGB output. The canvas renders on demand at a device pixel ratio of 1–2.
+Nest uses React Three Fiber 9.8.1 and Drei 10.7.9 with Three.js 0.186.1's WebGLRenderer. Walls, slabs, outdoor objects and GLTF furniture use standard PBR materials. R3F supplies ACES filmic tone mapping and sRGB output. The canvas renders on demand at a device pixel ratio of 1–2.
 
 A hemisphere light supplies indirect sky/ground fill. The date/time calculation supplies a directional sun, with a directional moon fill at night. Indoor fixtures and lamps are point lights with cube shadow maps. The permanent house proxy keeps the physical walls, floor slabs and roof in the shadow pass when the visual cutaway hides them. Room focus uses a separate blur/compositing pass. There was no ambient occlusion or bloom.
 

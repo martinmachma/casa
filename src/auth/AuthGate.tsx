@@ -86,8 +86,8 @@ export const AuthGate = ({ children }: AuthGateProps) => {
 export const GateCard = ({ children }: { children: ReactNode }) => (
   <main className="gate">
     <div className="gate-card">
-      <img src="/favicon.svg" alt="" width={72} height={72} />
-      <h1>Casa</h1>
+      <img src="/pwa-192x192.png" alt="" width={88} height={88} />
+      <h1>Nest</h1>
       {children}
     </div>
   </main>

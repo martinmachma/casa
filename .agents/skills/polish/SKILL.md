@@ -1,6 +1,6 @@
 ---
 name: polish
-description: Polish an existing Casa feature end to end, visually and functionally, on its own branch, with before/after screenshots and a behaviour walkthrough. Use when asked to "polish", "make X feel finished", "clean up X properly", or to take a rough feature to done. Asks about real design decisions along the way.
+description: Polish an existing Nest feature end to end, visually and functionally, on its own branch, with before/after screenshots and a behaviour walkthrough. Use when asked to "polish", "make X feel finished", "clean up X properly", or to take a rough feature to done. Asks about real design decisions along the way.
 ---
 
 # Polish a feature

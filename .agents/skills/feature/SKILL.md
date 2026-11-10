@@ -1,6 +1,6 @@
 ---
 name: feature
-description: Define and build a new Casa feature or a larger change. Use when the request adds or reshapes behaviour (not a plain bug fix or a pure visual tweak). Clarifies the idea, checks it against the whole app, then implements it.
+description: Define and build a new Nest feature or a larger change. Use when the request adds or reshapes behaviour (not a plain bug fix or a pure visual tweak). Clarifies the idea, checks it against the whole app, then implements it.
 ---
 
 # Feature

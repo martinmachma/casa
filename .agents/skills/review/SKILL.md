@@ -1,6 +1,6 @@
 ---
 name: review
-description: Review Casa changes (the working tree diff or recent commits) against the project's architecture and conventions. Use before finishing a task or when asked to review. Read-only.
+description: Review Nest changes (the working tree diff or recent commits) against the project's architecture and conventions. Use before finishing a task or when asked to review. Read-only.
 ---
 
 # Review

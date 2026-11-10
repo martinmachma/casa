@@ -1,6 +1,6 @@
 ---
 name: impact
-description: Map everything a proposed Casa change touches across the app before changing code. Use at the start of any non-trivial change, or when asked "what would this affect?". Read-only.
+description: Map everything a proposed Nest change touches across the app before changing code. Use at the start of any non-trivial change, or when asked "what would this affect?". Read-only.
 ---
 
 # Impact analysis

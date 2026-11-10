@@ -1,6 +1,6 @@
 ---
 name: ui
-description: Build or change Casa's user interface (panels, drawers, rows, buttons, modes, 3D overlays). Use for any visible UI work so it matches the rest of the app and is checked in the browser.
+description: Build or change Nest's user interface (panels, drawers, rows, buttons, modes, 3D overlays). Use for any visible UI work so it matches the rest of the app and is checked in the browser.
 ---
 
 # UI

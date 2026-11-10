@@ -1,4 +1,4 @@
-# Casa
+# Nest
 
 Our house in 3D: walls traced from the plan, paint colours per wall side, and box furniture you can drag around. A
 Vite + React + TypeScript PWA using React Three Fiber, backed by Supabase and deployed on Vercel.
@@ -16,20 +16,20 @@ npm run dev                  # http://localhost:5173
 Without `.env.local` (and always in dev) the login screen offers **Try the demo**, which runs the whole app with data
 saved only in this browser's localStorage.
 
-| Script              | What it does                                             |
-| ------------------- | -------------------------------------------------------- |
-| `npm run dev`       | dev server                                               |
-| `npm run build`     | typecheck + production build (with service worker)       |
-| `npm run preview`   | serve the production build locally                       |
-| `npm run lint`      | eslint (`npm run format` runs prettier)                  |
-| `npm run typecheck` | `tsc -b`                                                 |
-| `npm test`          | vitest: core logic (geometry, snapping, collision, ...)  |
-| `npm run check`     | typecheck + tests                                        |
-| `npm run icons`     | regenerate PWA icons from `public/favicon.svg`           |
+| Script              | What it does                                            |
+| ------------------- | ------------------------------------------------------- |
+| `npm run dev`       | dev server                                              |
+| `npm run build`     | typecheck + production build (with service worker)      |
+| `npm run preview`   | serve the production build locally                      |
+| `npm run lint`      | eslint (`npm run format` runs prettier)                 |
+| `npm run typecheck` | `tsc -b`                                                |
+| `npm test`          | vitest: core logic (geometry, snapping, collision, ...) |
+| `npm run check`     | typecheck + tests                                       |
+| `npm run icons`     | regenerate PWA icons from `brand/nest-logo-source.png`  |
 
 ## One-time setup
 
-Casa shares the Supabase project with Haru. Everything Casa owns lives in the `house` schema and the `house` storage
+Nest shares the Supabase project with Haru. Everything Nest owns lives in the `house` schema and the `house` storage
 bucket; it never touches Haru's tables.
 
 ### 1. Database
@@ -79,9 +79,9 @@ If Haru already signs in with Google, the provider is already on and you can ski
 2. Supabase → **Authentication → Sign In / Providers → Google**: enable it and paste the client ID and secret.
 3. Supabase → **Authentication → URL Configuration → Redirect URLs**: add
    - `http://localhost:5173`
-   - `https://<your-casa-domain>.vercel.app` (and any custom domain)
+   - `https://<your-domain>.vercel.app` (and any custom domain)
 
-   Leave the Site URL as Haru's; Casa passes its own `redirectTo`, which only needs to be in this list.
+   Leave the Site URL as Haru's; Nest passes its own `redirectTo`, which only needs to be in this list.
 
 > ⚠️ Because the project is shared, her Google sign-in also creates a user in Haru's auth. That's harmless as long as
 > Haru's own RLS policies don't grant access to _every_ authenticated user. Worth a quick check.

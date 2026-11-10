@@ -1,5 +1,5 @@
 /*
- * Casa's design system. Dark only: graphite controls float on one quiet background gradient that shows through the
+ * Nest's design system. Dark only: graphite controls float on one quiet background gradient that shows through the
  * header and the panel. Shiba orange marks where you are, azure what's switched on. Gradients are kept for that
  * background and for light; controls stay flat. Everything is sized from a 4 px grid.
  */
@@ -75,8 +75,11 @@
   /* The background's width round the 3D view. */
   --gutter: 12px;
 
+  /* The name and big titles: a soft serif that goes with the illustrated logo. */
+  --font-brand: 'Fraunces', Georgia, serif;
+
   font-family:
-    'Geist',
+    'Nunito',
     system-ui,
     -apple-system,
     'Segoe UI',
@@ -420,9 +423,15 @@ p {
   height: 100%;
 }
 
+.gate-card img {
+  border-radius: 22px;
+}
+
 .gate-card h1 {
-  font-size: 24px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-brand);
+  font-weight: 600;
+  font-size: 32px;
+  letter-spacing: -0.01em;
 }
 
 /* ── App shell ───────────────────────────────────────────── */
@@ -452,9 +461,10 @@ p {
   background: transparent;
   color: var(--ink);
   font: inherit;
+  font-family: var(--font-brand);
   font-weight: 600;
-  font-size: 18px;
-  letter-spacing: -0.02em;
+  font-size: 21px;
+  letter-spacing: -0.01em;
   cursor: pointer;
   transition: background 120ms;
 }
@@ -464,15 +474,11 @@ p {
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
   width: 32px;
   height: 32px;
   flex: none;
   border-radius: var(--radius-sm);
-  background: var(--accent);
   box-shadow: var(--shadow-sm);
-  color: var(--accent-ink);
 }
 
 /* What it's like outside now, at the right of the top bar; opens the forecast. */
