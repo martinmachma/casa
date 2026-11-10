@@ -135,3 +135,24 @@ export const forgetLocalScenes = (ids: string[]) => {
     // Private windows may refuse; they kept nothing to bring in anyway.
   }
 }
+
+/** What a scene does, in a few words: how many lights it puts on (or that it switches them off) and where the shades go. Only `ids`, the items still in the house, count. */
+export const sceneEffect = (scene: Scene, ids: string[]) => {
+  const here = new Set(ids)
+  const lights = Object.entries(scene.lights).filter(([id]) => here.has(id))
+  const shades = Object.entries(scene.shades).filter(([id]) => here.has(id))
+  const on = lights.filter(([, l]) => l.on).length
+  const down = shades.filter(([, s]) => s.position > 0).length
+  const parts = [
+    on ? `${on} ${on === 1 ? 'light' : 'lights'} on` : lights.length ? 'lights off' : '',
+    !shades.length
+      ? ''
+      : down === shades.length
+        ? 'shades down'
+        : down
+          ? `${down} of ${shades.length} shades down`
+          : 'shades up',
+  ].filter(Boolean)
+  const text = parts.join(', ')
+  return text && text[0].toUpperCase() + text.slice(1)
+}

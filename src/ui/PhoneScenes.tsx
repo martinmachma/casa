@@ -1,7 +1,7 @@
-import { Sparkles, X } from 'lucide-react'
+import { ArrowUpDown, Check, LayoutGrid, X } from 'lucide-react'
 import { useState } from 'react'
 import type { LightState } from '../devices/lights'
-import { applyScene, type Scene, sceneActive } from '../devices/scenes'
+import { applyScene, type Scene, sceneActive, sceneEffect } from '../devices/scenes'
 import type { ShadeState } from '../devices/shades'
 import { arrange, type Order } from '../lib/order'
 import { IconButton } from './kit'
@@ -28,8 +28,9 @@ type PhoneScenesProps = {
 
 /**
  * Home's scenes on a phone: a button for a sheet of every scene, then a row of the ones this person chose, in their
- * order. In the sheet Edit drags them up and down and across the line between shown and not, as the desktop room list
- * does. Any number can be on at once: a scene is on while all it sets is as it says.
+ * order. The sheet has each scene as a card saying what it sets; Arrange drags them up and down and across the line
+ * between shown and not, as the desktop room list does. Any number can be on at once: a scene is on while all it sets
+ * is as it says.
  */
 export const PhoneScenes = ({ scenes, all, saved, onSave, ids, light, onLight, shade, onShade }: PhoneScenesProps) => {
   const [open, setOpen] = useState(false)
@@ -49,6 +50,17 @@ export const PhoneScenes = ({ scenes, all, saved, onSave, ids, light, onLight, s
     setOpen(false)
     setEditing(false)
   }
+  const card = (scene: Scene) => {
+    const active = on(scene)
+    const summary = sceneEffect(scene, ids)
+    return (
+      <button key={scene.id} className="phone-scene-card" aria-pressed={active} onClick={() => apply(scene)}>
+        {active && <Check className="phone-scene-check" size={16} />}
+        <b>{scene.name}</b>
+        <span>{active ? (summary ? `On · ${summary}` : 'On') : summary || 'Sets nothing here'}</span>
+      </button>
+    )
+  }
   const row = (scene: Scene) => (
     <button key={scene.id} className="phone-scene" aria-pressed={on(scene)} onClick={() => apply(scene)}>
       <i />
@@ -60,7 +72,7 @@ export const PhoneScenes = ({ scenes, all, saved, onSave, ids, light, onLight, s
     <>
       <div className="phone-scenes" role="group" aria-label="Scenes">
         <button className="phone-scene phone-scenes-all" aria-label="All scenes" onClick={() => setOpen(true)}>
-          <Sparkles size={16} />
+          <LayoutGrid size={16} />
         </button>
         <div className="phone-scenes-row">{shown.map(row)}</div>
       </div>
@@ -71,8 +83,9 @@ export const PhoneScenes = ({ scenes, all, saved, onSave, ids, light, onLight, s
           <div className="phone-sheet float" role="dialog" aria-label="Scenes">
             <div className="phone-sheet-head">
               <h2>Scenes</h2>
-              <button className="phone-edit" aria-pressed={editing} onClick={() => setEditing(!editing)}>
-                {editing ? 'Done' : 'Edit'}
+              <button className="phone-arrange" aria-pressed={editing} onClick={() => setEditing(!editing)}>
+                {!editing && <ArrowUpDown size={15} />}
+                {editing ? 'Done' : 'Arrange'}
               </button>
               <IconButton label="Close" small onClick={close}>
                 <X size={16} />
@@ -82,21 +95,26 @@ export const PhoneScenes = ({ scenes, all, saved, onSave, ids, light, onLight, s
               <PhoneOrder
                 order={order}
                 name={(id) => byId.get(id)?.name}
-                main="Shown over the rooms"
-                minor="In the list"
+                main="Over the house"
+                minor="More"
                 hint="Drag a scene up or down, or across the line to show or hide it."
                 onSave={onSave}
               />
             ) : (
               <>
-                <h3>Shown</h3>
-                <div className="phone-scene-list">{order.main.flatMap((id) => byId.get(id) ?? []).map(row)}</div>
+                {order.main.length > 0 && (
+                  <>
+                    <h3>Over the house</h3>
+                    <div className="phone-scene-cards">{order.main.flatMap((id) => byId.get(id) ?? []).map(card)}</div>
+                  </>
+                )}
                 {order.minor.length > 0 && (
                   <>
                     <h3>More</h3>
-                    <div className="phone-scene-list">{order.minor.flatMap((id) => byId.get(id) ?? []).map(row)}</div>
+                    <div className="phone-scene-cards">{order.minor.flatMap((id) => byId.get(id) ?? []).map(card)}</div>
                   </>
                 )}
+                <p className="hint phone-scene-hint">Scenes are made and changed in Edit on a computer.</p>
               </>
             )}
           </div>
