@@ -4594,7 +4594,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   width: 30px;
   border-radius: 15px;
   transform-origin: bottom right;
-  background: rgb(11 15 17 / 0.3);
+  background: rgb(11 15 17 / 0.45);
   touch-action: none;
   cursor: ns-resize;
   transition:
@@ -4603,7 +4603,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
 }
 
 .floor-layers-strip[data-dragging] {
-  background: rgb(11 15 17 / 0.5);
+  background: rgb(11 15 17 / 0.6);
 }
 
 .floor-layers-strip:focus-visible {

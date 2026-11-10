@@ -14,14 +14,19 @@ type FloorLayersProps = {
   /** Always spread out with every floor's number on its slab, as on a desktop; otherwise it opens while dragged. */
   open?: boolean
   disabled?: boolean
+  /** Whether the floor's name shows beside the strip while it's dragged. */
+  label?: boolean
   /** Drawn this many times bigger, from its bottom right corner, for a finger. */
   scale?: number
 }
 
 /** Height of each stop along the strip, in CSS pixels: closed, and spread out for good. */
-const STEP = 20
+const STEP = 28
 const OPEN_STEP = 40
 const PAD = 4
+/** Closed, how far apart the slabs sit, and the house above the top one. */
+const GAP = 10
+const HOUSE_GAP = 13
 
 /**
  * The floors as a small stack of slabs at the edge of the view, in the order they stack. A thumb slid up and down it
@@ -37,6 +42,7 @@ export const FloorLayers = ({
   open = false,
   disabled = false,
   scale = 1,
+  label = true,
 }: FloorLayersProps) => {
   // Stop 0 is the whole house, then the floors from the top down.
   const stops = floors.length + 1
@@ -56,10 +62,9 @@ export const FloorLayers = ({
     else onFloor(floors.length - k)
     navigator.vibrate?.(8)
   }
-  // Closed, the strip is only as tall as the house and the slabs stacked close together, the slabs 7px apart and the
-  // house on them as closely; a drag grows it upwards and spreads them out onto their stops.
+  // Closed, the strip is only as tall as the house and the slabs stacked close together; a drag grows it upwards and spreads them out onto their stops.
   const spread = open || dragging
-  const cluster = 10 + (stops - 2) * 7
+  const cluster = HOUSE_GAP + (stops - 2) * GAP
   const full = PAD * 2 + step * stops
   const height = spread ? full : cluster + 29
   // The strip keeps its bottom, so a stop's place in the full strip is that much further down than in this one.
@@ -70,7 +75,7 @@ export const FloorLayers = ({
   }
   const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
   const place = (k: number) => centre(k) - shift
-  const slabTop = (k: number) => (spread ? centre(k) : 14.5 + (k === 0 ? 0 : 10 + (k - 1) * 7))
+  const slabTop = (k: number) => (spread ? centre(k) : 14.5 + (k === 0 ? 0 : HOUSE_GAP + (k - 1) * GAP))
   const name = stop === 0 ? 'Whole house' : `${ordinal(floorIndex + 1)} floor`
 
   return (
@@ -152,7 +157,7 @@ export const FloorLayers = ({
           </span>
         ))}
       </div>
-      {dragging && (
+      {dragging && label && (
         <div className="floor-layers-label float" style={{ top: full - (full - centre(stop)) * scale }}>
           <b>{name}</b>
           <span>{describe(stop === 0 ? undefined : floorIndex)}</span>

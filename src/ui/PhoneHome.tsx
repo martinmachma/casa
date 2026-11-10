@@ -206,6 +206,7 @@ export const PhoneHome = ({
         onOutside={onOutside}
         describe={describeFloor(floors, rooms, lit)}
         scale={FLOOR_SCALE}
+        label={false}
       />
 
       <PhoneScenes
