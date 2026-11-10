@@ -90,6 +90,7 @@ export const FloorLayers = ({
         tabIndex={disabled ? -1 : 0}
         data-dragging={dragging || undefined}
         style={{ height }}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
           last.current = stop

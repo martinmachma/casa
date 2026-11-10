@@ -4562,6 +4562,10 @@ input[type='range'].light-brightness::-moz-range-thumb {
   right: 12px;
   bottom: calc(var(--sheet, 0px) + 10px);
   transition: bottom 240ms ease;
+  /* A held finger must not select the label or open the system's look up / translate menu. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .phone-home[data-raised] .floor-layers {
