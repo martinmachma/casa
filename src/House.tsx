@@ -1146,6 +1146,8 @@ export const House = ({ backend, account }: HouseProps) => {
               outside={outside}
               onOutside={goOutside}
               rooms={phoneRooms}
+              roomOrder={roomOrder.ready ? roomsArranged : undefined}
+              onRoomOrder={roomOrder.save}
               room={focus}
               onRoom={openRoom}
               onLeave={leaveRoom}

@@ -11,6 +11,7 @@ import { describeFloor } from './describeFloor'
 import { FloorLayers } from './FloorLayers'
 import { LightControls } from './LightControls'
 import { ordinal } from './ordinal'
+import { PhoneOrder } from './PhoneOrder'
 import { PhoneScenes } from './PhoneScenes'
 import { ShadeControls } from './ShadeControls'
 import { SmartRows } from './SmartList'
@@ -24,6 +25,9 @@ type PhoneHomeProps = {
   onOutside: () => void
   /** Every room, in this person's order. */
   rooms: RoomView[]
+  /** That order, the big rooms then the small ones, to change; undefined until it has loaded. */
+  roomOrder: Order | undefined
+  onRoomOrder: (order: Order) => void
   /** The room being looked at on its own, if any. */
   room: RoomView | undefined
   onRoom: (id: string) => void
@@ -53,6 +57,9 @@ type PhoneHomeProps = {
   onShade: (id: string, patch: Partial<ShadeState>) => void
 }
 
+/** The floor strip is drawn bigger than on a desktop, for a thumb. */
+const FLOOR_SCALE = 1.45
+
 /** How far a drag on the sheet's handle goes before it raises or lowers the sheet, in CSS pixels. */
 const SWIPE = 18
 
@@ -67,6 +74,8 @@ export const PhoneHome = ({
   outside,
   onOutside,
   rooms,
+  roomOrder,
+  onRoomOrder,
   room,
   onRoom,
   onLeave,
@@ -88,6 +97,8 @@ export const PhoneHome = ({
   onShade,
 }: PhoneHomeProps) => {
   const [raisedByHand, setRaised] = useState(false)
+  // Putting the rooms in order, in the raised sheet.
+  const [ordering, setOrdering] = useState(false)
   const raised = raisedByHand || !!open
   // The sheet's heights: low with one row of cards, and as tall as what's in it raised, up to most of the view.
   const [sizes, setSizes] = useState({ low: 0, full: 0, most: 0 })
@@ -133,6 +144,7 @@ export const PhoneHome = ({
   const floorName = (id: string) => `${ordinal(floors.findIndex((f) => f.id === id) + 1)} floor`
   const lower = () => {
     setRaised(false)
+    setOrdering(false)
     onOpen(undefined)
   }
 
@@ -193,6 +205,7 @@ export const PhoneHome = ({
         onFloor={onFloor}
         onOutside={onOutside}
         describe={describeFloor(floors, rooms, lit)}
+        scale={FLOOR_SCALE}
       />
 
       <PhoneScenes
@@ -221,30 +234,51 @@ export const PhoneHome = ({
         </div>
         <div className="phone-sheet-body">
           <div ref={content}>
-            <div
-              ref={cards}
-              className="phone-room-cards"
-              data-wrap={(!room && (raised || dragged !== undefined)) || undefined}
-            >
-              {rooms.map((r) => (
-                <button
-                  key={r.id}
-                  className="phone-room-card"
-                  aria-current={r === room || undefined}
-                  aria-label={r === room ? `Leave ${r.label}` : undefined}
-                  onClick={() => (r === room ? onLeave() : onRoom(r.id))}
-                >
-                  {r === room && <X className="phone-room-leave" size={14} />}
-                  <b>{r.label}</b>
-                  <span>
-                    {lit.get(r.room) && <i className="phone-dot" data-on />}
-                    {floors.length > 1 && floorName(r.floor)}
-                    {floors.length > 1 && lit.has(r.room) && ' · '}
-                    {lit.has(r.room) && (lit.get(r.room) ? 'On' : 'Off')}
-                  </span>
+            {!room && raised && roomOrder && (
+              <div className="phone-sheet-head phone-rooms-head">
+                <h2>Rooms</h2>
+                <button className="phone-edit" aria-pressed={ordering} onClick={() => setOrdering(!ordering)}>
+                  {ordering ? 'Done' : 'Edit'}
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
+            {!room && raised && ordering && roomOrder ? (
+              <div className="phone-rooms-order">
+                <PhoneOrder
+                  order={roomOrder}
+                  name={(id) => rooms.find((r) => r.id === id)?.label}
+                  main="Main rooms"
+                  minor="Other spaces"
+                  hint="Drag a room up or down to change its place, or below the line with the smaller spaces."
+                  onSave={onRoomOrder}
+                />
+              </div>
+            ) : (
+              <div
+                ref={cards}
+                className="phone-room-cards"
+                data-wrap={(!room && (raised || dragged !== undefined)) || undefined}
+              >
+                {rooms.map((r) => (
+                  <button
+                    key={r.id}
+                    className="phone-room-card"
+                    aria-current={r === room || undefined}
+                    aria-label={r === room ? `Leave ${r.label}` : undefined}
+                    onClick={() => (r === room ? onLeave() : onRoom(r.id))}
+                  >
+                    {r === room && <X className="phone-room-leave" size={14} />}
+                    <b>{r.label}</b>
+                    <span>
+                      {lit.get(r.room) && <i className="phone-dot" data-on />}
+                      {floors.length > 1 && floorName(r.floor)}
+                      {floors.length > 1 && lit.has(r.room) && ' · '}
+                      {lit.has(r.room) && (lit.get(r.room) ? 'On' : 'Off')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {room &&
               (open ? (

@@ -14,6 +14,8 @@ type FloorLayersProps = {
   /** Always spread out with every floor's number on its slab, as on a desktop; otherwise it opens while dragged. */
   open?: boolean
   disabled?: boolean
+  /** Drawn this many times bigger, from its bottom right corner, for a finger. */
+  scale?: number
 }
 
 /** Height of each stop along the strip, in CSS pixels: closed, and spread out for good. */
@@ -34,6 +36,7 @@ export const FloorLayers = ({
   describe,
   open = false,
   disabled = false,
+  scale = 1,
 }: FloorLayersProps) => {
   // Stop 0 is the whole house, then the floors from the top down.
   const stops = floors.length + 1
@@ -62,7 +65,7 @@ export const FloorLayers = ({
   // The strip keeps its bottom, so a stop's place in the full strip is that much further down than in this one.
   const shift = full - height
   const at = (e: PointerEvent<HTMLDivElement>) => {
-    const y = e.clientY - (e.currentTarget.getBoundingClientRect().bottom - full)
+    const y = (e.clientY - (e.currentTarget.getBoundingClientRect().bottom - full * scale)) / scale
     return Math.max(0, Math.min(stops - 1, Math.round((y - centre(0)) / step)))
   }
   const pick = (e: PointerEvent<HTMLDivElement>) => go(at(e))
@@ -89,7 +92,7 @@ export const FloorLayers = ({
         aria-disabled={disabled || undefined}
         tabIndex={disabled ? -1 : 0}
         data-dragging={dragging || undefined}
-        style={{ height }}
+        style={{ height, scale: scale === 1 ? undefined : String(scale) }}
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
@@ -150,7 +153,7 @@ export const FloorLayers = ({
         ))}
       </div>
       {dragging && (
-        <div className="floor-layers-label float" style={{ top: centre(stop) }}>
+        <div className="floor-layers-label float" style={{ top: full - (full - centre(stop)) * scale }}>
           <b>{name}</b>
           <span>{describe(stop === 0 ? undefined : floorIndex)}</span>
         </div>

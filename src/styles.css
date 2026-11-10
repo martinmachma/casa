@@ -4476,6 +4476,23 @@ input[type='range'].light-brightness::-moz-range-thumb {
 .app[data-phone] {
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: 'view';
+  /* A held finger selects nothing and opens no look up / translate menu, outside what can be typed in. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.app[data-phone] :is(input, textarea, [contenteditable]) {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.phone-rooms-head {
+  padding: 0 14px 8px;
+}
+
+.phone-rooms-order {
+  padding: 0 14px;
 }
 
 .app[data-phone] .topbar {
@@ -4576,6 +4593,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   position: relative;
   width: 30px;
   border-radius: 15px;
+  transform-origin: bottom right;
   background: rgb(11 15 17 / 0.3);
   touch-action: none;
   cursor: ns-resize;
@@ -4769,9 +4787,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   display: flex;
   gap: 6px;
   /* Room on the right for the floor strip. */
-  padding: 0 50px 0 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  padding: 0 64px 0 12px;
   transition:
     opacity 200ms,
     translate 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -4826,13 +4842,22 @@ input[type='range'].light-brightness::-moz-range-thumb {
   background: var(--accent);
 }
 
+/* Every scene: a round button that stays at the start while the chosen ones scroll after it. */
 .phone-scenes-all {
-  background: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+  background: rgb(11 15 17 / 0.6);
+  color: var(--accent);
+}
+
+.phone-scenes-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
 /* Closes a sheet when the view is tapped. */
@@ -4881,15 +4906,15 @@ input[type='range'].light-brightness::-moz-range-thumb {
   flex: none;
   display: grid;
   place-items: center;
-  height: 22px;
+  height: 30px;
   touch-action: none;
   cursor: ns-resize;
 }
 
 .phone-grab i {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
   background: var(--line-strong);
 }
 
@@ -4905,7 +4930,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   scrollbar-width: none;
   background: var(--surface);
   /* The row runs on sideways past the sheet's edges: they fade, so it reads as one to scroll. */
-  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 40px), transparent);
 }
 
 .phone-room-cards[data-wrap] {
@@ -4920,8 +4945,9 @@ input[type='range'].light-brightness::-moz-range-thumb {
   position: relative;
   display: grid;
   align-content: space-between;
+  /* Two and a half to a row, so the card cut off at the edge shows the row goes on. */
   flex: none;
-  min-width: 92px;
+  width: calc((100vw - 12px - 2 * 6px) / 2.5);
   height: 60px;
   padding: 8px 10px;
   border: 0;
@@ -4931,6 +4957,10 @@ input[type='range'].light-brightness::-moz-range-thumb {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.phone-room-cards[data-wrap] .phone-room-card {
+  width: auto;
 }
 
 .phone-room-card b {
@@ -5049,7 +5079,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
 }
 
 .phone-sheet h3,
-.phone-scene-order h3 {
+.phone-order h3 {
   margin: 14px 4px 6px;
   font-size: 11px;
   font-weight: 600;
@@ -5100,13 +5130,13 @@ input[type='range'].light-brightness::-moz-range-thumb {
   -webkit-backdrop-filter: none;
 }
 
-.phone-scene-order {
+.phone-order {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.phone-scene-slot {
+.phone-order-slot {
   display: flex;
   align-items: center;
   height: 42px;
@@ -5116,12 +5146,12 @@ input[type='range'].light-brightness::-moz-range-thumb {
   font-weight: 500;
 }
 
-.phone-scene-slot[data-dragged] {
+.phone-order-slot[data-dragged] {
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
-.phone-scene-grip {
+.phone-order-grip {
   display: grid;
   place-items: center;
   width: 40px;
