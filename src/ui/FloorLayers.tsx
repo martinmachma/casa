@@ -79,7 +79,7 @@ export const FloorLayers = ({
 
   return (
     <div
-      className="floor-layers"
+      className={`floor-layers${open ? ' float' : ''}`}
       data-dragging={dragging || undefined}
       data-open={open || undefined}
       data-disabled={disabled || undefined}

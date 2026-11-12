@@ -93,6 +93,7 @@ export const ViewDock = ({
         onOutside={onOutside}
         describe={describeFloor}
         disabled={inRoom}
+        label={false}
         open
       />
     )}

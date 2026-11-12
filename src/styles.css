@@ -1444,16 +1444,16 @@ p {
   border-radius: var(--radius-sm);
 }
 
-/* The floors under the switches, spread out; their names come up on the right while sliding. */
+/* The floors under the switches, spread out on the same floating panel. */
 .dock .floor-layers {
   position: relative;
   right: auto;
   bottom: auto;
+  border-radius: 24px;
 }
 
-.dock .floor-layers-label {
-  left: 58px;
-  right: auto;
+.dock .floor-layers-strip {
+  background: transparent;
 }
 
 .walk-button {
