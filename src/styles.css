@@ -1452,10 +1452,6 @@ p {
   border-radius: var(--radius);
 }
 
-.dock .floor-layers-strip {
-  background: transparent;
-}
-
 .walk-button {
   touch-action: none;
   user-select: none;
@@ -4574,7 +4570,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   scale: 1;
 }
 
-/* The floors, a faint strip of slabs beside the scenes, or above the sheet when it's raised. */
+/* A compact floor switch beside the scenes; holding it opens larger stops for a thumb. */
 .floor-layers {
   position: absolute;
   z-index: 2;
@@ -4594,18 +4590,13 @@ input[type='range'].light-brightness::-moz-range-thumb {
 .floor-layers-strip {
   position: relative;
   width: 30px;
-  border-radius: 15px;
+  border-radius: 12px;
   transform-origin: bottom right;
-  background: rgb(11 15 17 / 0.45);
   touch-action: none;
   cursor: ns-resize;
   transition:
-    background 150ms,
+    width 200ms ease,
     height 200ms ease;
-}
-
-.floor-layers-strip[data-dragging] {
-  background: rgb(11 15 17 / 0.6);
 }
 
 .floor-layers-strip:focus-visible {
@@ -4613,54 +4604,24 @@ input[type='range'].light-brightness::-moz-range-thumb {
   box-shadow: var(--ring);
 }
 
-.floor-layers-slab {
-  position: absolute;
-  left: 50%;
-  width: 15px;
-  height: 15px;
-  translate: -50% 50%;
-  border: 1.5px solid rgb(243 245 248 / 0.7);
-  border-radius: 3px;
-  background: rgb(19 24 27 / 0.6);
-  transform: scaleY(0.55) rotate(45deg);
-  transition:
-    bottom 200ms ease,
-    background 120ms,
-    border-color 120ms;
-  pointer-events: none;
-}
-
-.floor-layers-slab[data-all] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.floor-layers-slab[data-on] {
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow: 0 0 12px rgb(224 138 63 / 0.6);
-}
-
 .floor-layers-cell {
   position: absolute;
-  left: 3px;
-  right: 3px;
-  height: 17px;
+  left: 4px;
+  right: 4px;
+  height: 14px;
   translate: 0 50%;
-  border: 1px dashed rgb(243 245 248 / 0.22);
-  border-radius: 6px;
-  opacity: 0;
+  border-radius: 4px;
   pointer-events: none;
-}
-
-/* The cells fade in as the strip spreads, but go at once when it closes, or the top one hangs above the shrunk strip. */
-.floor-layers[data-dragging] .floor-layers-cell {
-  transition: opacity 150ms;
+  transition:
+    bottom 200ms ease,
+    height 200ms ease,
+    border-radius 200ms ease,
+    background 120ms;
 }
 
 .floor-layers-cell[data-on] {
-  border-style: solid;
-  border-color: rgb(224 138 63 / 0.55);
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .floor-layers-mark {
@@ -4670,48 +4631,28 @@ input[type='range'].light-brightness::-moz-range-thumb {
   place-items: center;
   translate: -50% 50%;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: rgb(243 245 248 / 0.85);
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
-  opacity: 0;
+  color: var(--ink-2);
   transition:
-    opacity 150ms,
-    bottom 200ms ease;
+    bottom 200ms ease,
+    font-size 200ms ease,
+    color 120ms;
   pointer-events: none;
 }
 
 .floor-layers-mark[data-on] {
   color: var(--accent-ink);
-  text-shadow: none;
+  font-weight: 600;
 }
 
-/* The whole house has no slab under it, so its mark shows even when closed and is lit in the accent instead. */
-.floor-layers-mark:first-of-type {
-  color: rgb(243 245 248 / 0.6);
-  opacity: 1;
-}
-
-.floor-layers-mark:first-of-type[data-on] {
-  color: var(--accent);
-}
-
-.floor-layers[data-dragging] .floor-layers-cell,
-.floor-layers[data-open] .floor-layers-cell,
-.floor-layers[data-dragging] .floor-layers-mark,
-.floor-layers[data-open] .floor-layers-mark {
-  opacity: 1;
-}
-
-/* Spread out by a drag (phone): the slabs grow a little and the cells close up around them. */
-.floor-layers[data-dragging]:not([data-open]) .floor-layers-slab {
-  width: 18px;
-  height: 18px;
+.floor-layers[data-dragging]:not([data-open]) .floor-layers-strip {
+  width: 36px;
 }
 
 .floor-layers[data-dragging]:not([data-open]) .floor-layers-cell {
-  height: 21px;
+  height: 28px;
   border-radius: 8px;
 }
 
@@ -4719,72 +4660,28 @@ input[type='range'].light-brightness::-moz-range-thumb {
   font-size: 12px;
 }
 
-/* Desktop uses the dock's segmented buttons; the phone keeps its stack of slabs. */
+/* Desktop keeps full-size stops at all times. */
 .floor-layers[data-open] .floor-layers-strip {
   width: 44px;
   border-radius: var(--radius);
   cursor: pointer;
 }
 
-.floor-layers[data-open] .floor-layers-slab {
-  display: none;
-}
-
 .floor-layers[data-open] .floor-layers-cell {
-  left: 4px;
-  right: 4px;
   height: 36px;
-  border: 0;
   border-radius: var(--radius-sm);
-  transition:
-    opacity 150ms,
-    background 120ms,
-    border-color 120ms;
 }
 
 .floor-layers[data-open] .floor-layers-mark {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-2);
-  text-shadow: none;
 }
 
-.floor-layers[data-open] .floor-layers-cell[data-on] {
-  background: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
-.floor-layers[data-open] .floor-layers-cell[data-hover]:not([data-on]) {
+.floor-layers-cell[data-hover]:not([data-on]) {
   background: var(--surface-3);
 }
 
-.floor-layers[data-open] .floor-layers-cell[data-on][data-hover] {
-  background: var(--accent-hover);
-}
-
-.floor-layers[data-open] .floor-layers-mark[data-on] {
-  color: var(--accent-ink);
-  font-weight: 600;
-}
-
-.floor-layers[data-open] .floor-layers-mark[data-hover]:not([data-on]) {
-  color: var(--ink);
-}
-
-/* Under the mouse: the stop's cell fills in and its slab and number brighten. */
-.floor-layers-cell[data-hover] {
-  border-style: solid;
-  border-color: rgb(243 245 248 / 0.4);
-  background: rgb(243 245 248 / 0.08);
-}
-
 .floor-layers-cell[data-on][data-hover] {
-  border-color: var(--accent);
-}
-
-.floor-layers-slab[data-hover]:not([data-on]) {
-  border-color: rgb(243 245 248 / 0.95);
-  background: rgb(243 245 248 / 0.18);
+  background: var(--accent-hover);
 }
 
 .floor-layers-mark[data-hover]:not([data-on]) {

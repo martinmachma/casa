@@ -55,14 +55,14 @@ type PhoneHomeProps = {
   onShade: (id: string, patch: Partial<ShadeState>) => void
 }
 
-/** The floor strip is drawn bigger than on a desktop, for a thumb. */
+/** Makes the compact floor switch and its expanded stops large enough for a thumb. */
 const FLOOR_SCALE = 1.45
 
 /** How far a drag on the sheet's handle goes before it raises or lowers the sheet, in CSS pixels. */
 const SWIPE = 18
 
 /**
- * Home on a phone: the floors as layers at the right edge, the chosen scenes over a low sheet about the floor: its rooms
+ * Home on a phone: the floor switch at the right edge, the chosen scenes over a low sheet about the floor: its rooms
  * as chips, then a row of what can be switched on it, or in the picked room. Swiped up, the row becomes a grid, and an
  * item's controls take its place when one is open.
  */
