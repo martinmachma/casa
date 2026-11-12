@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { ChevronRight } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { lightColor, type LightState } from '../devices/lights'
 import { shadeText, type ShadeState } from '../devices/shades'
 import type { SmartItem } from '../rooms/roomItems'
@@ -20,7 +21,7 @@ type PhoneTileProps = {
   onOpen: () => void
 }
 
-/** A smart item on the phone's sheet: a tap switches a light or sends a shade up or down, holding it opens its controls. */
+/** A tap switches the item; its arrow (or holding the tile) opens controls without changing its state. */
 export const PhoneTile = ({ item, place, light, shade, onLight, onShade, onOpen }: PhoneTileProps) => {
   const on = !!light?.on
   const level = light ? (on ? light.brightness : 0) : shade?.position
@@ -29,6 +30,7 @@ export const PhoneTile = ({ item, place, light, shade, onLight, onShade, onOpen 
   const cancel = () => {
     if (press.current) window.clearTimeout(press.current.timer)
   }
+  useEffect(() => () => window.clearTimeout(press.current?.timer), [])
   const state = light
     ? on
       ? `${Math.round(light.brightness * 100)} %`
@@ -39,43 +41,50 @@ export const PhoneTile = ({ item, place, light, shade, onLight, onShade, onOpen 
         ? 'Lamp'
         : 'Not linked'
   return (
-    <button
-      className="phone-tile"
-      data-kind={item.kind}
-      data-on={active || undefined}
-      aria-label={`${item.name}${place ? `, ${place}` : ''}, ${state}`}
-      onContextMenu={(e) => e.preventDefault()}
-      onPointerDown={(e) => {
-        cancel()
-        const p = { x: e.clientX, y: e.clientY, held: false, timer: 0 }
-        p.timer = window.setTimeout(() => {
-          p.held = true
-          navigator.vibrate?.(8)
-          onOpen()
-        }, HOLD)
-        press.current = p
-      }}
-      onPointerMove={(e) => {
-        const p = press.current
-        if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > SLOP) cancel()
-      }}
-      onPointerUp={cancel}
-      onPointerCancel={cancel}
-      onPointerLeave={cancel}
-      onClick={() => {
-        if (press.current?.held) return
-        if (light) onLight({ on: !on })
-        else if (shade) onShade({ position: shade.position > 0 ? 0 : 1 })
-        else onOpen()
-      }}
-    >
-      <span className="phone-tile-icon" style={on ? { color: lightColor(light!) } : undefined}>
-        <DeviceIcon kind={item.kind} size={19} />
-      </span>
-      <span className="phone-tile-text">
-        <b>{item.name}</b>
-        <small>{place ? `${place} · ${state}` : state}</small>
-      </span>
-    </button>
+    <div className="phone-tile" data-kind={item.kind} data-on={active || undefined}>
+      <button
+        className="phone-tile-toggle"
+        aria-label={`${item.name}${place ? `, ${place}` : ''}, ${state}`}
+        onContextMenu={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          cancel()
+          const p = { x: e.clientX, y: e.clientY, held: false, timer: 0 }
+          p.timer = window.setTimeout(() => {
+            p.held = true
+            navigator.vibrate?.(8)
+            onOpen()
+          }, HOLD)
+          press.current = p
+        }}
+        onPointerMove={(e) => {
+          const p = press.current
+          if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > SLOP) cancel()
+        }}
+        onPointerUp={cancel}
+        onPointerCancel={cancel}
+        onPointerLeave={cancel}
+        onClick={() => {
+          if (press.current?.held) return
+          if (light) onLight({ on: !on })
+          else if (shade) onShade({ position: shade.position > 0 ? 0 : 1 })
+          else onOpen()
+        }}
+      >
+        <span className="phone-tile-icon" style={on ? { color: lightColor(light!) } : undefined}>
+          <DeviceIcon kind={item.kind} size={19} />
+        </span>
+        <span className="phone-tile-text">
+          <b>{item.name}</b>
+          <small>{place ? `${place} · ${state}` : state}</small>
+        </span>
+      </button>
+      <button
+        className="phone-tile-open"
+        aria-label={`Adjust ${item.name}${place ? `, ${place}` : ''}`}
+        onClick={onOpen}
+      >
+        <ChevronRight size={16} />
+      </button>
+    </div>
   )
 }

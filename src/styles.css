@@ -4834,7 +4834,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   border: 0;
   border-top: 1px solid var(--line);
   border-radius: 18px 18px 0 0;
-  transition: height 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: height 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .phone-rooms[data-dragging] {
@@ -4953,29 +4953,61 @@ input[type='range'].light-brightness::-moz-range-thumb {
   }
 }
 
+/* The arrow opens controls immediately; the rest of the tile keeps its quick switch. */
 .phone-tile {
-  /* A little over three to a row, so the one cut off at the edge shows the row goes on. */
+  position: relative;
   flex: none;
   width: calc((100vw - 24px - 2 * 8px) / 3.3);
   height: 84px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   min-width: 0;
-  padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--ink);
+  transition:
+    background 120ms,
+    border-color 120ms;
+}
+
+.phone-tile-toggle {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  transition:
-    background 150ms,
-    border-color 150ms;
+  touch-action: manipulation;
+}
+
+.phone-tile-open {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.phone-tile-open:active {
+  background: var(--surface-3);
 }
 
 .phone-tiles[data-wrap] .phone-tile {
@@ -5036,7 +5068,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
 }
 
 .phone-item {
-  animation: todo-in 200ms ease-out;
+  animation: todo-in 120ms ease-out;
 }
 
 .phone-item h2 {

@@ -8,7 +8,8 @@ import type { Floor } from '../layout/types'
 import { roomPose } from '../rooms/roomViews'
 import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
-import { advanceCameraFlight, beginCameraFlight, CAMERA_FLIGHT_SECONDS, cameraFlight, flightEase } from './cameraFlight'
+import { advanceCameraFlight, beginCameraFlight, cameraFlightSeconds, cameraFlight, flightEase } from './cameraFlight'
+import { useCompactGraphics } from './useCompactGraphics'
 import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
 import { wallHeight } from '../layout/geometry'
 import { clearView, crosses, mayBlock } from './clearView'
@@ -58,6 +59,8 @@ export const RoomCamera = ({
   /** Halfway through a flight, with the room it's flying to. */
   onMidway?: (roomId: string | undefined) => void
 }) => {
+  const compact = useCompactGraphics()
+  const seconds = cameraFlightSeconds(compact)
   const size = useThree((s) => s.size)
   const scene = useThree((s) => s.scene)
   const inset = bottomInset
@@ -146,7 +149,7 @@ export const RoomCamera = ({
     if (!pose) return
     if (!initialized.current) {
       initialized.current = true
-      if (from) beginCameraFlight(roomId ? 'enter' : 'move')
+      if (from) beginCameraFlight(roomId ? 'enter' : 'move', seconds)
     }
     const p = projection.current
     if (p.to !== framing) {
@@ -158,7 +161,7 @@ export const RoomCamera = ({
     if (p.t < 1) {
       const now = performance.now()
       p.started ??= now
-      p.t = animationProgress(p.started, now, CAMERA_FLIGHT_SECONDS)
+      p.t = animationProgress(p.started, now, compact ? 0.18 : seconds)
       blendFocusFraming(camera, size, p.from, p.to, flightEase(p.t))
       p.current.zoom = camera.zoom
       p.current.offsetY = camera.view?.offsetY ?? 0
@@ -171,7 +174,7 @@ export const RoomCamera = ({
       t.current = 0
       started.current = undefined
       midway.current = false
-      beginCameraFlight(headingRoom.current === roomId ? 'move' : headingRoom.current ? 'switch' : 'enter')
+      beginCameraFlight(headingRoom.current === roomId ? 'move' : headingRoom.current ? 'switch' : 'enter', seconds)
       headingRoom.current = roomId
     }
     // Into the room from the house: the first flight, with no pose before it.

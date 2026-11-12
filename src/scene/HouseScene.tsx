@@ -21,14 +21,7 @@ import { distance, formatLength, type MeasuredLine, type Measurement, type Measu
 import { floorItems, outsideLight } from '../rooms/roomItems'
 import { roomBox, roomWallSides } from '../rooms/roomViews'
 import type { SunPosition } from '../sun/sun'
-import {
-  advanceCameraFlight,
-  beginCameraFlight,
-  CAMERA_FLIGHT_SECONDS,
-  cameraFlight,
-  FLOOR_FLIGHT_SECONDS,
-  flightEase,
-} from './cameraFlight'
+import { advanceCameraFlight, beginCameraFlight, cameraFlightSeconds, cameraFlight, flightEase } from './cameraFlight'
 import { useCompactGraphics } from './useCompactGraphics'
 import { AmbientOcclusion } from './AmbientOcclusion'
 import { AnnotationLabels, AnnotationProjector, type Annotation } from './Annotations'
@@ -845,6 +838,7 @@ const lastView = {
 }
 
 const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
+  const compact = useCompactGraphics()
   const size = useThree((s) => s.size)
   const [leaving] = useState(!!lastView.returnFrom)
   const [fromElevation] = useState(lastView.elevation)
@@ -923,8 +917,7 @@ const CameraRig = ({ mode, floor, houseHeight, viewKey }: CameraRigProps) => {
     if (!initialized.current) {
       initialized.current = true
       // Back out of a room at a room's pace; otherwise it's a floor change, which is quicker.
-      if (start.from)
-        beginCameraFlight(leaving ? 'leave' : 'move', leaving ? CAMERA_FLIGHT_SECONDS : FLOOR_FLIGHT_SECONDS)
+      if (start.from) beginCameraFlight(leaving ? 'leave' : 'move', cameraFlightSeconds(compact, !leaving))
       else {
         cameraFlight.kind = 'none'
         cameraFlight.progress = 1

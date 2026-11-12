@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   advanceCameraFlight,
   beginCameraFlight,
-  CAMERA_FLIGHT_SECONDS,
+  cameraFlightSeconds,
   cameraFlight,
   flightEase,
   flightFade,
@@ -12,9 +12,10 @@ import {
 } from './cameraFlight'
 
 describe('camera-synchronised transitions', () => {
-  it('finishes floors, cut walls and room blur on the camera endpoint, even after slow or stalled frames', () => {
+  it.each([false, true])('finishes floors, cut walls and room blur with the camera (compact: %s)', (compact) => {
+    const seconds = cameraFlightSeconds(compact)
     for (const frameMs of [1000 / 60, 125, 500, 2000]) {
-      beginCameraFlight('switch')
+      beginCameraFlight('switch', seconds)
       const floor = flightFade()
       const wall = flightFade()
       let floorOpacity = 0
@@ -35,7 +36,7 @@ describe('camera-synchronised transitions', () => {
         }
         now += frameMs
       } while (cameraFlight.progress < 1)
-      expect(now - frameMs - 100_000).toBeLessThan(CAMERA_FLIGHT_SECONDS * 1000 + frameMs + 0.001)
+      expect(now - frameMs - 100_000).toBeLessThan(seconds * 1000 + frameMs + 0.001)
     }
   })
 

@@ -130,7 +130,7 @@ export const PhoneHome = ({
   const height = dragged ?? (sizes.low ? settled : undefined)
 
   // The room and a close-up are framed above where the sheet comes to rest, not each step of it getting there.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (settled) onFocusInset(settled + 16)
   }, [settled, onFocusInset])
   useEffect(() => () => onFocusInset(0), [onFocusInset])
@@ -144,6 +144,10 @@ export const PhoneHome = ({
   const floorRooms = outside ? rooms : rooms.filter((r) => r.floor === floors[floorIndex]?.id)
   const roomName = (id: string | undefined) => rooms.find((r) => r.room === id)?.label
   const wrap = raised || dragged !== undefined
+  const openItem = (id: string) => {
+    setRaised(true)
+    onOpen(id)
+  }
   const lower = () => {
     setRaised(false)
     setOrdering(false)
@@ -308,11 +312,13 @@ export const PhoneHome = ({
                       shade={item.kind === 'blind' ? shade(item.id) : undefined}
                       onLight={(p) => onLight(item.id, p)}
                       onShade={(p) => onShade(item.id, p)}
-                      onOpen={() => onOpen(item.id)}
+                      onOpen={() => openItem(item.id)}
                     />
                   ))}
                 </div>
-                {raised && <p className="hint phone-tiles-hint">Tap to switch, hold for brightness or position.</p>}
+                {raised && (
+                  <p className="hint phone-tiles-hint">Tap to switch, use the arrow for brightness or position.</p>
+                )}
               </>
             ) : (
               <p className="hint phone-tiles-hint">Nothing to switch {room ? 'in here' : 'here'} yet.</p>

@@ -5,6 +5,10 @@ export const CAMERA_FLIGHT_SECONDS = 1.1
 /** A floor change only moves the view up or down, so it's quicker. */
 export const FLOOR_FLIGHT_SECONDS = 0.45
 
+/** Phones favour reaching controls quickly; floors need even less travel time. */
+export const cameraFlightSeconds = (compact: boolean, floor = false) =>
+  compact ? (floor ? 0.2 : 0.28) : floor ? FLOOR_FLIGHT_SECONDS : CAMERA_FLIGHT_SECONDS
+
 type FlightKind = 'none' | 'enter' | 'switch' | 'leave' | 'move'
 export type CameraFlight = { id: number; kind: FlightKind; progress: number }
 
