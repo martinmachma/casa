@@ -96,9 +96,9 @@ export const PhoneHome = ({
   const [raisedByHand, setRaised] = useState(false)
   // Putting the rooms in order, in the raised sheet.
   const [ordering, setOrdering] = useState(false)
-  const raised = raisedByHand || !!open
   // The sheet's heights: low with one row of cards, and as tall as what's in it raised, up to most of the view.
   const [sizes, setSizes] = useState({ low: 0, full: 0, most: 0 })
+  const raised = (raisedByHand && Math.min(sizes.full, sizes.most) > sizes.low + 1) || !!open
   // Its height under a finger dragging the handle.
   const [dragged, setDragged] = useState<number>()
   const sheet = useRef<HTMLDivElement>(null)
@@ -113,19 +113,31 @@ export const PhoneHome = ({
     const measure = () => {
       // Everything round the body: the handle, padding and border.
       const chrome = el.offsetHeight - (body.parentElement?.offsetHeight ?? 0)
-      // Low, the sheet shows the room chips and one row of tiles.
-      const last = body.querySelector<HTMLElement>('.phone-tile') ?? chips.current
+      // Measure the grid even while the tiles are shown in a horizontal row.
+      const tiles = body.querySelector<HTMLElement>('.phone-tiles')
+      let full = body.offsetHeight
+      if (tiles) {
+        const wrapped = tiles.hasAttribute('data-wrap')
+        tiles.setAttribute('data-wrap', '')
+        full = tiles.getBoundingClientRect().bottom - body.getBoundingClientRect().top
+        if (!wrapped) tiles.removeAttribute('data-wrap')
+      }
+      // Low, the sheet shows the room chips and one row of tiles (or the empty message).
+      const last = body.querySelector<HTMLElement>('.phone-tile, .phone-tiles-hint') ?? chips.current
       const low = last ? last.getBoundingClientRect().bottom - body.getBoundingClientRect().top : 0
-      setSizes({ low: chrome + low, full: chrome + body.offsetHeight, most: view.clientHeight * 0.64 })
+      setSizes({ low: chrome + low, full: chrome + full, most: view.clientHeight * 0.64 })
     }
     const observer = new ResizeObserver(measure)
     observer.observe(body)
     observer.observe(view)
+    const grab = el.querySelector('.phone-grab')
+    if (grab) observer.observe(grab)
     measure()
     return () => observer.disconnect()
-  }, [])
+  }, [items, open, ordering, raised])
 
   const top = Math.max(sizes.low, Math.min(sizes.full, sizes.most))
+  const expandable = top > sizes.low + 1
   const settled = raised ? top : sizes.low
   const height = dragged ?? (sizes.low ? settled : undefined)
 
@@ -155,19 +167,29 @@ export const PhoneHome = ({
   }
 
   // The sheet follows a finger on its handle and settles up or down the way it was going; a tap toggles it.
-  const swipe = useRef<{ y: number; from: number; moved: boolean } | undefined>(undefined)
+  const swipe = useRef<{ x: number; y: number; from: number; moved: boolean; grip: boolean } | undefined>(undefined)
+  const suppressClick = useRef(false)
   const handle = {
     onPointerDown: (e: PointerEvent) => {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      swipe.current = { y: e.clientY, from: sheet.current?.offsetHeight ?? settled, moved: false }
+      suppressClick.current = false
+      const grip = e.currentTarget.classList.contains('phone-grab')
+      if ((!grip && raised) || (!expandable && !raised)) return
+      if (grip) e.currentTarget.setPointerCapture(e.pointerId)
+      swipe.current = { x: e.clientX, y: e.clientY, from: sheet.current?.offsetHeight ?? settled, moved: false, grip }
     },
     onPointerMove: (e: PointerEvent) => {
       const s = swipe.current
       if (!s) return
       const dy = e.clientY - s.y
       if (!s.moved && Math.abs(dy) < SWIPE / 3) return
+      if (!s.moved && !s.grip && Math.abs(e.clientX - s.x) > Math.abs(dy)) {
+        swipe.current = undefined
+        return
+      }
+      e.currentTarget.setPointerCapture(e.pointerId)
       s.moved = true
-      setDragged(Math.max(sizes.low, Math.min(sizes.most, s.from - dy)))
+      suppressClick.current = true
+      setDragged(Math.max(sizes.low, Math.min(top, s.from - dy)))
     },
     onPointerUp: (e: PointerEvent) => {
       const s = swipe.current
@@ -175,7 +197,7 @@ export const PhoneHome = ({
       setDragged(undefined)
       if (!s) return
       const dy = e.clientY - s.y
-      if (!s.moved) {
+      if (!s.moved && s.grip) {
         if (raised) lower()
         else setRaised(true)
       } else if (dy < -SWIPE) setRaised(true)
@@ -191,7 +213,13 @@ export const PhoneHome = ({
     <div
       className="phone-home"
       data-raised={raised || undefined}
-      style={{ '--sheet': `${settled}px` } as CSSProperties}
+      data-dragging={dragged !== undefined || undefined}
+      style={
+        {
+          '--sheet': `${height ?? 0}px`,
+          '--sheet-raised': dragged === undefined ? Number(raised) : (dragged - sizes.low) / (top - sizes.low || 1),
+        } as CSSProperties
+      }
     >
       <button
         className="phone-leave float"
@@ -236,15 +264,39 @@ export const PhoneHome = ({
         data-dragging={dragged !== undefined || undefined}
         style={{ height }}
       >
-        <div className="phone-grab" aria-label={raised ? 'Lower' : 'Raise'} role="button" {...handle}>
-          <i />
+        <div
+          className="phone-grab"
+          data-static={(!expandable && !raised) || undefined}
+          aria-label={expandable || raised ? (raised ? 'Lower' : 'Raise') : undefined}
+          role={expandable || raised ? 'button' : undefined}
+          tabIndex={expandable || raised ? 0 : undefined}
+          onKeyDown={(e) => {
+            if ((expandable || raised) && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault()
+              if (raised) lower()
+              else setRaised(true)
+            }
+          }}
+          {...handle}
+        >
+          {(expandable || raised) && <i />}
         </div>
-        <div className="phone-sheet-body">
+        <div
+          className="phone-sheet-body"
+          {...handle}
+          onClickCapture={(e) => {
+            if (suppressClick.current) {
+              e.preventDefault()
+              e.stopPropagation()
+              suppressClick.current = false
+            }
+          }}
+          onWheel={(e) => {
+            if (!raised && expandable && e.deltaY > 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) setRaised(true)
+          }}
+        >
           <div ref={content}>
             <div ref={chips} className="phone-room-chips" aria-label="Rooms">
-              <button className="phone-chip" aria-pressed={!room} onClick={room ? onLeave : undefined}>
-                {outside ? 'All' : `${ordinal(floorIndex + 1)} floor`}
-              </button>
               {floorRooms.map((r) => (
                 <button
                   key={r.id}

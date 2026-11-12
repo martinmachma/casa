@@ -4586,15 +4586,11 @@ input[type='range'].light-brightness::-moz-range-thumb {
   z-index: 2;
   right: 12px;
   bottom: calc(var(--sheet, 0px) + 10px);
-  transition: bottom 240ms ease;
+  transition: bottom 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   /* A held finger must not select the label or open the system's look up / translate menu. */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-}
-
-.phone-home[data-raised] .floor-layers {
-  bottom: calc(var(--sheet, 0px) + 16px);
 }
 
 .floor-layers-strip {
@@ -4740,14 +4736,20 @@ input[type='range'].light-brightness::-moz-range-thumb {
   /* Room on the right for the floor strip. */
   padding: 0 64px 0 12px;
   transition:
-    opacity 200ms,
-    translate 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    bottom 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    translate 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  opacity: calc(1 - var(--sheet-raised, 0));
+  translate: 0 calc(var(--sheet-raised, 0) * 12px);
 }
 
-.phone-home[data-raised] > .phone-scenes {
-  opacity: 0;
-  translate: 0 12px;
+.phone-home[data-raised] > .phone-scenes,
+.phone-home[data-dragging] > .phone-scenes {
   pointer-events: none;
+}
+
+.phone-home[data-dragging] > :is(.phone-scenes, .floor-layers) {
+  transition: none;
 }
 
 .phone-scene {
@@ -4846,10 +4848,13 @@ input[type='range'].light-brightness::-moz-range-thumb {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  touch-action: pan-x;
 }
 
 .phone-home[data-raised] .phone-sheet-body {
   overflow-y: auto;
+  touch-action: auto;
+  overscroll-behavior-y: contain;
 }
 
 .phone-grab {
@@ -4868,7 +4873,13 @@ input[type='range'].light-brightness::-moz-range-thumb {
   background: var(--line-strong);
 }
 
-/* The rooms on the floor, as chips over its tiles; the first is the whole floor. */
+.phone-grab[data-static] {
+  height: 12px;
+  cursor: default;
+  touch-action: auto;
+}
+
+/* The rooms on the floor, as chips over its tiles. */
 .phone-room-chips {
   position: sticky;
   z-index: 1;
