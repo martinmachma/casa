@@ -154,6 +154,7 @@ p {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-width: 36px;
   min-height: 36px;
   padding: 0 14px;
   border: 0;
@@ -215,6 +216,7 @@ p {
 }
 
 .btn-small {
+  min-width: 30px;
   min-height: 30px;
   padding: 0 10px;
   font-size: 13px;
@@ -278,7 +280,9 @@ p {
 .segmented button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-width: 30px;
   min-height: 30px;
   padding: 0 12px;
   border: 0;
@@ -485,7 +489,9 @@ p {
 .weather-button {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-width: 40px;
   height: 40px;
   padding: 0 12px;
   border: 0;
@@ -557,6 +563,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 40px;
   height: 40px;
   margin-right: -6px;
   padding: 0 6px 0 10px;
@@ -1273,6 +1280,7 @@ p {
 }
 
 .modebar .segmented button {
+  min-width: 34px;
   min-height: 34px;
   padding: 0 9px;
 }
@@ -1439,6 +1447,7 @@ p {
 }
 
 .dock-bar .segmented button {
+  min-width: 36px;
   min-height: 36px;
   padding: 0 12px;
   border-radius: var(--radius-sm);
@@ -3272,6 +3281,7 @@ input[type='range'] {
 }
 
 .toolbar .segmented button {
+  min-width: 26px;
   min-height: 26px;
 }
 
