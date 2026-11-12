@@ -4821,6 +4821,11 @@ input[type='range'].light-brightness::-moz-range-thumb {
   animation: fade-in 240ms ease-out;
 }
 
+/* The rooms stay open while the house above them can still be turned and zoomed. */
+.phone-home > .phone-rooms-scrim {
+  pointer-events: none;
+}
+
 /* The rooms: a low sheet of cards, raised for what's in the picked one. */
 .phone-rooms {
   position: absolute;

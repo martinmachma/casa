@@ -21,6 +21,7 @@ import type { WalkPlacement } from './scene/WalkPlacement'
 import type { WalkStart } from './walk/start'
 import { DEFAULT_WALL, FURNITURE_SWATCHES, WALL_CAP } from './scene/palette'
 import { createCameraNudge } from './scene/cameraNudge'
+import { createFocusInset } from './scene/focusFraming'
 import { useFirstView } from './scene/useFirstView'
 import type { CameraMode, EditMode, Interaction, Selection } from './scene/selection'
 import { CameraPad } from './ui/CameraPad'
@@ -164,7 +165,7 @@ export const House = ({ backend, account }: HouseProps) => {
   // A room on its own, from the menu: a fixed view of it with its smart items alongside.
   const [roomView, setRoomView] = useState<string>()
   const [popover, setPopover] = useState<string>()
-  const [focusInset, setFocusInset] = useState(0)
+  const [focusInset] = useState(createFocusInset)
   const [walkCaptured, setWalkCaptured] = useState(false)
   const walkPlacement: WalkPlacement = useRef(undefined)
   const [walkStart, setWalkStart] = useState<WalkStart>()
@@ -1044,7 +1045,7 @@ export const House = ({ backend, account }: HouseProps) => {
           ]}
           pinRefs={pinRefs}
           open={popover}
-          focusInset={phone ? focusInset : 0}
+          focusInset={phone ? focusInset : undefined}
           onTapOutside={phone && !popover ? leaveRoom : undefined}
           hovered={hoveredItem}
           onHoverItem={setHoveredItem}
@@ -1168,7 +1169,7 @@ export const House = ({ backend, account }: HouseProps) => {
               sceneIds={smartItems.map((i) => i.id)}
               items={phoneItems}
               open={smartItems.find((i) => i.id === popover)}
-              onFocusInset={setFocusInset}
+              onFocusInset={focusInset.set}
               onOpen={openPopover}
               light={lightNow}
               onLight={lightRows.onLight}

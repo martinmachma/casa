@@ -36,7 +36,7 @@ import { Fade, ViewedFloor } from './Fade'
 import { Fixtures } from './Fixtures'
 import { FloorPointerTracker, type FloorPointer } from './FloorPointer'
 import { FloorWalls, type Brush, type PaintFace, type PaintStroke } from './FloorWalls'
-import { blendFocusFraming, type CameraFraming } from './focusFraming'
+import { blendFocusFraming, type CameraFraming, type FocusInset } from './focusFraming'
 import { FurnitureBox, type ItemActions } from './FurnitureBox'
 import { FurniturePlacer } from './FurniturePlacer'
 import { HouseLights, isLamp } from './HouseLights'
@@ -137,7 +137,7 @@ type HouseSceneProps = {
   /** The smart item opened in the focused room: everything else is dimmed behind it. */
   open?: string
   /** Bottom of the canvas covered by the open item's controls, in CSS pixels. */
-  focusInset?: number
+  focusInset?: FocusInset
   /** The smart item pointed at, outlined. */
   hovered?: string
   /** A smart item pointed at in the focused room. */
@@ -210,7 +210,7 @@ export const HouseScene = ({
   temporaryFocus,
   pins = [],
   open,
-  focusInset = 0,
+  focusInset,
   hovered,
   onHoverItem,
   pinRefs,

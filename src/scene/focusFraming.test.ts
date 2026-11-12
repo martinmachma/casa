@@ -58,4 +58,25 @@ describe('focusFraming', () => {
     }
     camera.projectionMatrix.elements.forEach((value, i) => expect(value).toBeCloseTo(original.elements[i], 12))
   })
+
+  it('centres a manually chosen orbit at every sheet height, including when the drag reverses', () => {
+    const size = { width: 393, height: 540 }
+    const target = new Vector3(1, 2, 3)
+    const camera = new PerspectiveCamera(45, size.width / size.height)
+    camera.position.set(4, 5, 7)
+    camera.lookAt(target)
+    camera.updateMatrixWorld()
+    const position = camera.position.clone()
+    const rotation = camera.quaternion.clone()
+    const framing = focusFraming(size, 0)
+    for (const height of [170, 220, 300, 340, 260, 190, 170]) {
+      focusFraming(size, height, framing)
+      blendFocusFraming(camera, size, framing, framing, 1)
+      const projected = target.clone().project(camera)
+      expect(((projected.x + 1) * size.width) / 2).toBeCloseTo(size.width / 2)
+      expect(((1 - projected.y) * size.height) / 2).toBeCloseTo((size.height - height) / 2)
+      expect(camera.position).toEqual(position)
+      expect(camera.quaternion.toArray()).toEqual(rotation.toArray())
+    }
+  })
 })

@@ -141,11 +141,19 @@ export const PhoneHome = ({
   const settled = raised ? top : sizes.low
   const height = dragged ?? (sizes.low ? settled : undefined)
 
-  // The room and a close-up are framed above where the sheet comes to rest, not each step of it getting there.
+  // Follow the rendered edge, both under the finger and while CSS settles the sheet after release.
   useLayoutEffect(() => {
-    if (settled) onFocusInset(settled + 16)
-  }, [settled, onFocusInset])
-  useEffect(() => () => onFocusInset(0), [onFocusInset])
+    const el = sheet.current
+    if (!el) return
+    const measure = () => onFocusInset(el.getBoundingClientRect().height + 16)
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    measure()
+    return () => {
+      observer.disconnect()
+      onFocusInset(0)
+    }
+  }, [onFocusInset])
 
   // The picked room's chip is kept in sight.
   useEffect(() => {
@@ -255,7 +263,7 @@ export const PhoneHome = ({
         onShade={onShade}
       />
 
-      {raised && <div className="phone-scrim" onClick={lower} />}
+      {raised && <div className="phone-scrim phone-rooms-scrim" aria-hidden />}
 
       <div
         ref={sheet}

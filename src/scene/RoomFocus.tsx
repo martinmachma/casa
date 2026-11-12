@@ -10,7 +10,7 @@ import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
 import { advanceCameraFlight, beginCameraFlight, cameraFlightSeconds, cameraFlight, flightEase } from './cameraFlight'
 import { useCompactGraphics } from './useCompactGraphics'
-import { blendFocusFraming, focusFraming, type CameraFraming } from './focusFraming'
+import { blendFocusFraming, focusFraming, type CameraFraming, type FocusInset } from './focusFraming'
 import { wallHeight } from '../layout/geometry'
 import { clearView, crosses, mayBlock } from './clearView'
 import { decidingWall, focusCut, type Focus } from './CutawayWall'
@@ -38,7 +38,7 @@ export const RoomCamera = ({
   focus,
   furniture,
   closeUp,
-  bottomInset = 0,
+  bottomInset,
   from,
   onView,
   onMidway,
@@ -52,7 +52,7 @@ export const RoomCamera = ({
   /** An opened item to come in close to, from the way it's best seen; dragging tilts round it. */
   closeUp?: Pin
   /** Bottom of the view covered by the controls (a phone's sheet, an item's card), in CSS pixels. */
-  bottomInset?: number
+  bottomInset?: FocusInset
   from?: { position: Vector3; target: Vector3 }
   /** Where it is and looks each frame, and whether it's still flying, for the house's camera to carry on from. */
   onView?: (position: Vector3, target: Vector3, flying: boolean, framing: CameraFraming) => void
@@ -63,13 +63,13 @@ export const RoomCamera = ({
   const seconds = cameraFlightSeconds(compact)
   const size = useThree((s) => s.size)
   const scene = useThree((s) => s.scene)
-  const inset = bottomInset
-  const framing = useMemo(() => focusFraming(size, inset), [size, inset])
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => bottomInset?.subscribe(invalidate), [bottomInset, invalidate])
   const projection = useRef({
     from: { zoom: 1, offsetY: 0 },
-    to: framing,
+    to: focusFraming(size, bottomInset?.current ?? 0),
     current: { zoom: 1, offsetY: 0 },
-    t: inset ? 0 : 1,
+    t: bottomInset?.current ? 0 : 1,
     started: undefined as number | undefined,
   })
   // The furniture as it was when the room was picked: moving a piece in it doesn't move the camera.
@@ -152,21 +152,17 @@ export const RoomCamera = ({
       if (from) beginCameraFlight(roomId ? 'enter' : 'move', seconds)
     }
     const p = projection.current
-    if (p.to !== framing) {
-      Object.assign(p.from, p.current)
-      p.to = framing
-      p.t = 0
-      p.started = undefined
-    }
+    // Follow the actual sheet edge; only entering the room has a separate framing flight.
+    focusFraming(size, bottomInset?.current ?? 0, p.to)
     if (p.t < 1) {
       const now = performance.now()
       p.started ??= now
       p.t = animationProgress(p.started, now, compact ? 0.18 : seconds)
-      blendFocusFraming(camera, size, p.from, p.to, flightEase(p.t))
-      p.current.zoom = camera.zoom
-      p.current.offsetY = camera.view?.offsetY ?? 0
       invalidate()
     }
+    blendFocusFraming(camera, size, p.from, p.to, flightEase(p.t))
+    p.current.zoom = camera.zoom
+    p.current.offsetY = camera.view?.offsetY ?? 0
     // The controls take the new pose's target as soon as it's set, so the flight starts from where it last looked.
     if (heading.current !== pose) {
       start.current = { position: camera.position.clone(), target: look.clone() }
