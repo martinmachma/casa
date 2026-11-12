@@ -1449,7 +1449,7 @@ p {
   position: relative;
   right: auto;
   bottom: auto;
-  border-radius: 24px;
+  border-radius: var(--radius);
 }
 
 .dock .floor-layers-strip {
@@ -4719,24 +4719,23 @@ input[type='range'].light-brightness::-moz-range-thumb {
   font-size: 12px;
 }
 
-/* Spread out for good (desktop): bigger slabs, so the number fits on them. */
+/* Desktop uses the dock's segmented buttons; the phone keeps its stack of slabs. */
 .floor-layers[data-open] .floor-layers-strip {
-  width: 48px;
-  border-radius: 24px;
+  width: 44px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
 .floor-layers[data-open] .floor-layers-slab {
-  width: 30px;
-  height: 30px;
-  border-width: 2px;
+  display: none;
 }
 
 .floor-layers[data-open] .floor-layers-cell {
   left: 4px;
   right: 4px;
   height: 36px;
-  border-radius: 18px;
+  border: 0;
+  border-radius: var(--radius-sm);
   transition:
     opacity 150ms,
     background 120ms,
@@ -4745,6 +4744,31 @@ input[type='range'].light-brightness::-moz-range-thumb {
 
 .floor-layers[data-open] .floor-layers-mark {
   font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-shadow: none;
+}
+
+.floor-layers[data-open] .floor-layers-cell[data-on] {
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.floor-layers[data-open] .floor-layers-cell[data-hover]:not([data-on]) {
+  background: var(--surface-3);
+}
+
+.floor-layers[data-open] .floor-layers-cell[data-on][data-hover] {
+  background: var(--accent-hover);
+}
+
+.floor-layers[data-open] .floor-layers-mark[data-on] {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.floor-layers[data-open] .floor-layers-mark[data-hover]:not([data-on]) {
+  color: var(--ink);
 }
 
 /* Under the mouse: the stop's cell fills in and its slab and number brighten. */

@@ -11,7 +11,7 @@ type FloorLayersProps = {
   onOutside: () => void
   /** What's shown under a stop's name while dragging: undefined is the whole house. */
   describe: (floorIndex: number | undefined) => string
-  /** Always spread out with every floor's number on its slab, as on a desktop; otherwise it opens while dragged. */
+  /** Always show each stop as a vertical switch on desktop; otherwise the slabs spread out while dragged. */
   open?: boolean
   disabled?: boolean
   /** Whether the floor's name shows beside the strip while it's dragged. */
@@ -22,7 +22,7 @@ type FloorLayersProps = {
 
 /** Height of each stop along the strip, in CSS pixels: closed, and spread out for good. */
 const STEP = 23
-const OPEN_STEP = 40
+const OPEN_STEP = 38
 const PAD = 4
 /** Closed, how far apart the slabs sit, and the house above the top one. */
 const GAP = 10
