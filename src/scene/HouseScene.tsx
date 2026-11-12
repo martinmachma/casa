@@ -517,7 +517,7 @@ export const HouseScene = ({
           <DebugHover copies={interaction === 'view'} />
           {blurred && !gfxOff('noblur') && (
             <RoomBlur
-              soften={!compact}
+              compact={compact}
               floor={blurred.floor}
               roomId={blurred.roomId}
               open={blurHere ? open : undefined}
@@ -755,7 +755,7 @@ export const HouseScene = ({
             <AmbientOcclusion enabled={!compact && !gfxOff('nossao')} shadowScale={compact ? 0.5 : 1} />
           )}
           <WarmShaders
-            ready={!data.loading && !compact && !gfxOff('noblur')}
+            ready={!data.loading && !gfxOff('noblur')}
             view={focusRoom ? 'room' : outside ? 'outside' : floor.id}
           />
         </ViewedFloor.Provider>

@@ -44,26 +44,38 @@ export const ItemPins = ({
     setLast(open)
     setLeaving((l) => [...l.filter((i) => i !== open && i !== last), ...(last ? [last] : [])])
   }
-  // A click anywhere else closes the open card; the card, the tags and the room's card handle their own clicks,
-  // and a drag (turning the view) isn't a click.
+  // A tap away closes the desktop card or the phone's picked item; controls and camera gestures keep it open.
   useEffect(() => {
-    if (!open) return
-    let down: { x: number; y: number; inside: boolean } | undefined
+    if (!open && !picked) return
+    let down: { x: number; y: number; id: number } | undefined
     const onDown = (e: PointerEvent) => {
-      const inside = !!(e.target as Element).closest?.('.room-popover, .shade-beside, .smart-tag, .room-cards')
-      down = { x: e.clientX, y: e.clientY, inside }
+      const inside = !!(e.target as Element).closest?.(
+        '.room-popover, .shade-beside, .smart-tag, .room-cards, .phone-rooms, .phone-leave',
+      )
+      down = e.isPrimary && !inside ? { x: e.clientX, y: e.clientY, id: e.pointerId } : undefined
     }
-    const onUp = (e: PointerEvent) => {
-      if (down && !down.inside && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) onOpen(undefined)
+    const cancel = () => {
       down = undefined
     }
+    const onMove = (e: PointerEvent) => {
+      if (down && down.id === e.pointerId && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) cancel()
+    }
+    const onUp = (e: PointerEvent) => {
+      const tap = down
+      cancel()
+      if (tap && tap.id === e.pointerId && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 5) onOpen(undefined)
+    }
     window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('pointermove', onMove, true)
     window.addEventListener('pointerup', onUp, true)
+    window.addEventListener('pointercancel', cancel, true)
     return () => {
       window.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('pointermove', onMove, true)
       window.removeEventListener('pointerup', onUp, true)
+      window.removeEventListener('pointercancel', cancel, true)
     }
-  }, [open, onOpen])
+  }, [open, picked, onOpen])
   return (
     <div className="overlay">
       {/* A tag by each item, on a line straight up from it; the open one's tag grows into its card, and

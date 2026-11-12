@@ -4548,7 +4548,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   pointer-events: auto;
 }
 
-/* Out of the room looked at, top centre. */
+/* Close the focused item or room, top centre. */
 .phone-leave {
   position: absolute;
   z-index: 2;
@@ -5297,20 +5297,64 @@ input[type='range'].light-brightness::-moz-range-thumb {
   cursor: grab;
 }
 
-/* A shade's arrows in a row over its slats; the sheet has its own way back. */
-.phone-item .shade-controls > .shade-group:first-child {
-  display: none;
+.shade-sheet-controls {
+  display: grid;
+  gap: 20px;
+  padding: 12px 0 4px;
 }
 
-.phone-item .shade-buttons {
-  flex-direction: column;
+.shade-sheet-label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
 }
 
-.phone-item .shade-group {
-  flex-direction: row;
+.shade-sheet-label .num {
+  color: var(--ink);
+}
+
+.shade-sheet-label input {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  accent-color: var(--cool);
+}
+
+.shade-sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.shade-sheet-actions .btn,
+.shade-sheet-slats .segmented button {
+  min-height: 44px;
+  justify-content: center;
+}
+
+.shade-sheet-slats {
+  min-width: 0;
+  margin: 0;
   padding: 0;
-  background: none;
   border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
+}
+
+.shade-sheet-slats legend {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--ink-2);
+}
+
+.shade-sheet-slats .segmented button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shade-sheet-slats .hint {
+  margin: 8px 0 0;
 }

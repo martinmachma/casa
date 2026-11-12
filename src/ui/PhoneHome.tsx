@@ -231,11 +231,11 @@ export const PhoneHome = ({
     >
       <button
         className="phone-leave float"
-        data-shown={!!room || undefined}
-        aria-label="Leave the room"
-        aria-hidden={!room}
-        tabIndex={room ? 0 : -1}
-        onClick={onLeave}
+        data-shown={!!room || !!open || undefined}
+        aria-label={open ? `Close ${open.name}` : 'Leave the room'}
+        inert={!room && !open}
+        tabIndex={room || open ? 0 : -1}
+        onClick={() => (open ? onOpen(undefined) : onLeave())}
       >
         <X size={18} />
       </button>
@@ -347,6 +347,7 @@ export const PhoneHome = ({
                   <LightControls light={light(open.id)} onChange={(p) => onLight(open.id, p)} />
                 ) : open.kind === 'blind' ? (
                   <ShadeControls
+                    layout="sheet"
                     name={open.name}
                     shade={shade(open.id)}
                     onChange={(p) => onShade(open.id, p)}

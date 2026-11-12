@@ -1,15 +1,15 @@
 import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, X } from 'lucide-react'
-import type { ShadeState } from '../devices/shades'
-import { IconButton } from './kit'
+import { shadeText, type ShadeState } from '../devices/shades'
+import { IconButton, Segmented } from './kit'
 
 /** One press of a single arrow lets the shade down (or takes it up) to the next quarter. */
 const STEPS = 4
 const EPS = 1e-6
 
 const TILTS = [
-  { tilt: 0, label: 'Slats open' },
-  { tilt: 0.5, label: 'Slats half shut' },
-  { tilt: 1, label: 'Slats shut' },
+  { tilt: 0, label: 'Slats open', short: 'Open' },
+  { tilt: 0.5, label: 'Slats half shut', short: 'Half' },
+  { tilt: 1, label: 'Slats shut', short: 'Shut' },
 ]
 
 /** Three slats seen end-on, turned as far as the tilt turns the real ones. */
@@ -39,13 +39,55 @@ type ShadeControlsProps = {
   shade: ShadeState
   onChange: (patch: Partial<ShadeState>) => void
   onClose: () => void
+  layout?: 'beside' | 'sheet'
 }
 
-/** A shade's controls beside it, without a card: a close button, arrows up and down, and how far the slats turn. */
-export const ShadeControls = ({ name, shade, onChange, onClose }: ShadeControlsProps) => {
+/** A shade's position and slats: compact arrows beside its window, or labeled controls in the phone sheet. */
+export const ShadeControls = ({ name, shade, onChange, onClose, layout = 'beside' }: ShadeControlsProps) => {
   const p = shade.position
   const up = p <= EPS
   const down = p >= 1 - EPS
+  if (layout === 'sheet')
+    return (
+      <div className="shade-sheet-controls">
+        <div className="shade-sheet-position">
+          <label className="shade-sheet-label">
+            <span>Position</span>
+            <span className="num">{shadeText(shade)}</span>
+            <input
+              type="range"
+              aria-label="Shade position"
+              aria-valuetext={shadeText(shade)}
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round(p * 100)}
+              onChange={(e) => onChange({ position: Number(e.target.value) / 100 })}
+            />
+          </label>
+          <div className="shade-sheet-actions" role="group" aria-label="Up and down">
+            <button className="btn" disabled={up} onClick={() => onChange({ position: 0 })}>
+              <ChevronsUp size={18} /> Up
+            </button>
+            <button className="btn" disabled={down} onClick={() => onChange({ position: 1 })}>
+              <ChevronsDown size={18} /> Down
+            </button>
+          </div>
+        </div>
+        <fieldset className="shade-sheet-slats" disabled={up}>
+          <legend>Slats</legend>
+          <Segmented
+            label="Slats"
+            block
+            disabled={up}
+            value={String(TILTS.find((t) => Math.abs(shade.tilt - t.tilt) < 0.05)?.tilt)}
+            options={TILTS.map((t) => ({ value: String(t.tilt), label: t.short, icon: <SlatsIcon tilt={t.tilt} /> }))}
+            onChange={(tilt) => onChange({ tilt: Number(tilt) })}
+          />
+          {up && <p className="hint">Lower the shade to adjust the slats.</p>}
+        </fieldset>
+      </div>
+    )
   return (
     <div className="shade-controls">
       <div className="shade-group float">

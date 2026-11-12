@@ -56,7 +56,7 @@ const itemOf = (o: Object3D) => {
 export const RoomBlur = ({
   floor,
   roomId,
-  soften = true,
+  compact = false,
   open,
   clear,
   leaving,
@@ -64,8 +64,8 @@ export const RoomBlur = ({
 }: {
   floor: Floor
   roomId: string
-  /** Phones keep room picking and item dimming without the offscreen blur/compositing passes. */
-  soften?: boolean
+  /** Phones blur the surroundings at a lower resolution with fewer passes. */
+  compact?: boolean
   open?: string
   /** Eased away, but kept up for the next room (on the way to it). */
   clear?: boolean
@@ -161,34 +161,13 @@ export const RoomBlur = ({
       }
     })
 
-    // A phone draws straight to the screen: no linear-output house variants to link on the first room tap.
-    // Sorting still limits picking to this room, and an opened item's dim and overlay stay available.
-    if (!soften) {
-      camera.layers.set(0)
-      gl.render(scene, camera)
-      if (shown) {
-        const tools = (kit.current ??= makeTools())
-        tools.dim.material.uniforms.alpha.value = DIM * ease(dimming.current.value)
-        const autoClear = gl.autoClear
-        const background = scene.background
-        gl.autoClear = false
-        gl.render(tools.dimScene, tools.camera)
-        scene.background = null
-        camera.layers.set(ITEM_LAYER)
-        gl.render(scene, camera)
-        scene.background = background
-        gl.autoClear = autoClear
-        camera.layers.set(0)
-      }
-      if (leaving && !dimMoving && !blurMoving) onLeft?.()
-      return
-    }
     const tools = (kit.current ??= makeTools())
     // Sized and blurred by CSS pixels, not the drawing buffer's: the pixel ratio drops while the camera moves, and
     // the outside mustn't turn blurrier then and sharper again as it settles.
     const { a, b, quad, camera: flat } = tools
-    const w = Math.max(1, Math.round(size.width * OUTSIDE_SCALE))
-    const h = Math.max(1, Math.round(size.height * OUTSIDE_SCALE))
+    const scale = compact ? 0.35 : OUTSIDE_SCALE
+    const w = Math.max(1, Math.round(size.width * scale))
+    const h = Math.max(1, Math.round(size.height * scale))
     if (a.width !== w || a.height !== h) {
       a.setSize(w, h)
       b.setSize(w, h)
@@ -196,7 +175,7 @@ export const RoomBlur = ({
     const material = quad.material
     const pass = (from: WebGLRenderTarget, to: WebGLRenderTarget | null, x: number, y: number, tint = 0) => {
       material.uniforms.map.value = from.texture
-      material.uniforms.dir.value.set((x * OUTSIDE_SCALE) / from.width, (y * OUTSIDE_SCALE) / from.height)
+      material.uniforms.dir.value.set((x * scale) / from.width, (y * scale) / from.height)
       material.uniforms.tint.value = tint
       gl.setRenderTarget(to)
       gl.render(tools.scene, flat)
@@ -223,9 +202,10 @@ export const RoomBlur = ({
     // The outside, blurred.
     camera.layers.set(OUTSIDE_LAYER)
     gl.render(scene, camera)
-    for (let k = 0; k < BLUR_PASSES; k++) {
-      pass(a, b, (1 + k) * blur, 0)
-      pass(b, a, 0, (1 + k) * blur)
+    for (let k = 0; k < (compact ? 2 : BLUR_PASSES); k++) {
+      const radius = (compact ? 2 + k * 2 : 1 + k) * blur
+      pass(a, b, radius, 0)
+      pass(b, a, 0, radius)
     }
     const autoClear = gl.autoClear
     // A colour background clears the screen whatever autoClear says.

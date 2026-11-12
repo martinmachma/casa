@@ -10,7 +10,7 @@ import { animationProgress } from './animation'
 import { ZOOM_SPEED } from './cameraNudge'
 import { advanceCameraFlight, beginCameraFlight, cameraFlightSeconds, cameraFlight, flightEase } from './cameraFlight'
 import { useCompactGraphics } from './useCompactGraphics'
-import { blendFocusFraming, focusFraming, type CameraFraming, type FocusInset } from './focusFraming'
+import { blendFocusFraming, focusFraming, openingDistance, type CameraFraming, type FocusInset } from './focusFraming'
 import { wallHeight } from '../layout/geometry'
 import { clearView, crosses, mayBlock } from './clearView'
 import { decidingWall, focusCut, type Focus } from './CutawayWall'
@@ -62,12 +62,14 @@ export const RoomCamera = ({
   const compact = useCompactGraphics()
   const seconds = cameraFlightSeconds(compact)
   const size = useThree((s) => s.size)
+  // A complete window sits below the phone's top bar and close button as well as above its sheet.
+  const topInset = bottomInset && closeUp?.frame ? 56 : 0
   const scene = useThree((s) => s.scene)
   const invalidate = useThree((s) => s.invalidate)
   useEffect(() => bottomInset?.subscribe(invalidate), [bottomInset, invalidate])
   const projection = useRef({
     from: { zoom: 1, offsetY: 0 },
-    to: focusFraming(size, bottomInset?.current ?? 0),
+    to: focusFraming(size, bottomInset?.current ?? 0, undefined, topInset),
     current: { zoom: 1, offsetY: 0 },
     t: bottomInset?.current ? 0 : 1,
     started: undefined as number | undefined,
@@ -83,6 +85,8 @@ export const RoomCamera = ({
   const [fx, fz] = closeUp?.facing ?? []
   const mount = closeUp?.mount
   const itemId = closeUp?.key.replace(/^tag:/, '')
+  const [frameWidth, frameHeight] = (bottomInset && closeUp?.frame) || []
+  const windowView = !!closeUp?.look
   const [origin] = useState(from)
   const pose = useMemo(() => {
     if (cx === undefined) return roomView
@@ -100,7 +104,14 @@ export const RoomCamera = ({
           : mount === 'lamp'
             ? level.setY(FACING_RISE).normalize()
             : toward.normalize()
-    const distance = mount === 'ceiling' ? CLOSE_UNDER : closeUp?.look && roomId ? CLOSE_UP_FACING : CLOSE_UP
+    const distance = mount === 'ceiling' ? CLOSE_UNDER : windowView && roomId ? CLOSE_UP_FACING : CLOSE_UP
+    // A phone shows the complete window square on. Moving nearer to avoid an obstruction would crop its edges;
+    // SeeThrough already fades anything that remains in front of the fitted view.
+    if (frameWidth !== undefined && frameHeight !== undefined)
+      return {
+        position: back.multiplyScalar(openingDistance([frameWidth, frameHeight], size, FOV)).add(item),
+        target: item,
+      }
     // Turned or brought nearer if something stands in the way. Looking into a room, the walls in the way are cut.
     const skip = (o: Parameters<typeof mayBlock>[0]) => !mayBlock(o, itemId, !focus)
     const standing = (eye: Vector3) =>
@@ -114,7 +125,25 @@ export const RoomCamera = ({
     const position = clearView(scene, item, back, distance, turn, skip, standing)
     // Keep the orbit's pivot on the item; the projection leaves space for its card.
     return { position, target: item }
-  }, [roomView, roomId, cx, cy, cz, fx, fz, mount, closeUp?.look, origin, scene, itemId, focus, floor])
+  }, [
+    roomView,
+    roomId,
+    cx,
+    cy,
+    cz,
+    fx,
+    fz,
+    mount,
+    windowView,
+    origin,
+    scene,
+    itemId,
+    focus,
+    floor,
+    frameWidth,
+    frameHeight,
+    size,
+  ])
   const [firstPosition] = useState(() => pose?.position.toArray())
   const start = useRef(from)
   const t = useRef(from ? 0 : 1)
@@ -153,7 +182,7 @@ export const RoomCamera = ({
     }
     const p = projection.current
     // Follow the actual sheet edge; only entering the room has a separate framing flight.
-    focusFraming(size, bottomInset?.current ?? 0, p.to)
+    focusFraming(size, bottomInset?.current ?? 0, p.to, topInset)
     if (p.t < 1) {
       const now = performance.now()
       p.started ??= now
@@ -234,6 +263,8 @@ export type Pin = {
   facing?: [number, number]
   /** Where a close-up on it is centred, if not on `at`. */
   look?: [number, number, number]
+  /** Width and height in metres, so a phone close-up includes the complete opening. */
+  frame?: [number, number]
   /** For a light, how it hangs, which decides the way its close-up looks into it. */
   mount?: 'ceiling' | 'wall' | 'lamp'
 }

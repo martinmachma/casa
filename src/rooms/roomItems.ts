@@ -19,6 +19,8 @@ export type SmartItem = {
   facing?: [number, number]
   /** Where its close-up is centred, if not on `at`. */
   look?: [number, number, number]
+  /** Width and height in metres when the entire item must fit in view. */
+  frame?: [number, number]
   /** For a light, how it hangs: its close-up looks into it (from below for one on the ceiling). */
   mount?: 'ceiling' | 'wall' | 'lamp'
   /** Where its controls stand, if beside it rather than at the end of its tag's line. */

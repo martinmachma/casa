@@ -160,10 +160,11 @@ profile. The canvas stays at 1× DPR; directional and point-shadow faces are hal
 Every bulb and physical occluder remains, with the same intensity, colour, reach and switching behaviour. The
 lighting/atlas material patch stays active while the SSAO normal, occlusion and blur passes are skipped.
 
-Focused rooms draw straight to the screen on phones, avoiding the offscreen house programs and blur passes.
-Room-only picking, item close-ups, dimming and controls remain. The desktop blur, AO and resolution are unchanged.
-Phones also skip background compilation of the blur programs they no longer use. The profile updates when the
-viewport or primary pointer changes; it applies in Edit as well as Home and changes no saved data.
+Focused rooms use the same blur/compositing pipeline on phones and desktop. Phones draw the surroundings at
+35% of CSS resolution with two blur pairs; desktop uses 50% and three pairs. The focused room and opened item
+remain sharp, with room-only picking and item dimming. Blur programs warm in the background on both profiles.
+The profile updates when the viewport or primary pointer changes; it applies in Edit as well as Home and changes
+no saved data.
 
 Room and return flights now advance by elapsed time from their first active frame, instead of capping every frame
 at 1/30 second. The cap stretched a nominal 1.1-second flight to 5.145 seconds in a local Chrome demo with 120 ms of

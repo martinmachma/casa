@@ -77,10 +77,12 @@ A module may import from the left of itself, not the right. (A few small upward 
 Performance-sensitive; read `docs/LIGHTING.md` before touching lights, shadows or post-processing.
 
 - Canvas runs `frameloop="demand"`; quality drops to 1x DPR while the camera moves. Phones/coarse pointers and
-  narrow windows stay at 1x, skip SSAO and room blur, and use smaller shadow maps with every light retained.
+  narrow windows stay at 1x, skip SSAO, blur room surroundings at a lower resolution, and use smaller shadow maps
+  with every light retained.
   Camera flights, floor fades, cut walls and room blur share elapsed-time progress so they finish together even
   on slow frames. Phones use 280 ms room/item/return flights and 200 ms floor flights; sheet framing follows its
   rendered height during dragging and the 180 ms settling transition without rerendering the house.
+  Phone window close-ups fit the full opening above the sheet using its actual width and height.
 - Shadow maps are cached across frames by a caster signature; point-light shadows share an atlas.
 - Fixtures and lights stay mounted at zero intensity (changing the light count recompiles shaders). Floors fade
   rather than unmount.

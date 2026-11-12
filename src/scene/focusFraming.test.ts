@@ -1,8 +1,40 @@
 import { describe, expect, it } from 'vitest'
 import { PerspectiveCamera, Vector3 } from 'three'
-import { blendFocusFraming, focusFraming } from './focusFraming'
+import { blendFocusFraming, focusFraming, openingDistance } from './focusFraming'
+import { house } from '../layout/layout'
+import { floorRegions } from '../layout/rooms'
+import { floorShades } from '../devices/shades'
 
 describe('focusFraming', () => {
+  it('fits the entire real windows and wide sliding door above the phone sheet, in portrait and landscape', () => {
+    const windows = house.floors.flatMap((floor) => floorShades(floor, floorRegions(floor)))
+    for (const size of [
+      { width: 390, height: 650 },
+      { width: 393, height: 796 },
+      { width: 650, height: 390 },
+    ]) {
+      for (const window of windows) {
+        const camera = new PerspectiveCamera(45, size.width / size.height)
+        const distance = openingDistance(window.frame, size, 45)
+        camera.position.copy(new Vector3(0, 0.15, 1).normalize().multiplyScalar(distance))
+        camera.lookAt(0, 0, 0)
+        camera.updateMatrixWorld()
+        for (const inset of [size.height * 0.35, size.height * 0.64 + 16]) {
+          const framing = focusFraming(size, inset, undefined, 56)
+          blendFocusFraming(camera, size, framing, framing, 1)
+          for (const x of [-window.frame[0] / 2, window.frame[0] / 2]) {
+            for (const y of [-window.frame[1] / 2, window.frame[1] / 2]) {
+              const p = new Vector3(x, y, 0).project(camera)
+              const screenY = ((1 - p.y) * size.height) / 2
+              expect(Math.abs(p.x)).toBeLessThan(0.9)
+              expect(screenY).toBeGreaterThan(56)
+              expect(screenY).toBeLessThan(size.height - inset)
+            }
+          }
+        }
+      }
+    }
+  })
   it('keeps close-ups above the card on tall and short phones, restoring the full view when it closes', () => {
     const target = new Vector3(1, 2.4, 3)
     for (const size of [

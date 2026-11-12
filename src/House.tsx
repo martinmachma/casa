@@ -1039,6 +1039,7 @@ export const House = ({ backend, account }: HouseProps) => {
               at: i.at,
               facing: i.facing,
               look: i.look,
+              frame: i.frame,
               mount: i.mount,
             })),
             ...focusItems.flatMap((i) => (i.beside ? [{ key: `beside:${i.id}`, at: i.beside }] : [])),

@@ -20,6 +20,8 @@ export type WindowShade = {
   at: [number, number, number]
   /** The middle of the window, which its close-up is centred on. */
   look: [number, number, number]
+  /** Width and height of the opening, in metres, to fit the entire window in its close-up. */
+  frame: [number, number]
   /** Out of the house, across the wall (plan): its close-up looks at it from outside. */
   facing: [number, number]
   /** Just past the window's right-hand edge as seen from outside, where its controls stand. */
@@ -66,6 +68,7 @@ export const floorShades = (floor: Floor, regions: Map<string, RoomRegion>): Win
           room: roomAt(regions, x - n[0] * reach, y - n[1] * reach),
           at: [x + n[0] * face, sill + o.height, y + n[1] * face] as WindowShade['at'],
           look: [x, z, y] as WindowShade['look'],
+          frame: [o.width, o.height] as WindowShade['frame'],
           facing: [n[0], n[1]] as WindowShade['facing'],
           beside: [x + n[1] * side, z, y - n[0] * side] as WindowShade['beside'],
         },
