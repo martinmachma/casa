@@ -4798,7 +4798,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
 /* Closes a sheet when the view is tapped. */
@@ -4871,8 +4870,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
   scroll-padding-inline: 12px;
   scrollbar-width: none;
   background: var(--surface);
-  /* The row runs on sideways past the sheet's edges: they fade, so it reads as one to scroll. */
-  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 40px), transparent);
 }
 
 .phone-chip {
@@ -4914,13 +4911,36 @@ input[type='range'].light-brightness::-moz-range-thumb {
   padding: 0 12px;
   overflow-x: auto;
   scrollbar-width: none;
-  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 40px), transparent);
 }
 
 .phone-tiles[data-wrap] {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   mask-image: none;
+}
+
+/* Like the vertical lists, horizontal rows fade only where more content is hidden. */
+@supports (animation-timeline: scroll(self inline)) {
+  .phone-scenes-row,
+  .phone-room-chips,
+  .phone-tiles:not([data-wrap]) {
+    animation:
+      more-above linear both,
+      more-below linear both;
+    animation-timeline: scroll(self inline);
+    animation-range:
+      0 24px,
+      calc(100% - 24px) 100%;
+    --more-fade: linear-gradient(
+      to right,
+      rgb(0 0 0 / calc(1 - var(--more-above))),
+      #000 24px,
+      #000 calc(100% - 24px),
+      rgb(0 0 0 / calc(1 - var(--more-below)))
+    );
+    -webkit-mask-image: var(--more-fade);
+    mask-image: var(--more-fade);
+  }
 }
 
 .phone-tile {
