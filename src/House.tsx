@@ -74,6 +74,7 @@ import { ScenePins } from './ui/ScenePins'
 import { ScenesPanel } from './ui/ScenesPanel'
 import { ElectricalPanel } from './ui/ElectricalPanel'
 import { PhoneHome } from './ui/PhoneHome'
+import { PhoneEditor } from './ui/PhoneEditor'
 import { isNarrow, useNarrow } from './ui/useNarrow'
 import { arrangeRooms } from './rooms/roomOrder'
 
@@ -110,9 +111,11 @@ const saveSection = (section: Section) => {
 export const House = ({ backend, account }: HouseProps) => {
   const [section, setSection] = useState(savedSection)
   const editing = section === 'edit'
-  // Home on a phone has its own menus at the bottom; editing keeps the desktop's panels.
-  const phone = useNarrow() && !editing
-  const data = useHouseData(backend, !editing)
+  // The phone's quick editor shares the draft while keeping Home's view and bottom menus.
+  const narrow = useNarrow()
+  const phone = narrow && !editing
+  const [phoneEditor, setPhoneEditor] = useState(false)
+  const data = useHouseData(backend, !editing && !(phone && phoneEditor))
   const opened = useFirstView(data.loading)
   const [floorIndex, setFloorIndex] = useState(0)
   // The app opens on the whole house.
@@ -154,10 +157,10 @@ export const House = ({ backend, account }: HouseProps) => {
   const { site } = house
   // At home the sun can't be moved; it keeps up with the clock.
   useEffect(() => {
-    if (editing) return
+    if (editing || (phone && phoneEditor)) return
     const timer = setInterval(() => setSun(sunNow()), 60 * 1000)
     return () => clearInterval(timer)
-  }, [editing])
+  }, [editing, phone, phoneEditor])
   const sunAt = sun
     ? sunPosition(zonedTime(sun.date, sun.minutes, site.timeZone), site.latitude, site.longitude)
     : undefined
@@ -191,14 +194,14 @@ export const House = ({ backend, account }: HouseProps) => {
   // While looking at scenes after dark: the sun to go back to.
   const [nightFrom, setNightFrom] = useState<{ sun: SunSettings | undefined }>()
   const focusFloor = focus && house.floors.find((f) => f.id === focus.floor)
-  const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture) : []
+  const focusItems = focusFloor ? roomItems(focusFloor, focus.room, data.devices, data.furniture, data.deviceNames) : []
   const dark = 1 - daylight(sunAt)
   const lightNow = (id: string) => lightSettings(lights.states[id], dark)
   const shadeNow = (id: string) => shades.states[id] ?? SHADE_UP
   // Each room with lights, and whether any is on.
   const roomLights = new Map<string, boolean>()
   for (const f of house.floors)
-    for (const i of floorItems(f, data.devices, data.furniture))
+    for (const i of floorItems(f, data.devices, data.furniture, data.deviceNames))
       if (i.kind === 'light' && i.room)
         roomLights.set(i.room, roomLights.get(i.room) || lightSettings(lights.states[i.id], dark).on)
 
@@ -209,6 +212,13 @@ export const House = ({ backend, account }: HouseProps) => {
     selection?.kind === 'furniture' ? data.furniture.filter((f) => selection.ids.includes(f.id)) : []
   const selectedItem = selectedItems.length === 1 ? selectedItems[0] : undefined
   const selectedDevice = selection?.kind === 'device' ? data.devices.find((d) => d.id === selection.id) : undefined
+
+  const changeDevice = (device: Device, patch: Partial<Device>) => {
+    if (device.plan) return patch.name && data.renameDevice(device.id, patch.name)
+    const on = house.floors.find((f) => f.id === device.floor)
+    const change = patch.z !== undefined && on ? atHeight(device, patch.z, on) : patch
+    data.patchDevice(device.id, change, `${device.id}:${Object.keys(patch).join()}`)
+  }
 
   // Typing a size or dragging the colour picker undoes as one step per field.
   const changeItem = (item: FurnitureItem, patch: Partial<FurnitureItem>, key?: string) =>
@@ -341,7 +351,7 @@ export const House = ({ backend, account }: HouseProps) => {
   const openItem = (id: string | undefined) => {
     if (!id || focus) return openPopover(id)
     for (const f of house.floors) {
-      const item = floorItems(f, data.devices, data.furniture).find((i) => i.id === id)
+      const item = floorItems(f, data.devices, data.furniture, data.deviceNames).find((i) => i.id === id)
       if (!item) continue
       if (item.room) return openRoom(item.room, id)
       setItemOrigin(itemOrigin ?? { room: roomView, floor: floorIndex, outside, camera: planCamera })
@@ -408,9 +418,9 @@ export const House = ({ backend, account }: HouseProps) => {
   const smartItems = useMemo<PlacedItem[]>(
     () =>
       house.floors.flatMap((f, floorIndex) =>
-        floorItems(f, data.devices, data.furniture).map((item) => ({ ...item, floorIndex })),
+        floorItems(f, data.devices, data.furniture, data.deviceNames).map((item) => ({ ...item, floorIndex })),
       ),
-    [data.devices, data.furniture],
+    [data.devices, data.furniture, data.deviceNames],
   )
   const sceneItems = useMemo(() => smartItems.filter(inScenes), [smartItems])
   const lightItems = useMemo(() => smartItems.filter((item) => item.kind !== 'blind'), [smartItems])
@@ -505,12 +515,12 @@ export const House = ({ backend, account }: HouseProps) => {
   // Scenes from before they were kept with the house join the draft, and leave this browser once they're saved.
   const { loading: dataLoading, dirty: dataDirty, scenes: houseScenes, addScenes } = data
   useEffect(() => {
-    if (!editing || dataLoading) return
+    if ((!editing && !phoneEditor) || dataLoading) return
     const waiting = localScenes().filter((s) => !houseScenes.some((known) => known.id === s.id))
     if (waiting.length) addScenes(...waiting)
     // Once per visit to Edit: the draft has them from then on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, dataLoading])
+  }, [editing, phoneEditor, dataLoading])
   useEffect(() => {
     if (!dataLoading && !dataDirty) forgetLocalScenes(houseScenes.map((s) => s.id))
   }, [dataLoading, dataDirty, houseScenes])
@@ -524,6 +534,7 @@ export const House = ({ backend, account }: HouseProps) => {
       data.discardDraft()
     }
     if (popover) openPopover(undefined)
+    setPhoneEditor(false)
     setSelection(undefined)
     setPlacing(undefined)
     setPlacingPiece(undefined)
@@ -687,7 +698,9 @@ export const House = ({ backend, account }: HouseProps) => {
   const floorTags =
     !focus && !editing && !rightOpen && camera !== 'walk'
       ? house.floors.flatMap((f) =>
-          floorItems(f, data.devices, data.furniture).filter((item) => outsideLight(item) || (!outside && f === floor)),
+          floorItems(f, data.devices, data.furniture, data.deviceNames).filter(
+            (item) => outsideLight(item) || (!outside && f === floor),
+          ),
         )
       : []
   // The scenes tab: nothing's moved here, and items are picked only into a scene that's open.
@@ -898,12 +911,7 @@ export const House = ({ backend, account }: HouseProps) => {
         <DeviceEditor
           device={selectedDevice}
           where={deviceWhere(selectedDevice)}
-          onChange={(patch) => {
-            if (selectedDevice.plan) return patch.name && data.renameDevice(selectedDevice.id, patch.name)
-            const on = house.floors.find((f) => f.id === selectedDevice.floor)
-            const change = patch.z !== undefined && on ? atHeight(selectedDevice, patch.z, on) : patch
-            data.patchDevice(selectedDevice.id, change, `${selectedDevice.id}:${Object.keys(patch).join()}`)
-          }}
+          onChange={(patch) => changeDevice(selectedDevice, patch)}
           light={lightSettings(lights.states[selectedDevice.id], dark)}
           onLight={(patch) => lights.set(selectedDevice.id, patch, dark)}
           onDelete={() => deleteDevice(selectedDevice)}
@@ -1157,8 +1165,6 @@ export const House = ({ backend, account }: HouseProps) => {
               outside={outside}
               onOutside={goOutside}
               rooms={phoneRooms}
-              roomOrder={roomOrder.ready ? roomsArranged : undefined}
-              onRoomOrder={roomOrder.save}
               room={focus}
               onRoom={openRoom}
               onLeave={leaveRoom}
@@ -1166,7 +1172,7 @@ export const House = ({ backend, account }: HouseProps) => {
               scenes={focus ? data.scenes.filter((s) => focusItems.some((i) => sceneHas(s, i.id))) : floorScenes}
               allScenes={reachingScenes}
               sceneOrder={sceneOrder.order}
-              onSceneOrder={sceneOrder.save}
+              onEdit={() => setPhoneEditor(true)}
               sceneIds={smartItems.map((i) => i.id)}
               items={phoneItems}
               open={smartItems.find((i) => i.id === popover)}
@@ -1177,6 +1183,31 @@ export const House = ({ backend, account }: HouseProps) => {
               shade={shadeNow}
               onShade={shades.set}
             />
+            {phoneEditor && (
+              <PhoneEditor
+                data={data}
+                floors={house.floors}
+                rooms={phoneRooms}
+                items={smartItems}
+                roomOrder={roomOrder.ready ? roomsArranged : undefined}
+                onRoomOrder={roomOrder.save}
+                sceneOrder={sceneOrder.order}
+                onSceneOrder={sceneOrder.save}
+                onPreview={setScenePreview}
+                onDeviceChange={changeDevice}
+                onDeviceDelete={deleteDevice}
+                light={lightNow}
+                onLight={lightRows.onLight}
+                shade={shadeNow}
+                onShade={shades.set}
+                night={!!nightFrom}
+                onNight={toggleNight}
+                onClose={() => {
+                  setPhoneEditor(false)
+                  endNight()
+                }}
+              />
+            )}
           </>
         )}
 

@@ -17,6 +17,7 @@ import { EMPTY_STATE, wallColorKey } from './types'
 import { ELECTRICAL_DEVICES } from '../devices/electrical'
 import type { Scene } from '../devices/scenes'
 import { house } from '../layout/layout'
+import { roomParts } from '../layout/roomName'
 import { withBuiltInFixtures } from './builtInFixtures'
 import { withBuiltInFinishes } from './builtInFinishes'
 
@@ -188,11 +189,14 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const viewed = versions.find((v) => v.id === viewedId)
   const state = (liveOnly ? undefined : draft?.state) ?? viewed?.data ?? BARE_STATE
   // Built-in electrical infrastructure is shared by every version, including old snapshots and the bare house.
+  const deviceNames = useMemo(
+    () => new Map((state.deviceNames ?? []).map((n) => [n.deviceId, n.name])),
+    [state.deviceNames],
+  )
   const devices = useMemo(() => {
-    const names = new Map((state.deviceNames ?? []).map((n) => [n.deviceId, n.name]))
-    const built = ELECTRICAL_DEVICES.map((d) => (names.has(d.id) ? { ...d, name: names.get(d.id)! } : d))
+    const built = ELECTRICAL_DEVICES.map((d) => (deviceNames.has(d.id) ? { ...d, name: deviceNames.get(d.id)! } : d))
     return [...built, ...(state.devices ?? [])]
-  }, [state.devices, state.deviceNames])
+  }, [state.devices, deviceNames])
 
   const wallColors = useMemo(
     () => new Map(state.walls.map((w) => [wallColorKey(w.wallId, w.side, w.part), w.color])),
@@ -274,7 +278,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
   const patchDevice = (id: string, patch: Partial<Device>, key?: string) =>
     edit((s) => ({ ...s, devices: (s.devices ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)) }), key)
 
-  /** Names a device from the electrical plan; its plan name takes it back to having none of its own. */
+  /** Names a fixed light or shade; a light's plan name clears its override. */
   const renameDevice = (id: string, name: string) =>
     edit((s) => {
       const others = (s.deviceNames ?? []).filter((n) => n.deviceId !== id)
@@ -284,6 +288,14 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     })
 
   const removeDevice = (id: string) => edit((s) => ({ ...s, devices: (s.devices ?? []).filter((d) => d.id !== id) }))
+
+  /** Names a room; its plan name takes it back to having none of its own. */
+  const renameRoom = (id: string, name: string) =>
+    edit((s) => {
+      const others = (s.rooms ?? []).filter((r) => r.roomId !== id)
+      const planned = house.floors.some((f) => f.rooms.some((r) => r.id === id && roomParts(r).name === name))
+      return { ...s, rooms: planned ? others : [...others, { roomId: id, name }] }
+    })
 
   /** Adds scenes as one undo step. */
   const addScenes = (...scenes: Scene[]) => edit((s) => ({ ...s, scenes: [...(s.scenes ?? []), ...scenes] }))
@@ -367,6 +379,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     paintArea,
     paintWall,
     roomNames,
+    renameRoom,
     furniture: state.furniture,
     addFurniture,
     patchFurniture,
@@ -374,6 +387,7 @@ export const useHouseData = (backend: Backend, liveOnly = false) => {
     removeFurniture,
     // Fixed infrastructure plus the devices in this version/draft.
     devices,
+    deviceNames,
     addDevice,
     patchDevice,
     renameDevice,

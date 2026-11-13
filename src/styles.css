@@ -4499,10 +4499,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
   -webkit-user-select: text;
 }
 
-.phone-rooms-order {
-  padding: 0 14px;
-}
-
 .app[data-phone] .topbar {
   position: absolute;
   top: 0;
@@ -4735,16 +4731,11 @@ input[type='range'].light-brightness::-moz-range-thumb {
   gap: 6px;
   /* Room on the right for the floor strip. */
   padding: 0 64px 0 12px;
-  transition:
-    bottom 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    translate 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  opacity: calc(1 - var(--sheet-raised, 0));
-  translate: 0 calc(var(--sheet-raised, 0) * 12px);
+  transition: bottom 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.phone-home[data-raised] > .phone-scenes,
-.phone-home[data-dragging] > .phone-scenes {
+.phone-home[data-raised] .phone-scenes-row,
+.phone-home[data-dragging] .phone-scenes-row {
   pointer-events: none;
 }
 
@@ -4795,8 +4786,8 @@ input[type='range'].light-brightness::-moz-range-thumb {
   background: var(--accent);
 }
 
-/* Every scene: a round button that stays at the start while the chosen ones scroll after it. */
-.phone-scenes-all {
+/* One editor entry stays at the start, including above a raised sheet. */
+.phone-home-edit {
   justify-content: center;
   width: 34px;
   padding: 0;
@@ -4810,6 +4801,11 @@ input[type='range'].light-brightness::-moz-range-thumb {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  opacity: calc(1 - var(--sheet-raised, 0));
+  translate: 0 calc(var(--sheet-raised, 0) * 12px);
+  transition:
+    opacity 180ms,
+    translate 180ms;
 }
 
 /* Closes a sheet when the view is tapped. */
@@ -4923,11 +4919,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
 .phone-chip[aria-pressed='true'] .phone-dot[data-on] {
   background: var(--accent-ink);
   box-shadow: none;
-}
-
-.phone-room-chips .phone-edit {
-  flex: none;
-  height: 34px;
 }
 
 /* What can be switched: one row to scroll while the sheet is low, a grid when it's raised. */
@@ -5124,34 +5115,7 @@ input[type='range'].light-brightness::-moz-range-thumb {
   box-shadow: 0 0 8px rgb(255 190 90 / 0.8);
 }
 
-/* Every scene, up from the bottom over the rooms. */
-.phone-sheet {
-  position: absolute;
-  z-index: 5;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 70%;
-  overflow-y: auto;
-  padding: 12px 14px max(14px, env(safe-area-inset-bottom));
-  background: var(--surface);
-  border: 0;
-  border-top: 1px solid var(--line);
-  border-radius: 18px 18px 0 0;
-  box-shadow: var(--shadow-lg);
-  animation: todo-in 160ms ease-out;
-}
-
-.phone-sheet h3,
-.phone-order h3 {
-  margin: 14px 4px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
+/* Shared headers for the phone's controls and editor. */
 .phone-sheet-head {
   display: flex;
   align-items: center;
@@ -5163,80 +5127,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-}
-
-.phone-edit {
-  height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--accent-text);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.phone-edit[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.phone-scene-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.phone-scene-card {
-  position: relative;
-  display: grid;
-  align-content: end;
-  gap: 2px;
-  min-width: 0;
-  height: 84px;
-  padding: 12px;
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.phone-scene-card[aria-pressed='true'] {
-  background: var(--accent);
-  box-shadow: var(--shadow-sm);
-  color: var(--accent-ink);
-}
-
-.phone-scene-card b {
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.phone-scene-card span {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.phone-scene-card[aria-pressed='true'] span {
-  color: var(--accent-ink);
-  opacity: 0.75;
-}
-
-.phone-scene-check {
-  position: absolute;
-  top: 10px;
-  right: 10px;
 }
 
 .phone-arrange {
@@ -5259,10 +5149,6 @@ input[type='range'].light-brightness::-moz-range-thumb {
   background: var(--accent);
   box-shadow: var(--shadow-sm);
   color: var(--accent-ink);
-}
-
-.phone-scene-hint {
-  margin: 16px 4px 0;
 }
 
 .phone-order {
@@ -5357,4 +5243,156 @@ input[type='range'].light-brightness::-moz-range-thumb {
 
 .shade-sheet-slats .hint {
   margin: 8px 0 0;
+}
+
+/* The shared phone editor keeps its tabs and save controls above the scrolling content. */
+.phone-editor {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.phone-editor[open] {
+  display: flex;
+  align-items: flex-end;
+}
+
+.phone-editor::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.phone-editor-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 82%;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: todo-in 180ms ease-out;
+}
+
+.phone-editor-head {
+  flex: none;
+  padding: 12px 14px;
+}
+
+.phone-editor-tabs {
+  flex: none;
+  padding: 0 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.phone-editor :is(.segmented button, .scene-list-item, .btn) {
+  min-height: 42px;
+}
+
+.phone-editor-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.phone-editor-body > * {
+  flex-shrink: 0;
+}
+
+.phone-editor-body > .smart-card-body {
+  overflow: visible;
+  animation: none;
+  mask-image: none;
+}
+
+.phone-editor .scene-list-item[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.phone-editor .scene-list-item .scene-list-text {
+  flex: 1;
+}
+
+.phone-editor-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+}
+
+.phone-editor-check[data-checked] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.phone-editor-scene {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phone-editor-room {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.phone-editor-room .editable-title-input {
+  width: 100%;
+}
+
+.phone-editor-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+
+.phone-editor-history {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.phone-editor-history .hint {
+  margin: 0 6px;
+  font-size: 11px;
+}
+
+.phone-editor-error {
+  padding: 10px 14px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--accent-text);
+  font: inherit;
+  text-align: left;
+}
+
+.phone-editor .phone-order h3 {
+  margin: 14px 4px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }

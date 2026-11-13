@@ -35,6 +35,7 @@ export const floorItems = (
   floor: Floor,
   devices: Device[],
   furniture: FurnitureItem[],
+  names?: ReadonlyMap<string, string>,
 ): (SmartItem & { room: string | undefined })[] => {
   const regions = floorRegions(floor)
   return [
@@ -71,15 +72,20 @@ export const floorItems = (
         room: roomAt(regions, f.x, f.y),
       })),
     ...floorShades(floor, regions).map((s) => ({ ...s, kind: 'blind' as DeviceKind, lamp: false, entity: undefined })),
-  ]
+  ].map((item) => (names?.has(item.id) ? { ...item, name: names.get(item.id)! } : item))
 }
 
 /** A light that isn't in any room: on the house's outside, or out in the garden. */
 export const outsideLight = (item: { kind: DeviceKind; room: string | undefined }) =>
   item.kind === 'light' && !item.room
 
-export const roomItems = (floor: Floor, roomId: string, devices: Device[], furniture: FurnitureItem[]): SmartItem[] =>
-  floorItems(floor, devices, furniture).filter((i) => i.room === roomId)
+export const roomItems = (
+  floor: Floor,
+  roomId: string,
+  devices: Device[],
+  furniture: FurnitureItem[],
+  names?: ReadonlyMap<string, string>,
+): SmartItem[] => floorItems(floor, devices, furniture, names).filter((i) => i.room === roomId)
 
 /** A smart item with the room it's in and the floor it's on. */
 export type PlacedItem = SmartItem & { room: string | undefined; floorIndex: number }

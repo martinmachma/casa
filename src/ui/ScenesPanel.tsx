@@ -1,4 +1,4 @@
-import { ChevronRight, Moon, Plus } from 'lucide-react'
+import { ChevronRight, Moon, Play, Plus } from 'lucide-react'
 import { sceneCount, sceneHas, type Scene, sceneSummary } from '../devices/scenes'
 import type { PlacedItem } from '../rooms/roomItems'
 import { IconButton, Section } from './kit'
@@ -32,10 +32,21 @@ type ScenesPanelProps = NightButtonProps & {
   onOpen: (scene: Scene | undefined) => void
   /** The scene pointed at, shown in the view. */
   onPreview: (id: string | undefined) => void
+  /** Runs a scene from the phone's list, including those hidden from its quick row. */
+  onApply?: (scene: Scene) => void
 }
 
 /** The house's scenes, each showing in the view while pointed at. */
-export const ScenesPanel = ({ scenes, items, roomName, onOpen, onPreview, night, onNight }: ScenesPanelProps) => (
+export const ScenesPanel = ({
+  scenes,
+  items,
+  roomName,
+  onOpen,
+  onPreview,
+  onApply,
+  night,
+  onNight,
+}: ScenesPanelProps) => (
   <>
     <Section title="Scenes" aside={<NightButton night={night} onNight={onNight} />}>
       {scenes.length > 0 ? (
@@ -43,7 +54,7 @@ export const ScenesPanel = ({ scenes, items, roomName, onOpen, onPreview, night,
           {scenes.map((scene) => {
             const rooms = roomsText(items.filter((i) => sceneHas(scene, i.id)).map(roomName))
             return (
-              <li key={scene.id}>
+              <li key={scene.id} className={onApply ? 'phone-editor-scene' : undefined}>
                 <button
                   className="scene-list-item"
                   onClick={() => onOpen(scene)}
@@ -59,6 +70,11 @@ export const ScenesPanel = ({ scenes, items, roomName, onOpen, onPreview, night,
                   </span>
                   <ChevronRight size={16} aria-hidden />
                 </button>
+                {onApply && (
+                  <IconButton label={`Run ${scene.name}`} onClick={() => onApply(scene)}>
+                    <Play size={16} />
+                  </IconButton>
+                )}
               </li>
             )
           })}

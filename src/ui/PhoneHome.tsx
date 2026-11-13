@@ -11,7 +11,6 @@ import { describeFloor } from './describeFloor'
 import { FloorLayers } from './FloorLayers'
 import { LightControls } from './LightControls'
 import { ordinal } from './ordinal'
-import { PhoneOrder } from './PhoneOrder'
 import { PhoneScenes } from './PhoneScenes'
 import { ShadeControls } from './ShadeControls'
 import { PhoneTile } from './PhoneTile'
@@ -25,9 +24,6 @@ type PhoneHomeProps = {
   onOutside: () => void
   /** Every room, in this person's order. */
   rooms: RoomView[]
-  /** That order, the big rooms then the small ones, to change; undefined until it has loaded. */
-  roomOrder: Order | undefined
-  onRoomOrder: (order: Order) => void
   /** The room being looked at on its own, if any. */
   room: RoomView | undefined
   onRoom: (id: string) => void
@@ -39,7 +35,7 @@ type PhoneHomeProps = {
   scenes: Scene[]
   allScenes: Scene[]
   sceneOrder: Order | undefined
-  onSceneOrder: (order: Order) => void
+  onEdit: () => void
   /** Every item in the house: a scene is on when all it sets is as it says. */
   sceneIds: string[]
   /** What's in view, for the tiles: the room's items, or the floor's (each with its room) when no room is picked. */
@@ -73,8 +69,6 @@ export const PhoneHome = ({
   outside,
   onOutside,
   rooms,
-  roomOrder,
-  onRoomOrder,
   room,
   onRoom,
   onLeave,
@@ -82,7 +76,7 @@ export const PhoneHome = ({
   scenes,
   allScenes,
   sceneOrder,
-  onSceneOrder,
+  onEdit,
   sceneIds,
   items,
   open,
@@ -94,8 +88,6 @@ export const PhoneHome = ({
   onShade,
 }: PhoneHomeProps) => {
   const [raisedByHand, setRaised] = useState(false)
-  // Putting the rooms in order, in the raised sheet.
-  const [ordering, setOrdering] = useState(false)
   // The sheet's heights: low with one row of cards, and as tall as what's in it raised, up to most of the view.
   const [sizes, setSizes] = useState({ low: 0, full: 0, most: 0 })
   const raised = (raisedByHand && Math.min(sizes.full, sizes.most) > sizes.low + 1) || !!open
@@ -134,7 +126,7 @@ export const PhoneHome = ({
     if (grab) observer.observe(grab)
     measure()
     return () => observer.disconnect()
-  }, [items, open, ordering, raised])
+  }, [items, open, raised])
 
   const top = Math.max(sizes.low, Math.min(sizes.full, sizes.most))
   const expandable = top > sizes.low + 1
@@ -170,7 +162,6 @@ export const PhoneHome = ({
   }
   const lower = () => {
     setRaised(false)
-    setOrdering(false)
     onOpen(undefined)
   }
 
@@ -255,7 +246,7 @@ export const PhoneHome = ({
         scenes={scenes}
         all={allScenes}
         saved={sceneOrder}
-        onSave={onSceneOrder}
+        onEdit={onEdit}
         ids={sceneIds}
         light={light}
         onLight={onLight}
@@ -316,25 +307,9 @@ export const PhoneHome = ({
                   {r.label}
                 </button>
               ))}
-              {!room && raised && roomOrder && (
-                <button className="phone-edit" aria-pressed={ordering} onClick={() => setOrdering(!ordering)}>
-                  {ordering ? 'Done' : 'Edit'}
-                </button>
-              )}
             </div>
 
-            {!room && raised && ordering && roomOrder ? (
-              <div className="phone-rooms-order">
-                <PhoneOrder
-                  order={roomOrder}
-                  name={(id) => rooms.find((r) => r.id === id)?.label}
-                  main="Main rooms"
-                  minor="Other spaces"
-                  hint="Drag a room up or down to change its place, or below the line with the smaller spaces."
-                  onSave={onRoomOrder}
-                />
-              </div>
-            ) : open ? (
+            {open ? (
               <div className="phone-item" role="group" aria-label={open.name}>
                 <div className="phone-sheet-head">
                   <button className="phone-back" onClick={() => onOpen(undefined)}>

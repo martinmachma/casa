@@ -1,4 +1,4 @@
-import { ChevronDown, Copy, X } from 'lucide-react'
+import { ChevronDown, Copy, Plus, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { LightState } from '../devices/lights'
 import { type Scene, sceneCount, sceneHas, sceneSummary, sceneSwitched } from '../devices/scenes'
@@ -140,6 +140,8 @@ type SceneEditorProps = {
   hovered: string | undefined
   onHover: (id: string | undefined) => void
   onRemove: (item: PlacedItem) => void
+  /** Opens an item picker where the view isn't available, such as the phone's sheet. */
+  onAdd?: () => void
   /** How an item is set now. */
   light: (id: string) => LightState
   shade: (id: string) => ShadeState
@@ -166,6 +168,7 @@ export const SceneEditor = ({
   hovered,
   onHover,
   onRemove,
+  onAdd,
   light,
   shade,
   night,
@@ -236,10 +239,18 @@ export const SceneEditor = ({
               </button>
             </div>
           ) : (
-            <p className="hint">Tick items in the view to add them.</p>
+            <p className="hint">
+              {onAdd ? 'Add devices to choose what this scene sets.' : 'Tick items in the view to add them.'}
+            </p>
           )}
           <NightButton night={night} onNight={onNight} />
         </div>
+        {onAdd && (
+          <button className="btn btn-small" onClick={onAdd}>
+            <Plus size={15} />
+            Add devices
+          </button>
+        )}
       </div>
 
       <div className="smart-card-body">

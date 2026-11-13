@@ -43,7 +43,9 @@ A module may import from the left of itself, not the right. (A few small upward 
   same-key edits into one undo step. The draft persists to localStorage (`nest.draft.<backend.kind>`) and survives a
   reload on that device. Saving creates a new version. `newerLive` flags that someone made another version live while
   you were editing.
-- **Modes**: Home shows only the saved live version. Edit (`?edit` in the URL) works on the draft.
+- **Modes**: Home shows only the saved live version. Edit (`?edit` in the URL) works on the draft. On a phone,
+  Home's pencil opens `PhoneEditor`, a bottom sheet for scenes, devices and rooms using the same draft, undo and
+  version saving. Closing the sheet returns to live and keeps its draft on the device for the next visit.
 - **Two backends, same interface**: Supabase (real) and local (demo: localStorage `nest.demo.*`, tabs synced with
   BroadcastChannel). Demo is offered in dev or when Supabase isn't configured. Any data change must work in both.
 - **Realtime**: `supabaseBackend.subscribe` listens to `versions` and `live_version` and reloads the react-query cache.
@@ -52,6 +54,9 @@ A module may import from the left of itself, not the right. (A few small upward 
 - **Scenes** are part of the version, like the devices and lamps they name: editing one is an ordinary draft edit,
   and Home sees it once the version is saved and live. A scene keeps what it says about an item that's gone from a
   version, so undo and other versions bring it back. `localScenes` brings in scenes from before this, once.
+- **Names**: rooms and fixed lights use the version's name overrides; window shades use `deviceNames` too, keyed by
+  their stable shade id. Placed devices and lamps keep their name on the item. `floorItems` applies fixed-item
+  overrides for the UI in both Home and Edit.
 - **Per-browser state, not synced**: light and shade state (`devices/*`, localStorage), weather cache, north and
   camera preferences.
 - **Supabase calls** belong in `data/supabaseBackend.ts`. Existing exceptions: `auth/useAccess.ts`, `ui/TodoPopup.tsx`,
